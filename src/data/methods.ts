@@ -31,11 +31,11 @@ export interface Method {
 
 export type IconKey =
   | 'v60' | 'chemex' | 'kalita' | 'aeropress' | 'french' | 'clever'
-  | 'espresso' | 'moka' | 'cezve' | 'cupping' | 'siphon' | 'coldbrew'
+  | 'espresso' | 'moka' | 'cezve' | 'cupping' | 'siphon' | 'coldbrew' | 'batch'
   | 'cup' | 'kettle' | 'drop' | 'bean';
 
 /** Значки, которые можно выбрать для своего метода */
-export const ICON_CHOICES: IconKey[] = ['cup', 'drop', 'kettle', 'bean', 'v60', 'kalita', 'chemex', 'aeropress', 'french', 'clever', 'espresso', 'moka', 'cezve', 'siphon', 'coldbrew', 'cupping'];
+export const ICON_CHOICES: IconKey[] = ['cup', 'drop', 'kettle', 'bean', 'v60', 'kalita', 'chemex', 'aeropress', 'french', 'clever', 'espresso', 'moka', 'cezve', 'siphon', 'coldbrew', 'batch', 'cupping'];
 
 export const METHODS: Method[] = [
   {
@@ -171,6 +171,18 @@ export const METHODS: Method[] = [
       { at: 120, title: 'Перемешать и закрыть', hint: 'Убедитесь, что весь кофе намок. Уберите в холодильник на 12–18 часов, потом процедите через бумажный фильтр' },
     ],
     tips: ['Таймер можно закрыть — запишите заварку и процедите через 12–18 часов', 'Пейте с водой или льдом 1:1', 'Слишком крепко — разбавьте водой', 'Хранится в холодильнике до 2 недель'],
+  },
+  {
+    id: 'batch', name: 'Батч брю', icon: 'batch',
+    about: 'Фильтр-кофе в капельной машине на большой объём: Moccamaster, Fetco, Bunn и подобные.',
+    dose: 60, ratio: 1000 / 60, temp: 93, grind: 'средний, чуть крупнее, чем для V60', total: 360,
+    steps: [
+      { at: 0, title: 'Запустить машину', to: 1, hint: 'Фильтр промыт горячей водой, кофе разровнен в корзине. Вода 92–96 °C' },
+      { at: 30, title: 'Перемешать слой', hint: 'Когда кофе намокнет, аккуратно перемешайте ложкой, чтобы не было сухих комков' },
+      { at: 270, title: 'Пролив заканчивается', hint: 'Цель — 4–6 минут на литр. Дайте корзине стечь полностью' },
+      { at: 330, title: 'Перемешать в кувшине', hint: 'Первые и последние капли разные по крепости — перемешайте перед подачей' },
+    ],
+    tips: ['SCA Golden Cup — около 55–60 г на литр', 'Кисло и пусто — мельче помол', 'Горько и долго капает — крупнее помол или меньше кофе', 'Не держите на подогреве дольше 30 минут — лучше термос'],
   },
   {
     id: 'cupping', name: 'Каппинг', icon: 'cupping',

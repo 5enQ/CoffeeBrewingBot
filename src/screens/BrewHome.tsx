@@ -8,10 +8,52 @@ import { MethodIcon } from '../ui/icons';
 import { Row, Screen, Section } from '../ui/kit';
 import { BrewScore } from '../ui/CuppingForm';
 import { beanTitle } from './beanUtils';
+import { platform } from '../platform';
+import { toast } from '../ui/toast';
+import { useRef, type ReactNode } from 'react';
+
+const HOLD_MS = 450;
+
+/** Плитка метода: нажатие открывает, долгое нажатие (или правая кнопка мыши) закрепляет */
+function MethodTile({ className, onOpen, onPin, pinned, label, children }: {
+  className: string; onOpen(): void; onPin(): void; pinned: boolean; label: string; children: ReactNode;
+}) {
+  const timer = useRef<number | null>(null);
+  const held = useRef(false);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const cancel = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
+  return (
+    <button type="button" className={className}
+      aria-label={`${label}${pinned ? ', закреплён' : ''}`}
+      title={pinned ? 'Зажмите или правый клик — открепить' : 'Зажмите или правый клик — закрепить'}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        held.current = false; start.current = { x: e.clientX, y: e.clientY };
+        cancel();
+        timer.current = window.setTimeout(() => { held.current = true; timer.current = null; onPin(); }, HOLD_MS);
+      }}
+      onPointerMove={(e) => { if (start.current && Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) > 10) cancel(); }}
+      onPointerUp={cancel} onPointerLeave={cancel} onPointerCancel={cancel}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        // на телефоне контекстное меню приходит вместе с долгим нажатием — его уже обработал таймер
+        if (held.current || timer.current) return;
+        held.current = true; onPin();
+      }}
+      onClick={() => { if (held.current) { held.current = false; return; } onOpen(); }}>
+      {children}
+    </button>
+  );
+}
 
 export function BrewHome() {
   const { push } = useRouter();
-  const { brews, beans } = useStore();
+  const { brews, beans, pinned, togglePin } = useStore();
+  const all = allMethods();
+  const ordered = [
+    ...pinned.map((id) => all.find((m) => m.id === id)).filter((m): m is NonNullable<typeof m> => !!m),
+    ...all.filter((m) => !pinned.includes(m.id)).sort((x, y) => Number(x.id === 'cupping') - Number(y.id === 'cupping')),
+  ];
   const recent = brews.slice(0, 3);
   const sel = useSelected();
 
@@ -41,13 +83,22 @@ export function BrewHome() {
           onClick={() => push({ name: 'methodEdit', isNew: true, method: newCustomMethod('cm' + uid()) })}><Icon name="plus" /></button>
       } plain>
         <div className="method-grid">
-          {[...allMethods()].sort((x, y) => Number(x.id === 'cupping') - Number(y.id === 'cupping')).map((m) => (
-            <button key={m.id} type="button" className={'method-card' + (m.id === 'cupping' ? ' wide' : '') + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === m.id ? ' active' : '')} onClick={() => push({ name: 'recipes', methodId: m.id })}>
-              <span className="method-icon"><MethodIcon icon={m.icon} size={28} /></span>
-              <span className="method-name">{m.name}{m.id === 'cupping' && <small>Протокол SCA CVA · до{'\u00a0'}6{'\u00a0'}образцов</small>}</span>
-            </button>
-          ))}
+          {ordered.map((m) => {
+            const isPinned = pinned.includes(m.id);
+            return (
+              <MethodTile key={m.id} pinned={isPinned}
+                className={'method-card' + (m.id === 'cupping' ? ' wide' : '') + (isPinned ? ' pinned' : '') + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === m.id ? ' active' : '')}
+                onOpen={() => push({ name: 'recipes', methodId: m.id })}
+                onPin={() => { togglePin(m.id); platform.haptic('success'); toast(isPinned ? `«${m.name}» откреплён` : `«${m.name}» закреплён наверху`); }}
+                label={m.name}>
+                <span className="method-icon"><MethodIcon icon={m.icon} size={28} /></span>
+                <span className="method-name">{m.name}{m.id === 'cupping' && <small>Протокол SCA CVA · до{'\u00a0'}6{'\u00a0'}образцов</small>}</span>
+                {isPinned && <span className="pin-mark" aria-hidden="true"><Icon name="pin" size={14} /></span>}
+              </MethodTile>
+            );
+          })}
         </div>
+        {pinned.length === 0 && <p className="muted small-note pad">Зажмите метод, чтобы закрепить его наверху.</p>}
       </Section>
     </Screen>
   );

@@ -922,3 +922,6 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .cva-tags .chip { font-style: normal; font-size: 13px; padding: 3px 9px; cursor: default; }
 .cata-children .chip:not(.on), .cata .chips .chip[data-tone]:not(.on) { border-color: color-mix(in srgb, var(--t) 28%, var(--sep)); }
 .cata-children .chip::before, .cata .chips .chip[data-tone]::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--t); margin-right: 6px; vertical-align: 1px; }
+.method-card { position: relative; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.pin-mark { position: absolute; top: 6px; right: 8px; color: var(--accent); display: grid; place-items: center; transform: rotate(35deg); }
+.method-card.pinned { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }

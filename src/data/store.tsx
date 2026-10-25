@@ -129,6 +129,8 @@ interface DB {
   seenAch?: string[];
   /** мои оценки чужих рецептов: shareId → звёзды */
   rated?: Record<string, number>;
+  /** закреплённые методы — наверху списка, в порядке закрепления */
+  pinned?: string[];
 }
 
 const KEY = 'brewbook.db.v1';
@@ -231,6 +233,8 @@ interface StoreApi {
   customMethods: CustomMethod[];
   saveMethod(m: CustomMethod): void;
   seenAch: string[] | null;
+  pinned: string[];
+  togglePin(methodId: string): void;
   markSeen(keys: string[]): void;
   saveCustom(r: CustomRecipe): void;
   deleteCustom(id: string): void;
@@ -300,6 +304,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const list = d.customMethods ?? [];
     return { ...d, customMethods: list.some((x) => x.id === m.id) ? list.map((x) => (x.id === m.id ? m : x)) : [...list, m] };
   }), []);
+  const togglePin = useCallback((id: string) => setDb((d) => { const p = d.pinned ?? []; return { ...d, pinned: p.includes(id) ? p.filter((x) => x !== id) : [...p, id] }; }), []);
   const markSeen = useCallback((keys: string[]) => setDb((d) => ({ ...d, seenAch: [...new Set([...(d.seenAch ?? []), ...keys])] })), []);
   const saveCustom = useCallback((r: CustomRecipe) => setDb((d) => {
     const list = d.custom ?? [];
@@ -315,15 +320,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     rated: db.rated ?? {}, saveRated, setRatingStats,
     custom: db.custom ?? [], saveCustom, deleteCustom,
     customMethods: db.customMethods ?? [], saveMethod,
-    seenAch: db.seenAch ?? null, markSeen,
+    seenAch: db.seenAch ?? null, markSeen, pinned: db.pinned ?? [], togglePin,
     hasSamples: db.beans.some((b) => b.sample) || db.brews.some((b) => b.sample) || db.gear.some((g) => g.sample),
     exportJson: () => JSON.stringify({ ...db, exportedAt: new Date().toISOString() }, null, 2),
     importJson(json) {
       const data = JSON.parse(json);
       if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл экспорта дневника');
-      setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], customMethods: data.customMethods ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true });
+      setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], customMethods: data.customMethods ?? [], pinned: data.pinned ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true });
     },
-  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen, saveMethod]);
+  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen, saveMethod, togglePin]);
 
   // Свои методы должны быть известны methodById() до отрисовки экранов
   setCustomMethods((db.customMethods ?? []).map(toMethod));

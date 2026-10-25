@@ -38,4 +38,4 @@ export function RestBadge({ roastDate }: { roastDate: string }) {
 }
 
 export const PROCESSES = ['Мытая', 'Натуральная', 'Хани', 'Анаэробная', 'Карбоническая мацерация', 'Wet-hulled', 'Экспериментальная'];
-export const ROAST_LEVELS = ['Светлая (фильтр)', 'Омни', 'Средняя', 'Тёмная (эспрессо)'];
+export const ROAST_LEVELS = ['Светлая', 'Омни', 'Средняя', 'Тёмная'];

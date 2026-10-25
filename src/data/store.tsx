@@ -155,7 +155,7 @@ function seed(): Pick<DB, 'beans' | 'brews'> {
   const b1: Bean = {
     ...emptyBean(), id: 'sample-eth', name: 'Гуджи Ханджа', roaster: 'Пример обжарщика', country: 'Эфиопия',
     region: 'Гуджи', farm: 'Станция Ханджа', producer: 'Мелкие фермеры', variety: 'Эфиопские местные',
-    process: 'Мытая', altitude: '2100–2300 м', harvest: '2026', roastLevel: 'Светлая (фильтр)',
+    process: 'Мытая', altitude: '2100–2300 м', harvest: '2026', roastLevel: 'Светлая',
     roastDate: iso(12), weight: '250', barcode: '4600000000017', packNotes: 'бергамот, персик, жасмин',
     createdAt: now - 12 * 86_400_000, sample: true,
   };
@@ -250,6 +250,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!next.seeded) next = { ...next, ...seed(), seeded: true };
       if (!next.gearSeeded) next = { ...next, gear: [...next.gear, ...(next.beans.some((b) => b.sample) ? seedGear() : [])], gearSeeded: true };
       next = { ...next, profile: { ...EMPTY.profile, ...next.profile } };
+      // старые подписи степени обжарки: «Светлая (фильтр)» → «Светлая»
+      next = { ...next, beans: next.beans.map((b) => (/ \(.+\)$/.test(b.roastLevel ?? '') ? { ...b, roastLevel: b.roastLevel.replace(/ \(.+\)$/, '') } : b)) };
       const tgUser = platform.user();
       if (!next.profile.name && tgUser?.name) next = { ...next, profile: { ...next.profile, name: tgUser.name } };
       if (!next.profile.telegram && tgUser?.username) next = { ...next, profile: { ...next.profile, telegram: tgUser.username } };

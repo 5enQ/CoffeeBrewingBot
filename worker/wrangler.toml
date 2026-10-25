@@ -1,0 +1,19 @@
+# Сервер оценок рецептов Brewbook (Cloudflare Workers, бесплатный тариф)
+name = "brewbook-ratings"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Один Durable Object на автора: внутри — SQLite с оценками его рецептов
+[[durable_objects.bindings]]
+name = "AUTHORS"
+class_name = "AuthorRatings"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AuthorRatings"]
+
+[vars]
+# Откуда разрешены запросы (сайт мини-приложения)
+ALLOWED_ORIGIN = "https://5enq.github.io"
+
+# Секрет BOT_TOKEN задаётся через `wrangler secret put BOT_TOKEN` (или GitHub Actions)

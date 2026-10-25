@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 dist-single
+
+# worker
+worker/node_modules
+worker/.wrangler
+worker/.dev.vars

@@ -65,6 +65,25 @@ npx cap open android     # дальше сборка в Android Studio / Xcode
 
 В `src/config.ts` укажите username бота (`TELEGRAM_BOT`). Если создавали приложение через `/newapp`, укажите и его короткое имя (`TELEGRAM_APP`). Тогда ссылка будет вида `t.me/бот?startapp=…` и рецепт откроется прямо в Telegram. Без этих настроек ссылка ведёт на веб-версию (`#r=…`). Если данные не помещаются в лимит Telegram (512 символов), заметки и часть полей в ссылке сокращаются. Полный рецепт всё равно приходит текстом в сообщении.
 
+## Достижения и оценки друзей
+
+- **Выпито кофе** — сумма воды во всех своих заварках (без примеров и без рецептов, сохранённых от друзей). Уровни: бронза 10 л, серебро 100 л, золото 1000 л, бриллиант 10 000 л.
+- **Оценки ваших рецептов** — сколько раз друзья оценили рецепты, которыми вы поделились. Уровни те же: 10 / 100 / 1000 / 10 000. Пороги задаются в `src/data/achievements.ts`.
+
+Чтобы оценки друга дошли до автора, нужен общий сервер. Он лежит в папке `worker/` (Cloudflare Worker и Durable Object с SQLite, бесплатный тариф). Сервер проверяет подпись Telegram `initData` токеном бота, поэтому оценку нельзя подделать. Каждый пользователь может поставить рецепту одну оценку; если оценить повторно, она заменит прежнюю. Свой рецепт оценить нельзя.
+
+Как подключить:
+1. Зарегистрируйтесь на dash.cloudflare.com. При первом заходе в **Workers & Pages** выберите поддомен `*.workers.dev`.
+2. Скопируйте **Account ID** со страницы Workers & Pages.
+3. Создайте токен: **My Profile → API Tokens → Create Token**, шаблон **Edit Cloudflare Workers**.
+4. В GitHub откройте **Settings → Secrets and variables → Actions**.
+   - На вкладке **Secrets** добавьте `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` и `BOT_TOKEN` (токен бота из @BotFather).
+   - На вкладке **Variables** добавьте `RATINGS_ENABLED` = `true`.
+5. Запустите вручную **Actions → Deploy ratings worker → Run workflow**.
+6. Впишите адрес воркера в `RATINGS_API` в `src/config.ts`.
+
+Проверить сервер локально: `cd worker && npm i && echo 'BOT_TOKEN=…' > .dev.vars && npx wrangler dev`.
+
 ## Про сканер
 
 - Камера: используется встроенный `BarcodeDetector`, если он есть (Chrome на Android), иначе ZXing. Читаются EAN-13/8, UPC, Code 128/39, QR и DataMatrix.

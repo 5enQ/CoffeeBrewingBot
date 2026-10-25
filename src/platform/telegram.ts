@@ -135,6 +135,8 @@ export function createTelegramPlatform(): Platform {
       if (/^https:\/\/t\.me\//.test(url)) tg().openTelegramLink(url); else tg().openLink(url);
     },
 
+    initData: () => tg().initData || null,
+
     startParam() {
       return tg().initDataUnsafe?.start_param || web.startParam();
     },

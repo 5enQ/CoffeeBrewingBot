@@ -8,6 +8,7 @@ import { ScoreBadge } from '../ui/CuppingForm';
 import { MethodIcon, Icon } from '../ui/icons';
 import { catById } from '../data/gear';
 import { AuthorBlock } from '../ui/Badges';
+import { RateBlock, plural } from '../ui/RateBlock';
 import { Button, Chips, Empty, Row, SampleTag, Screen, Section, Stars } from '../ui/kit';
 import { beanOrigin, beanTitle } from './beanUtils';
 
@@ -86,7 +87,7 @@ export function Journal() {
 }
 
 export function BrewDetail({ id }: { id: string }) {
-  const { brews, beans, deleteBrew } = useStore();
+  const { brews, beans, deleteBrew, profile } = useStore();
   const { push, back } = useRouter();
   const b = brews.find((x) => x.id === id);
   if (!b) return <Screen title="Запись удалена"><Empty title="Нет такой записи" text="Её удалили." /></Screen>;
@@ -112,6 +113,14 @@ export function BrewDetail({ id }: { id: string }) {
         </div>
       }>
       {b.author && <AuthorBlock author={b.author} />}
+      {b.author && b.shareId && b.authorId && <RateBlock rid={b.shareId} author={b.authorId} authorName={b.author.name} />}
+      {!b.author && b.shareId && profile.ratingStats?.recipes[b.shareId] && (
+        <div className="friends-rating">
+          <span>Оценки друзей</span>
+          <b>{fmtNum(profile.ratingStats.recipes[b.shareId].avg)} ★</b>
+          <small>{profile.ratingStats.recipes[b.shareId].count} {plural(profile.ratingStats.recipes[b.shareId].count)}</small>
+        </div>
+      )}
 
       <div className="detail-head">
         <Stars value={b.rating} size={26} />

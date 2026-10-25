@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { TIER_LABEL, TRACKS, litersBrewed, progress, type Track } from '../data/achievements';
+import { fetchStats, myTelegramId, ratingsEnabled } from '../data/ratings';
+import { fmtNum } from '../data/methods';
 import { GEAR_CATS, type Gear } from '../data/gear';
 import { BADGE_KINDS, CHAMPIONSHIPS, PLACES, Q_TYPES, SCA_EXTRA, SCA_LEVELS, SCA_MODULES, sortBadges, type Badge } from '../data/badges';
 import { BadgeChip } from '../ui/Badges';
@@ -40,6 +43,16 @@ export function Profile() {
     catch (e) { setMsg((e as Error).message || 'Не получилось прочитать копию.'); platform.haptic('error'); }
   };
 
+  const liters = litersBrewed(store.brews);
+  const stats = profile.ratingStats;
+  const ratingCount = stats?.count ?? 0;
+  const { setRatingStats } = store;
+  useEffect(() => {
+    const id = myTelegramId();
+    if (!ratingsEnabled() || !id) return;
+    fetchStats(id).then((st) => { if (st) setRatingStats(st); });
+  }, [setRatingStats]);
+
   const emptyCats = GEAR_CATS.filter((c) => !gear.some((g) => g.cat === c.id));
 
   return (
@@ -59,6 +72,15 @@ export function Profile() {
         </div>
       </div>
       <p className="muted pad">Имя и значки увидят друзья в рецептах, которыми вы поделитесь. Ссылку на Telegram можно не добавлять — это выбирается при отправке.</p>
+
+      <Section title="Достижения" plain>
+        <div className="tracks">
+          <TrackCard track={TRACKS.liters} value={liters} format={(v) => `${fmtNum(v, v < 10 ? 1 : 0)} л`} />
+          <TrackCard track={TRACKS.ratings} value={ratingCount}
+            format={(v) => `${v}`}
+            note={!ratingsEnabled() ? 'Появится, когда подключим сервер оценок' : !myTelegramId() ? 'Считается для рецептов, отправленных из Telegram' : stats?.count ? `Средняя оценка ${fmtNum(stats.avg)} ★` : 'Поделитесь рецептом — друзья смогут его оценить'} />
+        </div>
+      </Section>
 
       <Section title="Значки" aside={
         <button type="button" className="icon-btn" onClick={() => addBadge()} aria-label="Добавить значок"><Icon name="plus" /></button>
@@ -278,5 +300,26 @@ export function BadgeEdit({ badge: initial, isNew }: { badge: Badge; isNew: bool
       </Section>
       <p className="muted pad">Значки указываете вы сами — в рецепте они видны как информация от автора.</p>
     </Screen>
+  );
+}
+
+function TrackCard({ track, value, format, note }: { track: Track; value: number; format(v: number): string; note?: string }) {
+  const { current, next, ratio } = progress(track, value);
+  return (
+    <div className="track" data-tier={current?.tier ?? 'none'}>
+      <div className="track-medal" aria-hidden="true"><Icon name="medal" size={26} /></div>
+      <div className="track-body">
+        <div className="track-head">
+          <b>{track.title}</b>
+          <span>{current ? TIER_LABEL[current.tier] : 'Пока без значка'}</span>
+        </div>
+        <div className="track-bar"><i style={{ ['--w' as string]: `${Math.max(2, ratio * 100)}%` }} data-next={next?.tier} /></div>
+        <div className="track-foot">
+          <span>{format(value)}</span>
+          <span>{next ? `${TIER_LABEL[next.tier]} — ${fmtNum(next.at, 0)} ${track.unit}` : 'Максимальный уровень'}</span>
+        </div>
+        {note && <small className="track-note">{note}</small>}
+      </div>
+    </div>
   );
 }

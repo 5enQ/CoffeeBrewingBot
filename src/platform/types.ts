@@ -52,6 +52,9 @@ export interface Platform {
 
   openLink(url: string): void;
 
+  /** Подписанные данные запуска Telegram (initData) — для проверки пользователя на сервере */
+  initData(): string | null;
+
   /** Параметр запуска: startapp в Telegram, #r=… в вебе */
   startParam(): string | null;
 

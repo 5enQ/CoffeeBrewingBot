@@ -21,12 +21,14 @@ export interface SharedRecipe {
   score?: number;
   bean: Partial<Pick<Bean, BeanKey>> | null;
   gear: Omit<GearRef, 'id'>[];
+  /** для оценок: id рецепта и telegram id автора */
+  ref?: { rid: string; author: string };
 }
 
 const BEAN_KEYS = ['name', 'roaster', 'country', 'region', 'farm', 'variety', 'process', 'altitude', 'roastLevel', 'packNotes'] as const;
 type BeanKey = typeof BEAN_KEYS[number];
 
-export function toShared(b: Brew, bean: Bean | undefined, author: Author): SharedRecipe {
+export function toShared(b: Brew, bean: Bean | undefined, author: Author, myId?: string | null): SharedRecipe {
   return {
     author: b.author ?? author,
     date: b.date,
@@ -35,12 +37,13 @@ export function toShared(b: Brew, bean: Bean | undefined, author: Author): Share
     score: b.cupping ? cupScore(b.cupping).total : undefined,
     bean: bean ? Object.fromEntries(BEAN_KEYS.filter((k) => bean[k]).map((k) => [k, bean[k]])) : null,
     gear: (b.gear ?? []).map(({ cat, name, details }) => (details ? { cat, name, details } : { cat, name })),
+    ref: b.shareId && (b.author ? b.authorId : myId) ? { rid: b.shareId, author: (b.author ? b.authorId : myId)! } : undefined,
   };
 }
 
 /* ---------- Компактная упаковка: короткие ключи → deflate → base64url ---------- */
 
-const KINDS: BadgeKind[] = ['sca', 'q', 'champ', 'custom'];
+const KINDS: BadgeKind[] = ['sca', 'q', 'champ', 'custom', 'achieve'];
 const CATS: GearCat[] = ['grinder', 'machine', 'dripper', 'press', 'stovetop', 'kettle', 'scale', 'filter', 'other'];
 
 function pack(r: SharedRecipe) {
@@ -53,6 +56,7 @@ function pack(r: SharedRecipe) {
     n: r.notes || undefined,
     x: r.score,
     b: r.bean ?? undefined,
+    i: r.ref ? [r.ref.rid, r.ref.author] : undefined,
     e: r.gear.length ? r.gear.map((g) => [CATS.indexOf(g.cat), g.name, g.details ?? '']) : undefined,
   };
 }
@@ -70,6 +74,7 @@ function unpack(o: ReturnType<typeof pack>): SharedRecipe {
     notes: String(o.n ?? ''),
     score: typeof o.x === 'number' ? o.x : undefined,
     bean: o.b ?? null,
+    ref: Array.isArray(o.i) && o.i[0] && o.i[1] ? { rid: String(o.i[0]), author: String(o.i[1]) } : undefined,
     gear: Array.isArray(o.e) ? o.e.map((g) => ({ cat: CATS[Number(g[0])] ?? 'other', name: String(g[1]), details: g[2] ? String(g[2]) : undefined })) : [],
   };
 }

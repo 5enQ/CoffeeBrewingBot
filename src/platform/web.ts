@@ -61,6 +61,7 @@ export function createWebPlatform(): Platform {
       window.onbeforeunload = on ? (e) => { e.preventDefault(); return ''; } : null;
     },
     openLink(url) { window.open(url, '_blank', 'noopener'); },
+    initData: () => null,
     startParam() {
       const m = location.hash.match(/[#&]r=([A-Za-z0-9_-]+)/);
       return m ? m[1] : null;

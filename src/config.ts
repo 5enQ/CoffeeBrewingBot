@@ -9,3 +9,9 @@
 export const TELEGRAM_BOT = '';
 export const TELEGRAM_APP = '';
 export const WEB_URL = 'https://5enq.github.io/CoffeeBrewingBot/';
+
+/**
+ * Адрес сервера оценок (папка worker/, Cloudflare Workers), например
+ * 'https://brewbook-ratings.<ваш-поддомен>.workers.dev'. Пусто — оценки друзей выключены.
+ */
+export const RATINGS_API = '';

@@ -8,6 +8,9 @@ import { platform } from '../platform';
 import { useRouter } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { AuthorBlock } from '../ui/Badges';
+import { RateBlock } from '../ui/RateBlock';
+import { myTelegramId, newRid, ratingsEnabled } from '../data/ratings';
+import { achievementBadges, litersBrewed } from '../data/achievements';
 import { Button, Empty, Field, Screen, Stars } from '../ui/kit';
 
 
@@ -90,8 +93,16 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
 /* ---------- Отправить свою заварку ---------- */
 
 export function ShareScreen({ id }: { id: string }) {
-  const { brews, beans, profile, saveProfile } = useStore();
+  const { brews, beans, profile, saveProfile, saveBrew } = useStore();
   const b = brews.find((x) => x.id === id);
+  const myId = myTelegramId();
+
+  // Своему рецепту при первой отправке выдаём id — по нему друзья смогут его оценить
+  useEffect(() => {
+    if (b && !b.author && !b.shareId && ratingsEnabled() && myId) saveBrew({ ...b, shareId: newRid() });
+  }, [b?.id, b?.shareId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const achievements = achievementBadges(litersBrewed(brews), profile.ratingStats?.count ?? 0);
   const [link, setLink] = useState('');
   const [msg, setMsg] = useState('');
 
@@ -99,9 +110,10 @@ export function ShareScreen({ id }: { id: string }) {
   const me = {
     name: profile.name.trim(),
     username: profile.shareTelegram && tg ? tg : undefined,
-    badges: profile.shareBadges && profile.badges.length ? profile.badges.map(({ id: _id, ...rest }) => rest) : undefined,
+    badges: profile.shareBadges && (profile.badges.length || achievements.length)
+      ? [...achievements, ...profile.badges.map(({ id: _id, ...rest }) => rest)] : undefined,
   };
-  const recipe = b ? toShared(b, beans.find((x) => x.id === b.beanId), me) : null;
+  const recipe = b ? toShared(b, beans.find((x) => x.id === b.beanId), me, myId) : null;
   const key = JSON.stringify(recipe);
 
   useEffect(() => {
@@ -135,8 +147,8 @@ export function ShareScreen({ id }: { id: string }) {
           <Toggle id="share-tg" label="Ссылка на мой Telegram" checked={profile.shareTelegram && !!tg} disabled={!tg}
             hint={tg ? `Друг сможет открыть @${tg}` : 'Укажите username в профиле'}
             onChange={(v) => saveProfile({ ...profile, shareTelegram: v })} />
-          <Toggle id="share-badges" label="Мои значки" checked={profile.shareBadges && profile.badges.length > 0} disabled={!profile.badges.length}
-            hint={profile.badges.length ? `${profile.badges.length} — сертификаты и награды` : 'Добавьте значки в профиле'}
+          <Toggle id="share-badges" label="Мои значки" checked={profile.shareBadges && profile.badges.length + achievements.length > 0} disabled={!profile.badges.length && !achievements.length}
+            hint={profile.badges.length + achievements.length ? `${profile.badges.length + achievements.length} — сертификаты, награды и достижения` : 'Добавьте значки в профиле'}
             onChange={(v) => saveProfile({ ...profile, shareBadges: v })} />
         </div>
       )}
@@ -167,7 +179,7 @@ export function SharedRecipeScreen({ recipe: r }: { recipe: SharedRecipe }) {
   const toBrew = (beanId: string | null): Brew => ({
     id: uid(), date: Date.now(), methodId: r.methodId, beanId, dose: r.dose, water: r.water, temp: r.temp, grind: r.grind,
     time: r.time, rating: r.rating, taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, descriptors: r.descriptors,
-    notes: r.notes, cupping: null, author: r.author,
+    notes: r.notes, cupping: null, author: r.author, shareId: r.ref?.rid, authorId: r.ref?.author,
     gear: r.gear.map((g) => ({ ...g, id: 'shared-' + uid() })),
   });
 
@@ -191,6 +203,7 @@ export function SharedRecipeScreen({ recipe: r }: { recipe: SharedRecipe }) {
           : <Button kind="secondary" icon="check" onClick={save}>Сохранить</Button>}
         <Button icon="play" wide onClick={brewIt}>Заварить так же</Button>
       </div>}>
+      {r.ref && <RateBlock rid={r.ref.rid} author={r.ref.author} authorName={r.author.name} />}
       <RecipeCard r={r} />
       <p className="muted pad">«Заварить так же» откроет рецепт с этими параметрами — оборудование выберете своё. Зерно добавится в ваши зёрна.</p>
     </Screen>

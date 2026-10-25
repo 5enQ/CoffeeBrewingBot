@@ -3,6 +3,7 @@ import { platform } from '../platform';
 import type { Cupping } from './cupping';
 import type { Gear, GearRef } from './gear';
 import type { Badge, BadgeLite } from './badges';
+import type { RatingStats } from './ratings';
 
 export interface Bean {
   id: string;
@@ -53,6 +54,10 @@ export interface Brew {
   gear?: GearRef[];
   /** автор, если рецепт пришёл от друга */
   author?: Author;
+  /** id рецепта для оценок: свой — при первой отправке, чужой — из присланной ссылки */
+  shareId?: string;
+  /** telegram id автора (для чужих рецептов) — куда уходят оценки */
+  authorId?: string;
   sample?: boolean;
 }
 
@@ -67,6 +72,8 @@ export interface Profile {
   /** настройки «Поделиться» */
   shareTelegram: boolean;
   shareBadges: boolean;
+  /** оценки моих рецептов с сервера (кэш) */
+  ratingStats?: RatingStats;
 }
 
 export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[] }
@@ -81,6 +88,8 @@ interface DB {
   profile: Profile;
   seeded?: boolean;
   gearSeeded?: boolean;
+  /** мои оценки чужих рецептов: shareId → звёзды */
+  rated?: Record<string, number>;
 }
 
 const KEY = 'brewbook.db.v1';
@@ -176,6 +185,9 @@ interface StoreApi {
   saveGear(g: Gear): void;
   deleteGear(id: string): void;
   saveProfile(p: Profile): void;
+  rated: Record<string, number>;
+  saveRated(rid: string, stars: number): void;
+  setRatingStats(st: RatingStats): void;
   saveBean(b: Bean): void;
   deleteBean(id: string): void;
   saveBrew(b: Brew): void;
@@ -236,10 +248,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const saveGear = useCallback((g: Gear) => setDb((d) => ({ ...d, gear: d.gear.some((x) => x.id === g.id) ? d.gear.map((x) => (x.id === g.id ? g : x)) : [...d.gear, g] })), []);
   const deleteGear = useCallback((id: string) => setDb((d) => ({ ...d, gear: d.gear.filter((g) => g.id !== id) })), []);
   const saveProfile = useCallback((profile: Profile) => setDb((d) => ({ ...d, profile })), []);
+  const setRatingStats = useCallback((ratingStats: RatingStats) => setDb((d) => ({ ...d, profile: { ...d.profile, ratingStats } })), []);
+  const saveRated = useCallback((rid: string, stars: number) => setDb((d) => ({ ...d, rated: { ...(d.rated ?? {}), [rid]: stars } })), []);
 
   const api = useMemo<StoreApi>(() => ({
     ready, beans: db.beans, brews: db.brews, recipes: db.recipes, gear: db.gear, profile: db.profile,
     saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile,
+    rated: db.rated ?? {}, saveRated, setRatingStats,
     hasSamples: db.beans.some((b) => b.sample) || db.brews.some((b) => b.sample) || db.gear.some((g) => g.sample),
     exportJson: () => JSON.stringify({ ...db, exportedAt: new Date().toISOString() }, null, 2),
     importJson(json) {
@@ -247,7 +262,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл экспорта дневника');
       setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true });
     },
-  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile]);
+  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

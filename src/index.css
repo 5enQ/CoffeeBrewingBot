@@ -541,3 +541,42 @@ button.row:active { background: var(--fg-soft); }
 .toggle-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 56px; cursor: pointer; }
 .toggle-row.disabled { opacity: 0.55; cursor: default; }
 .param-grid dd.dd-text { font-size: 14px; line-height: 1.25; padding-top: 2px; }
+.badge[data-tone="diamond"] { --t: #3aa6c9; }
+.badge[data-tone="diamond"] .badge-medal { background: linear-gradient(135deg, #7fd8f2, #3a8fd0 55%, #9b7be0); }
+.badge[data-tone="gold"] .badge-medal { background: linear-gradient(135deg, #f1cf5a, #c99a1e); }
+.badge[data-tone="silver"] .badge-medal { background: linear-gradient(135deg, #d5dce1, #8c97a0); }
+.badge[data-tone="bronze"] .badge-medal { background: linear-gradient(135deg, #e0a676, #a5602f); }
+
+/* ---------- Достижения ---------- */
+.tracks { display: flex; flex-direction: column; gap: 10px; }
+.track { --t: var(--hint); display: flex; gap: 14px; background: var(--card); border-radius: var(--r); padding: 14px; }
+.track[data-tier="bronze"] { --t: #b06c3b; } .track[data-tier="silver"] { --t: #8c97a0; }
+.track[data-tier="gold"] { --t: #c99a1e; } .track[data-tier="diamond"] { --t: #3a8fd0; }
+.track-medal { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--t); }
+.track[data-tier="none"] .track-medal { background: var(--hint-soft); color: var(--hint); }
+.track[data-tier="bronze"] .track-medal { background: linear-gradient(135deg, #e0a676, #a5602f); }
+.track[data-tier="silver"] .track-medal { background: linear-gradient(135deg, #d5dce1, #8c97a0); }
+.track[data-tier="gold"] .track-medal { background: linear-gradient(135deg, #f1cf5a, #c99a1e); }
+.track[data-tier="diamond"] .track-medal { background: linear-gradient(135deg, #7fd8f2, #3a8fd0 55%, #9b7be0); }
+.track-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.track-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.track-head span { font-size: 13px; font-weight: 650; color: var(--t); }
+.track[data-tier="none"] .track-head span { color: var(--hint); font-weight: 500; }
+.track-bar { height: 8px; border-radius: 99px; background: var(--sep); overflow: hidden; }
+.track-bar i { display: block; height: 100%; width: var(--w); border-radius: 99px; background: var(--accent); }
+.track-bar i[data-next="silver"] { background: linear-gradient(90deg, #b06c3b, #8c97a0); }
+.track-bar i[data-next="gold"] { background: linear-gradient(90deg, #8c97a0, #c99a1e); }
+.track-bar i[data-next="diamond"] { background: linear-gradient(90deg, #c99a1e, #3a8fd0); }
+.track-bar i[data-next="bronze"] { background: #b06c3b; }
+.track-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--hint); font-variant-numeric: tabular-nums; }
+.track-foot span:first-child { color: var(--fg); font-weight: 650; }
+.track-note { color: var(--hint); font-size: 12px; }
+
+.rate-block { background: var(--card); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; border: 1.5px solid var(--accent-soft); }
+.rate-block > div:first-child { display: flex; flex-direction: column; }
+.rate-block small { color: var(--hint); font-size: 13px; }
+.rate-block .status, .rate-block .error { padding: 0; }
+.friends-rating { display: flex; align-items: baseline; gap: 10px; background: var(--card); border-radius: var(--r); padding: 12px 14px; }
+.friends-rating span { flex: 1; color: var(--hint); font-size: 14px; }
+.friends-rating b { color: var(--star); font-size: 20px; font-variant-numeric: tabular-nums; }
+.friends-rating small { color: var(--hint); }

@@ -1,4 +1,5 @@
-export type BadgeKind = 'sca' | 'q' | 'champ' | 'custom';
+/** achieve — выдаются автоматически (литры, оценки), вручную не создаются */
+export type BadgeKind = 'sca' | 'q' | 'champ' | 'custom' | 'achieve';
 
 export interface Badge {
   id: string;
@@ -36,7 +37,10 @@ export const CHAMPIONSHIPS = [
 export const PLACES = ['1 место', '2 место', '3 место', 'Финалист', 'Полуфиналист', 'Участник'];
 
 /** Тон значка: золото / серебро / бронза для призовых мест, свой цвет для типов */
+const ACHIEVE_TONES: Record<string, string> = { 'Бронза': 'bronze', 'Серебро': 'silver', 'Золото': 'gold', 'Бриллиант': 'diamond' };
+
 export function badgeTone(b: Pick<Badge, 'kind' | 'detail'>): string {
+  if (b.kind === 'achieve') return ACHIEVE_TONES[b.detail] ?? 'bronze';
   if (b.kind === 'champ') {
     if (b.detail.startsWith('1')) return 'gold';
     if (b.detail.startsWith('2')) return 'silver';
@@ -50,6 +54,9 @@ export const badgeText = (b: BadgeLite) => [b.title, b.detail, b.year].filter(Bo
 
 /** Порядок показа: призовые места, Q, SCA, остальное */
 export function sortBadges<T extends BadgeLite>(list: T[]): T[] {
-  const rank = (b: BadgeLite) => ({ gold: 0, silver: 1, bronze: 2, q: 3, champ: 4, sca: 5, custom: 6 } as Record<string, number>)[badgeTone(b)] ?? 9;
+  const rank = (b: BadgeLite) => {
+    const base = ({ diamond: 0, gold: 1, silver: 2, bronze: 3, q: 4, champ: 5, sca: 6, custom: 7 } as Record<string, number>)[badgeTone(b)] ?? 9;
+    return base + (b.kind === 'achieve' ? 0.5 : 0); // награды чемпионатов выше достижений того же цвета
+  };
   return [...list].sort((a, z) => rank(a) - rank(z) || Number(z.year || 0) - Number(a.year || 0));
 }

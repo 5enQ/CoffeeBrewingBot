@@ -98,7 +98,9 @@ export class CloudSync {
       } catch { /* битая корзина — пропускаем */ }
     }
     if (!Object.keys(buckets).length) return null;
-    return { remote: fromBuckets(buckets, localGear), names };
+    const remote = fromBuckets(buckets, localGear);
+    for (const name of remote.skipped ?? []) delete names[name];
+    return { remote, names };
   }
 
   /** Отметить корзины применёнными (после слияния) */

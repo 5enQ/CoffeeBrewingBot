@@ -9,6 +9,7 @@
  *  5. Не отправляем демо-записи, кэш оценок с сервера и настройки конкретного устройства.
  *  6. Заварки лежат по корзинам-месяцам: меняется одна заварка — отправляется только её месяц.
  */
+import { hash } from './codec';
 import { FLAVOR_WHEEL, emptyCupping, type Cupping } from './cupping';
 import { emptyAffective, emptyDescriptive, type CvaSession } from './cva';
 import type { GearRef } from './gear';
@@ -96,6 +97,21 @@ function unpackCupping(p: Packed): Cupping {
   } as Cupping;
 }
 
+/* ---------- оборудование заварки ---------- */
+// В заварке хранится снимок оборудования на момент записи. Если снимок совпадает с вещью в списке — пишем только её id.
+// Если вещь с тех пор переименовали или удалили — пишем ключ версии «id~хеш», а сам снимок кладём в архив метаданных.
+const snap = (g: GearRef): GearRef => ({ id: g.id, cat: g.cat, name: g.name, ...(g.details ? { details: g.details } : {}) });
+const sameGear = (a: GearRef, b: GearRef) => a.cat === b.cat && a.name === b.name && (a.details ?? '') === (b.details ?? '');
+let current = new Map<string, GearRef>();
+let archiveOut = new Map<string, GearRef>();
+function gearKey(g: GearRef) {
+  const cur = current.get(g.id);
+  if (cur && sameGear(cur, g)) return g.id;
+  const key = `${g.id}~${hash(`${g.cat}|${g.name}|${g.details ?? ''}`)}`;
+  archiveOut.set(key, snap(g));
+  return key;
+}
+
 export function packBrew(b: Brew, u: number | undefined): Packed {
   const { date, sample: _s, gear, cupping, cva, descriptors, taste, rating, ...rest } = b;
   void _s;
@@ -106,13 +122,13 @@ export function packBrew(b: Brew, u: number | undefined): Packed {
     rating: rating || undefined,
     taste: sameTaste(taste) ? undefined : taste,
     descriptors: packDesc(descriptors ?? []),
-    gear: gear?.map((g) => g.id),
+    gear: gear?.map((g) => gearKey(g)),
     cupping: cupping ? packCupping(cupping) : undefined,
     cva: cva ? packCva(cva) : undefined,
   });
 }
 
-export function unpackBrew(p: Packed, gearById: Map<string, GearRef>): { brew: Brew; u: number } {
+export function unpackBrew(p: Packed, gearById: Map<string, GearRef>): { brew: Brew; u: number; missing: boolean } {
   const { t, u, gear, cupping, cva, descriptors, taste, rating, ...rest } = p as Packed & {
     t?: number; u?: number; gear?: string[]; cupping?: Packed; cva?: Packed; descriptors?: (string | number)[]; taste?: Brew['taste']; rating?: number;
   };
@@ -125,11 +141,12 @@ export function unpackBrew(p: Packed, gearById: Map<string, GearRef>): { brew: B
     descriptors: unpackDesc(descriptors),
     cupping: cupping ? unpackCupping(cupping) : null,
     cva: cva ? unpackCva(cva) : undefined,
-    gear: gear ? gear.map((id) => gearById.get(id)).filter((g): g is GearRef => !!g) : undefined,
+    gear: gear ? gear.map((key) => gearById.get(key)).filter((g): g is GearRef => !!g) : undefined,
   } as Brew;
+  const missing = !!gear && gear.some((key) => !gearById.has(key));
   if (!brew.cva) delete brew.cva;
   if (!brew.gear) delete brew.gear;
-  return { brew, u: ms(u) };
+  return { brew, u: ms(u), missing };
 }
 
 /* ---------- пачка ---------- */
@@ -168,8 +185,8 @@ export interface Meta {
   profile: Partial<DB['profile']>;
   recipes: DB['recipes'];
   gear: DB['gear'];
-  /** оборудование, которого уже нет в списке, но на него ссылаются заварки */
-  archive: GearRef[];
+  /** снимки оборудования из заварок, которые отличаются от текущего списка (переименовали или удалили): ключ версии → снимок */
+  archive: Record<string, GearRef>;
   custom: NonNullable<DB['custom']>;
   methods: NonNullable<DB['customMethods']>;
   pinned: string[];
@@ -191,9 +208,15 @@ export function toBuckets(db: DB): Record<string, string> {
   const usedBeans = new Set(realBrews.map((b) => b.beanId).concat(realBrews.flatMap((b) => b.cva?.samples.map((s) => s.beanId) ?? [])));
   const beans = db.beans.filter((b) => !b.sample || usedBeans.has(b.id));
   const gear = db.gear.filter((g) => !g.sample);
-  const gearIds = new Set(gear.map((g) => g.id));
-  const archive = new Map<string, GearRef>();
-  for (const b of realBrews) for (const g of b.gear ?? []) if (!gearIds.has(g.id) && !archive.has(g.id)) archive.set(g.id, { id: g.id, cat: g.cat, name: g.name, ...(g.details ? { details: g.details } : {}) });
+  current = new Map(gear.map((g) => [g.id, snap(g)]));
+  archiveOut = new Map();
+  // заварки упаковываем первыми — по ходу собирается архив снимков
+  const months = new Map<string, Packed[]>();
+  for (const b of realBrews) {
+    const key = monthOf(b.date);
+    if (!months.has(key)) months.set(key, []);
+    months.get(key)!.push(packBrew(b, mod['b:' + b.id]));
+  }
 
   const metaKeys = Object.keys(mod).filter((k) => !k.startsWith('b:') && !k.startsWith('k:'));
   const now = Date.now();
@@ -204,7 +227,7 @@ export function toBuckets(db: DB): Record<string, string> {
     profile,
     recipes: db.recipes,
     gear: gear.map(({ sample: _s, ...g }) => { void _s; return g; }),
-    archive: [...archive.values()],
+    archive: Object.fromEntries([...archiveOut.entries()].sort(([a], [z]) => (a < z ? -1 : 1))),
     custom: db.custom ?? [],
     methods: db.customMethods ?? [],
     pinned: db.pinned ?? [],
@@ -217,12 +240,6 @@ export function toBuckets(db: DB): Record<string, string> {
   const out: Record<string, string> = { m: canonical(meta) };
   beans.sort((a, z) => z.createdAt - a.createdAt || (a.id < z.id ? -1 : 1));
   if (beans.length) out.k = canonical(beans.map((b) => packBean(b, mod['k:' + b.id])));
-  const months = new Map<string, Packed[]>();
-  for (const b of realBrews) {
-    const key = monthOf(b.date);
-    if (!months.has(key)) months.set(key, []);
-    months.get(key)!.push(packBrew(b, mod['b:' + b.id]));
-  }
   for (const [k, list] of months) out[k] = canonical(list.sort((a, z) => (z.t as number) - (a.t as number) || ((a.id as string) < (z.id as string) ? -1 : 1)));
   return out;
 }
@@ -232,18 +249,29 @@ export interface Remote {
   meta?: Meta;
   beans?: { bean: Bean; u: number }[];
   brews?: { brew: Brew; u: number }[];
+  /** корзины заварок, которые пока нельзя применить: архив снимков оборудования ещё не дописан */
+  skipped?: string[];
 }
 
 export function fromBuckets(buckets: Record<string, string>, localGear: DB['gear']): Remote {
   const out: Remote = {};
   if (buckets.m) out.meta = JSON.parse(buckets.m) as Meta;
   const gearById = new Map<string, GearRef>();
-  for (const g of out.meta?.archive ?? []) gearById.set(g.id, g);
-  for (const g of localGear) gearById.set(g.id, { id: g.id, cat: g.cat, name: g.name, ...(g.details ? { details: g.details } : {}) });
-  for (const g of out.meta?.gear ?? []) gearById.set(g.id, { id: g.id, cat: g.cat, name: g.name, ...(g.details ? { details: g.details } : {}) });
+  for (const g of localGear) gearById.set(g.id, snap(g));
+  for (const g of out.meta?.gear ?? []) gearById.set(g.id, snap(g));
+  const arch = out.meta?.archive ?? {};
+  if (Array.isArray(arch)) for (const g of arch as GearRef[]) gearById.set(g.id, snap(g)); // формат первых часов: архив списком
+  else for (const [key, g] of Object.entries(arch)) gearById.set(key, snap(g));
   if (buckets.k) out.beans = (JSON.parse(buckets.k) as Packed[]).map(unpackBean);
   const brewKeys = Object.keys(buckets).filter((k) => /^b\d{6}$/.test(k));
-  if (brewKeys.length) out.brews = brewKeys.flatMap((k) => (JSON.parse(buckets[k]) as Packed[]).map((p) => unpackBrew(p, gearById)));
+  out.skipped = [];
+  const brews: { brew: Brew; u: number }[] = [];
+  for (const k of brewKeys) {
+    const list = (JSON.parse(buckets[k]) as Packed[]).map((p) => unpackBrew(p, gearById));
+    if (list.some((x) => x.missing)) { out.skipped.push(k); continue; }
+    brews.push(...list.map(({ brew, u }) => ({ brew, u })));
+  }
+  if (brews.length) out.brews = brews;
   return out;
 }
 

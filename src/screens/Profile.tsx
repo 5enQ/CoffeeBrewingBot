@@ -11,7 +11,7 @@ import { platform } from '../platform';
 import { useBackGuard, useRouter, useSelected } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { Button, Chips, Field, Row, SampleTag, Screen, Section, Segmented } from '../ui/kit';
-import { DESKTOP_FORCED_MIN, DESKTOP_MIN, useLayoutMode } from '../layout';
+import { DESKTOP_MIN, useLayoutMode } from '../layout';
 
 export function Profile() {
   const store = useStore();
@@ -206,10 +206,10 @@ export function Profile() {
           options={[{ value: 'auto', label: 'Авто' }, { value: 'desktop', label: 'Компьютер' }, { value: 'mobile', label: 'Телефон' }]} />
         <p className="muted pad">
           {(profile.layout ?? 'auto') === 'auto'
-            ? `На компьютере — меню слева и две колонки, если окно шире ${DESKTOP_MIN} px. На телефоне — вкладки внизу.`
+            ? `На компьютере — меню слева и две колонки, на телефоне — вкладки внизу. Две колонки включаются, когда окно шире ${DESKTOP_MIN} px.`
             : profile.layout === 'desktop'
-              ? `Две колонки, когда окно шире ${DESKTOP_FORCED_MIN} px.`
-              : 'Всегда как на телефоне.'}
+              ? `Меню слева и две колонки на любом устройстве, когда окно шире ${DESKTOP_MIN} px.`
+              : 'Всегда как на телефоне: вкладки внизу.'}
         </p>
         {layoutInfo.desktopClient && layoutInfo.mode === 'mobile' && (profile.layout ?? 'auto') !== 'mobile' && (
           platform.requestFullscreen
@@ -219,7 +219,7 @@ export function Profile() {
       </Section>
 
       <Section title="О приложении">
-        <Row label="Платформа" value={platform.kind} />
+        <Row label="Платформа" value={{ telegram: 'Telegram', web: 'Браузер', native: 'Приложение' }[platform.kind]} />
         <Row label="Хранилище" value={platform.kind === 'telegram' ? 'Telegram на устройстве' : platform.kind === 'native' ? 'Память приложения' : 'Браузер'} />
       </Section>
     </Screen>

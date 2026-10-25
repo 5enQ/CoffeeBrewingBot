@@ -13,6 +13,18 @@ import { toast } from '../ui/toast';
 import { useRef, type ReactNode } from 'react';
 
 const HOLD_MS = 450;
+/** После закрепления плитки переставляются, и палец оказывается над соседней.
+ *  Общая пауза не даёт тому же жесту закрепить вторую плитку. */
+const PIN_COOLDOWN_MS = 1000;
+let lastPinAt = 0;
+let lastPointer = 'mouse';
+function pinOnce(onPin: () => void) {
+  const now = Date.now();
+  if (now - lastPinAt < PIN_COOLDOWN_MS) return false;
+  lastPinAt = now;
+  onPin();
+  return true;
+}
 
 /** Плитка метода: нажатие открывает, долгое нажатие (или правая кнопка мыши) закрепляет */
 function MethodTile({ className, onOpen, onPin, pinned, label, children }: {
@@ -27,20 +39,21 @@ function MethodTile({ className, onOpen, onPin, pinned, label, children }: {
       aria-label={`${label}${pinned ? ', закреплён' : ''}`}
       title={pinned ? 'Зажмите или правый клик — открепить' : 'Зажмите или правый клик — закрепить'}
       onPointerDown={(e) => {
+        lastPointer = e.pointerType;
         if (e.button !== 0) return;
         held.current = false; start.current = { x: e.clientX, y: e.clientY };
         cancel();
-        timer.current = window.setTimeout(() => { held.current = true; timer.current = null; onPin(); }, HOLD_MS);
+        timer.current = window.setTimeout(() => { held.current = true; timer.current = null; pinOnce(onPin); }, HOLD_MS);
       }}
       onPointerMove={(e) => { if (start.current && Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) > 10) cancel(); }}
       onPointerUp={cancel} onPointerLeave={cancel} onPointerCancel={cancel}
       onContextMenu={(e) => {
         e.preventDefault();
-        // на телефоне контекстное меню приходит вместе с долгим нажатием — его уже обработал таймер
-        if (held.current || timer.current) return;
-        held.current = true; onPin();
+        // на сенсорном экране контекстное меню приходит вместе с долгим нажатием — его обрабатывает таймер
+        if (lastPointer !== 'mouse' || held.current || timer.current) return;
+        held.current = true; pinOnce(onPin);
       }}
-      onClick={() => { if (held.current) { held.current = false; return; } onOpen(); }}>
+      onClick={() => { if (held.current || Date.now() - lastPinAt < 400) { held.current = false; return; } onOpen(); }}>
       {children}
     </button>
   );

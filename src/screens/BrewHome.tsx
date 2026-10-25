@@ -49,12 +49,13 @@ function MethodTile({ className, onOpen, onPin, pinned, label, children }: {
 export function BrewHome() {
   const { push } = useRouter();
   const { brews, beans, pinned, togglePin } = useStore();
-  const all = allMethods();
+  const all = allMethods().filter((m) => m.id !== 'cupping');
+  const cupping = methodById('cupping');
   const ordered = [
     ...pinned.map((id) => all.find((m) => m.id === id)).filter((m): m is NonNullable<typeof m> => !!m),
-    ...all.filter((m) => !pinned.includes(m.id)).sort((x, y) => Number(x.id === 'cupping') - Number(y.id === 'cupping')),
+    ...all.filter((m) => !pinned.includes(m.id)),
   ];
-  const recent = brews.slice(0, 3);
+  const recent = brews.filter((b) => b.methodId !== 'cupping').slice(0, 3);
   const sel = useSelected();
 
   return (
@@ -87,18 +88,26 @@ export function BrewHome() {
             const isPinned = pinned.includes(m.id);
             return (
               <MethodTile key={m.id} pinned={isPinned}
-                className={'method-card' + (m.id === 'cupping' ? ' wide' : '') + (isPinned ? ' pinned' : '') + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === m.id ? ' active' : '')}
+                className={'method-card' + (isPinned ? ' pinned' : '') + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === m.id ? ' active' : '')}
                 onOpen={() => push({ name: 'recipes', methodId: m.id })}
                 onPin={() => { togglePin(m.id); platform.haptic('success'); toast(isPinned ? `«${m.name}» откреплён` : `«${m.name}» закреплён наверху`); }}
                 label={m.name}>
                 <span className="method-icon"><MethodIcon icon={m.icon} size={28} /></span>
-                <span className="method-name">{m.name}{m.id === 'cupping' && <small>Протокол SCA CVA · до{'\u00a0'}6{'\u00a0'}образцов</small>}</span>
+                <span className="method-name">{m.name}</span>
                 {isPinned && <span className="pin-mark" aria-hidden="true"><Icon name="pin" size={14} /></span>}
               </MethodTile>
             );
           })}
         </div>
-        {pinned.length === 0 && <p className="muted small-note pad">Зажмите метод, чтобы закрепить его наверху.</p>}
+        {!pinned.some((id) => all.some((m) => m.id === id)) && <p className="muted small-note pad">Зажмите метод, чтобы закрепить его наверху.</p>}
+      </Section>
+
+      <Section title="Оценка кофе" plain>
+        <button type="button" className={'method-card wide' + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === 'cupping' ? ' active' : '')}
+          onClick={() => push({ name: 'recipes', methodId: 'cupping' })}>
+          <span className="method-icon"><MethodIcon icon={cupping.icon} size={28} /></span>
+          <span className="method-name">Каппинг<small>Протокол SCA CVA · до{'\u00a0'}6{'\u00a0'}образцов</small></span>
+        </button>
       </Section>
     </Screen>
   );

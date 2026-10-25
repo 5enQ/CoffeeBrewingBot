@@ -819,7 +819,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .stars.editable { gap: 4px; }
 
 /* ---------- Каппинг: большой тайл и CVA ---------- */
-.method-card.wide { grid-column: 1 / -1; background: linear-gradient(100deg, color-mix(in srgb, var(--cherry) 13%, var(--card)), var(--card) 70%); }
+.method-card.wide { grid-column: 1 / -1; width: 100%; background: linear-gradient(100deg, color-mix(in srgb, var(--cherry) 13%, var(--card)), var(--card) 70%); }
 .method-card.wide .method-icon { background: color-mix(in srgb, var(--cherry) 16%, transparent); color: var(--cherry); }
 .method-card.wide .method-name { display: flex; flex-direction: column; gap: 2px; }
 .method-card.wide .method-name small { font-size: 12px; font-weight: 500; color: var(--hint); }

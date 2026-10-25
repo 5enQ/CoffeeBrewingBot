@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
 import { emptyCupping } from '../data/cupping';
 import { useStore, uid, type Brew } from '../data/store';
@@ -8,32 +8,87 @@ import { Button, Field, Screen, Section, Stepper } from '../ui/kit';
 import { BeanPicker } from './BeanPicker';
 import { GearPicker, defaultGear } from '../ui/GearPicker';
 import type { GearRef } from '../data/gear';
+import { effectivePlan, planFromRecipe, recipeFromStandard, type BrewPlan } from '../data/recipes';
+import { platform } from '../platform';
 
 export function MethodScreen({ methodId, beanId, from }: { methodId: string; beanId?: string | null; from?: Brew }) {
   const m = methodById(methodId);
-  const { recipes, saveRecipe, beans, gear: myGear } = useStore();
+  const { recipes, saveRecipe, beans, gear: myGear, custom } = useStore();
   const { push } = useRouter();
   const saved = recipes[m.id];
+  const mine = custom.filter((r) => r.methodId === m.id);
 
-  const [dose, setDose] = useState(from?.dose ?? saved?.dose ?? m.dose);
-  const [ratio, setRatio] = useState(from ? from.water / from.dose : saved?.ratio ?? m.ratio);
-  const [temp, setTemp] = useState(from?.temp ?? saved?.temp ?? m.temp);
-  const [grind, setGrind] = useState(from?.grind ?? saved?.grind ?? m.grind);
+  // Какой рецепт выбран: 'std' — стандартный, 'from' — схема из повторяемой заварки, иначе id своего рецепта
+  // Схема из заварки совпадает с одним из своих рецептов — выбираем его, а не дублируем
+  const sameAsFrom = from?.plan
+    ? mine.find((r) => r.id === from.plan!.recipeId) ?? mine.find((r) => r.name === from.plan!.name && JSON.stringify(r.steps) === JSON.stringify(from.plan!.steps))
+    : undefined;
+  const initialChoice = from?.plan
+    ? (sameAsFrom ? sameAsFrom.id : 'from')
+    : from ? 'std' : saved?.recipeId && mine.some((r) => r.id === saved.recipeId) ? saved.recipeId : 'std';
+  const [choice, setChoice] = useState<string>(initialChoice);
+  const active = mine.find((r) => r.id === choice);
+  const plan: BrewPlan = choice === 'from' && from?.plan ? from.plan : active ? planFromRecipe(active) : effectivePlan(m.id);
+
+  const startActive = mine.find((r) => r.id === initialChoice);
+  const [dose, setDose] = useState(from?.dose ?? startActive?.dose ?? saved?.dose ?? m.dose);
+  const [ratio, setRatio] = useState(from ? from.water / from.dose : startActive?.ratio ?? saved?.ratio ?? m.ratio);
+  const [temp, setTemp] = useState(from?.temp ?? startActive?.temp ?? saved?.temp ?? m.temp);
+  const [grind, setGrind] = useState(from?.grind ?? startActive?.grind ?? saved?.grind ?? m.grind);
   const [gear, setGear] = useState<GearRef[]>(() => from?.gear?.length ? from.gear : defaultGear(m.id, myGear, saved?.gear));
   const [bean, setBean] = useState<string | null>(beanId ?? from?.beanId ?? beans.find((b) => !b.sample)?.id ?? beans[0]?.id ?? null);
+
+  const apply = (r: { dose: number; ratio: number; temp: number; grind: string }) => {
+    setDose(r.dose); setRatio(r.ratio); setTemp(r.temp); setGrind(r.grind);
+  };
+  const pick = (id: string) => {
+    platform.haptic('select');
+    setChoice(id);
+    const r = mine.find((x) => x.id === id);
+    if (r) apply(r);
+    else if (id === 'std') apply({ dose: m.dose, ratio: m.ratio, temp: m.temp, grind: m.grind });
+    else if (id === 'from' && from) apply({ dose: from.dose, ratio: from.water / from.dose, temp: from.temp, grind: from.grind });
+  };
+
+  // Рецепт изменили в редакторе — подхватываем новые параметры
+  const activeJson = active ? JSON.stringify(active) : '';
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return; }
+    if (active) apply(active);
+  }, [activeJson]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Только что созданный рецепт сразу выбираем
+  const known = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!known.current) return;
+    const fresh = mine.find((r) => !known.current!.has(r.id));
+    if (fresh) { known.current = null; setChoice(fresh.id); apply(fresh); }
+  }, [custom]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const createRecipe = () => {
+    known.current = new Set(custom.map((r) => r.id));
+    const steps = plan.steps.map((st) => ({ ...st }));
+    push({ name: 'recipeEdit', isNew: true, recipe: recipeFromStandard(m.id, uid(), { dose, ratio, temp, grind, steps, total: plan.total, name: choice === 'std' ? `Мой ${m.name}` : `${plan.name} (копия)` }) });
+  };
+  const editRecipe = () => {
+    if (active) push({ name: 'recipeEdit', isNew: false, recipe: active });
+    else createRecipe();
+  };
 
   const water = Math.round(dose * ratio * (m.id === 'espresso' ? 10 : 1)) / (m.id === 'espresso' ? 10 : 1);
   const waterLabel = m.yieldLabel ?? 'Вода';
   const espresso = m.id === 'espresso';
 
   const draft = (): Brew => ({
-    id: uid(), date: Date.now(), methodId: m.id, beanId: bean, dose, water, temp, grind, time: m.total,
+    id: uid(), date: Date.now(), methodId: m.id, beanId: bean, dose, water, temp, grind, time: plan.total,
     rating: 0, taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, descriptors: [], notes: '',
     cupping: m.id === 'cupping' ? emptyCupping() : null,
     gear,
+    plan: choice === 'std' ? undefined : plan,
   });
 
-  const remember = () => saveRecipe(m.id, { dose, ratio, temp, grind, gear: gear.map((g) => g.id) });
+  const remember = () => saveRecipe(m.id, { dose, ratio, temp, grind, gear: gear.map((g) => g.id), recipeId: active?.id });
 
   return (
     <Screen title={m.name} subtitle={m.about}
@@ -49,15 +104,30 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
           <div><dt>Кофе</dt><dd>{fmtNum(dose, 2)} г</dd></div>
           <div><dt>{waterLabel}</dt><dd>{fmtNum(water)} г</dd></div>
           <div><dt>Пропорция</dt><dd>{fmtRatio(ratio)}</dd></div>
-          <div><dt>Время</dt><dd>{fmtTime(m.total)}</dd></div>
+          <div><dt>Время</dt><dd>{fmtTime(plan.total)}</dd></div>
         </dl>
       </div>
+
+      <Section title="Рецепт" aside={<button type="button" className="link-btn" onClick={createRecipe}>+ Свой</button>} plain>
+        <div className="recipe-picker">
+          <button type="button" className={'chip' + (choice === 'std' ? ' on' : '')} onClick={() => pick('std')}>Стандартный</button>
+          {from?.plan && !sameAsFrom && (
+            <button type="button" className={'chip' + (choice === 'from' ? ' on' : '')} onClick={() => pick('from')}>{from.plan.name}</button>
+          )}
+          {mine.map((r) => (
+            <button type="button" key={r.id} className={'chip' + (choice === r.id ? ' on' : '')} onClick={() => pick(r.id)}>
+              {r.name}{r.author && <small> · {r.author.name || '@' + r.author.username}</small>}
+            </button>
+          ))}
+        </div>
+        {active?.notes && <p className="muted pad">{active.notes}</p>}
+      </Section>
 
       <Section title="Зерно" plain>
         <BeanPicker value={bean} onChange={setBean} />
       </Section>
 
-      <Section title="Рецепт">
+      <Section title="Параметры">
         <Stepper label="Кофе" value={dose} onChange={setDose} step={espresso ? 0.5 : m.id === 'cupping' ? 0.25 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} />
         <Stepper label={waterLabel} value={water} step={espresso ? 1 : 10} min={espresso ? 10 : 30} max={2000} unit="г"
           format={(v) => fmtNum(v)}
@@ -73,9 +143,11 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
         <GearPicker methodId={m.id} value={gear} onChange={setGear} />
       </Section>
 
-      <Section title="Шаги">
+      <Section title={choice === 'std' ? 'Шаги' : `Шаги · ${plan.name}`} aside={
+        <button type="button" className="link-btn" onClick={editRecipe}>{active ? 'Изменить' : 'Изменить под себя'}</button>
+      }>
         <ol className="steps-preview">
-          {m.steps.map((s, i) => (
+          {plan.steps.map((s, i) => (
             <li key={i}>
               <time>{fmtTime(s.at)}</time>
               <div>
@@ -85,7 +157,7 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
               </div>
             </li>
           ))}
-          <li className="done"><time>{fmtTime(m.total)}</time><div><b>Готово</b></div></li>
+          <li className="done"><time>{fmtTime(plan.total)}</time><div><b>Готово</b></div></li>
         </ol>
       </Section>
 

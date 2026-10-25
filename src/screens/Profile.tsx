@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { TIER_LABEL, TRACKS, litersBrewed, progress, type Track } from '../data/achievements';
 import { fetchStats, myTelegramId, ratingsEnabled } from '../data/ratings';
-import { fmtNum } from '../data/methods';
+import { METHODS, fmtNum, methodById } from '../data/methods';
+import { recipeFromStandard } from '../data/recipes';
 import { GEAR_CATS, type Gear } from '../data/gear';
 import { BADGE_KINDS, CHAMPIONSHIPS, PLACES, Q_TYPES, SCA_EXTRA, SCA_LEVELS, SCA_MODULES, sortBadges, type Badge } from '../data/badges';
 import { BadgeChip } from '../ui/Badges';
 import { useStore, uid } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
-import { Icon } from '../ui/icons';
+import { Icon, MethodIcon } from '../ui/icons';
 import { Button, Chips, Field, Row, SampleTag, Screen, Section } from '../ui/kit';
 
 export function Profile() {
@@ -53,6 +54,7 @@ export function Profile() {
     fetchStats(id).then((st) => { if (st) setRatingStats(st); });
   }, [setRatingStats]);
 
+  const [pickMethod, setPickMethod] = useState(false);
   const emptyCats = GEAR_CATS.filter((c) => !gear.some((g) => g.cat === c.id));
 
   return (
@@ -102,6 +104,32 @@ export function Profile() {
         <div><b>{store.beans.length}</b><span>зёрен</span></div>
         <div><b>{gear.length}</b><span>оборудования</span></div>
       </div>
+
+      <Section title="Мои рецепты" aside={
+        <button type="button" className="icon-btn" onClick={() => setPickMethod((v) => !v)} aria-label="Новый рецепт"><Icon name="plus" /></button>
+      } plain>
+        {pickMethod && (
+          <div className="chips pick-method">
+            {METHODS.map((m) => (
+              <button type="button" key={m.id} className="chip" onClick={() => { setPickMethod(false); push({ name: 'recipeEdit', isNew: true, recipe: recipeFromStandard(m.id, uid()) }); }}>{m.name}</button>
+            ))}
+          </div>
+        )}
+        {store.custom.length > 0 ? (
+          <div className="group">
+            {store.custom.map((r) => {
+              const m = methodById(r.methodId);
+              return (
+                <Row key={r.id} leading={<MethodIcon icon={m.icon} size={24} />} label={r.name}
+                  hint={`${m.name} · ${fmtNum(r.dose, 2)} г → ${fmtNum(r.dose * r.ratio)} г · ${r.steps.length} ${r.steps.length === 1 ? 'шаг' : r.steps.length < 5 ? 'шага' : 'шагов'}${r.author ? ` · от ${r.author.name || '@' + r.author.username}` : ''}`}
+                  onClick={() => push({ name: 'recipeEdit', isNew: false, recipe: r })} />
+              );
+            })}
+          </div>
+        ) : !pickMethod && (
+          <p className="muted pad">Свои схемы проливов: выберите метод и поменяйте шаги, граммы и время. Рецепт появится на экране метода, по нему пойдёт таймер.</p>
+        )}
+      </Section>
 
       <Section title="Моё оборудование" aside={
         <button type="button" className="icon-btn" onClick={() => addGear('grinder')} aria-label="Добавить оборудование"><Icon name="plus" /></button>

@@ -136,6 +136,12 @@ export function BrewDetail({ id }: { id: string }) {
         <div><dt>Помол</dt><dd className="dd-text">{b.grind || '—'}</dd></div>
       </dl>
 
+      {b.plan && (
+        <Section title="Рецепт">
+          <Row label={b.plan.name} hint={b.plan.steps.map((st) => `${fmtTime(st.at)} ${st.title}${st.to !== undefined ? ` · ${fmtNum(b.water * st.to, 0)} г` : ''}`).join('  →  ')} />
+        </Section>
+      )}
+
       {b.gear && b.gear.length > 0 && (
         <Section title="Оборудование">
           {b.gear.map((g) => <Row key={g.id} label={g.name} hint={g.details} value={catById(g.cat).one} />)}

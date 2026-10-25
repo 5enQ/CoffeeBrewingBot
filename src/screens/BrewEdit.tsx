@@ -88,7 +88,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
 
       <Section title="Параметры" aside={<span className="muted">{fmtRatio(b.water / b.dose)}</span>}>
         <Field label="Метод" id="method">
-          <select id="method" value={b.methodId} onChange={(e) => set({ methodId: e.target.value })}>
+          <select id="method" value={b.methodId} onChange={(e) => set({ methodId: e.target.value, plan: undefined })}>
             {METHODS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </select>
         </Field>

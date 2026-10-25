@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { catById } from '../data/gear';
 import { methodById, fmtNum, fmtRatio, fmtTime } from '../data/methods';
 import { recipeLink, recipeText, toShared, type SharedRecipe } from '../data/share';
+import { effectivePlan } from '../data/recipes';
 import { emptyBean, useStore, uid, type Bean, type Brew } from '../data/store';
 import { toneOf } from '../data/cupping';
 import { platform } from '../platform';
@@ -17,6 +18,7 @@ import { Button, Empty, Field, Screen, Stars } from '../ui/kit';
 /** Карточка рецепта — одинаково выглядит у автора (превью) и у друга */
 export function RecipeCard({ r }: { r: SharedRecipe }) {
   const m = methodById(r.methodId);
+  const plan = effectivePlan(r.methodId, r.plan);
   const beanName = r.bean?.name || [r.bean?.country, r.bean?.region].filter(Boolean).join(', ');
   const origin = r.bean ? [r.bean.country, r.bean.region, r.bean.farm].filter(Boolean).join(' · ') : '';
 
@@ -25,7 +27,7 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
       <header className="recipe-head">
         <span className="method-hero-icon"><MethodIcon icon={m.icon} size={40} /></span>
         <div>
-          <span className="eyebrow">{m.name}</span>
+          <span className="eyebrow">{m.name}{r.plan ? ` · ${r.plan.name}` : ''}</span>
           <h2>{beanName || 'Рецепт заварки'}</h2>
           {origin && <p className="muted">{origin}</p>}
         </div>
@@ -66,11 +68,12 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
       )}
 
       <div className="recipe-block">
-        <h3>Шаги</h3>
+        <h3>{r.plan ? `Шаги · ${r.plan.name}` : 'Шаги'}</h3>
         <ol className="steps-preview compact">
-          {m.steps.map((s, i) => (
-            <li key={i}><time>{fmtTime(s.at)}</time><div><b>{s.title}</b>{s.to !== undefined && <span className="pour">до {fmtNum(r.water * s.to, 0)} г</span>}</div></li>
+          {plan.steps.map((s, i) => (
+            <li key={i}><time>{fmtTime(s.at)}</time><div><b>{s.title}</b>{s.to !== undefined && <span className="pour">до {fmtNum(r.water * s.to, 0)} г</span>}{s.hint && <p>{s.hint}</p>}</div></li>
           ))}
+          <li className="done"><time>{fmtTime(plan.total)}</time><div><b>Готово</b></div></li>
         </ol>
       </div>
 
@@ -163,7 +166,7 @@ export function ShareScreen({ id }: { id: string }) {
 /* ---------- Рецепт, присланный другом ---------- */
 
 export function SharedRecipeScreen({ recipe: r }: { recipe: SharedRecipe }) {
-  const { beans, saveBean, saveBrew } = useStore();
+  const { beans, saveBean, saveBrew, saveCustom } = useStore();
   const { push, setTab } = useRouter();
   const [savedId, setSavedId] = useState<string | null>(null);
 
@@ -180,6 +183,7 @@ export function SharedRecipeScreen({ recipe: r }: { recipe: SharedRecipe }) {
     id: uid(), date: Date.now(), methodId: r.methodId, beanId, dose: r.dose, water: r.water, temp: r.temp, grind: r.grind,
     time: r.time, rating: r.rating, taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, descriptors: r.descriptors,
     notes: r.notes, cupping: null, author: r.author, shareId: r.ref?.rid, authorId: r.ref?.author,
+    plan: r.plan ? { ...r.plan } : undefined,
     gear: r.gear.map((g) => ({ ...g, id: 'shared-' + uid() })),
   });
 
@@ -187,6 +191,17 @@ export function SharedRecipeScreen({ recipe: r }: { recipe: SharedRecipe }) {
     const brew = toBrew(ensureBean());
     saveBrew(brew);
     setSavedId(brew.id);
+    platform.haptic('success');
+  };
+
+  const [recipeSaved, setRecipeSaved] = useState(false);
+  const saveRecipeCopy = () => {
+    if (!r.plan) return;
+    saveCustom({
+      id: uid(), methodId: r.methodId, name: r.plan.name, dose: r.dose, ratio: r.water / r.dose, temp: r.temp, grind: r.grind,
+      total: r.plan.total, steps: r.plan.steps, notes: r.notes, author: r.author, createdAt: Date.now(),
+    });
+    setRecipeSaved(true);
     platform.haptic('success');
   };
 
@@ -205,6 +220,11 @@ export function SharedRecipeScreen({ recipe: r }: { recipe: SharedRecipe }) {
       </div>}>
       {r.ref && <RateBlock rid={r.ref.rid} author={r.ref.author} authorName={r.author.name} />}
       <RecipeCard r={r} />
+      {r.plan && (
+        <Button kind="secondary" icon={recipeSaved ? 'check' : 'plus'} onClick={saveRecipeCopy} disabled={recipeSaved}>
+          {recipeSaved ? `Рецепт «${r.plan.name}» в ваших рецептах` : 'Добавить рецепт к своим'}
+        </Button>
+      )}
       <p className="muted pad">«Заварить так же» откроет рецепт с этими параметрами — оборудование выберете своё. Зерно добавится в ваши зёрна.</p>
     </Screen>
   );

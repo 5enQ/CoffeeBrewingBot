@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { methodById, fmtTime, fmtNum } from '../data/methods';
+import { effectivePlan } from '../data/recipes';
 import type { Brew } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
@@ -23,6 +24,7 @@ function beep(freq = 880, ms = 140) {
 
 export function TimerScreen({ draft }: { draft: Brew }) {
   const m = methodById(draft.methodId);
+  const plan = effectivePlan(draft.methodId, draft.plan);
   const { replace } = useRouter();
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(false);
@@ -48,10 +50,10 @@ export function TimerScreen({ draft }: { draft: Brew }) {
 
   useBackGuard(elapsed > 0, 'Прервать заварку? Время не сохранится.');
 
-  const idx = m.steps.reduce((acc, s, i) => (s.at <= elapsed ? i : acc), -1);
-  const step = idx >= 0 ? m.steps[idx] : m.steps[0];
-  const next = m.steps[idx + 1];
-  const done = elapsed >= m.total;
+  const idx = plan.steps.reduce((acc, s, i) => (s.at <= elapsed ? i : acc), -1);
+  const step = idx >= 0 ? plan.steps[idx] : plan.steps[0];
+  const next = plan.steps[idx + 1];
+  const done = elapsed >= plan.total;
 
   useEffect(() => {
     if (!running) return;
@@ -81,15 +83,15 @@ export function TimerScreen({ draft }: { draft: Brew }) {
     const total = running ? base.current : elapsed;
     setRunning(false);
     platform.haptic('success');
-    replace({ name: 'brewEdit', draft: { ...draft, time: Math.round(total || m.total), date: Date.now() }, isNew: true, openCupping: m.id === 'cupping' });
+    replace({ name: 'brewEdit', draft: { ...draft, time: Math.round(total || plan.total), date: Date.now() }, isNew: true, openCupping: m.id === 'cupping' });
   };
 
   const R = 112, C = 2 * Math.PI * R;
-  const progress = Math.min(1, elapsed / m.total);
+  const progress = Math.min(1, elapsed / plan.total);
   const target = step.to !== undefined ? draft.water * step.to : null;
 
   return (
-    <Screen title={m.name} subtitle={`${fmtNum(draft.dose, 2)} г · ${fmtNum(draft.water)} г · ${draft.temp ? fmtNum(draft.temp) + '°C' : 'холодная вода'}`}
+    <Screen title={draft.plan ? `${m.name} · ${draft.plan.name}` : m.name} subtitle={`${fmtNum(draft.dose, 2)} г · ${fmtNum(draft.water)} г · ${draft.temp ? fmtNum(draft.temp) + '°C' : 'холодная вода'}`}
       action={
         <button type="button" className="icon-btn text" onClick={() => setSound((s) => !s)} aria-pressed={sound}>
           {sound ? 'Звук вкл' : 'Звук выкл'}
@@ -107,20 +109,20 @@ export function TimerScreen({ draft }: { draft: Brew }) {
       <div className="timer">
         <svg viewBox="0 0 260 260" className="timer-ring" aria-hidden="true">
           <circle cx="130" cy="130" r={R} className="ring-track" />
-          {m.steps.map((s, i) => {
-            const a = (s.at / m.total) * 2 * Math.PI - Math.PI / 2;
+          {plan.steps.map((s, i) => {
+            const a = (s.at / plan.total) * 2 * Math.PI - Math.PI / 2;
             return <circle key={i} cx={130 + R * Math.cos(a)} cy={130 + R * Math.sin(a)} r="4" className={'ring-tick' + (s.at <= elapsed ? ' on' : '')} />;
           })}
           <circle cx="130" cy="130" r={R} className="ring-fill" strokeDasharray={C} strokeDashoffset={C * (1 - progress)} transform="rotate(-90 130 130)" />
         </svg>
         <div className="timer-center">
           <div className="timer-time">{fmtTime(elapsed)}</div>
-          <div className="timer-total">{done ? 'время вышло — дождитесь слива' : `из ${fmtTime(m.total)}`}</div>
+          <div className="timer-total">{done ? 'время вышло — дождитесь слива' : `из ${fmtTime(plan.total)}`}</div>
         </div>
       </div>
 
       <div className={'step-now' + (running || elapsed > 0 ? ' live' : '')} key={idx}>
-        <span className="eyebrow">{elapsed === 0 ? 'Первый шаг' : done ? 'Финиш' : `Шаг ${idx + 1} из ${m.steps.length}`}</span>
+        <span className="eyebrow">{elapsed === 0 ? 'Первый шаг' : done ? 'Финиш' : `Шаг ${idx + 1} из ${plan.steps.length}`}</span>
         <h2>{done ? 'Готово' : step.title}</h2>
         {!done && target !== null && <div className="pour-big">до <b>{fmtNum(target, 0)}</b> г</div>}
         {!done && step.hint && <p>{step.hint}</p>}

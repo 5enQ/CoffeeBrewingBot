@@ -4,6 +4,7 @@ import type { Cupping } from './cupping';
 import type { Gear, GearRef } from './gear';
 import type { Badge, BadgeLite } from './badges';
 import type { RatingStats } from './ratings';
+import type { BrewPlan, CustomRecipe } from './recipes';
 
 export interface Bean {
   id: string;
@@ -50,6 +51,8 @@ export interface Brew {
   descriptors: string[];
   notes: string;
   cupping: Cupping | null;
+  /** своя схема проливов (если варили не по стандартному рецепту) */
+  plan?: BrewPlan;
   /** снимок оборудования, которым варили */
   gear?: GearRef[];
   /** автор, если рецепт пришёл от друга */
@@ -76,7 +79,7 @@ export interface Profile {
   ratingStats?: RatingStats;
 }
 
-export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[] }
+export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[]; recipeId?: string }
 
 interface DB {
   v: 1;
@@ -88,6 +91,8 @@ interface DB {
   profile: Profile;
   seeded?: boolean;
   gearSeeded?: boolean;
+  /** свои рецепты */
+  custom?: CustomRecipe[];
   /** мои оценки чужих рецептов: shareId → звёзды */
   rated?: Record<string, number>;
 }
@@ -188,6 +193,9 @@ interface StoreApi {
   rated: Record<string, number>;
   saveRated(rid: string, stars: number): void;
   setRatingStats(st: RatingStats): void;
+  custom: CustomRecipe[];
+  saveCustom(r: CustomRecipe): void;
+  deleteCustom(id: string): void;
   saveBean(b: Bean): void;
   deleteBean(id: string): void;
   saveBrew(b: Brew): void;
@@ -248,6 +256,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const saveGear = useCallback((g: Gear) => setDb((d) => ({ ...d, gear: d.gear.some((x) => x.id === g.id) ? d.gear.map((x) => (x.id === g.id ? g : x)) : [...d.gear, g] })), []);
   const deleteGear = useCallback((id: string) => setDb((d) => ({ ...d, gear: d.gear.filter((g) => g.id !== id) })), []);
   const saveProfile = useCallback((profile: Profile) => setDb((d) => ({ ...d, profile })), []);
+  const saveCustom = useCallback((r: CustomRecipe) => setDb((d) => {
+    const list = d.custom ?? [];
+    return { ...d, custom: list.some((x) => x.id === r.id) ? list.map((x) => (x.id === r.id ? r : x)) : [...list, r] };
+  }), []);
+  const deleteCustom = useCallback((id: string) => setDb((d) => ({ ...d, custom: (d.custom ?? []).filter((x) => x.id !== id) })), []);
   const setRatingStats = useCallback((ratingStats: RatingStats) => setDb((d) => ({ ...d, profile: { ...d.profile, ratingStats } })), []);
   const saveRated = useCallback((rid: string, stars: number) => setDb((d) => ({ ...d, rated: { ...(d.rated ?? {}), [rid]: stars } })), []);
 
@@ -255,14 +268,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     ready, beans: db.beans, brews: db.brews, recipes: db.recipes, gear: db.gear, profile: db.profile,
     saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile,
     rated: db.rated ?? {}, saveRated, setRatingStats,
+    custom: db.custom ?? [], saveCustom, deleteCustom,
     hasSamples: db.beans.some((b) => b.sample) || db.brews.some((b) => b.sample) || db.gear.some((g) => g.sample),
     exportJson: () => JSON.stringify({ ...db, exportedAt: new Date().toISOString() }, null, 2),
     importJson(json) {
       const data = JSON.parse(json);
       if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл экспорта дневника');
-      setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true });
+      setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true });
     },
-  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats]);
+  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

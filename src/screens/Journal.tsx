@@ -1,0 +1,172 @@
+import { useMemo, useState } from 'react';
+import { cupScore, QUALITY, CUP_ATTRS, toneOf, SCORE_MIN, SCORE_MAX } from '../data/cupping';
+import { METHODS, methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
+import { useStore } from '../data/store';
+import { platform } from '../platform';
+import { useRouter } from '../router';
+import { ScoreBadge } from '../ui/CuppingForm';
+import { MethodIcon } from '../ui/icons';
+import { Button, Chips, Empty, Row, SampleTag, Screen, Section, Stars } from '../ui/kit';
+import { beanOrigin, beanTitle } from './beanUtils';
+
+function dayLabel(ts: number) {
+  const d = new Date(ts); const today = new Date();
+  const diff = Math.round((new Date(today.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86_400_000);
+  if (diff === 0) return 'Сегодня';
+  if (diff === 1) return 'Вчера';
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' });
+}
+
+export function Journal() {
+  const { brews, beans } = useStore();
+  const { push, setTab } = useRouter();
+  const [method, setMethod] = useState<string | null>(null);
+
+  const used = useMemo(() => METHODS.filter((m) => brews.some((b) => b.methodId === m.id)), [brews]);
+  const list = method ? brews.filter((b) => b.methodId === method) : brews;
+
+  const groups = useMemo(() => {
+    const out: { label: string; items: typeof list }[] = [];
+    for (const b of list) {
+      const label = dayLabel(b.date);
+      const last = out[out.length - 1];
+      if (last?.label === label) last.items.push(b); else out.push({ label, items: [b] });
+    }
+    return out;
+  }, [list]);
+
+  const rated = brews.filter((b) => b.rating > 0);
+  const avg = rated.length ? rated.reduce((s, b) => s + b.rating, 0) / rated.length : 0;
+  const cupped = brews.filter((b) => b.cupping);
+
+  return (
+    <Screen title="Дневник" root>
+      {brews.length > 0 && (
+        <div className="stats">
+          <div><b>{brews.length}</b><span>заварок</span></div>
+          <div><b>{avg ? fmtNum(avg) : '—'}</b><span>средняя оценка</span></div>
+          <div><b>{cupped.length ? fmtNum(Math.max(...cupped.map((b) => cupScore(b.cupping!).total)), 2) : '—'}</b><span>лучший каппинг</span></div>
+        </div>
+      )}
+
+      {used.length > 1 && (
+        <div className="filter-row">
+          <Chips options={['Все', ...used.map((m) => m.name)]}
+            value={[method ? methodById(method).name : 'Все']}
+            onToggle={(n) => setMethod(n === 'Все' ? null : used.find((m) => m.name === n)!.id)} />
+        </div>
+      )}
+
+      {groups.length === 0 && (
+        <Empty title="Пока пусто" text="Заварите кофе по таймеру или запишите заварку вручную — она появится здесь."
+          action={<Button onClick={() => setTab('brew')}>Заварить</Button>} />
+      )}
+
+      {groups.map((g) => (
+        <Section key={g.label} title={g.label}>
+          {g.items.map((b) => {
+            const m = methodById(b.methodId);
+            const bean = beans.find((x) => x.id === b.beanId);
+            return (
+              <Row key={b.id}
+                leading={<MethodIcon icon={m.icon} size={26} />}
+                label={<>{beanTitle(bean)} {b.sample && <SampleTag />}</>}
+                hint={`${m.name} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г · ${fmtRatio(b.water / b.dose)} · ${fmtTime(b.time)}`}
+                value={b.cupping ? <ScoreBadge c={b.cupping} /> : <Stars value={b.rating} size={14} />}
+                onClick={() => push({ name: 'brew', id: b.id })}
+              />
+            );
+          })}
+        </Section>
+      ))}
+    </Screen>
+  );
+}
+
+export function BrewDetail({ id }: { id: string }) {
+  const { brews, beans, deleteBrew } = useStore();
+  const { push, back } = useRouter();
+  const b = brews.find((x) => x.id === id);
+  if (!b) return <Screen title="Запись удалена"><Empty title="Нет такой записи" text="Её удалили." /></Screen>;
+  const m = methodById(b.methodId);
+  const bean = beans.find((x) => x.id === b.beanId);
+  const c = b.cupping;
+
+  const remove = async () => {
+    if (!(await platform.confirm('Удалить эту запись?'))) return;
+    platform.haptic('warning');
+    back(true);
+    deleteBrew(b.id);
+  };
+
+  return (
+    <Screen title={beanTitle(bean)} subtitle={`${m.name} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
+      footer={
+        <div className="footer-actions">
+          <button type="button" className="round-btn" onClick={remove} aria-label="Удалить"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" /></svg></button>
+          <Button kind="secondary" icon="edit" onClick={() => push({ name: 'brewEdit', draft: b, isNew: false })}>Изменить</Button>
+          <Button icon="repeat" wide onClick={() => push({ name: 'method', methodId: b.methodId, beanId: b.beanId, from: b })}>Повторить</Button>
+        </div>
+      }>
+      <div className="detail-head">
+        <Stars value={b.rating} size={26} />
+        {c && <ScoreBadge c={c} big />}
+      </div>
+
+      <dl className="param-grid">
+        <div><dt>Кофе</dt><dd>{fmtNum(b.dose, 2)} г</dd></div>
+        <div><dt>{m.yieldLabel ?? 'Вода'}</dt><dd>{fmtNum(b.water)} г</dd></div>
+        <div><dt>Пропорция</dt><dd>{fmtRatio(b.water / b.dose)}</dd></div>
+        <div><dt>Температура</dt><dd>{b.temp ? `${b.temp}°C` : 'холодная'}</dd></div>
+        <div><dt>Время</dt><dd>{fmtTime(b.time)}</dd></div>
+        <div><dt>Помол</dt><dd>{b.grind || '—'}</dd></div>
+      </dl>
+
+      {bean && (
+        <Section title="Зерно">
+          <Row label={beanTitle(bean)} hint={[beanOrigin(bean), bean.process].filter(Boolean).join(' · ')} onClick={() => push({ name: 'bean', id: bean.id })} />
+        </Section>
+      )}
+
+      <Section title="Вкус">
+        <div className="taste-bars">
+          {([['Кислотность', b.taste.acidity], ['Сладость', b.taste.sweetness], ['Горечь', b.taste.bitterness], ['Тело', b.taste.body]] as const).map(([l, v]) => (
+            <div key={l}><span>{l}</span><i style={{ ['--w' as string]: `${(v / 5) * 100}%` }} /><b>{v}</b></div>
+          ))}
+        </div>
+      </Section>
+
+      {b.descriptors.length > 0 && (
+        <Section title="Дескрипторы" plain>
+          <div className="chips static">{b.descriptors.map((d) => <span key={d} className="chip on" data-tone={toneOf(d)}>{d}</span>)}</div>
+        </Section>
+      )}
+
+      {b.notes && <Section title="Заметки"><p className="note-text">{b.notes}</p></Section>}
+
+      {c && (
+        <Section title="Каппинг-анкета">
+          <div className="cup-bars">
+            {QUALITY.map((q) => (
+              <div key={q.key}>
+                <span>{q.label}</span>
+                <i style={{ ['--w' as string]: `${((c.scores[q.key] - SCORE_MIN) / (SCORE_MAX - SCORE_MIN)) * 100}%` }} />
+                <b>{c.scores[q.key].toFixed(2).replace('.', ',')}</b>
+              </div>
+            ))}
+            {CUP_ATTRS.map((a) => (
+              <div key={a.key} className="cup-row">
+                <span>{a.label}</span>
+                <span className="mini-cups">{c.cups[a.key].map((ok, i) => <em key={i} className={ok ? 'on' : ''} />)}</span>
+                <b>{c.cups[a.key].filter(Boolean).length * 2}</b>
+              </div>
+            ))}
+            {(c.defects.taintCups > 0 || c.defects.faultCups > 0) && (
+              <div className="cup-row"><span>Дефекты</span><span /><b>−{cupScore(c).defects}</b></div>
+            )}
+          </div>
+        </Section>
+      )}
+    </Screen>
+  );
+}

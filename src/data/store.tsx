@@ -1,3 +1,5 @@
+import { CloudFullError, CloudSync, type SyncStatus } from './sync';
+import { merge, toBuckets } from './persist';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { platform } from '../platform';
 import type { Cupping } from './cupping';
@@ -111,7 +113,7 @@ export interface Profile {
 
 export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[]; recipeId?: string }
 
-interface DB {
+export interface DB {
   v: 1;
   beans: Bean[];
   brews: Brew[];
@@ -131,10 +133,25 @@ interface DB {
   rated?: Record<string, number>;
   /** закреплённые методы — наверху списка, в порядке закрепления */
   pinned?: string[];
+  /** когда менялась запись (для синхронизации): «b:id» заварка, «k:id» пачка, «g:id» оборудование,
+   *  «c:id» свой рецепт, «x:id» свой метод, «r:метод» последние параметры, «p» профиль, «n» закрепы. Мс. */
+  mod?: Record<string, number>;
+  /** когда запись удалили — чтобы удаление дошло до других устройств. Мс. */
+  del?: Record<string, number>;
+}
+
+/** Отметить изменённые и удалённые записи */
+export function stamp(d: DB, changed: string[], removed: string[] = []): Pick<DB, 'mod' | 'del'> {
+  const t = Date.now();
+  const mod = { ...(d.mod ?? {}) };
+  const del = { ...(d.del ?? {}) };
+  for (const k of changed) { mod[k] = t; delete del[k]; }
+  for (const k of removed) { del[k] = t; delete mod[k]; }
+  return { mod, del };
 }
 
 const KEY = 'brewbook.db.v1';
-const EMPTY: DB = { v: 1, beans: [], brews: [], recipes: {}, gear: [], profile: { name: '', about: '', telegram: '', badges: [], shareTelegram: true, shareBadges: true } };
+export const EMPTY: DB = { v: 1, beans: [], brews: [], recipes: {}, gear: [], profile: { name: '', about: '', telegram: '', badges: [], shareTelegram: true, shareBadges: true } };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -247,6 +264,9 @@ interface StoreApi {
   exportJson(): string;
   importJson(json: string): void;
   hasSamples: boolean;
+  /** синхронизация между устройствами (Telegram CloudStorage) */
+  sync: SyncStatus;
+  syncNow(): void;
 }
 
 const Ctx = createContext<StoreApi | null>(null);
@@ -255,6 +275,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [db, setDb] = useState<DB>(EMPTY);
   const [ready, setReady] = useState(false);
   const loaded = useRef(false);
+  const dbRef = useRef(db);
+  dbRef.current = db;
+  const [sync, setSync] = useState<SyncStatus>({ state: 'off' });
+  const syncer = useRef<CloudSync | null>(null);
+  const running = useRef(false);
+  const again = useRef(false);
+
+  const runSync = useCallback(async () => {
+    const s = syncer.current;
+    if (!s || !loaded.current) return;
+    if (running.current) { again.current = true; return; }
+    running.current = true;
+    setSync((x) => ({ ...x, state: 'syncing' }));
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const got = await s.pull(dbRef.current.gear);
+        if (got) {
+          const base = dbRef.current;
+          const merged = merge(base, got.remote);
+          dbRef.current = merged;
+          // если пользователь что-то поменял за это время — сливаем поверх его правок
+          setDb((d) => (d === base ? merged : merge(d, got.remote)));
+          await s.applied(got.names);
+          await new Promise((res) => setTimeout(res, 0));
+        }
+        if ((await s.push(toBuckets(dbRef.current))) === 'ok') break;
+      }
+      setSync({ state: 'idle', at: Date.now(), usage: s.usage });
+    } catch (e) {
+      console.warn('Синхронизация не удалась', e);
+      setSync({ state: 'error', at: s.lastAt, usage: s.usage, error: e instanceof CloudFullError ? e.message : e instanceof Error && e.message.startsWith('Данные') ? e.message : 'Нет связи с облаком Telegram — попробуем позже' });
+    } finally {
+      running.current = false;
+      if (again.current) { again.current = false; setTimeout(runSync, 500); }
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -272,45 +328,68 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!next.profile.name && tgUser?.name) next = { ...next, profile: { ...next.profile, name: tgUser.name } };
       if (!next.profile.telegram && tgUser?.username) next = { ...next, profile: { ...next.profile, telegram: tgUser.username } };
       loaded.current = true;
+      dbRef.current = next;
       setDb(next);
       setReady(true);
+      const cloud = platform.cloud;
+      if (cloud) {
+        syncer.current = new CloudSync(cloud, platform.storage);
+        const st = await syncer.current.init();
+        setSync({ state: 'idle', at: st.at, usage: st.usage });
+        runSync();
+      }
     })();
   }, []);
 
   useEffect(() => {
     if (!loaded.current) return;
     const t = setTimeout(() => { platform.storage.set(KEY, JSON.stringify(db)); }, 250);
-    return () => clearTimeout(t);
-  }, [db]);
+    // в облако — чуть позже, чтобы серия правок ушла одним пакетом
+    const c = syncer.current ? setTimeout(runSync, 2000) : undefined;
+    return () => { clearTimeout(t); if (c) clearTimeout(c); };
+  }, [db, runSync]);
+
+  // вернулись в приложение — забираем правки с других устройств; уходим — отправляем свои
+  useEffect(() => {
+    const onVis = () => { if (syncer.current) runSync(); };
+    document.addEventListener('visibilitychange', onVis);
+    const every = setInterval(() => { if (document.visibilityState === 'visible') onVis(); }, 60_000);
+    return () => { document.removeEventListener('visibilitychange', onVis); clearInterval(every); };
+  }, [runSync]);
 
   const upsert = <T extends { id: string }>(list: T[], item: T) =>
     list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [item, ...list];
 
-  const saveBean = useCallback((b: Bean) => setDb((d) => ({ ...d, beans: upsert(d.beans, b) })), []);
+  const saveBean = useCallback((b: Bean) => setDb((d) => ({ ...d, beans: upsert(d.beans, b), ...stamp(d, ['k:' + b.id]) })), []);
   const deleteBean = useCallback((id: string) => setDb((d) => ({
     ...d, beans: d.beans.filter((b) => b.id !== id),
     brews: d.brews.map((r) => (r.beanId === id ? { ...r, beanId: null } : r)),
+    ...stamp(d, d.brews.filter((r) => r.beanId === id).map((r) => 'b:' + r.id), ['k:' + id]),
   })), []);
-  const saveBrew = useCallback((b: Brew) => setDb((d) => ({ ...d, brews: upsert(d.brews, b).sort((a, z) => z.date - a.date) })), []);
-  const deleteBrew = useCallback((id: string) => setDb((d) => ({ ...d, brews: d.brews.filter((b) => b.id !== id) })), []);
-  const saveRecipe = useCallback((methodId: string, r: Recipe) => setDb((d) => ({ ...d, recipes: { ...d.recipes, [methodId]: r } })), []);
+  const saveBrew = useCallback((b: Brew) => setDb((d) => ({ ...d, brews: upsert(d.brews, b).sort((a, z) => z.date - a.date), ...stamp(d, ['b:' + b.id]) })), []);
+  const deleteBrew = useCallback((id: string) => setDb((d) => ({ ...d, brews: d.brews.filter((b) => b.id !== id), ...stamp(d, [], ['b:' + id]) })), []);
+  const saveRecipe = useCallback((methodId: string, r: Recipe) => setDb((d) => ({ ...d, recipes: { ...d.recipes, [methodId]: r }, ...stamp(d, ['r:' + methodId]) })), []);
   const removeSamples = useCallback(() => setDb((d) => ({
     ...d, beans: d.beans.filter((b) => !b.sample), brews: d.brews.filter((b) => !b.sample), gear: d.gear.filter((g) => !g.sample),
   })), []);
-  const saveGear = useCallback((g: Gear) => setDb((d) => ({ ...d, gear: d.gear.some((x) => x.id === g.id) ? d.gear.map((x) => (x.id === g.id ? g : x)) : [...d.gear, g] })), []);
-  const deleteGear = useCallback((id: string) => setDb((d) => ({ ...d, gear: d.gear.filter((g) => g.id !== id) })), []);
-  const saveProfile = useCallback((profile: Profile) => setDb((d) => ({ ...d, profile })), []);
+  const saveGear = useCallback((g: Gear) => setDb((d) => ({ ...d, gear: d.gear.some((x) => x.id === g.id) ? d.gear.map((x) => (x.id === g.id ? g : x)) : [...d.gear, g], ...stamp(d, ['g:' + g.id]) })), []);
+  const deleteGear = useCallback((id: string) => setDb((d) => ({ ...d, gear: d.gear.filter((g) => g.id !== id), ...stamp(d, [], ['g:' + id]) })), []);
+  const saveProfile = useCallback((profile: Profile) => setDb((d) => {
+    // вид интерфейса — настройка конкретного устройства, не синхронизируется
+    const onlyLayout = JSON.stringify({ ...d.profile, layout: undefined }) === JSON.stringify({ ...profile, layout: undefined });
+    return { ...d, profile, ...(onlyLayout ? {} : stamp(d, ['p'])) };
+  }), []);
   const saveMethod = useCallback((m: CustomMethod) => setDb((d) => {
     const list = d.customMethods ?? [];
-    return { ...d, customMethods: list.some((x) => x.id === m.id) ? list.map((x) => (x.id === m.id ? m : x)) : [...list, m] };
+    return { ...d, customMethods: list.some((x) => x.id === m.id) ? list.map((x) => (x.id === m.id ? m : x)) : [...list, m], ...stamp(d, ['x:' + m.id]) };
   }), []);
-  const togglePin = useCallback((id: string) => setDb((d) => { const p = d.pinned ?? []; return { ...d, pinned: p.includes(id) ? p.filter((x) => x !== id) : [...p, id] }; }), []);
+  const togglePin = useCallback((id: string) => setDb((d) => { const p = d.pinned ?? []; return { ...d, pinned: p.includes(id) ? p.filter((x) => x !== id) : [...p, id], ...stamp(d, ['n']) }; }), []);
   const markSeen = useCallback((keys: string[]) => setDb((d) => ({ ...d, seenAch: [...new Set([...(d.seenAch ?? []), ...keys])] })), []);
   const saveCustom = useCallback((r: CustomRecipe) => setDb((d) => {
     const list = d.custom ?? [];
-    return { ...d, custom: list.some((x) => x.id === r.id) ? list.map((x) => (x.id === r.id ? r : x)) : [...list, r] };
+    return { ...d, custom: list.some((x) => x.id === r.id) ? list.map((x) => (x.id === r.id ? r : x)) : [...list, r], ...stamp(d, ['c:' + r.id]) };
   }), []);
-  const deleteCustom = useCallback((id: string) => setDb((d) => ({ ...d, custom: (d.custom ?? []).filter((x) => x.id !== id) })), []);
+  const deleteCustom = useCallback((id: string) => setDb((d) => ({ ...d, custom: (d.custom ?? []).filter((x) => x.id !== id), ...stamp(d, [], ['c:' + id]) })), []);
   const setRatingStats = useCallback((ratingStats: RatingStats) => setDb((d) => ({ ...d, profile: { ...d.profile, ratingStats } })), []);
   const saveRated = useCallback((rid: string, stars: number) => setDb((d) => ({ ...d, rated: { ...(d.rated ?? {}), [rid]: stars } })), []);
 
@@ -322,13 +401,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     customMethods: db.customMethods ?? [], saveMethod,
     seenAch: db.seenAch ?? null, markSeen, pinned: db.pinned ?? [], togglePin,
     hasSamples: db.beans.some((b) => b.sample) || db.brews.some((b) => b.sample) || db.gear.some((g) => g.sample),
+    sync, syncNow: () => { runSync(); },
     exportJson: () => JSON.stringify({ ...db, exportedAt: new Date().toISOString() }, null, 2),
     importJson(json) {
       const data = JSON.parse(json);
       if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл экспорта дневника');
-      setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], customMethods: data.customMethods ?? [], pinned: data.pinned ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true });
+      setDb((d) => {
+        const next: DB = { ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], customMethods: data.customMethods ?? [], pinned: data.pinned ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true };
+        const keys = (x: DB) => [
+          ...x.beans.map((b) => 'k:' + b.id), ...x.brews.map((b) => 'b:' + b.id), ...x.gear.map((g) => 'g:' + g.id),
+          ...(x.custom ?? []).map((c) => 'c:' + c.id), ...(x.customMethods ?? []).map((m) => 'x:' + m.id),
+          ...Object.keys(x.recipes).map((m) => 'r:' + m), 'p', 'n',
+        ];
+        const fresh = keys(next);
+        return { ...next, ...stamp(d, fresh, keys(d).filter((k) => !fresh.includes(k))) };
+      });
     },
-  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen, saveMethod, togglePin]);
+  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen, saveMethod, togglePin, sync, runSync]);
 
   // Свои методы должны быть известны methodById() до отрисовки экранов
   setCustomMethods((db.customMethods ?? []).map(toMethod));

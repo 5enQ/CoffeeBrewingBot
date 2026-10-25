@@ -54,6 +54,8 @@ export function createNativePlatform(): Platform {
       },
     },
 
+    cloud: null,
+
     setBackHandler(fn) { backHandler = fn; },
 
     async confirm(message) {

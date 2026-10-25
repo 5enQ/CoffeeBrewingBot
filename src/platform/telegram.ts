@@ -101,6 +101,21 @@ export function createTelegramPlatform(): Platform {
       },
     },
 
+    // CloudStorage (Bot API 6.9) — общее хранилище аккаунта на серверах Telegram, видно со всех устройств
+    get cloud() {
+      const cs = tg().CloudStorage;
+      if (!cs || !can('6.9')) return null;
+      const call = <T,>(fn: (cb: (err: unknown, v: T) => void) => void) => new Promise<T>((res, rej) => {
+        try { fn((err, v) => (err ? rej(new Error(String(err))) : res(v))); } catch (e) { rej(e); }
+      });
+      return {
+        getItems: (keys: string[]) => (keys.length ? call<Record<string, string>>((cb) => cs.getItems(keys, cb)) : Promise.resolve({})),
+        setItem: (key: string, value: string) => call<boolean>((cb) => cs.setItem(key, value, cb)).then(() => undefined),
+        removeItems: (keys: string[]) => (keys.length ? call<boolean>((cb) => cs.removeItems(keys, cb)).then(() => undefined) : Promise.resolve()),
+        getKeys: () => call<string[]>((cb) => cs.getKeys(cb)),
+      };
+    },
+
     setBackHandler(fn) {
       backHandler = fn;
       if (fn) tg().BackButton.show(); else tg().BackButton.hide();

@@ -36,6 +36,9 @@ export interface Platform {
     set(key: string, value: string): Promise<void>;
   };
 
+  /** Облачное хранилище аккаунта (Telegram CloudStorage): общее для всех устройств пользователя. null — нет. */
+  cloud: CloudKV | null;
+
   /** Обработчик системной «назад» (null — скрыть кнопку) */
   setBackHandler(fn: (() => void) | null): void;
 
@@ -70,3 +73,12 @@ export interface Platform {
    *  true — отправлено, false — пользователь закрыл окно, null — не сработало (нужен запасной способ) */
   shareMessage?: (preparedId: string) => Promise<boolean | null>;
 }
+
+/** Облачное key-value: ключи до 128 символов [A-Za-z0-9_-], значения до 4096 символов, до 1024 ключей */
+export interface CloudKV {
+  getItems(keys: string[]): Promise<Record<string, string>>;
+  setItem(key: string, value: string): Promise<void>;
+  removeItems(keys: string[]): Promise<void>;
+  getKeys(): Promise<string[]>;
+}
+export const CLOUD_LIMITS = { keys: 1024, value: 4096, key: 128 };

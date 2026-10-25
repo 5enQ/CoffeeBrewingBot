@@ -1,3 +1,4 @@
+import { CLOUD_LIMITS } from '../platform/types';
 import { useEffect, useState } from 'react';
 import { fetchStats, myTelegramId, ratingsEnabled } from '../data/ratings';
 import { allMethods, fmtNum, methodById } from '../data/methods';
@@ -187,6 +188,8 @@ export function Profile() {
         </Section>
       )}
 
+      <SyncSection />
+
       <Section title="Резервная копия" plain>
         <div className="btn-col">
           <Button kind="secondary" onClick={copy}>Скопировать JSON</Button>
@@ -220,9 +223,39 @@ export function Profile() {
 
       <Section title="О приложении">
         <Row label="Платформа" value={{ telegram: 'Telegram', web: 'Браузер', native: 'Приложение' }[platform.kind]} />
-        <Row label="Хранилище" value={platform.kind === 'telegram' ? 'Telegram на устройстве' : platform.kind === 'native' ? 'Память приложения' : 'Браузер'} />
+        <Row label="Хранилище" value={store.sync.state !== 'off' ? 'Устройство + облако Telegram' : platform.kind === 'telegram' ? 'Telegram на устройстве' : platform.kind === 'native' ? 'Память приложения' : 'Браузер'} />
       </Section>
     </Screen>
+  );
+}
+
+/** Синхронизация между устройствами через облако Telegram */
+function SyncSection() {
+  const { sync, syncNow } = useStore();
+  if (sync.state === 'off') {
+    if (platform.kind !== 'telegram') return null;
+    return (
+      <Section title="Синхронизация" plain>
+        <p className="muted pad">Эта версия Telegram не поддерживает облачное хранилище — обновите приложение Telegram, чтобы записи были на всех устройствах.</p>
+      </Section>
+    );
+  }
+  const when = sync.at ? new Date(sync.at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
+  const pct = sync.usage ? Math.min(100, Math.round((sync.usage.chars / (CLOUD_LIMITS.keys * CLOUD_LIMITS.value)) * 1000) / 10) : 0;
+  const kb = (n: number) => fmtNum(Math.round(n / 102.4) / 10, 1);
+  return (
+    <Section title="Синхронизация">
+      <Row label={sync.state === 'syncing' ? 'Синхронизация…' : sync.state === 'error' ? 'Не удалось синхронизировать' : 'Синхронизировано'}
+        hint={sync.state === 'error' ? sync.error : when ? `Последний раз: ${when}` : 'Через облако Telegram — на всех ваших устройствах'}
+        value={<span className={'sync-dot ' + sync.state} aria-hidden="true" />} chevron={false} />
+      {sync.usage && (
+        <div className="sync-usage">
+          <div className="stock-bar"><i style={{ width: `${Math.max(pct, 1)}%` }} /></div>
+          <small>Занято {kb(sync.usage.chars)} из {kb(CLOUD_LIMITS.keys * CLOUD_LIMITS.value)} КБ · ключей {sync.usage.keys} из {CLOUD_LIMITS.keys}</small>
+        </div>
+      )}
+      <Row label="Синхронизировать сейчас" onClick={sync.state === 'syncing' ? undefined : syncNow} chevron={false} />
+    </Section>
   );
 }
 

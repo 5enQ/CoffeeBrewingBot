@@ -1,4 +1,4 @@
-import type { Platform, HapticKind, ShareResult } from './types';
+import type { Platform, HapticKind, ShareResult, CloudKV } from './types';
 import { dialog } from '../ui/dialog';
 
 const memory = new Map<string, string>();
@@ -53,6 +53,8 @@ export function createWebPlatform(): Platform {
       async get(key) { return lsGet(key); },
       async set(key, value) { lsSet(key, value); },
     },
+    // облака в обычном браузере нет; window.__brewbookCloud — подмена для тестов
+    get cloud() { return (globalThis as { __brewbookCloud?: CloudKV }).__brewbookCloud ?? null; },
     setBackHandler() { /* в вебе кнопка «назад» рисуется в шапке */ },
     confirm: (m) => dialog.confirm(m),
     alert: (m) => dialog.alert(m),

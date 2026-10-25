@@ -1,6 +1,7 @@
 import { TELEGRAM_APP, TELEGRAM_BOT, WEB_URL } from '../config';
 import { loadRecipeCode, storeRecipe } from './ratings';
 import { brewSca } from './cva';
+import { b64url, fromB64url, pipe } from './codec';
 import { badgeText, sortBadges, type BadgeKind } from './badges';
 import { catById, type GearCat, type GearRef } from './gear';
 import { methodById, fmtNum, fmtRatio, fmtTime, type BrewStep } from './methods';
@@ -91,21 +92,6 @@ function unpack(o: ReturnType<typeof pack>): SharedRecipe {
     ref: Array.isArray(o.i) && o.i[0] && o.i[1] ? { rid: String(o.i[0]), author: String(o.i[1]) } : undefined,
     gear: Array.isArray(o.e) ? o.e.map((g) => ({ cat: CATS[Number(g[0])] ?? 'other', name: String(g[1]), details: g[2] ? String(g[2]) : undefined })) : [],
   };
-}
-
-const b64url = (bytes: Uint8Array) => {
-  let s = '';
-  bytes.forEach((b) => { s += String.fromCharCode(b); });
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-};
-const fromB64url = (s: string) => {
-  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4));
-  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
-};
-
-async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream) {
-  const out = new Blob([bytes as BlobPart]).stream().pipeThrough(stream);
-  return new Uint8Array(await new Response(out).arrayBuffer());
 }
 
 /** «r» + «z» (сжато) или «j» (без сжатия) + base64url */

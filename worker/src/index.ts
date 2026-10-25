@@ -5,6 +5,7 @@
  * GET  /stats?author=<telegram id>                — сколько оценок у автора, средняя, по рецептам
  * POST /recipes { initData, code }               — сохранить рецепт для короткой ссылки (только из Telegram)
  * GET  /recipes/<id>                             — получить рецепт по короткой ссылке
+ * POST /share { initData, title, body, url }     — подготовить красивое сообщение для WebApp.shareMessage
  *
  * Подлинность пользователя проверяется подписью initData (HMAC с токеном бота),
  * поэтому подделать оценку «от чужого имени» нельзя, а повторная оценка заменяет прежнюю.
@@ -164,6 +165,43 @@ export default {
       return code ? json({ code }, 200, { ...h, 'Cache-Control': 'public, max-age=86400' }) : json({ error: 'not found' }, 404, h);
     }
 
+    if (req.method === 'POST' && url.pathname === '/share') {
+      let body: { initData?: string; title?: string; body?: string; url?: string };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const { initData = '', title = '', body: text = '', url: link = '' } = body;
+      if (!/^https:\/\/t\.me\/[A-Za-z0-9_]+(\/[A-Za-z0-9_]+)?\?startapp=[A-Za-z0-9_-]{1,512}$/.test(link)) return json({ error: 'bad link' }, 400, h);
+      const user = await verifyInitData(initData, env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      const id = await prepareMessage(env.BOT_TOKEN, user.id, title.slice(0, 200), text.slice(0, 3200), link).catch((e) => { console.log('prepare error', e); return null; });
+      return id ? json({ id }, 200, h) : json({ error: 'telegram refused' }, 502, h);
+    }
+
     return json({ error: 'not found' }, 404, h);
   },
 };
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** savePreparedInlineMessage: ссылка, пустая строка, жирное название, рецепт и кнопка «Открыть рецепт» */
+async function prepareMessage(token: string, userId: string, title: string, text: string, link: string) {
+  const html = `${esc(link)}\n\n<b>${esc(title)}</b>\n${esc(text)}`;
+  const res = await fetch(`https://api.telegram.org/bot${token}/savePreparedInlineMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: Number(userId),
+      result: {
+        type: 'article',
+        id: crypto.randomUUID().replace(/-/g, '').slice(0, 32),
+        title,
+        description: text.split('\n').find((l) => l.trim()) ?? '',
+        input_message_content: { message_text: html, parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
+        reply_markup: { inline_keyboard: [[{ text: '☕ Открыть рецепт', url: link }]] },
+      },
+      allow_user_chats: true, allow_bot_chats: true, allow_group_chats: true, allow_channel_chats: true,
+    }),
+  });
+  const j = await res.json<{ ok: boolean; result?: { id: string }; description?: string }>();
+  if (!j.ok) console.log('savePreparedInlineMessage failed:', j.description);
+  return j.ok ? j.result!.id : null;
+}

@@ -10,7 +10,7 @@ import { useRouter } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { AuthorBlock } from '../ui/Badges';
 import { RateBlock } from '../ui/RateBlock';
-import { myTelegramId, newRid, ratingsEnabled } from '../data/ratings';
+import { myTelegramId, newRid, prepareShare, ratingsEnabled } from '../data/ratings';
 import { useBadges } from '../data/featured';
 import { Button, Empty, Field, Screen, Stars } from '../ui/kit';
 
@@ -118,13 +118,33 @@ export function ShareScreen({ id }: { id: string }) {
   const recipe = b ? toShared(b, beans.find((x) => x.id === b.beanId), me, myId) : null;
   const key = JSON.stringify(recipe);
 
+  const [prepared, setPrepared] = useState<string | null>(null);
   useEffect(() => {
-    if (recipe) recipeLink(recipe).then(setLink);
+    if (!recipe) return;
+    let alive = true;
+    setPrepared(null);
+    recipeLink(recipe).then(async (l) => {
+      if (!alive) return;
+      setLink(l);
+      // Оформленное сообщение (жирное название, кнопка) готовим заранее, чтобы отправка шла сразу по нажатию
+      if (platform.shareMessage) {
+        const [title, ...rest] = recipeText(recipe).split('\n');
+        const id = await prepareShare(title, rest.join('\n').replace(/^\n+/, ''), l);
+        if (alive) setPrepared(id);
+      }
+    });
+    return () => { alive = false; };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!b || !recipe) return <Screen title="Поделиться"><Empty title="Нет такой записи" text="Её удалили." /></Screen>;
 
   const send = async () => {
+    if (prepared && platform.shareMessage) {
+      const sent = await platform.shareMessage(prepared);
+      if (sent) { platform.haptic('success'); setMsg(''); return; }
+      if (sent === false) return; // окно закрыли без отправки
+      // null — не сработало: отправляем обычным способом
+    }
     const res = await platform.share(recipeText(recipe), link);
     platform.haptic(res === 'failed' ? 'error' : 'success');
     setMsg(res === 'copied' ? 'Рецепт и ссылка скопированы — вставьте в чат другу.' : res === 'failed' ? 'Не получилось отправить. Скопируйте текст вручную.' : '');

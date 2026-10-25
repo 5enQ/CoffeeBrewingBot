@@ -60,4 +60,8 @@ export interface Platform {
 
   /** Отправить текст и ссылку: в Telegram — выбор чата, в вебе — системное «Поделиться» или буфер обмена */
   share(text: string, url: string): Promise<ShareResult>;
+
+  /** Отправить заранее подготовленное ботом сообщение (Telegram Bot API 8.0+, WebApp.shareMessage).
+   *  true — отправлено, false — пользователь закрыл окно, null — не сработало (нужен запасной способ) */
+  shareMessage?: (preparedId: string) => Promise<boolean | null>;
 }

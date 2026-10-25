@@ -143,8 +143,20 @@ export function createTelegramPlatform(): Platform {
 
     async share(text, url) {
       // Окно выбора чата Telegram: друг получит текст рецепта и ссылку на него
-      tg().openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
+      // Telegram ставит ссылку первой строкой; перевод строки в начале текста даёт пустую строку после неё
+      tg().openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent('\n' + text)}`);
       return 'shared';
+    },
+
+    shareMessage(id) {
+      if (!can('8.0') || !tg().shareMessage) return Promise.resolve(null);
+      return new Promise((res) => {
+        let done = false;
+        const finish = (v: boolean | null) => { if (done) return; done = true; tg().offEvent('shareMessageFailed', failed); res(v); };
+        const failed = () => finish(null);
+        tg().onEvent('shareMessageFailed', failed);
+        try { tg().shareMessage(id, (sent: boolean) => finish(!!sent)); } catch { finish(null); }
+      });
     },
   };
 }

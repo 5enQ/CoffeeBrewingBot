@@ -72,3 +72,18 @@ export async function loadRecipeCode(id: string): Promise<string | null> {
     return typeof code === 'string' ? code : null;
   } catch { return null; }
 }
+
+/** Подготовить оформленное сообщение (жирное название + кнопка) для WebApp.shareMessage. null — не получилось. */
+export async function prepareShare(title: string, body: string, url: string): Promise<string | null> {
+  const initData = platform.initData();
+  if (!RATINGS_API || !initData || !url.startsWith('https://t.me/')) return null;
+  try {
+    const r = await fetch(`${RATINGS_API}/share`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, title, body, url }),
+    });
+    if (!r.ok) return null;
+    const { id } = await r.json();
+    return typeof id === 'string' ? id : null;
+  } catch { return null; }
+}

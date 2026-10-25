@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   AFF_SECTIONS, DEFECT_TYPES, DESC_SECTIONS, EXTRINSIC, IMPRESSION, MAIN_TASTES, MAX_MAIN_TASTES, MAX_MOUTHFEEL, MAX_OLFACTORY,
-  MODES, MOUTHFEEL_CATA, OLFACTORY, OLFACTORY_LABEL, ROAST_LEVELS, affectiveScore, countedDefects,
+  MODES, MOUTHFEEL_CATA, OLFACTORY, OLFACTORY_LABEL, OLFACTORY_TONE, ROAST_LEVELS, affectiveScore, countedDefects,
   extrinsicFromBean, hasAffective, hasDescriptive, syncUniformity,
   type Affective, type CvaSample, type CvaSession, type Descriptive, type Extrinsic,
 } from '../data/cva';
@@ -175,8 +175,10 @@ function Intensity({ label, value, onChange }: { label: string; value?: number; 
   );
 }
 
-function LimitedChips({ title, options, value, max, onChange }: {
-  title: string; options: { id: string; label: string; hint?: string; child?: boolean }[]; value: string[]; max: number; onChange(v: string[]): void;
+type Opt = { id: string; label: string; hint?: string; tone?: string };
+
+function LimitedChips({ title, options, groups, value, max, onChange }: {
+  title: string; options?: Opt[]; groups?: typeof OLFACTORY; value: string[]; max: number; onChange(v: string[]): void;
 }) {
   const [warn, setWarn] = useState(false);
   const toggle = (id: string) => {
@@ -187,18 +189,34 @@ function LimitedChips({ title, options, value, max, onChange }: {
   return (
     <div className="cata">
       <div className="cata-head"><span>{title}</span><small className={value.length >= max ? 'full' : ''}>{value.length} из {max}</small></div>
-      <div className="chips">
-        {options.map((o) => (
-          <button type="button" key={o.id} className={'chip' + (value.includes(o.id) ? ' on' : '') + (o.child ? ' child' : '')} title={o.hint}
-            onClick={() => toggle(o.id)}>{o.label}{o.hint && <small> · {o.hint}</small>}</button>
-        ))}
-      </div>
+      {groups ? (
+        <div className="cata-groups">
+          {groups.map((g) => (
+            <div className="cata-group" key={g.id} data-tone={g.tone}>
+              <button type="button" data-tone={g.tone} className={'chip cat' + (value.includes(g.id) ? ' on' : '')} onClick={() => toggle(g.id)}>{g.label.replace('/', '/\u200b')}</button>
+              {g.children && (
+                <div className="cata-children">
+                  {g.children.map((c) => (
+                    <button type="button" key={c.id} data-tone={c.tone ?? g.tone} className={'chip' + (value.includes(c.id) ? ' on' : '')} onClick={() => toggle(c.id)}>{c.label}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="chips">
+          {(options ?? []).map((o) => (
+            <button type="button" key={o.id} data-tone={o.tone} className={'chip' + (value.includes(o.id) ? ' on' : '')} title={o.hint}
+              onClick={() => toggle(o.id)}>{o.label}{o.hint && <small> · {o.hint}</small>}</button>
+          ))}
+        </div>
+      )}
       {warn && <p className="warn-text small-note">Можно выбрать не больше {max} — снимите один, чтобы выбрать другой</p>}
     </div>
   );
 }
 
-const OLF_OPTIONS = OLFACTORY.flatMap((c) => [{ id: c.id, label: c.label }, ...(c.children ?? []).map((x) => ({ ...x, child: true }))]);
 
 function DescriptiveForm({ value, onChange }: { value: Descriptive; onChange(v: Descriptive): void }) {
   const set = (patch: Partial<Descriptive>) => onChange({ ...value, ...patch });
@@ -223,7 +241,7 @@ function DescriptiveForm({ value, onChange }: { value: Descriptive; onChange(v: 
         <h4>Сухой аромат и аромат</h4>
         <Intensity label={DESC_SECTIONS[0].label} value={value.intensity.fragrance} onChange={inten('fragrance')} />
         <Intensity label={DESC_SECTIONS[1].label} value={value.intensity.aroma} onChange={inten('aroma')} />
-        <LimitedChips title="Что в запахе" options={OLF_OPTIONS} value={value.olfactory} max={MAX_OLFACTORY} onChange={(olfactory) => set({ olfactory })} />
+        <LimitedChips title="Что в запахе" groups={OLFACTORY} value={value.olfactory} max={MAX_OLFACTORY} onChange={(olfactory) => set({ olfactory })} />
         {note('fragrance', 'Уточнения: например, «черника» к «ягодный»')}
       </div>
 
@@ -231,7 +249,7 @@ function DescriptiveForm({ value, onChange }: { value: Descriptive; onChange(v: 
         <h4>Вкус и послевкусие</h4>
         <Intensity label="Вкус" value={value.intensity.flavor} onChange={inten('flavor')} />
         <Intensity label="Послевкусие" value={value.intensity.aftertaste} onChange={inten('aftertaste')} />
-        <LimitedChips title="Что во вкусе (ретроназально)" options={OLF_OPTIONS} value={value.retronasal} max={MAX_OLFACTORY} onChange={(retronasal) => set({ retronasal })} />
+        <LimitedChips title="Что во вкусе (ретроназально)" groups={OLFACTORY} value={value.retronasal} max={MAX_OLFACTORY} onChange={(retronasal) => set({ retronasal })} />
         <LimitedChips title="Основные вкусы" options={MAIN_TASTES} value={value.mainTastes} max={MAX_MAIN_TASTES} onChange={(mainTastes) => set({ mainTastes })} />
         {note('flavor', 'Уточнения и редкие ноты')}
       </div>
@@ -332,18 +350,18 @@ export function CvaSummary({ session }: { session: CvaSession }) {
             {dsc && (
               <div className="cva-desc">
                 {dsc.roast && <p><span>Обжарка</span> {dsc.roast}</p>}
-                <div className="cup-bars">
+                {DESC_SECTIONS.some((sec) => dsc.intensity[sec.key] !== undefined) && <div className="cup-bars">
                   {DESC_SECTIONS.map((sec) => {
                     const v = dsc.intensity[sec.key];
                     return v === undefined ? null : (
                       <div key={sec.key}><span>{sec.label}</span><i className="int" style={{ ['--w' as string]: `${(v / 15) * 100}%` }} /><b>{v}</b></div>
                     );
                   })}
-                </div>
-                {dsc.olfactory.length > 0 && <p><span>Запах</span> {dsc.olfactory.map((x) => OLFACTORY_LABEL[x]).join(', ')}</p>}
-                {dsc.retronasal.length > 0 && <p><span>Вкус</span> {dsc.retronasal.map((x) => OLFACTORY_LABEL[x]).join(', ')}</p>}
-                {dsc.mainTastes.length > 0 && <p><span>Основные вкусы</span> {dsc.mainTastes.map((x) => MAIN_TASTES.find((t) => t.id === x)?.label).join(', ')}</p>}
-                {dsc.mouthfeel.length > 0 && <p><span>Тактильность</span> {dsc.mouthfeel.map((x) => MOUTHFEEL_CATA.find((t) => t.id === x)?.label).join(', ')}</p>}
+                </div>}
+                {dsc.olfactory.length > 0 && <div className="cva-tags"><span>Запах</span>{dsc.olfactory.map((x) => <i key={x} className="chip on" data-tone={OLFACTORY_TONE[x]}>{OLFACTORY_LABEL[x]}</i>)}</div>}
+                {dsc.retronasal.length > 0 && <div className="cva-tags"><span>Вкус</span>{dsc.retronasal.map((x) => <i key={x} className="chip on" data-tone={OLFACTORY_TONE[x]}>{OLFACTORY_LABEL[x]}</i>)}</div>}
+                {dsc.mainTastes.length > 0 && <div className="cva-tags"><span>Основные вкусы</span>{dsc.mainTastes.map((x) => { const t = MAIN_TASTES.find((m) => m.id === x); return <i key={x} className="chip on" data-tone={t?.tone}>{t?.label}</i>; })}</div>}
+                {dsc.mouthfeel.length > 0 && <div className="cva-tags"><span>Тактильность</span>{dsc.mouthfeel.map((x) => <i key={x} className="chip on">{MOUTHFEEL_CATA.find((t) => t.id === x)?.label}</i>)}</div>}
                 {Object.entries(dsc.notes).filter(([, v]) => v).map(([k, v]) => <p key={k}><span>{DESC_SECTIONS.find((d) => d.key === k)?.label}</span> {v}</p>)}
               </div>
             )}

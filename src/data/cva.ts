@@ -141,25 +141,28 @@ export const DESC_SECTIONS: { key: DescKey; label: string }[] = [
 ];
 
 /** Обонятельный лексикон: категория и уточнения. Отмечать можно и категорию, и уточнение. */
-export const OLFACTORY: { id: string; label: string; children?: { id: string; label: string }[] }[] = [
-  { id: 'floral', label: 'Цветочный' },
-  { id: 'fruity', label: 'Фруктовый', children: [{ id: 'berry', label: 'Ягодный' }, { id: 'dried-fruit', label: 'Сухофрукты' }, { id: 'citrus', label: 'Цитрусовый' }] },
-  { id: 'sour-fermented', label: 'Кислый/ферментированный', children: [{ id: 'sour', label: 'Кислый' }, { id: 'fermented', label: 'Ферментированный' }] },
-  { id: 'green', label: 'Зелёный/растительный' },
-  { id: 'other', label: 'Другое', children: [{ id: 'chemical', label: 'Химический' }, { id: 'musty', label: 'Затхлый/землистый' }, { id: 'woody', label: 'Древесный' }] },
-  { id: 'roasted', label: 'Обжарочный', children: [{ id: 'cereal', label: 'Злаковый' }, { id: 'burnt', label: 'Жжёный' }, { id: 'tobacco', label: 'Табачный' }] },
-  { id: 'nutty-cocoa', label: 'Орехи/какао', children: [{ id: 'nutty', label: 'Ореховый' }, { id: 'cocoa', label: 'Какао' }] },
-  { id: 'spice', label: 'Пряный' },
-  { id: 'sweet', label: 'Сладкий', children: [{ id: 'vanilla', label: 'Ваниль/ванилин' }, { id: 'brown-sugar', label: 'Коричневый сахар' }] },
+export const OLFACTORY: { id: string; label: string; tone: string; children?: { id: string; label: string; tone?: string }[] }[] = [
+  { id: 'floral', label: 'Цветочный', tone: 'floral' },
+  { id: 'fruity', label: 'Фруктовый', tone: 'fruit', children: [{ id: 'berry', label: 'Ягодный' }, { id: 'dried-fruit', label: 'Сухофрукты' }, { id: 'citrus', label: 'Цитрусовый', tone: 'citrus' }] },
+  { id: 'sour-fermented', label: 'Кислый/ферментированный', tone: 'ferment', children: [{ id: 'sour', label: 'Кислый' }, { id: 'fermented', label: 'Ферментированный' }] },
+  { id: 'green', label: 'Зелёный/растительный', tone: 'green' },
+  { id: 'other', label: 'Другое', tone: 'defect', children: [{ id: 'chemical', label: 'Химический' }, { id: 'musty', label: 'Затхлый/землистый' }, { id: 'woody', label: 'Древесный' }] },
+  { id: 'roasted', label: 'Обжарочный', tone: 'roast', children: [{ id: 'cereal', label: 'Злаковый' }, { id: 'burnt', label: 'Жжёный' }, { id: 'tobacco', label: 'Табачный' }] },
+  { id: 'nutty-cocoa', label: 'Орехи/какао', tone: 'nut', children: [{ id: 'nutty', label: 'Ореховый' }, { id: 'cocoa', label: 'Какао' }] },
+  { id: 'spice', label: 'Пряный', tone: 'spice' },
+  { id: 'sweet', label: 'Сладкий', tone: 'sweet', children: [{ id: 'vanilla', label: 'Ваниль/ванилин' }, { id: 'brown-sugar', label: 'Коричневый сахар' }] },
 ];
 export const OLFACTORY_LABEL: Record<string, string> = Object.fromEntries(
   OLFACTORY.flatMap((c) => [[c.id, c.label], ...(c.children ?? []).map((x) => [x.id, x.label])]),
 );
+export const OLFACTORY_TONE: Record<string, string> = Object.fromEntries(
+  OLFACTORY.flatMap((c) => [[c.id, c.tone], ...(c.children ?? []).map((x) => [x.id, x.tone ?? c.tone])]),
+);
 export const MAX_OLFACTORY = 5;
 
 export const MAIN_TASTES = [
-  { id: 'salty', label: 'Солёный' }, { id: 'sour', label: 'Кислый' }, { id: 'sweet', label: 'Сладкий' },
-  { id: 'bitter', label: 'Горький' }, { id: 'umami', label: 'Умами' },
+  { id: 'salty', label: 'Солёный', tone: 'defect' }, { id: 'sour', label: 'Кислый', tone: 'citrus' }, { id: 'sweet', label: 'Сладкий', tone: 'sweet' },
+  { id: 'bitter', label: 'Горький', tone: 'roast' }, { id: 'umami', label: 'Умами', tone: 'spice' },
 ];
 export const MAX_MAIN_TASTES = 2;
 

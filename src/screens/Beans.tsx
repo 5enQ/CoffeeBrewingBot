@@ -299,7 +299,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
 
   return (
     <Screen title={isNew ? 'Новая пачка' : 'Редактировать пачку'}
-      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!b.name && !b.country && !b.barcode && !(b.parts ?? []).some((p) => p.country)}>Сохранить</Button></div>}>
+      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={(!isNew && !dirty) || (!b.name && !b.country && !b.barcode && !(b.parts ?? []).some((p) => p.country))}>Сохранить</Button></div>}>
 
       <div className="scan-field">
         <Field label="Штрихкод / QR" id="bean-barcode" value={b.barcode} inputMode="numeric" onChange={(e) => set({ barcode: e.target.value })}

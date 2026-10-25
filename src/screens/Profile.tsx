@@ -249,7 +249,7 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
     <Screen title={isNew ? 'Новое оборудование' : g.name || 'Оборудование'}
       footer={<div className="footer-actions">
         {!isNew && <button type="button" className="round-btn" onClick={remove} aria-label="Удалить"><Icon name="trash" /></button>}
-        <Button icon="check" wide onClick={save} disabled={!g.name.trim()}>Сохранить</Button>
+        <Button icon="check" wide onClick={save} disabled={!g.name.trim() || (!isNew && !dirty)}>Сохранить</Button>
       </div>}>
       <Section title="Категория" plain>
         <div className="chips">
@@ -309,7 +309,7 @@ export function BadgeEdit({ badge: initial, isNew }: { badge: Badge; isNew: bool
     <Screen title={isNew ? 'Новый значок' : 'Значок'}
       footer={<div className="footer-actions">
         {!isNew && <button type="button" className="round-btn" onClick={remove} aria-label="Удалить"><Icon name="trash" /></button>}
-        <Button icon="check" wide onClick={save} disabled={!b.title.trim()}>Сохранить</Button>
+        <Button icon="check" wide onClick={save} disabled={!b.title.trim() || (!isNew && !dirty)}>Сохранить</Button>
       </div>}>
       <div className="badge-preview">
         <BadgeChip b={{ ...b, title: b.title || 'Название', detail: b.detail }} />

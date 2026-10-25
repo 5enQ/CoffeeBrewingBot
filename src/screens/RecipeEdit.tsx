@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { fmtNum, fmtRatio, fmtTime, methodById } from '../data/methods';
 import { sortSteps, type CustomRecipe } from '../data/recipes';
 import { useStore } from '../data/store';
@@ -36,23 +36,26 @@ export function RecipeEdit({ recipe: initial, isNew }: { recipe: CustomRecipe; i
     grams: s.to !== undefined ? fmtNum(initWater * s.to, 0) : '', hint: s.hint ?? '',
   })));
   const [error, setError] = useState('');
-  const [dirty, setDirty] = useState(isNew);
+  // Изменения считаем сравнением с тем, что открыли: вернули как было — кнопка снова неактивна
+  const snap = () => JSON.stringify({ r, totalText, steps: steps.map(({ key: _k, ...st }) => st) });
+  const initialSnap = useRef<string | null>(null);
+  if (initialSnap.current === null) initialSnap.current = snap();
+  const dirty = isNew || snap() !== initialSnap.current;
   useBackGuard(dirty, isNew ? 'Не сохранять рецепт?' : 'Выйти без сохранения?');
 
   const water = Math.round(r.dose * r.ratio * (espresso ? 10 : 1)) / (espresso ? 10 : 1);
-  const set = (patch: Partial<CustomRecipe>) => { setDirty(true); setError(''); setR((x) => ({ ...x, ...patch })); };
-  const setStep = (i: number, patch: Partial<DraftStep>) => { setDirty(true); setError(''); setSteps((list) => list.map((s, j) => (j === i ? { ...s, ...patch } : s))); };
+  const set = (patch: Partial<CustomRecipe>) => { setError(''); setR((x) => ({ ...x, ...patch })); };
+  const setStep = (i: number, patch: Partial<DraftStep>) => { setError(''); setSteps((list) => list.map((s, j) => (j === i ? { ...s, ...patch } : s))); };
 
   const addStep = () => {
-    setDirty(true);
-    platform.haptic('light');
+        platform.haptic('light');
     setSteps((list) => {
       const last = list[list.length - 1];
       const lastAt = last ? parseTime(last.at) ?? 0 : -30;
       return [...list, { key: key(), at: fmtTime(lastAt + 30), title: list.length ? 'Пролив' : 'Блуминг', grams: '', hint: '' }];
     });
   };
-  const removeStep = (i: number) => { setDirty(true); platform.haptic('light'); setSteps((list) => list.filter((_, j) => j !== i)); };
+  const removeStep = (i: number) => { platform.haptic('light'); setSteps((list) => list.filter((_, j) => j !== i)); };
 
   const fail = (msg: string) => { platform.haptic('error'); setError(msg); };
 
@@ -86,7 +89,7 @@ export function RecipeEdit({ recipe: initial, isNew }: { recipe: CustomRecipe; i
     <Screen title={isNew ? 'Новый рецепт' : 'Рецепт'} subtitle={m.name}
       footer={<>{error && <p className="error footer-error">{error}</p>}<div className="footer-actions">
         {!isNew && <button type="button" className="round-btn" onClick={remove} aria-label="Удалить рецепт"><Icon name="trash" /></button>}
-        <Button icon="check" wide onClick={save}>Сохранить рецепт</Button>
+        <Button icon="check" wide onClick={save} disabled={!dirty}>{isNew ? 'Сохранить рецепт' : dirty ? 'Сохранить изменения' : 'Изменений нет'}</Button>
       </div></>}>
 
       <div className="method-hero">
@@ -104,7 +107,7 @@ export function RecipeEdit({ recipe: initial, isNew }: { recipe: CustomRecipe; i
         <Stepper label="Температура" value={r.temp} step={0.1} min={0} max={100} unit={r.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
         <Field label="Помол" id="recipe-grind" value={r.grind} onChange={(e) => set({ grind: e.target.value })} />
         <Field label="Готово к" id="recipe-total" value={totalText} inputMode="numeric" placeholder="3:30"
-          onChange={(e) => { setDirty(true); setError(''); setTotalText(e.target.value); }} />
+          onChange={(e) => { setError(''); setTotalText(e.target.value); }} />
       </Section>
 
       <Section title="Шаги" aside={<span className="muted">граммы — сколько всего на весах</span>} plain>

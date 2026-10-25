@@ -44,7 +44,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
 
   return (
     <Screen title={isNew ? 'Как получилось?' : 'Редактировать'} subtitle={`${m.name} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
-      footer={<div className="footer-actions"><Button icon="check" wide onClick={save}>Сохранить</Button></div>}>
+      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty}>Сохранить</Button></div>}>
 
       <Section title="Оценка" plain>
         <div className="rating-card">

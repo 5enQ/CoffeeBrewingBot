@@ -243,17 +243,16 @@ button.row:active { background: var(--fg-soft); }
 .switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---------- Главная: методы ---------- */
-.method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .method-card {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
-  background: var(--card); border: 0; border-radius: var(--r); padding: 14px;
+  display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0;
+  background: var(--card); border: 0; border-radius: var(--r); padding: 12px 14px; min-height: 60px;
   transition: transform 0.1s ease;
 }
 .method-card:active { transform: scale(0.97); }
-.method-icon { color: var(--accent); margin-bottom: 8px; }
-.method-name { font-weight: 700; font-size: 17px; }
-.method-meta { color: var(--hint); font-size: 13px; font-variant-numeric: tabular-nums; }
-@media (min-width: 520px) { .method-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.method-icon { color: var(--accent); flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); display: grid; place-items: center; }
+.method-name { font-weight: 650; font-size: 15.5px; line-height: 1.2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 560px) { .method-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* ---------- Экран метода ---------- */
 .method-hero { display: flex; gap: 16px; align-items: center; background: var(--card); border-radius: var(--r); padding: 16px; }

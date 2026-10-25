@@ -138,7 +138,7 @@ export function Profile() {
               const m = methodById(r.methodId);
               return (
                 <Row key={r.id} leading={<MethodIcon icon={m.icon} size={24} />} label={r.name}
-                  hint={`${m.name} · ${fmtNum(r.dose, 2)} г → ${fmtNum(r.dose * r.ratio)} г · ${r.steps.length} ${r.steps.length === 1 ? 'шаг' : r.steps.length < 5 ? 'шага' : 'шагов'}${r.author ? ` · от ${r.author.name || '@' + r.author.username}` : ''}`}
+                  hint={`${m.name} · ${fmtNum(r.dose, 2)} г → ${fmtNum(r.dose * r.ratio)} г · ${r.steps.length} ${r.steps.length === 1 ? 'шаг' : r.steps.length < 5 ? 'шага' : 'шагов'}${r.author ? ` · от ${r.author.name || '@' + r.author.username}` : ''}`}
                   onClick={() => push({ name: 'recipeEdit', isNew: false, recipe: r })}
                   active={sel?.name === 'recipeEdit' && sel.recipe.id === r.id} />
               );
@@ -206,9 +206,9 @@ export function Profile() {
           options={[{ value: 'auto', label: 'Авто' }, { value: 'desktop', label: 'Компьютер' }, { value: 'mobile', label: 'Телефон' }]} />
         <p className="muted pad">
           {(profile.layout ?? 'auto') === 'auto'
-            ? `На компьютере — меню слева и две колонки, на телефоне — вкладки внизу. Две колонки включаются, когда окно шире ${DESKTOP_MIN} px.`
+            ? `На компьютере — меню слева и две колонки, на телефоне — вкладки внизу. Две колонки включаются, когда окно шире ${DESKTOP_MIN} px.`
             : profile.layout === 'desktop'
-              ? `Меню слева и две колонки на любом устройстве, когда окно шире ${DESKTOP_MIN} px.`
+              ? `Меню слева и две колонки на любом устройстве, когда окно шире ${DESKTOP_MIN} px.`
               : 'Всегда как на телефоне: вкладки внизу.'}
         </p>
         {layoutInfo.desktopClient && layoutInfo.mode === 'mobile' && (profile.layout ?? 'auto') !== 'mobile' && (

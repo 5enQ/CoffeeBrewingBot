@@ -29,10 +29,10 @@ export function RecipesScreen({ methodId, beanId }: { methodId: string; beanId?:
         {id === last && <span className="tag">в прошлый раз</span>}
       </div>
       <div className="recipe-tile-meta">
-        <span>{fmtNum(dose, 2)} г → {fmtNum(m.id === 'espresso' ? dose * ratio : Math.round(dose * ratio))} г</span>
+        <span>{fmtNum(dose, 2)} г → {fmtNum(m.id === 'espresso' ? dose * ratio : Math.round(dose * ratio))} г</span>
         <span>{fmtRatio(ratio)}</span>
         <span>{fmtTime(total)}</span>
-        <span>{steps} {plural(steps, ['шаг', 'шага', 'шагов'])}</span>
+        <span>{steps} {plural(steps, ['шаг', 'шага', 'шагов'])}</span>
       </div>
       {extra && <p>{extra}</p>}
       <span className="recipe-tile-go"><Icon name="chevron" size={18} /></span>
@@ -54,7 +54,7 @@ export function RecipesScreen({ methodId, beanId }: { methodId: string; beanId?:
         <div className="recipe-tiles">
           {card('std', own ? 'Базовый' : 'Стандартный', m.dose, m.ratio, m.total, m.steps.length, `${m.temp ? `${m.temp}°C` : 'холодная вода'} · помол ${m.grind}`)}
           {mine.map((r) => card(r.id, r.name, r.dose, r.ratio, r.total, r.steps.length,
-            [r.author && `от ${r.author.name || '@' + r.author.username}`, r.notes].filter(Boolean).join(' · ') || undefined))}
+            [r.author && `от ${r.author.name || '@' + r.author.username}`, r.notes].filter(Boolean).join(' · ') || undefined))}
         </div>
         {!mine.length && <p className="muted pad">Своих рецептов для {m.name} пока нет. Создайте свой — со своими проливами, граммами и временем.</p>}
       </Section>

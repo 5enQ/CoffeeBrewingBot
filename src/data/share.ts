@@ -170,7 +170,7 @@ export function recipeText(r: SharedRecipe): string {
   const beanName = r.bean ? (r.bean.name || beanTitle(r.bean)) : '';
   const plan = effectivePlan(r.methodId, r.plan as BrewPlan | undefined);
   lines.push(`${m.name}${r.plan ? ` · ${r.plan.name}` : ''}${beanName ? ` — ${beanName}` : ''}`);
-  if (r.author.name || r.author.username) lines.push(`Рецепт от ${[r.author.name, r.author.username && '@' + r.author.username].filter(Boolean).join(' ')}`);
+  if (r.author.name || r.author.username) lines.push(`Рецепт от ${[r.author.name, r.author.username && '@' + r.author.username].filter(Boolean).join(' ')}`);
   if (r.author.badges?.length) lines.push(sortBadges(r.author.badges).map(badgeText).join('; '));
   lines.push('');
   if (r.bean) {
@@ -183,13 +183,13 @@ export function recipeText(r: SharedRecipe): string {
       if (meta) lines.push(`Зерно: ${meta}`);
     }
   }
-  lines.push(`${fmtNum(r.dose, 2)} г → ${fmtNum(r.water)} г ${m.yieldLabel ? 'на выходе ' : 'воды '}(${fmtRatio(r.water / r.dose)}), ${r.temp ? fmtNum(r.temp) + '°C' : 'холодная вода'}, ${fmtTime(r.time)}`);
+  lines.push(`${fmtNum(r.dose, 2)} г → ${fmtNum(r.water)} г ${m.yieldLabel ? 'на выходе ' : 'воды '}(${fmtRatio(r.water / r.dose)}), ${r.temp ? fmtNum(r.temp) + '°C' : 'холодная вода'}, ${fmtTime(r.time)}`);
   if (r.grind) lines.push(`Помол: ${r.grind}`);
   if (r.gear.length) {
     lines.push('', 'Оборудование:');
     r.gear.forEach((g) => lines.push(`• ${catById(g.cat).one}: ${g.name}${g.details ? ` (${g.details})` : ''}`));
   }
-  const steps = plan.steps.map((s) => `${fmtTime(s.at)} ${s.title}${s.to !== undefined ? ` — до ${fmtNum(r.water * s.to, 0)} г` : ''}${s.hint ? ` (${s.hint})` : ''}`);
+  const steps = plan.steps.map((s) => `${fmtTime(s.at)} ${s.title}${s.to !== undefined ? ` — до ${fmtNum(r.water * s.to, 0)} г` : ''}${s.hint ? ` (${s.hint})` : ''}`);
   steps.push(`${fmtTime(plan.total)} Готово`);
   lines.push('', 'Шаги:', ...steps);
   const taste = [r.descriptors.join(', '), r.score !== undefined ? `оценка SCA ${fmtNum(r.score, 2)}` : r.rating ? '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating) : ''].filter(Boolean);

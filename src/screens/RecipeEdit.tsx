@@ -138,9 +138,9 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
           </Section>
         </>
       )}
-      {r.author && <p className="muted pad">Рецепт от {r.author.name || '@' + r.author.username}. Можно менять под себя.</p>}
+      {r.author && <p className="muted pad">Рецепт от {r.author.name || '@' + r.author.username}. Можно менять под себя.</p>}
 
-      <Section title="Параметры" aside={<span className="muted">{fmtNum(r.dose, 2)} г → {fmtNum(water)} г</span>}>
+      <Section title="Параметры" aside={<span className="muted">{fmtNum(r.dose, 2)} г → {fmtNum(water)} г</span>}>
         <Stepper label="Кофе" value={r.dose} step={espresso ? 0.5 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} onChange={(dose) => set({ dose })} />
         <Stepper label={m.yieldLabel ?? 'Вода'} value={water} step={espresso ? 1 : 10} min={5} max={2000} unit="г" format={(v) => fmtNum(v)}
           onChange={(w) => set({ ratio: Math.round((w / r.dose) * 100) / 100 })} />

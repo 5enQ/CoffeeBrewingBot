@@ -23,7 +23,7 @@ export function RateBlock({ rid, author, authorName }: { rid: string; author: st
     if (res.ok) {
       saveRated(rid, v);
       platform.haptic('success');
-      setState({ msg: `Спасибо! Сейчас у рецепта ${fmtNum(res.avg)} ★ · ${res.count} ${plural(res.count)}` });
+      setState({ msg: `Спасибо! Сейчас у рецепта ${fmtNum(res.avg)} ★ · ${res.count} ${plural(res.count)}` });
     } else {
       platform.haptic('error');
       setStars(rated[rid] ?? 0);

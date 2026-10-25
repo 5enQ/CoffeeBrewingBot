@@ -26,7 +26,7 @@ export function BrewHome() {
               <Row key={b.id}
                 leading={<MethodIcon icon={m.icon} size={26} />}
                 label={beanTitle(bean)}
-                hint={`${m.name}${b.plan ? ` · ${b.plan.name}` : ''} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г`}
+                hint={`${m.name}${b.plan ? ` · ${b.plan.name}` : ''} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г`}
                 value={<BrewScore brew={b} size={14} />}
                 onClick={() => push({ name: 'method', methodId: b.methodId, beanId: b.beanId, from: b })}
                 active={sel?.name === 'method' && sel.from?.id === b.id}

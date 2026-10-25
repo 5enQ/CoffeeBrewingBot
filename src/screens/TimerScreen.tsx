@@ -108,7 +108,7 @@ export function TimerScreen({ draft }: { draft: Brew }) {
   const target = step.to !== undefined ? draft.water * step.to : null;
 
   return (
-    <Screen title={draft.plan ? `${m.name} · ${draft.plan.name}` : m.name} subtitle={`${fmtNum(draft.dose, 2)} г · ${fmtNum(draft.water)} г · ${draft.temp ? fmtNum(draft.temp) + '°C' : 'холодная вода'}`}
+    <Screen title={draft.plan ? `${m.name} · ${draft.plan.name}` : m.name} subtitle={`${fmtNum(draft.dose, 2)} г · ${fmtNum(draft.water)} г · ${draft.temp ? fmtNum(draft.temp) + '°C' : 'холодная вода'}`}
       action={
         <button type="button" className="icon-btn text" onClick={() => setSound((s) => !s)} aria-pressed={sound}>
           {sound ? 'Звук вкл' : 'Звук выкл'}
@@ -134,12 +134,12 @@ export function TimerScreen({ draft }: { draft: Brew }) {
         </svg>
         <div className="timer-center">
           <div className="timer-time">{fmtTime(elapsed)}</div>
-          <div className="timer-total">{done ? 'время вышло — дождитесь слива' : `из ${fmtTime(plan.total)}`}</div>
+          <div className="timer-total">{done ? 'время вышло — дождитесь слива' : `из ${fmtTime(plan.total)}`}</div>
         </div>
       </div>
 
       <div className={'step-now' + (running || elapsed > 0 ? ' live' : '')} key={idx}>
-        <span className="eyebrow">{elapsed === 0 ? 'Первый шаг' : done ? 'Финиш' : `Шаг ${idx + 1} из ${plan.steps.length}`}</span>
+        <span className="eyebrow">{elapsed === 0 ? 'Первый шаг' : done ? 'Финиш' : `Шаг ${idx + 1} из ${plan.steps.length}`}</span>
         <h2>{done ? 'Готово' : step.title}</h2>
         {!done && target !== null && <div className="pour-big">до <b>{fmtNum(target, 0)}</b> г</div>}
         {!done && step.hint && <p>{step.hint}</p>}
@@ -149,7 +149,7 @@ export function TimerScreen({ draft }: { draft: Brew }) {
       {next && !done && (
         <div className="step-next">
           <span>Через {fmtTime(next.at - elapsed)}</span>
-          <b>{next.title}{next.to !== undefined ? ` · до ${fmtNum(draft.water * next.to, 0)} г` : ''}</b>
+          <b>{next.title}{next.to !== undefined ? ` · до ${fmtNum(draft.water * next.to, 0)} г` : ''}</b>
         </div>
       )}
       {layout === 'desktop' && <p className="kbd-hint"><kbd>Пробел</kbd> старт / пауза · <kbd>R</kbd> сброс · <kbd>Enter</kbd> записать</p>}

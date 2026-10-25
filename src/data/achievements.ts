@@ -36,15 +36,15 @@ export function earnedAchievements(brews: Brew[], ratingsCount: number): Achieve
   const own = ownBrews(brews);
 
   const lit = reached(LITERS, litersBrewed(brews));
-  if (lit) out.push({ id: 'liters', unlock: `liters:${lit.tier}`, badge: { kind: 'achieve', title: `${fmt(lit.at)} литров кофе`, detail: TIER_LABEL[lit.tier], year: '' } });
+  if (lit) out.push({ id: 'liters', unlock: `liters:${lit.tier}`, badge: { kind: 'achieve', title: `${fmt(lit.at)} литров кофе`, detail: TIER_LABEL[lit.tier], year: '' } });
 
   const rat = reached(RATINGS, ratingsCount);
-  if (rat) out.push({ id: 'ratings', unlock: `ratings:${rat.tier}`, badge: { kind: 'achieve', title: `${fmt(rat.at)} оценок рецептов`, detail: TIER_LABEL[rat.tier], year: '' } });
+  if (rat) out.push({ id: 'ratings', unlock: `ratings:${rat.tier}`, badge: { kind: 'achieve', title: `${fmt(rat.at)} оценок рецептов`, detail: TIER_LABEL[rat.tier], year: '' } });
 
   for (const m of allMethods()) {
     const n = own.filter((b) => b.methodId === m.id).length;
     const lv = reached(METHOD_COUNT, n);
-    if (lv) out.push({ id: `method:${m.id}`, unlock: `method:${m.id}:${lv.tier}`, badge: { kind: 'achieve', title: `${m.name} · ${fmt(lv.at)} заварок`, detail: TIER_LABEL[lv.tier], year: '' } });
+    if (lv) out.push({ id: `method:${m.id}`, unlock: `method:${m.id}:${lv.tier}`, badge: { kind: 'achieve', title: `${m.name} · ${fmt(lv.at)} заварок`, detail: TIER_LABEL[lv.tier], year: '' } });
   }
   return out;
 }

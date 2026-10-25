@@ -75,7 +75,7 @@ export function Journal() {
               <Row key={b.id}
                 leading={<MethodIcon icon={m.icon} size={26} />}
                 label={<>{beanTitle(bean)} {b.sample && <SampleTag />}</>}
-                hint={`${b.author ? `от ${b.author.name || '@' + b.author.username} · ` : ''}${m.name} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г · ${fmtRatio(b.water / b.dose)} · ${fmtTime(b.time)}`}
+                hint={`${b.author ? `от ${b.author.name || '@' + b.author.username} · ` : ''}${m.name} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г · ${fmtRatio(b.water / b.dose)} · ${fmtTime(b.time)}`}
                 value={<BrewScore brew={b} size={14} />}
                 onClick={() => push({ name: 'brew', id: b.id })}
                 active={sel?.name === 'brew' && sel.id === b.id}
@@ -120,7 +120,7 @@ export function BrewDetail({ id }: { id: string }) {
         <div className="friends-rating">
           <span>Оценки друзей</span>
           <b>{fmtNum(profile.ratingStats.recipes[b.shareId].avg)} ★</b>
-          <small>{profile.ratingStats.recipes[b.shareId].count} {plural(profile.ratingStats.recipes[b.shareId].count)}</small>
+          <small>{profile.ratingStats.recipes[b.shareId].count} {plural(profile.ratingStats.recipes[b.shareId].count)}</small>
         </div>
       )}
 
@@ -129,8 +129,8 @@ export function BrewDetail({ id }: { id: string }) {
       </div>
 
       <dl className="param-grid">
-        <div><dt>Кофе</dt><dd>{fmtNum(b.dose, 2)} г</dd></div>
-        <div><dt>{m.yieldLabel ?? 'Вода'}</dt><dd>{fmtNum(b.water)} г</dd></div>
+        <div><dt>Кофе</dt><dd>{fmtNum(b.dose, 2)} г</dd></div>
+        <div><dt>{m.yieldLabel ?? 'Вода'}</dt><dd>{fmtNum(b.water)} г</dd></div>
         <div><dt>Пропорция</dt><dd>{fmtRatio(b.water / b.dose)}</dd></div>
         <div><dt>Температура</dt><dd>{b.temp ? `${fmtNum(b.temp)}°C` : 'холодная'}</dd></div>
         <div><dt>Время</dt><dd>{fmtTime(b.time)}</dd></div>
@@ -139,7 +139,7 @@ export function BrewDetail({ id }: { id: string }) {
 
       {b.plan && (
         <Section title="Рецепт">
-          <Row label={b.plan.name} hint={b.plan.steps.map((st) => `${fmtTime(st.at)} ${st.title}${st.to !== undefined ? ` · ${fmtNum(b.water * st.to, 0)} г` : ''}`).join('  →  ')} />
+          <Row label={b.plan.name} hint={b.plan.steps.map((st) => `${fmtTime(st.at)} ${st.title}${st.to !== undefined ? ` · ${fmtNum(b.water * st.to, 0)} г` : ''}`).join('  →  ')} />
         </Section>
       )}
 

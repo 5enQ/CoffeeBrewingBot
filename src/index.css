@@ -801,3 +801,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .icon-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 8px; }
 .icon-pick-btn { aspect-ratio: 1; border: 1.5px solid transparent; border-radius: 14px; background: var(--card); color: var(--accent); display: grid; place-items: center; }
 .icon-pick-btn.on { border-color: var(--accent); background: var(--accent-soft); }
+
+/* числа с единицами не разрываем: «до 700 г», «12:00:00» */
+.pour, .steps-preview time, .recipe-tile-meta span, .stock-text span, .tag, .count, .score-badge b, .pick-stock, .stepper-value, .gear-ul small { white-space: nowrap; }
+.steps-preview.long li { grid-template-columns: 78px 1fr; }

@@ -33,7 +33,7 @@ export function RestBadge({ roastDate }: { roastDate: string }) {
   const d = daysSince(roastDate);
   if (d === null) return null;
   const state = d < 5 ? 'young' : d <= 35 ? 'ready' : 'old';
-  const label = d === 0 ? 'обжарен сегодня' : `${d} дн. после обжарки`;
+  const label = d === 0 ? 'обжарен сегодня' : `${d} дн. после обжарки`;
   return <span className={`tag tag-rest-${state}`} title={state === 'young' ? 'Зерну стоит отдохнуть' : state === 'old' ? 'Вкус может угасать' : 'Хорошее окно'}>{label}</span>;
 }
 

@@ -38,8 +38,8 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
       <AuthorBlock author={r.author} />
 
       <dl className="param-grid">
-        <div><dt>Кофе</dt><dd>{fmtNum(r.dose, 2)} г</dd></div>
-        <div><dt>{m.yieldLabel ?? 'Вода'}</dt><dd>{fmtNum(r.water)} г</dd></div>
+        <div><dt>Кофе</dt><dd>{fmtNum(r.dose, 2)} г</dd></div>
+        <div><dt>{m.yieldLabel ?? 'Вода'}</dt><dd>{fmtNum(r.water)} г</dd></div>
         <div><dt>Пропорция</dt><dd>{fmtRatio(r.water / r.dose)}</dd></div>
         <div><dt>Температура</dt><dd>{r.temp ? `${fmtNum(r.temp)}°C` : 'холодная'}</dd></div>
         <div><dt>Время</dt><dd>{fmtTime(r.time)}</dd></div>
@@ -80,9 +80,9 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
 
       <div className="recipe-block">
         <h3>{r.plan ? `Шаги · ${r.plan.name}` : 'Шаги'}</h3>
-        <ol className="steps-preview compact">
+        <ol className={'steps-preview compact' + (plan.total >= 3600 ? ' long' : '')}>
           {plan.steps.map((s, i) => (
-            <li key={i}><time>{fmtTime(s.at)}</time><div><b>{s.title}</b>{s.to !== undefined && <span className="pour">до {fmtNum(r.water * s.to, 0)} г</span>}{s.hint && <p>{s.hint}</p>}</div></li>
+            <li key={i}><time>{fmtTime(s.at)}</time><div><b>{s.title}</b>{s.to !== undefined && <span className="pour">до {fmtNum(r.water * s.to, 0)} г</span>}{s.hint && <p>{s.hint}</p>}</div></li>
           ))}
           <li className="done"><time>{fmtTime(plan.total)}</time><div><b>Готово</b></div></li>
         </ol>

@@ -91,7 +91,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const remember = () => saveRecipe(m.id, { dose, ratio, temp, grind, gear: gear.map((g) => g.id), recipeId: active?.id });
 
   return (
-    <Screen title={m.name} subtitle={choice === 'std' ? 'Стандартный рецепт' : `Рецепт: ${plan.name}${active?.author ? ` · от ${active.author.name || '@' + active.author.username}` : ''}`}
+    <Screen title={m.name} subtitle={choice === 'std' ? 'Стандартный рецепт' : `Рецепт: ${plan.name}${active?.author ? ` · от ${active.author.name || '@' + active.author.username}` : ''}`}
       footer={
         <div className="footer-actions">
           <Button kind="secondary" onClick={() => { remember(); push({ name: 'brewEdit', draft: draft(), isNew: true }); }}>Без таймера</Button>
@@ -101,8 +101,8 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
       <div className="method-hero">
         <span className="method-hero-icon"><MethodIcon icon={m.icon} size={44} /></span>
         <dl className="recipe-sum">
-          <div><dt>Кофе</dt><dd>{fmtNum(dose, 2)} г</dd></div>
-          <div><dt>{waterLabel}</dt><dd>{fmtNum(water)} г</dd></div>
+          <div><dt>Кофе</dt><dd>{fmtNum(dose, 2)} г</dd></div>
+          <div><dt>{waterLabel}</dt><dd>{fmtNum(water)} г</dd></div>
           <div><dt>Пропорция</dt><dd>{fmtRatio(ratio)}</dd></div>
           <div><dt>Время</dt><dd>{fmtTime(plan.total)}</dd></div>
         </dl>
@@ -114,13 +114,13 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
         {from && !changeBean ? (
           <div className="group">
             <Row label={beanObj ? beanTitle(beanObj) : 'Без зерна'}
-              hint={beanObj ? [beanMeta(beanObj), beanSt?.total ? `осталось ${fmtNum(beanSt.left, 0)} из ${fmtNum(beanSt.total, 0)} г` : ''].filter(Boolean).join(' · ') : 'как в прошлый раз'}
+              hint={beanObj ? [beanMeta(beanObj), beanSt?.total ? `осталось ${fmtNum(beanSt.left, 0)} из ${fmtNum(beanSt.total, 0)} г` : ''].filter(Boolean).join(' · ') : 'как в прошлый раз'}
               chevron={false} />
           </div>
         ) : (
           <BeanPicker value={bean} onChange={setBean} dose={dose} />
         )}
-        {lowStock && <p className="status warn pad">В пачке осталось {fmtNum(lowStock.left, 0)} г — на эту заварку не хватит {fmtNum(dose - lowStock.left, 1)} г.</p>}
+        {lowStock && <p className="status warn pad">В пачке осталось {fmtNum(lowStock.left, 0)} г — на эту заварку не хватит {fmtNum(dose - lowStock.left, 1)} г.</p>}
       </Section>
 
       <Section title="Параметры">
@@ -142,13 +142,13 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
       <Section title={choice === 'std' ? 'Шаги' : `Шаги · ${plan.name}`} aside={
         <button type="button" className="link-btn" onClick={editRecipe}>{active ? 'Изменить' : 'Изменить под себя'}</button>
       }>
-        <ol className="steps-preview">
+        <ol className={'steps-preview' + (plan.total >= 3600 ? ' long' : '')}>
           {plan.steps.map((s, i) => (
             <li key={i}>
               <time>{fmtTime(s.at)}</time>
               <div>
                 <b>{s.title}</b>
-                {s.to !== undefined && <span className="pour">до {fmtNum(water * s.to, 0)} г</span>}
+                {s.to !== undefined && <span className="pour">до {fmtNum(water * s.to, 0)} г</span>}
                 {s.hint && <p>{s.hint}</p>}
               </div>
             </li>

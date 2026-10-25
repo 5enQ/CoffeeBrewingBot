@@ -41,7 +41,7 @@ export function BeanPicker({ value, onChange, dose }: { value: string | null; on
             <b>{beanTitle(b)}</b>
             <span>{b.isBlend ? `Бленд · ${blendSummary(b)}` : [b.country, b.process].filter(Boolean).join(' · ') || b.roaster || '—'}</span>
             {st.total > 0
-              ? <span className={'pick-stock' + (dose && st.left < dose ? ' short' : '')}><i style={{ ['--w' as string]: `${st.ratio * 100}%` }} />{fmtNum(st.left, 0)} из {fmtNum(st.total, 0)} г</span>
+              ? <span className={'pick-stock' + (dose && st.left < dose ? ' short' : '')}><i style={{ ['--w' as string]: `${st.ratio * 100}%` }} />{fmtNum(st.left, 0)} из {fmtNum(st.total, 0)} г</span>
               : <RestBadge roastDate={b.roastDate} />}
           </button>
         );

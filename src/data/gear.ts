@@ -17,7 +17,7 @@ export const GEAR_CATS: { id: GearCat; label: string; one: string; hint: string;
   { id: 'machine', label: 'Кофемашины', one: 'Кофемашина', hint: 'Эспрессо-машины', suggestions: ['Gaggia Classic Pro', 'Rancilio Silvia', 'Breville Bambino Plus', 'Lelit Bianca', 'Lelit Mara X', 'La Marzocco Linea Micra', 'Decent DE1', 'Flair 58', 'De’Longhi Dedica'] },
   { id: 'dripper', label: 'Воронки', one: 'Воронка', hint: 'Пуроверы и фильтр-кофе', suggestions: ['Hario V60 02', 'Hario V60 01', 'Kalita Wave 185', 'Origami Dripper M', 'Chemex 6 чашек', 'April Brewer', 'Orea V4', 'Hario Switch', 'Clever Dripper'] },
   { id: 'press', label: 'AeroPress и прессы', one: 'Пресс', hint: 'Иммерсия: AeroPress, френч-пресс', suggestions: ['AeroPress Original', 'AeroPress Go', 'AeroPress XL', 'Bodum Chambord', 'Espro P7'] },
-  { id: 'stovetop', label: 'Мока и джезвы', one: 'Мока / джезва', hint: 'Для плиты', suggestions: ['Bialetti Moka Express 3', 'Bialetti Brikka', 'Медная джезва 200 мл'] },
+  { id: 'stovetop', label: 'Мока и джезвы', one: 'Мока / джезва', hint: 'Для плиты', suggestions: ['Bialetti Moka Express 3', 'Bialetti Brikka', 'Медная джезва 200 мл'] },
   { id: 'kettle', label: 'Чайники', one: 'Чайник', hint: 'С носиком «гусиная шея»', suggestions: ['Fellow Stagg EKG', 'Hario Buono', 'Brewista Artisan', 'Timemore Fish'] },
   { id: 'scale', label: 'Весы', one: 'Весы', hint: 'С таймером', suggestions: ['Acaia Pearl', 'Acaia Lunar', 'Timemore Black Mirror', 'Hario V60 Drip Scale'] },
   { id: 'filter', label: 'Фильтры', one: 'Фильтр', hint: 'Бумажные и металлические', suggestions: ['Hario V60 Tabbed', 'Cafec Abaca', 'Sibarist FAST', 'Kalita Wave 185 белые', 'Chemex Bonded'] },

@@ -24,8 +24,8 @@ export function StockBar({ bean, compact = false }: { bean: Bean; compact?: bool
     <div className={'stock' + (compact ? ' compact' : '') + (low ? ' low' : '') + (st.left <= 0 ? ' empty' : '')}>
       <div className="stock-bar"><i style={{ ['--w' as string]: `${st.ratio * 100}%` }} /></div>
       <div className="stock-text">
-        <span><b>{fmtNum(st.left, 0)}</b> из {fmtNum(st.total, 0)} г</span>
-        <span>{st.left <= 0 ? 'закончилось' : st.brewsLeft === 0 ? 'меньше чем на заварку' : st.brewsLeft !== null ? `≈ ${st.brewsLeft} ${plural(st.brewsLeft, ['заварка', 'заварки', 'заварок'])}` : 'ещё не заваривали'}</span>
+        <span><b>{fmtNum(st.left, 0)}</b> из {fmtNum(st.total, 0)} г</span>
+        <span>{st.left <= 0 ? 'закончилось' : st.brewsLeft === 0 ? 'меньше чем на заварку' : st.brewsLeft !== null ? `≈ ${st.brewsLeft} ${plural(st.brewsLeft, ['заварка', 'заварки', 'заварок'])}` : 'ещё не заваривали'}</span>
       </div>
     </div>
   );
@@ -84,7 +84,7 @@ export function Beans() {
   const grams = active.reduce((s, b) => s + beanStock(b, brews).left, 0);
 
   return (
-    <Screen title="Полка" subtitle={active.length ? `${active.length} ${plural(active.length, ['пачка', 'пачки', 'пачек'])} · ${fmtNum(grams / 1000, 2)} кг кофе` : undefined} root
+    <Screen title="Полка" subtitle={active.length ? `${active.length} ${plural(active.length, ['пачка', 'пачки', 'пачек'])} · ${fmtNum(grams / 1000, 2)} кг кофе` : undefined} root
       action={<button type="button" className="icon-btn" onClick={() => push({ name: 'beanEdit', bean: emptyBean(), isNew: true })} aria-label="Добавить пачку"><Icon name="plus" /></button>}>
       <button type="button" className="scan-cta" onClick={() => setScan(true)}>
         <Icon name="scan" size={28} />
@@ -184,7 +184,7 @@ export function BeanDetail({ id }: { id: string }) {
         ) : (
           <StockBar bean={b} />
         )}
-        {st.total > 0 && <p className="muted">Списано заварками: {fmtNum(st.used, 1)} г{b.adjust ? ` · поправка ${b.adjust > 0 ? '+' : ''}${fmtNum(b.adjust, 1)} г` : ''}</p>}
+        {st.total > 0 && <p className="muted">Списано заварками: {fmtNum(st.used, 1)} г{b.adjust ? ` · поправка ${b.adjust > 0 ? '+' : ''}${fmtNum(b.adjust, 1)} г` : ''}</p>}
         {!st.total && <Button kind="secondary" onClick={() => push({ name: 'beanEdit', bean: b, isNew: false })}>Указать вес пачки</Button>}
         <div className="stock-actions">
           {st.total > 0 && <Button kind="ghost" onClick={toggleFinished}>{finished ? 'Вернуть на полку' : 'Допито'}</Button>}
@@ -368,7 +368,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
       )}
 
       <Section title="Вес пачки" plain>
-        <Chips options={PACK_SIZES.map((x) => `${x} г`)} value={b.weight ? [`${b.weight} г`] : []}
+        <Chips options={PACK_SIZES.map((x) => `${x} г`)} value={b.weight ? [`${b.weight} г`] : []}
           onToggle={(v) => set({ weight: b.weight === v.replace(' г', '') ? '' : v.replace(' г', '') })} />
       </Section>
 

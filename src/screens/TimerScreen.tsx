@@ -4,6 +4,7 @@ import { effectivePlan } from '../data/recipes';
 import type { Brew } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
+import { useLayout } from '../layout';
 import { Button, Screen } from '../ui/kit';
 import { Icon } from '../ui/icons';
 
@@ -86,6 +87,22 @@ export function TimerScreen({ draft }: { draft: Brew }) {
     replace({ name: 'brewEdit', draft: { ...draft, time: Math.round(total || plan.total), date: Date.now() }, isNew: true, openCupping: m.id === 'cupping' });
   };
 
+  // Клавиатура (компьютер): пробел — старт/пауза, R — сброс, Enter — готово
+  const keys = useRef({ toggle, reset, finish });
+  keys.current = { toggle, reset, finish };
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest('input, textarea, select, [contenteditable]')) return;
+      if (e.code === 'Space') { e.preventDefault(); keys.current.toggle(); }
+      else if (e.key === 'r' || e.key === 'R' || e.key === 'к' || e.key === 'К') keys.current.reset();
+      else if (e.key === 'Enter') { e.preventDefault(); keys.current.finish(); }
+    };
+    window.addEventListener('keydown', on);
+    return () => window.removeEventListener('keydown', on);
+  }, []);
+  const layout = useLayout();
+
   const R = 112, C = 2 * Math.PI * R;
   const progress = Math.min(1, elapsed / plan.total);
   const target = step.to !== undefined ? draft.water * step.to : null;
@@ -135,6 +152,7 @@ export function TimerScreen({ draft }: { draft: Brew }) {
           <b>{next.title}{next.to !== undefined ? ` · до ${fmtNum(draft.water * next.to, 0)} г` : ''}</b>
         </div>
       )}
+      {layout === 'desktop' && <p className="kbd-hint"><kbd>Пробел</kbd> старт / пауза · <kbd>R</kbd> сброс · <kbd>Enter</kbd> записать</p>}
     </Screen>
   );
 }

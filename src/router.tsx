@@ -25,6 +25,7 @@ interface RouterApi {
   tab: Tab;
   setTab(t: Tab): void;
   stack: Route[];
+  /** открыть экран поверх экрана, из которого вызвали (на компьютере — заменить карточку справа) */
   push(r: Route): void;
   replace(r: Route): void;
   /** force — без вопроса «выйти без сохранения?» */
@@ -71,11 +72,22 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     requestAnimationFrame(() => window.scrollTo({ top: grew ? 0 : scrolls.current[stack.length] ?? 0 }));
   }, [stack.length, back]);
 
-  const api = useMemo<RouterApi>(() => ({
+  const api = useMemo<RouterApi & { pushAt(depth: number, r: Route): Promise<void> }>(() => ({
     tab,
     setTab(t) { platform.haptic('select'); guards.clear(); setTabState(t); setStack([]); window.scrollTo({ top: 0 }); },
     stack,
     push(r) { platform.haptic('light'); scrolls.current[depthRef.current] = window.scrollY; setStack((s) => [...s, r]); },
+    async pushAt(depth: number, r: Route) {
+      // Вызвали не с верхнего экрана (на компьютере: из списка слева) — экраны выше заменяются.
+      // Если там несохранённые изменения — сначала спросим.
+      for (let d = depthRef.current; d > depth; d--) {
+        const msg = guards.get(d);
+        if (msg && !(await platform.confirm(msg))) return;
+      }
+      for (let d = depthRef.current; d > depth; d--) guards.delete(d);
+      platform.haptic('light');
+      setStack((s) => [...s.slice(0, depth), r]);
+    },
     replace(r) { guards.delete(depthRef.current); setStack((s) => [...s.slice(0, -1), r]); },
     back,
     reset() { guards.clear(); setStack([]); },
@@ -85,7 +97,15 @@ export function RouterProvider({ children }: { children: ReactNode }) {
 }
 
 export function useRouter() {
-  const r = useContext(Ctx);
+  const r = useContext(Ctx) as (RouterApi & { pushAt(depth: number, r: Route): Promise<void> }) | null;
+  const depth = useContext(DepthCtx);
   if (!r) throw new Error('RouterProvider missing');
-  return r;
+  // push привязан к глубине экрана, который его вызвал
+  return useMemo(() => ({ ...r, push: (route: Route) => { if (depth >= r.stack.length) r.push(route); else r.pushAt(depth, route); } }), [r, depth]);
+}
+
+/** Что открыто в правой колонке на компьютере — чтобы подсветить пункт в списке */
+export function useSelected(): Route | undefined {
+  const r = useContext(Ctx);
+  return r?.stack[0];
 }

@@ -5,7 +5,7 @@ import { cupScore } from '../data/cupping';
 import { emptyBean, uid, useStore, type Bean, type BlendPart } from '../data/store';
 import { beanStock, isFinished, PACK_SIZES } from '../data/stock';
 import { platform } from '../platform';
-import { useBackGuard, useRouter } from '../router';
+import { useBackGuard, useRouter, useSelected } from '../router';
 import { MethodIcon, Icon } from '../ui/icons';
 import { Button, Chips, Empty, Field, Row, SampleTag, Screen, Section, Segmented, Stars } from '../ui/kit';
 import { Scanner } from '../ui/Scanner';
@@ -38,11 +38,13 @@ const plural = (n: number, f: [string, string, string]) => {
 
 function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
   const { brews } = useStore();
+  const sel = useSelected();
+  const active = (sel?.name === 'bean' && sel.id === b.id) || (sel?.name === 'beanEdit' && sel.bean.id === b.id);
   const mine = brews.filter((x) => x.beanId === b.id);
   const rated = mine.filter((x) => x.rating);
   const avg = rated.length ? rated.reduce((s, x) => s + x.rating, 0) / rated.length : 0;
   return (
-    <button type="button" className="bean-card" onClick={onClick}>
+    <button type="button" className={'bean-card' + (active ? ' active' : '')} aria-current={active || undefined} onClick={onClick}>
       <div className="bean-card-top">
         <b>{beanTitle(b)}</b>
         {b.sample && <SampleTag />}

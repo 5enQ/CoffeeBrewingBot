@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type InputHTMLAttributes } from 'react';
+import { useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type InputHTMLAttributes } from 'react';
 import { platform } from '../platform';
-import { useRouter } from '../router';
+import { DepthCtx, useRouter } from '../router';
+import { useLayout } from '../layout';
 import { Icon } from './icons';
 import { dialog } from './dialog';
 
@@ -8,12 +9,16 @@ export function Screen({ title, subtitle, action, children, footer, root = false
   title: string; subtitle?: string; action?: ReactNode; children: ReactNode; footer?: ReactNode; root?: boolean;
 }) {
   const { back } = useRouter();
-  const showBack = !root && !platform.hasNativeBack;
+  const layout = useLayout();
+  const depth = useContext(DepthCtx);
+  // На компьютере стрелка «назад» нужна всегда (карточка справа), у первой карточки — «закрыть»
+  const showBack = !root && (layout === 'desktop' || !platform.hasNativeBack);
+  const closeIcon = layout === 'desktop' && depth === 1;
   return (
     <div className="screen">
       <header className="topbar">
         {showBack && (
-          <button className="icon-btn back" onClick={() => back()} aria-label="Назад"><Icon name="back" /></button>
+          <button className="icon-btn back" onClick={() => back()} aria-label={closeIcon ? 'Закрыть' : 'Назад'}><Icon name={closeIcon ? 'close' : 'back'} /></button>
         )}
         <div className="topbar-text">
           <h1>{title}</h1>
@@ -41,8 +46,8 @@ export function Section({ title, aside, children, plain = false }: { title?: str
   );
 }
 
-export function Row({ label, value, hint, onClick, leading, chevron }: {
-  label: ReactNode; value?: ReactNode; hint?: ReactNode; onClick?: () => void; leading?: ReactNode; chevron?: boolean;
+export function Row({ label, value, hint, onClick, leading, chevron, active }: {
+  label: ReactNode; value?: ReactNode; hint?: ReactNode; onClick?: () => void; leading?: ReactNode; chevron?: boolean; active?: boolean;
 }) {
   const inner = (
     <>
@@ -56,7 +61,7 @@ export function Row({ label, value, hint, onClick, leading, chevron }: {
     </>
   );
   return onClick
-    ? <button type="button" className="row" onClick={onClick}>{inner}</button>
+    ? <button type="button" className={'row' + (active ? ' active' : '')} aria-current={active || undefined} onClick={onClick}>{inner}</button>
     : <div className="row">{inner}</div>;
 }
 

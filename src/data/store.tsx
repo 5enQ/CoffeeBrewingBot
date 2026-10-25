@@ -97,6 +97,8 @@ export interface Profile {
   shareBadges: boolean;
   /** отправлять ли свои заметки к заварке */
   shareNotes?: boolean;
+  /** вид интерфейса: авто, компьютер, телефон */
+  layout?: 'auto' | 'desktop' | 'mobile';
   /** значки на витрине профиля (до 3): id своего значка или 'ach:<id>' достижения. undefined — выбрать автоматически */
   featured?: string[];
   /** оценки моих рецептов с сервера (кэш) */

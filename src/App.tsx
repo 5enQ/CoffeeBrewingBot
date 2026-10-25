@@ -13,7 +13,9 @@ import { Beans, BeanDetail, BeanEdit } from './screens/Beans';
 import { Profile, GearEdit, BadgeEdit } from './screens/Profile';
 import { RecipeEdit } from './screens/RecipeEdit';
 import { ShareScreen, SharedRecipeScreen } from './screens/Share';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { LayoutCtx, useLayoutMode } from './layout';
+import { MethodIcon } from './ui/icons';
 import { platform } from './platform';
 import { resolveStartParam } from './data/share';
 
@@ -42,7 +44,10 @@ const TABS: { id: Tab; label: string; icon: 'brew' | 'journal' | 'beans' | 'prof
 
 function Shell() {
   const { tab, setTab, stack, push } = useRouter();
-  const { ready } = useStore();
+  const { ready, profile } = useStore();
+  const { mode } = useLayoutMode();
+
+  useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
 
   // Открыли по ссылке «поделиться» — показываем присланный рецепт
   useEffect(() => {
@@ -60,16 +65,49 @@ function Shell() {
 
   const root = { brew: <BrewHome />, journal: <Journal />, beans: <Beans />, profile: <Profile /> }[tab];
   const top = stack.length;
+  // Экраны стека остаются смонтированными, чтобы не терять ввод и таймер
+  const stackScreens = stack.map((r, i) => (
+    <div key={`${i}-${r.name}`} hidden={i !== top - 1} className="stack-screen">
+      <DepthCtx.Provider value={i + 1}>{renderRoute(r)}</DepthCtx.Provider>
+    </div>
+  ));
+  const overlays = <><DialogHost /><AchievementToast /><ToastHost /></>;
+
+  if (mode === 'desktop') {
+    return (
+      <LayoutCtx.Provider value="desktop">
+        <div className="desk">
+          <aside className="side">
+            <div className="side-brand"><span className="side-logo"><MethodIcon icon="v60" size={22} /></span>Brewbook</div>
+            <nav className="side-nav">
+              {TABS.map((t) => (
+                <button key={t.id} type="button" className={t.id === tab ? 'on' : ''} onClick={() => setTab(t.id)} aria-current={t.id === tab ? 'page' : undefined}>
+                  <Icon name={t.icon} size={22} /><span>{t.label}</span>
+                </button>
+              ))}
+            </nav>
+            <button type="button" className="side-me" onClick={() => setTab('profile')}>
+              <span className="avatar small" aria-hidden="true">{(profile.name || '?').slice(0, 1).toUpperCase()}</span>
+              <span><b>{profile.name || 'Профиль'}</b>{profile.telegram && <small>@{profile.telegram}</small>}</span>
+            </button>
+          </aside>
+          <section className="pane pane-list" aria-label="Список">
+            <div className="pane-scroll"><DepthCtx.Provider value={0}>{root}</DepthCtx.Provider></div>
+          </section>
+          <section className="pane pane-detail" aria-label="Подробности">
+            {top === 0 && <Placeholder tab={tab} />}
+            {stackScreens}
+          </section>
+        </div>
+        {overlays}
+      </LayoutCtx.Provider>
+    );
+  }
 
   return (
-    <>
-      {/* Нижние экраны стека остаются смонтированными, чтобы не терять ввод и таймер */}
+    <LayoutCtx.Provider value="mobile">
       <div hidden={top > 0}><DepthCtx.Provider value={0}>{root}</DepthCtx.Provider></div>
-      {stack.map((r, i) => (
-        <div key={`${i}-${r.name}`} hidden={i !== top - 1}>
-          <DepthCtx.Provider value={i + 1}>{renderRoute(r)}</DepthCtx.Provider>
-        </div>
-      ))}
+      {stackScreens}
       {top === 0 && (
         <nav className="tabbar">
           {TABS.map((t) => (
@@ -79,10 +117,26 @@ function Shell() {
           ))}
         </nav>
       )}
-      <DialogHost />
-      <AchievementToast />
-      <ToastHost />
-    </>
+      {overlays}
+    </LayoutCtx.Provider>
+  );
+}
+
+/** Правая колонка, пока ничего не выбрано */
+function Placeholder({ tab }: { tab: Tab }) {
+  const text: Record<Tab, [ReactNode, string, string]> = {
+    brew: [<MethodIcon icon="v60" size={48} />, 'Выберите метод', 'Слева — способы заваривания и последние заварки. Рецепт и таймер откроются здесь.'],
+    journal: [<Icon name="journal" size={44} />, 'Выберите заварку', 'Карточка с параметрами, вкусом и каппингом откроется здесь.'],
+    beans: [<Icon name="beans" size={44} />, 'Выберите пачку', 'Остаток, состав и заварки из этой пачки — здесь.'],
+    profile: [<Icon name="profile" size={44} />, 'Профиль', 'Рецепты, значки и оборудование открываются здесь для редактирования.'],
+  };
+  const [icon, title, hint] = text[tab];
+  return (
+    <div className="placeholder">
+      <span className="placeholder-icon">{icon}</span>
+      <h2>{title}</h2>
+      <p>{hint}</p>
+    </div>
   );
 }
 

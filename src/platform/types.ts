@@ -52,6 +52,11 @@ export interface Platform {
 
   openLink(url: string): void;
 
+  /** Открыто на компьютере (Telegram Desktop / веб-версия / браузер с мышью) */
+  isDesktopClient(): boolean;
+  /** Развернуть окно мини-приложения на весь экран (Telegram 8.0+) */
+  requestFullscreen?: () => void;
+
   /** Подписанные данные запуска Telegram (initData) — для проверки пользователя на сервере */
   initData(): string | null;
 

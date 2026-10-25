@@ -3,7 +3,7 @@ import { cupScore, QUALITY, CUP_ATTRS, toneOf, SCORE_MIN, SCORE_MAX } from '../d
 import { METHODS, methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
 import { useStore } from '../data/store';
 import { platform } from '../platform';
-import { useRouter } from '../router';
+import { useRouter, useSelected } from '../router';
 import { ScoreBadge } from '../ui/CuppingForm';
 import { MethodIcon, Icon } from '../ui/icons';
 import { catById } from '../data/gear';
@@ -24,6 +24,7 @@ export function Journal() {
   const { brews, beans } = useStore();
   const { push, setTab } = useRouter();
   const [method, setMethod] = useState<string | null>(null);
+  const sel = useSelected();
 
   const used = useMemo(() => METHODS.filter((m) => brews.some((b) => b.methodId === m.id)), [brews]);
   const list = method ? brews.filter((b) => b.methodId === method) : brews;
@@ -77,6 +78,7 @@ export function Journal() {
                 hint={`${b.author ? `от ${b.author.name || '@' + b.author.username} · ` : ''}${m.name} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г · ${fmtRatio(b.water / b.dose)} · ${fmtTime(b.time)}`}
                 value={b.cupping ? <ScoreBadge c={b.cupping} /> : <Stars value={b.rating} size={14} />}
                 onClick={() => push({ name: 'brew', id: b.id })}
+                active={sel?.name === 'brew' && sel.id === b.id}
               />
             );
           })}

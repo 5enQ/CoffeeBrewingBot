@@ -8,9 +8,10 @@ import { BadgeChip, BadgeRow } from '../ui/Badges';
 import { useBadges, MAX_FEATURED } from '../data/featured';
 import { useStore, uid } from '../data/store';
 import { platform } from '../platform';
-import { useBackGuard, useRouter } from '../router';
+import { useBackGuard, useRouter, useSelected } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
-import { Button, Chips, Field, Row, SampleTag, Screen, Section } from '../ui/kit';
+import { Button, Chips, Field, Row, SampleTag, Screen, Section, Segmented } from '../ui/kit';
+import { DESKTOP_FORCED_MIN, DESKTOP_MIN, useLayoutMode } from '../layout';
 
 export function Profile() {
   const store = useStore();
@@ -62,6 +63,8 @@ export function Profile() {
   }, [setRatingStats]);
 
   const [pickMethod, setPickMethod] = useState(false);
+  const sel = useSelected();
+  const layoutInfo = useLayoutMode();
   const emptyCats = GEAR_CATS.filter((c) => !gear.some((g) => g.cat === c.id));
 
   return (
@@ -136,7 +139,8 @@ export function Profile() {
               return (
                 <Row key={r.id} leading={<MethodIcon icon={m.icon} size={24} />} label={r.name}
                   hint={`${m.name} · ${fmtNum(r.dose, 2)} г → ${fmtNum(r.dose * r.ratio)} г · ${r.steps.length} ${r.steps.length === 1 ? 'шаг' : r.steps.length < 5 ? 'шага' : 'шагов'}${r.author ? ` · от ${r.author.name || '@' + r.author.username}` : ''}`}
-                  onClick={() => push({ name: 'recipeEdit', isNew: false, recipe: r })} />
+                  onClick={() => push({ name: 'recipeEdit', isNew: false, recipe: r })}
+                  active={sel?.name === 'recipeEdit' && sel.recipe.id === r.id} />
               );
             })}
           </div>
@@ -157,7 +161,8 @@ export function Profile() {
               <div className="group">
                 {gear.filter((g) => g.cat === c.id).map((g) => (
                   <Row key={g.id} label={<>{g.name} {g.sample && <SampleTag />}</>} hint={g.details || undefined}
-                    onClick={() => push({ name: 'gearEdit', gear: g, isNew: false })} />
+                    onClick={() => push({ name: 'gearEdit', gear: g, isNew: false })}
+                    active={sel?.name === 'gearEdit' && sel.gear.id === g.id} />
                 ))}
               </div>
             </div>
@@ -194,6 +199,23 @@ export function Profile() {
         <textarea id="backup-paste" className="notes mono" rows={4} placeholder="…или вставьте JSON сюда" value={paste} onChange={(e) => setPaste(e.target.value)} />
         {paste.trim().startsWith('{') && <Button onClick={() => importText(paste)}>Восстановить из текста</Button>}
         {msg && <p className="status">{msg}</p>}
+      </Section>
+
+      <Section title="Вид интерфейса" plain>
+        <Segmented value={profile.layout ?? 'auto'} onChange={(v) => store.saveProfile({ ...profile, layout: v })}
+          options={[{ value: 'auto', label: 'Авто' }, { value: 'desktop', label: 'Компьютер' }, { value: 'mobile', label: 'Телефон' }]} />
+        <p className="muted pad">
+          {(profile.layout ?? 'auto') === 'auto'
+            ? `На компьютере — меню слева и две колонки, если окно шире ${DESKTOP_MIN} px. На телефоне — вкладки внизу.`
+            : profile.layout === 'desktop'
+              ? `Две колонки, когда окно шире ${DESKTOP_FORCED_MIN} px.`
+              : 'Всегда как на телефоне.'}
+        </p>
+        {layoutInfo.desktopClient && layoutInfo.mode === 'mobile' && (profile.layout ?? 'auto') !== 'mobile' && (
+          platform.requestFullscreen
+            ? <Button kind="secondary" onClick={() => platform.requestFullscreen?.()}>Развернуть окно на весь экран</Button>
+            : <p className="muted pad">Растяните окно приложения пошире — включится раскладка для компьютера.</p>
+        )}
       </Section>
 
       <Section title="О приложении">

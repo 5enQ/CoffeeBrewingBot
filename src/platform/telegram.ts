@@ -137,6 +137,11 @@ export function createTelegramPlatform(): Platform {
 
     initData: () => tg().initData || null,
 
+    isDesktopClient: () => ['tdesktop', 'macos', 'weba', 'webk', 'web', 'unigram'].includes(tg().platform),
+    requestFullscreen() {
+      if (can('8.0') && tg().requestFullscreen) tg().requestFullscreen();
+    },
+
     startParam() {
       return tg().initDataUnsafe?.start_param || web.startParam();
     },

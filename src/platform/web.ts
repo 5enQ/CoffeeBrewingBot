@@ -62,6 +62,7 @@ export function createWebPlatform(): Platform {
     },
     openLink(url) { window.open(url, '_blank', 'noopener'); },
     initData: () => null,
+    isDesktopClient: () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: fine)').matches,
     startParam() {
       const m = location.hash.match(/[#&]r=([A-Za-z0-9_-]+)/);
       return m ? m[1] : null;

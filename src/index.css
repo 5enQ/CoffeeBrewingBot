@@ -681,3 +681,100 @@ button.row:active { background: var(--fg-soft); }
 @keyframes snackIn { from { transform: translate(-50%, 10px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .snack { animation: none; } }
 .round-btn:disabled { opacity: 0.4; }
+
+/* =========================================================
+   Раскладка для компьютера: меню слева · список · карточка
+   ========================================================= */
+.desk {
+  display: grid; grid-template-columns: 232px minmax(340px, 420px) minmax(0, 1fr);
+  height: 100vh; height: 100dvh; overflow: hidden; background: var(--bg);
+  padding-top: var(--inset-top);
+}
+:root[data-layout="desktop"] body { overflow: hidden; }
+:root[data-layout="desktop"] body::before { display: none; }
+
+/* меню */
+.side {
+  display: flex; flex-direction: column; gap: 6px; padding: 18px 12px 14px;
+  background: var(--card); border-right: 1px solid var(--sep); min-height: 0;
+}
+.side-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; letter-spacing: -0.01em; padding: 0 8px 14px; }
+.side-logo { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: var(--accent-fg); display: grid; place-items: center; }
+.side-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.side-nav button {
+  display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: none; text-align: left;
+  padding: 10px 12px; border-radius: 11px; font-size: 15px; font-weight: 600; color: var(--fg);
+}
+.side-nav button svg { color: var(--hint); }
+.side-nav button:hover { background: var(--fg-soft); }
+.side-nav button.on { background: var(--accent-soft); color: var(--accent); }
+.side-nav button.on svg { color: var(--accent); }
+.side-me { display: flex; align-items: center; gap: 10px; border: 0; background: none; text-align: left; padding: 10px 8px; border-radius: 12px; }
+.side-me:hover { background: var(--fg-soft); }
+.side-me span:last-child { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.side-me b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-me small { color: var(--hint); font-size: 12px; }
+
+/* колонки */
+.pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.pane-list { border-right: 1px solid var(--sep); }
+.pane-scroll, .pane-detail > .stack-screen { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
+.desk .screen { min-height: 100%; }
+.desk .topbar {
+  top: 0; padding: 18px 24px 12px; background: color-mix(in srgb, var(--bg) 90%, transparent);
+}
+.desk .topbar .back { margin-left: -8px; }
+.desk .content { padding: 6px 24px 28px; max-width: 820px; }
+.desk .pane-list .content { padding-left: 16px; padding-right: 16px; }
+.desk .pane-list .topbar { padding-left: 16px; padding-right: 16px; }
+.desk .footer {
+  position: sticky; bottom: 0; left: auto; right: auto; z-index: 5;
+  padding: 12px 24px; border-top: 1px solid var(--sep);
+}
+.desk .footer-actions { max-width: 772px; margin: 0; }
+.desk .footer-error { margin: 0 0 8px; text-align: left; }
+
+/* правая колонка без выбора */
+.placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px; text-align: center; color: var(--hint); }
+.placeholder-icon { width: 88px; height: 88px; border-radius: 26px; background: var(--card); color: var(--accent); display: grid; place-items: center; margin-bottom: 8px; }
+.placeholder h2 { margin: 0; font-size: 20px; color: var(--fg); }
+.placeholder p { margin: 0; max-width: 320px; font-size: 14px; }
+
+/* выбранный пункт списка */
+.row.active { background: var(--accent-soft); }
+.row.active .row-label { color: var(--accent); }
+.bean-card.active, .method-card.active { box-shadow: inset 0 0 0 2px var(--accent); }
+
+/* мышь: подсветка при наведении */
+@media (hover: hover) and (pointer: fine) {
+  button.row:hover { background: var(--fg-soft); }
+  .method-card:hover, .bean-card:hover, .bean-pick:hover { box-shadow: inset 0 0 0 1.5px var(--sep); }
+  .chip:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--sep)); }
+  .btn-primary:hover { filter: brightness(1.06); }
+  .btn-secondary:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  .method-card.active:hover, .bean-card.active:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+}
+
+/* шире — больше колонок */
+.desk .pane-list .method-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pane-detail { container-type: inline-size; }
+@container (min-width: 760px) {
+  .param-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+.desk .pane-detail .quick-methods { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.desk .pane-detail .method-hero { padding: 20px; }
+.desk .pane-detail .recipe-sum { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.desk .pane-detail .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.desk .pane-detail .badge-pick-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.desk .pane-detail .blend-part-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.desk .pane-detail .bean-picker { margin: 0; padding: 2px 0 6px; flex-wrap: wrap; overflow: visible; }
+.desk .pane-detail .recipe-picker { margin: 0; padding: 2px 0 4px; flex-wrap: wrap; overflow: visible; }
+
+/* таймер крупнее */
+.desk .timer { width: min(46vh, 380px); }
+.desk .timer-time { font-size: 84px; }
+.kbd-hint { text-align: center; color: var(--hint); font-size: 13px; margin: 4px 0 0; }
+kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid var(--sep); border-bottom-width: 2px; border-radius: 6px; padding: 3px 6px; color: var(--fg); }
+
+/* оверлеи поверх всего окна */
+.desk ~ .snack { bottom: 28px; }

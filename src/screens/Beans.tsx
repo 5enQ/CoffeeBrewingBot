@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react';
 import { lookupCode, mergeEmpty } from '../data/lookup';
 import { METHODS, methodById, fmtRatio, fmtNum } from '../data/methods';
 import { cupScore } from '../data/cupping';
-import { emptyBean, useStore, type Bean } from '../data/store';
+import { emptyBean, uid, useStore, type Bean, type BlendPart } from '../data/store';
 import { beanStock, isFinished, PACK_SIZES } from '../data/stock';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
 import { MethodIcon, Icon } from '../ui/icons';
-import { Button, Chips, Empty, Field, Row, SampleTag, Screen, Section, Stars } from '../ui/kit';
+import { Button, Chips, Empty, Field, Row, SampleTag, Screen, Section, Segmented, Stars } from '../ui/kit';
 import { Scanner } from '../ui/Scanner';
 import { ScoreBadge } from '../ui/CuppingForm';
-import { beanOrigin, beanTitle, PROCESSES, RestBadge, ROAST_LEVELS } from './beanUtils';
+import { beanMeta, beanOrigin, beanTitle, blendLines, PROCESSES, RestBadge, ROAST_LEVELS } from './beanUtils';
 
 /* ---------- Полка ---------- */
 
@@ -47,7 +47,7 @@ function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
         <b>{beanTitle(b)}</b>
         {b.sample && <SampleTag />}
       </div>
-      <span className="bean-card-origin">{[beanOrigin(b), b.process].filter(Boolean).join(' · ') || 'Происхождение не указано'}</span>
+      <span className="bean-card-origin">{beanMeta(b) || 'Происхождение не указано'}</span>
       <StockBar bean={b} />
       <div className="bean-card-foot">
         <span>{b.roaster || '—'}</span>
@@ -72,7 +72,7 @@ export function Beans() {
   };
 
   const list = q
-    ? beans.filter((b) => [b.name, b.roaster, b.country, b.region, b.process, b.variety].join(' ').toLowerCase().includes(q.toLowerCase()))
+    ? beans.filter((b) => [b.name, b.roaster, b.country, b.region, b.process, b.variety, ...(b.parts ?? []).flatMap((p) => [p.country, p.region, p.process, p.variety])].join(' ').toLowerCase().includes(q.toLowerCase()))
     : beans;
   const active = list.filter((b) => !isFinished(b, beanStock(b, brews)));
   const done = list.filter((b) => isFinished(b, beanStock(b, brews)));
@@ -149,8 +149,9 @@ export function BeanDetail({ id }: { id: string }) {
   };
 
   const info: [string, string][] = ([
-    ['Обжарщик', b.roaster], ['Страна', b.country], ['Регион', b.region], ['Ферма / станция', b.farm],
-    ['Производитель', b.producer], ['Сорт', b.variety], ['Обработка', b.process], ['Высота', b.altitude],
+    ['Обжарщик', b.roaster],
+    ...(b.isBlend ? [] : [['Страна', b.country], ['Регион', b.region], ['Ферма / станция', b.farm],
+      ['Производитель', b.producer], ['Сорт', b.variety], ['Обработка', b.process], ['Высота', b.altitude]]),
     ['Урожай', b.harvest], ['Обжарка', b.roastLevel],
     ['Дата обжарки', b.roastDate ? new Date(b.roastDate + 'T00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : ''],
     ['Штрихкод', b.barcode],
@@ -196,11 +197,20 @@ export function BeanDetail({ id }: { id: string }) {
         </div>
       </Section>
 
-      <Section title="О пачке">
-        {info.map(([k, v]) => <Row key={k} label={k} value={v} />)}
-        {b.link && <Row label="Ссылка" value="открыть" onClick={() => platform.openLink(b.link)} />}
-        {b.comment && <p className="note-text pad">{b.comment}</p>}
-      </Section>
+      {b.isBlend && (
+        <Section title={`Состав бленда · ${(b.parts ?? []).length}`}>
+          {blendLines(b).map((l, i) => <Row key={i} label={l.text} value={l.share || undefined} />)}
+          {!(b.parts ?? []).length && <p className="muted pad">Компоненты не указаны.</p>}
+        </Section>
+      )}
+
+      {(info.length > 0 || b.link || b.comment) && (
+        <Section title="О пачке">
+          {info.map(([k, v]) => <Row key={k} label={k} value={v} />)}
+          {b.link && <Row label="Ссылка" value="открыть" onClick={() => platform.openLink(b.link)} />}
+          {b.comment && <p className="note-text pad">{b.comment}</p>}
+        </Section>
+      )}
 
       <Section title={mine.length ? `Заварки · ${mine.length}` : 'Заварки'}>
         {mine.length === 0 && <p className="muted pad">Пока не заваривали.</p>}
@@ -241,6 +251,19 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
   useEffect(() => { if (bean.barcode && isNew && bean.name) setStatus('Данные подставлены по коду — проверьте и дополните.'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (patch: Partial<Bean>) => setB((x) => ({ ...x, ...patch }));
+  const newPart = (): BlendPart => ({ id: uid(), share: '', country: '', region: '', farm: '', variety: '', process: '' });
+  const setBlend = (on: boolean) => setB((x) => ({
+    ...x, isBlend: on,
+    // при переключении на бленд переносим уже введённое происхождение в первый компонент
+    parts: on && !(x.parts ?? []).length
+      ? [{ ...newPart(), country: x.country, region: x.region, farm: x.farm, variety: x.variety, process: x.process }, newPart()]
+      : x.parts,
+  }));
+  const setPart = (i: number, patch: Partial<BlendPart>) => setB((x) => ({ ...x, parts: (x.parts ?? []).map((p, j) => (j === i ? { ...p, ...patch } : p)) }));
+  const addPart = () => { platform.haptic('light'); setB((x) => ({ ...x, parts: [...(x.parts ?? []), newPart()] })); };
+  const removePart = (i: number) => { platform.haptic('light'); setB((x) => ({ ...x, parts: (x.parts ?? []).filter((_, j) => j !== i) })); };
+  const shares = (b.parts ?? []).map((p) => parseFloat(p.share.replace(',', '.'))).filter((n) => !isNaN(n));
+  const shareSum = b.isBlend && shares.length ? shares.reduce((a, n) => a + n, 0) : null;
   const f = (key: keyof Bean, label: string, extra: Record<string, unknown> = {}) => (
     <Field label={label} id={`bean-${key}`} value={String(b[key] ?? '')} onChange={(e) => set({ [key]: e.target.value })} {...extra} />
   );
@@ -274,7 +297,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
 
   return (
     <Screen title={isNew ? 'Новая пачка' : 'Редактировать пачку'}
-      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!b.name && !b.country && !b.barcode}>Сохранить</Button></div>}>
+      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!b.name && !b.country && !b.barcode && !(b.parts ?? []).some((p) => p.country)}>Сохранить</Button></div>}>
 
       <div className="scan-field">
         <Field label="Штрихкод / QR" id="bean-barcode" value={b.barcode} inputMode="numeric" onChange={(e) => set({ barcode: e.target.value })}
@@ -288,23 +311,56 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
         {f('roaster', 'Обжарщик')}
       </Section>
 
-      <Section title="Происхождение">
-        {f('country', 'Страна', { list: 'countries' })}
-        <datalist id="countries">{COUNTRIES.map((c) => <option key={c} value={c} />)}</datalist>
-        {f('region', 'Регион')}
-        {f('farm', 'Ферма / станция')}
-        {f('producer', 'Производитель')}
-        {f('altitude', 'Высота', { placeholder: '1900–2100 м' })}
-      </Section>
+      <Segmented value={b.isBlend ? 'blend' : 'single'} onChange={(v) => setBlend(v === 'blend')}
+        options={[{ value: 'single', label: 'Моносорт' }, { value: 'blend', label: 'Бленд' }]} />
+      <datalist id="countries">{COUNTRIES.map((c) => <option key={c} value={c} />)}</datalist>
 
-      <Section title="Обработка" plain>
-        <Chips options={PROCESSES} value={[b.process]} onToggle={(p) => set({ process: b.process === p ? '' : p })} />
-        <div className="group" style={{ marginTop: 10 }}>
-          {f('process', 'Своя обработка', { placeholder: 'например, Double fermentation' })}
-          {f('variety', 'Сорт', { placeholder: 'Гейша, SL28, Бурбон…' })}
-          {f('harvest', 'Урожай', { placeholder: '2026' })}
-        </div>
-      </Section>
+      {!b.isBlend ? <>
+        <Section title="Происхождение">
+          {f('country', 'Страна', { list: 'countries' })}
+          {f('region', 'Регион')}
+          {f('farm', 'Ферма / станция')}
+          {f('producer', 'Производитель')}
+          {f('altitude', 'Высота', { placeholder: '1900–2100 м' })}
+        </Section>
+
+        <Section title="Обработка" plain>
+          <Chips options={PROCESSES} value={[b.process]} onToggle={(p) => set({ process: b.process === p ? '' : p })} />
+          <div className="group" style={{ marginTop: 10 }}>
+            {f('process', 'Своя обработка', { placeholder: 'например, Double fermentation' })}
+            {f('variety', 'Сорт', { placeholder: 'Гейша, SL28, Бурбон…' })}
+            {f('harvest', 'Урожай', { placeholder: '2026' })}
+          </div>
+        </Section>
+      </> : (
+        <Section title="Состав бленда" aside={<span className={'muted' + (shareSum !== null && Math.abs(shareSum - 100) > 0.01 ? ' warn-text' : '')}>{shareSum !== null ? `сумма ${fmtNum(shareSum, 1)}%` : ''}</span>} plain>
+          <div className="blend-editor">
+            {(b.parts ?? []).map((p, i) => (
+              <div className="blend-part" key={p.id}>
+                <div className="blend-part-head">
+                  <span className="step-num">{i + 1}</span>
+                  <input className="blend-country" list="countries" aria-label={`Компонент ${i + 1}: страна`} placeholder="Страна" value={p.country}
+                    onChange={(e) => setPart(i, { country: e.target.value })} />
+                  <label className="blend-share">
+                    <input inputMode="decimal" aria-label={`Компонент ${i + 1}: доля`} placeholder="—" value={p.share}
+                      onChange={(e) => setPart(i, { share: e.target.value.replace(/[^\d.,]/g, '') })} />
+                    <span>%</span>
+                  </label>
+                  <button type="button" className="icon-btn" onClick={() => removePart(i)} aria-label={`Удалить компонент ${i + 1}`}><Icon name="close" size={18} /></button>
+                </div>
+                <div className="blend-part-grid">
+                  <input aria-label={`Компонент ${i + 1}: регион`} placeholder="Регион" value={p.region} onChange={(e) => setPart(i, { region: e.target.value })} />
+                  <input aria-label={`Компонент ${i + 1}: ферма`} placeholder="Ферма / станция" value={p.farm} onChange={(e) => setPart(i, { farm: e.target.value })} />
+                  <input aria-label={`Компонент ${i + 1}: сорт`} placeholder="Сорт" value={p.variety} onChange={(e) => setPart(i, { variety: e.target.value })} />
+                  <input aria-label={`Компонент ${i + 1}: обработка`} list="processes" placeholder="Обработка" value={p.process} onChange={(e) => setPart(i, { process: e.target.value })} />
+                </div>
+              </div>
+            ))}
+            <datalist id="processes">{PROCESSES.map((x) => <option key={x} value={x} />)}</datalist>
+            <button type="button" className="add-step" onClick={addPart}><Icon name="plus" size={18} />Добавить компонент</button>
+          </div>
+        </Section>
+      )}
 
       <Section title="Вес пачки" plain>
         <Chips options={PACK_SIZES.map((x) => `${x} г`)} value={b.weight ? [`${b.weight} г`] : []}

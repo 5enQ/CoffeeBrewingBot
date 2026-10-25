@@ -5,6 +5,7 @@ import { badgeText, sortBadges, type BadgeKind } from './badges';
 import { catById, type GearCat, type GearRef } from './gear';
 import { methodById, fmtNum, fmtRatio, fmtTime, type BrewStep } from './methods';
 import { effectivePlan, type BrewPlan } from './recipes';
+import { beanTitle, blendLines } from '../screens/beanUtils';
 import type { Author, Bean, Brew } from './store';
 
 /** Рецепт, который уходит другу. Только то, что нужно, чтобы повторить заварку. */
@@ -29,7 +30,7 @@ export interface SharedRecipe {
   ref?: { rid: string; author: string };
 }
 
-const BEAN_KEYS = ['name', 'roaster', 'country', 'region', 'farm', 'variety', 'process', 'altitude', 'roastLevel', 'packNotes'] as const;
+const BEAN_KEYS = ['name', 'roaster', 'country', 'region', 'farm', 'variety', 'process', 'altitude', 'roastLevel', 'packNotes', 'isBlend', 'parts'] as const;
 type BeanKey = typeof BEAN_KEYS[number];
 
 export function toShared(b: Brew, bean: Bean | undefined, author: Author, myId?: string | null): SharedRecipe {
@@ -150,8 +151,8 @@ export async function recipeLink(r: SharedRecipe): Promise<string> {
       r,
       { ...r, notes: '' },
       { ...r, notes: '', plan: noHints },
-      { ...r, notes: '', bean: r.bean ? { name: r.bean.name, country: r.bean.country, process: r.bean.process } : null },
-      { ...r, notes: '', plan: noHints, author: { ...r.author, badges: r.author.badges?.slice(0, 2) }, bean: r.bean ? { name: r.bean.name, country: r.bean.country, process: r.bean.process } : null },
+      { ...r, notes: '', bean: r.bean ? { name: r.bean.name, country: r.bean.country, process: r.bean.process, isBlend: r.bean.isBlend, parts: r.bean.parts } : null },
+      { ...r, notes: '', plan: noHints, author: { ...r.author, badges: r.author.badges?.slice(0, 2) }, bean: r.bean ? { name: r.bean.name, country: r.bean.country, process: r.bean.process, isBlend: r.bean.isBlend, parts: r.bean.parts } : null },
       { ...r, notes: '', plan: noHints, descriptors: [], author: { ...r.author, badges: undefined }, bean: r.bean ? { name: r.bean.name } : null, gear: r.gear.map(({ cat, name }) => ({ cat, name })) },
     ];
     for (const v of variants) {
@@ -166,16 +167,21 @@ export async function recipeLink(r: SharedRecipe): Promise<string> {
 export function recipeText(r: SharedRecipe): string {
   const m = methodById(r.methodId);
   const lines: string[] = [];
-  const beanName = r.bean?.name || [r.bean?.country, r.bean?.region].filter(Boolean).join(', ');
+  const beanName = r.bean ? (r.bean.name || beanTitle(r.bean)) : '';
   const plan = effectivePlan(r.methodId, r.plan as BrewPlan | undefined);
   lines.push(`${m.name}${r.plan ? ` · ${r.plan.name}` : ''}${beanName ? ` — ${beanName}` : ''}`);
   if (r.author.name || r.author.username) lines.push(`Рецепт от ${[r.author.name, r.author.username && '@' + r.author.username].filter(Boolean).join(' ')}`);
   if (r.author.badges?.length) lines.push(sortBadges(r.author.badges).map(badgeText).join('; '));
   lines.push('');
   if (r.bean) {
-    const origin = [r.bean.country, r.bean.region, r.bean.farm].filter(Boolean).join(', ');
-    const meta = [origin, r.bean.process, r.bean.variety, r.bean.roaster && `обжарщик ${r.bean.roaster}`].filter(Boolean).join(' · ');
-    if (meta) lines.push(`Зерно: ${meta}`);
+    if (r.bean.isBlend) {
+      lines.push(`Зерно: бленд${r.bean.roaster ? ` · обжарщик ${r.bean.roaster}` : ''}`);
+      blendLines(r.bean).forEach((l) => lines.push(`• ${[l.share, l.text].filter(Boolean).join(' ')}`));
+    } else {
+      const origin = [r.bean.country, r.bean.region, r.bean.farm].filter(Boolean).join(', ');
+      const meta = [origin, r.bean.process, r.bean.variety, r.bean.roaster && `обжарщик ${r.bean.roaster}`].filter(Boolean).join(' · ');
+      if (meta) lines.push(`Зерно: ${meta}`);
+    }
   }
   lines.push(`${fmtNum(r.dose, 2)} г → ${fmtNum(r.water)} г ${m.yieldLabel ? 'на выходе ' : 'воды '}(${fmtRatio(r.water / r.dose)}), ${r.temp ? fmtNum(r.temp) + '°C' : 'холодная вода'}, ${fmtTime(r.time)}`);
   if (r.grind) lines.push(`Помол: ${r.grind}`);

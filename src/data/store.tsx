@@ -26,11 +26,27 @@ export interface Bean {
   packNotes: string;   // дескрипторы обжарщика
   comment: string;
   createdAt: number;
+  /** бленд из нескольких зёрен (иначе — моносорт) */
+  isBlend?: boolean;
+  /** состав бленда */
+  parts?: BlendPart[];
   /** ручная поправка остатка, г (просыпал, отдал другу, взвесил) */
   adjust?: number;
   /** пачка допита (убрана с полки) */
   finished?: boolean;
   sample?: boolean;
+}
+
+/** Компонент бленда */
+export interface BlendPart {
+  id: string;
+  /** доля в %, строкой — как ввели */
+  share: string;
+  country: string;
+  region: string;
+  farm: string;
+  variety: string;
+  process: string;
 }
 
 export interface QuickTaste {

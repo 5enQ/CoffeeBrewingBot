@@ -9,6 +9,7 @@ import { platform } from '../platform';
 import { useRouter } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { AuthorBlock } from '../ui/Badges';
+import { beanOrigin, beanTitle, blendLines } from './beanUtils';
 import { RateBlock } from '../ui/RateBlock';
 import { myTelegramId, newRid, prepareShare, ratingsEnabled } from '../data/ratings';
 import { useBadges } from '../data/featured';
@@ -19,8 +20,8 @@ import { Button, Empty, Field, Screen, Stars } from '../ui/kit';
 export function RecipeCard({ r }: { r: SharedRecipe }) {
   const m = methodById(r.methodId);
   const plan = effectivePlan(r.methodId, r.plan);
-  const beanName = r.bean?.name || [r.bean?.country, r.bean?.region].filter(Boolean).join(', ');
-  const origin = r.bean ? [r.bean.country, r.bean.region, r.bean.farm].filter(Boolean).join(' · ') : '';
+  const beanName = r.bean ? (r.bean.name || beanTitle(r.bean)) : '';
+  const origin = r.bean ? beanOrigin(r.bean) : '';
 
   return (
     <article className="recipe-card">
@@ -49,6 +50,15 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
           <h3>Оборудование</h3>
           <ul className="gear-ul">
             {r.gear.map((g, i) => <li key={i}><span>{catById(g.cat).one}</span><b>{g.name}{g.details && <small> · {g.details}</small>}</b></li>)}
+          </ul>
+        </div>
+      )}
+
+      {r.bean?.isBlend && (r.bean.parts ?? []).length > 0 && (
+        <div className="recipe-block">
+          <h3>Состав бленда</h3>
+          <ul className="gear-ul">
+            {blendLines(r.bean).map((l, i) => <li key={i}><span>{l.share || '—'}</span><b>{l.text}</b></li>)}
           </ul>
         </div>
       )}

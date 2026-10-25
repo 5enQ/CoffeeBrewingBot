@@ -10,7 +10,7 @@ import { catById } from '../data/gear';
 import { AuthorBlock } from '../ui/Badges';
 import { RateBlock, plural } from '../ui/RateBlock';
 import { Button, Chips, Empty, Row, SampleTag, Screen, Section, Stars } from '../ui/kit';
-import { beanOrigin, beanTitle } from './beanUtils';
+import { beanMeta, beanTitle } from './beanUtils';
 
 function dayLabel(ts: number) {
   const d = new Date(ts); const today = new Date();
@@ -150,7 +150,7 @@ export function BrewDetail({ id }: { id: string }) {
 
       {bean && (
         <Section title="Зерно">
-          <Row label={beanTitle(bean)} hint={[beanOrigin(bean), bean.process].filter(Boolean).join(' · ')} onClick={() => push({ name: 'bean', id: bean.id })} />
+          <Row label={beanTitle(bean)} hint={beanMeta(bean)} onClick={() => push({ name: 'bean', id: bean.id })} />
         </Section>
       )}
 

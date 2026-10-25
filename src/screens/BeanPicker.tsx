@@ -3,7 +3,7 @@ import { emptyBean, useStore } from '../data/store';
 import { useRouter } from '../router';
 import { Icon } from '../ui/icons';
 import { platform } from '../platform';
-import { beanTitle, RestBadge } from './beanUtils';
+import { beanTitle, blendSummary, RestBadge } from './beanUtils';
 import { beanStock, isFinished } from '../data/stock';
 import { fmtNum } from '../data/methods';
 
@@ -39,7 +39,7 @@ export function BeanPicker({ value, onChange, dose }: { value: string | null; on
           <button type="button" key={b.id} className={'bean-pick' + (b.id === value ? ' on' : '')}
             onClick={() => { platform.haptic('select'); onChange(b.id); }}>
             <b>{beanTitle(b)}</b>
-            <span>{[b.country, b.process].filter(Boolean).join(' · ') || b.roaster || '—'}</span>
+            <span>{b.isBlend ? `Бленд · ${blendSummary(b)}` : [b.country, b.process].filter(Boolean).join(' · ') || b.roaster || '—'}</span>
             {st.total > 0
               ? <span className={'pick-stock' + (dose && st.left < dose ? ' short' : '')}><i style={{ ['--w' as string]: `${st.ratio * 100}%` }} />{fmtNum(st.left, 0)} из {fmtNum(st.total, 0)} г</span>
               : <RestBadge roastDate={b.roastDate} />}

@@ -1,6 +1,7 @@
 import { CUP_ATTRS, QUALITY, SCORE_MAX, SCORE_MIN, SCORE_STEP, cupScore, scoreGrade, type Cupping } from '../data/cupping';
 import { fmtNum } from '../data/methods';
 import { platform } from '../platform';
+import { beanSca, brewSca, type CvaSession } from '../data/cva';
 import { Dots, Stars, Stepper } from './kit';
 
 export function ScoreBadge({ c, big = false }: { c: Cupping; big?: boolean }) {
@@ -14,7 +15,18 @@ export function ScoreBadge({ c, big = false }: { c: Cupping; big?: boolean }) {
 }
 
 /** Оценка заварки: у каппинга — баллы SCA, у остальных методов — звёзды */
-export function BrewScore({ brew, size = 14, big = false }: { brew: { methodId: string; rating: number; cupping: Cupping | null }; size?: number; big?: boolean }) {
+/** Балл CVA (SCA 104) — без словесных градаций старого протокола */
+export function CvaBadge({ score, big = false }: { score: number | null; big?: boolean }) {
+  return (
+    <div className={'score-badge cva' + (big ? ' big' : '')}>
+      <b>{score === null ? '—' : score.toFixed(2).replace('.', ',')}</b>
+      <span>{score === null ? 'без балла' : 'CVA'}</span>
+    </div>
+  );
+}
+
+export function BrewScore({ brew, size = 14, big = false, beanId }: { brew: { methodId: string; rating: number; cupping: Cupping | null; cva?: CvaSession; beanId: string | null }; size?: number; big?: boolean; beanId?: string }) {
+  if (brew.cva) return <CvaBadge score={beanId ? beanSca(brew, beanId) : brewSca(brew)} big={big} />;
   const scored = brew.cupping && (brew.methodId === 'cupping' || !brew.rating); // старые записи без звёзд — показываем баллы
   return scored ? <ScoreBadge c={brew.cupping!} big={big} /> : <Stars value={brew.rating} size={size} />;
 }

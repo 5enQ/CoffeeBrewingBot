@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { lookupCode, mergeEmpty } from '../data/lookup';
 import { allMethods, methodById, fmtRatio, fmtNum } from '../data/methods';
-import { cupScore } from '../data/cupping';
+import { beanSca, brewBeanIds } from '../data/cva';
 import { emptyBean, uid, useStore, type Bean, type BlendPart } from '../data/store';
 import { beanStock, isFinished, PACK_SIZES } from '../data/stock';
 import { platform } from '../platform';
@@ -40,12 +40,12 @@ function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
   const { brews } = useStore();
   const sel = useSelected();
   const active = (sel?.name === 'bean' && sel.id === b.id) || (sel?.name === 'beanEdit' && sel.bean.id === b.id);
-  const mine = brews.filter((x) => x.beanId === b.id);
+  const mine = brews.filter((x) => brewBeanIds(x).includes(b.id));
   const rated = mine.filter((x) => x.rating);
   const avg = rated.length ? rated.reduce((s, x) => s + x.rating, 0) / rated.length : 0;
   // баллы SCA важнее звёзд: если пачку каппинговали — показываем средний балл
-  const cupped = mine.filter((x) => x.cupping);
-  const avgScore = cupped.length ? cupped.reduce((s, x) => s + cupScore(x.cupping!).total, 0) / cupped.length : 0;
+  const scores = mine.map((x) => beanSca(x, b.id)).filter((x): x is number => x !== null);
+  const avgScore = scores.length ? scores.reduce((s, x) => s + x, 0) / scores.length : 0;
   return (
     <button type="button" className={'bean-card' + (active ? ' active' : '')} aria-current={active || undefined} onClick={onClick}>
       <div className="bean-card-top">
@@ -123,7 +123,7 @@ export function BeanDetail({ id }: { id: string }) {
   const [fix, setFix] = useState<string | null>(null);
   const b = beans.find((x) => x.id === id);
   if (!b) return <Screen title="Пачка удалена"><Empty title="Нет такой пачки" text="Её удалили." /></Screen>;
-  const mine = brews.filter((x) => x.beanId === b.id);
+  const mine = brews.filter((x) => brewBeanIds(x).includes(b.id));
   const st = beanStock(b, brews);
   const finished = isFinished(b, st);
 
@@ -225,13 +225,14 @@ export function BeanDetail({ id }: { id: string }) {
             <Row key={x.id} leading={<MethodIcon icon={m.icon} size={24} />}
               label={m.name}
               hint={`${new Date(x.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} · ${fmtRatio(x.water / x.dose)} · ${x.grind || 'помол не указан'}`}
-              value={<BrewScore brew={x} size={13} />}
+              value={<BrewScore brew={x} size={13} beanId={b.id} />}
               onClick={() => push({ name: 'brew', id: x.id })} />
           );
         })}
-        {mine.some((x) => x.cupping) && (
-          <p className="muted pad">Средний каппинг: {(mine.filter((x) => x.cupping).reduce((s, x) => s + cupScore(x.cupping!).total, 0) / mine.filter((x) => x.cupping).length).toFixed(2).replace('.', ',')}</p>
-        )}
+        {(() => {
+          const sc = mine.map((x) => beanSca(x, b.id)).filter((x): x is number => x !== null);
+          return sc.length > 0 && <p className="muted pad">Средний каппинг: {(sc.reduce((s, x) => s + x, 0) / sc.length).toFixed(2).replace('.', ',')}</p>;
+        })()}
       </Section>
 
       <div className="danger-zone"><Button kind="danger" icon="trash" onClick={remove}>Удалить пачку</Button></div>

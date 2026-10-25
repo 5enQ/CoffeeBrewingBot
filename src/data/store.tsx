@@ -6,6 +6,7 @@ import type { Badge, BadgeLite } from './badges';
 import type { RatingStats } from './ratings';
 import { toMethod, type BrewPlan, type CustomMethod, type CustomRecipe } from './recipes';
 import { setCustomMethods } from './methods';
+import type { CvaSession } from './cva';
 
 export interface Bean {
   id: string;
@@ -72,6 +73,8 @@ export interface Brew {
   descriptors: string[];
   notes: string;
   cupping: Cupping | null;
+  /** каппинг по SCA CVA: образцы, формы, режим */
+  cva?: CvaSession;
   /** своя схема проливов (если варили не по стандартному рецепту) */
   plan?: BrewPlan;
   /** снимок оборудования, которым варили */

@@ -41,10 +41,10 @@ export function BrewHome() {
           onClick={() => push({ name: 'methodEdit', isNew: true, method: newCustomMethod('cm' + uid()) })}><Icon name="plus" /></button>
       } plain>
         <div className="method-grid">
-          {allMethods().map((m) => (
-            <button key={m.id} type="button" className={'method-card' + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === m.id ? ' active' : '')} onClick={() => push({ name: 'recipes', methodId: m.id })}>
+          {[...allMethods()].sort((x, y) => Number(y.id === 'cupping') - Number(x.id === 'cupping')).map((m) => (
+            <button key={m.id} type="button" className={'method-card' + (m.id === 'cupping' ? ' tall' : '') + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === m.id ? ' active' : '')} onClick={() => push({ name: 'recipes', methodId: m.id })}>
               <span className="method-icon"><MethodIcon icon={m.icon} size={28} /></span>
-              <span className="method-name">{m.name}</span>
+              <span className="method-name">{m.name}{m.id === 'cupping' && <small>Протокол SCA CVA · до{'\u00a0'}6{'\u00a0'}образцов</small>}</span>
             </button>
           ))}
         </div>

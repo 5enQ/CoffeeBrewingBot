@@ -1,3 +1,4 @@
+import { CuppingSetup } from './screens/CuppingSetup';
 import { StoreProvider, useStore } from './data/store';
 import { DepthCtx, RouterProvider, useRouter, type Route, type Tab } from './router';
 import { DialogHost } from './ui/kit';
@@ -22,8 +23,10 @@ import { resolveStartParam } from './data/share';
 
 function renderRoute(r: Route) {
   switch (r.name) {
-    case 'recipes': return <RecipesScreen methodId={r.methodId} beanId={r.beanId} />;
-    case 'method': return <MethodScreen methodId={r.methodId} beanId={r.beanId} from={r.from} recipeId={r.recipeId} />;
+    case 'recipes': if (r.methodId === 'cupping') return <CuppingSetup beanId={r.beanId} />;
+      return <RecipesScreen methodId={r.methodId} beanId={r.beanId} />;
+    case 'method': if (r.methodId === 'cupping') return <CuppingSetup beanId={r.beanId} from={r.from} />;
+      return <MethodScreen methodId={r.methodId} beanId={r.beanId} from={r.from} recipeId={r.recipeId} />;
     case 'timer': return <TimerScreen draft={r.draft} />;
     case 'brewEdit': return <BrewEdit draft={r.draft} isNew={r.isNew} openCupping={r.openCupping} />;
     case 'brew': return <BrewDetail id={r.id} />;

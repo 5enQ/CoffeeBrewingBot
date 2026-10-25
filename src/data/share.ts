@@ -1,6 +1,6 @@
 import { TELEGRAM_APP, TELEGRAM_BOT, WEB_URL } from '../config';
 import { loadRecipeCode, storeRecipe } from './ratings';
-import { cupScore } from './cupping';
+import { brewSca } from './cva';
 import { badgeText, sortBadges, type BadgeKind } from './badges';
 import { catById, type GearCat, type GearRef } from './gear';
 import { methodById, fmtNum, fmtRatio, fmtTime, type BrewStep } from './methods';
@@ -39,7 +39,7 @@ export function toShared(b: Brew, bean: Bean | undefined, author: Author, myId?:
     date: b.date,
     methodId: b.methodId, dose: b.dose, water: b.water, temp: b.temp, grind: b.grind, time: b.time,
     rating: b.rating, descriptors: b.descriptors, notes: b.notes,
-    score: b.cupping && (b.methodId === 'cupping' || !b.rating) ? cupScore(b.cupping).total : undefined,
+    score: b.cva || (b.cupping && (b.methodId === 'cupping' || !b.rating)) ? brewSca(b) ?? undefined : undefined,
     bean: bean ? Object.fromEntries(BEAN_KEYS.filter((k) => bean[k]).map((k) => [k, bean[k]])) : null,
     gear: (b.gear ?? []).map(({ cat, name, details }) => (details ? { cat, name, details } : { cat, name })),
     plan: b.plan ? { name: b.plan.name, total: b.plan.total, steps: b.plan.steps } : undefined,

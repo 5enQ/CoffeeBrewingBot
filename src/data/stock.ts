@@ -1,4 +1,5 @@
 import type { Bean, Brew } from './store';
+import { brewBeanIds, gramsFromBean } from './cva';
 
 export interface Stock {
   /** вес пачки, г (0 — не указан) */
@@ -21,8 +22,9 @@ const num = (s: string) => {
 };
 
 export function beanStock(bean: Bean, brews: Brew[]): Stock {
-  const mine = brews.filter((b) => b.beanId === bean.id);
-  const used = mine.reduce((s, b) => s + (b.dose || 0), 0);
+  // каппинг: доза × чашки по каждому образцу этой пачки
+  const mine = brews.filter((b) => brewBeanIds(b).includes(bean.id));
+  const used = mine.reduce((s, b) => s + gramsFromBean(b, bean.id), 0);
   const total = num(bean.weight);
   const left = total ? Math.max(0, Math.round((total - used + (bean.adjust ?? 0)) * 10) / 10) : 0;
   const avgDose = mine.length ? used / mine.length : 0;

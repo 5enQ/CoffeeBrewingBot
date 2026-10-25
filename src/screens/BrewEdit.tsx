@@ -8,6 +8,8 @@ import { CuppingForm } from '../ui/CuppingForm';
 import { Button, Chips, Dots, Field, Screen, Section, Stars, Stepper, ratingLabel } from '../ui/kit';
 import { BeanPicker } from './BeanPicker';
 import { GearPicker } from '../ui/GearPicker';
+import { CvaEditor } from '../ui/Cva';
+import { MODES } from '../data/cva';
 
 
 export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: boolean; openCupping?: boolean }) {
@@ -31,6 +33,14 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
   const toggleDesc = (d: string) => set({ descriptors: b.descriptors.includes(d) ? b.descriptors.filter((x) => x !== d) : [...b.descriptors, d] });
 
   const save = () => {
+    if (b.cva) {
+      const toSave: Brew = { ...b, rating: 0, cupping: null, beanId: b.cva.samples[0]?.beanId ?? b.beanId };
+      saveBrew(toSave);
+      platform.haptic('success');
+      if (isNew) { setTab('journal'); push({ name: 'brew', id: toSave.id }); }
+      else back(true);
+      return;
+    }
     // по анкете SCA оцениваем только каппинг; у остальных методов — звёзды
     const toSave: Brew = isCupping
       ? { ...b, rating: 0, cupping: { ...(b.cupping ?? emptyCupping()), descriptors: b.descriptors, notes: b.notes } }
@@ -40,6 +50,36 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
     if (isNew) { setTab('journal'); push({ name: 'brew', id: toSave.id }); }
     else back(true);
   };
+
+  if (b.cva) {
+    const cva = b.cva;
+    return (
+      <Screen title={isNew ? 'Оценка каппинга' : 'Редактировать каппинг'} subtitle={`${MODES.find((x) => x.id === cva.mode)?.label} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
+        footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty}>Сохранить</Button></div>}>
+        <CvaEditor value={cva} onChange={(v) => set({ cva: v })} />
+
+        <Section title="Цель и заметки">
+          <Field label="Цель сессии" id="cva-purpose" value={cva.purpose} placeholder="например, выбор лота"
+            onChange={(e) => set({ cva: { ...cva, purpose: e.target.value } })} />
+          <textarea id="brew-notes" className="notes" rows={3} value={b.notes} placeholder="Общие заметки о сессии"
+            onChange={(e) => set({ notes: e.target.value })} />
+        </Section>
+
+        <Section title="Параметры по протоколу" aside={<span className="lock-tag">не меняются</span>}>
+          <dl className="rules compact">
+            <div><dt>Доза</dt><dd><b>{fmtNum(b.dose, 1)} г на чашку</b></dd></div>
+            <div><dt>Вода</dt><dd><b>{b.water} мл · {fmtNum(b.temp)} °C</b></dd></div>
+            <div><dt>Чашек</dt><dd><b>{cva.cups} на образец · {cva.samples.length} обр.</b></dd></div>
+            <div><dt>Помол</dt><dd><b>{b.grind}</b></dd></div>
+          </dl>
+        </Section>
+
+        <Section title="Оборудование" plain>
+          <GearPicker methodId="cupping" value={b.gear ?? []} onChange={(gear) => set({ gear })} />
+        </Section>
+      </Screen>
+    );
+  }
 
   return (
     <Screen title={isNew ? 'Как получилось?' : 'Редактировать'} subtitle={`${m.name} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
@@ -90,7 +130,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
       <Section title="Параметры" aside={<span className="muted">{fmtRatio(b.water / b.dose)}</span>}>
         <Field label="Метод" id="method">
           <select id="method" value={b.methodId} onChange={(e) => set({ methodId: e.target.value, plan: undefined, cupping: e.target.value === 'cupping' ? (b.cupping ?? emptyCupping()) : b.cupping })}>
-            {allMethods().map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+            {allMethods().filter((x) => x.id !== 'cupping' || isCupping).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </select>
         </Field>
         <Stepper label="Кофе" value={b.dose} step={0.25} min={1} max={100} unit="г" format={(v) => String(v).replace('.', ',')} onChange={(dose) => set({ dose })} />

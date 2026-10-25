@@ -125,7 +125,7 @@ export function BrewDetail({ id }: { id: string }) {
       )}
 
       <div className="detail-head">
-        {c ? <><span className="muted">Оценка по анкете SCA</span><ScoreBadge c={c} big /></> : <Stars value={b.rating} size={26} />}
+        {c && (b.methodId === 'cupping' || !b.rating) ? <><span className="muted">Оценка по анкете SCA</span><ScoreBadge c={c} big /></> : <Stars value={b.rating} size={26} />}
       </div>
 
       <dl className="param-grid">

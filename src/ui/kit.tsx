@@ -172,18 +172,39 @@ export function Segmented<T extends string>({ options, value, onChange }: {
   );
 }
 
+/** Звёзды с половинками: 3,5 — три полные и половина. Нажатие на левую половину звезды ставит «.5». */
 export function Stars({ value, onChange, size = 28 }: { value: number; onChange?: (v: number) => void; size?: number }) {
+  const v = Math.round((value || 0) * 2) / 2;
+  const label = `Оценка ${String(v).replace('.', ',')} из 5`;
   return (
-    <div className={'stars' + (onChange ? ' editable' : '')} aria-label={`Оценка ${value} из 5`}>
+    <div className={'stars' + (onChange ? ' editable' : '')} aria-label={label} role={onChange ? 'group' : 'img'}>
       {[1, 2, 3, 4, 5].map((i) => {
-        const star = <Icon name="star" size={size} filled={i <= value} />;
-        return onChange ? (
-          <button type="button" key={i} className={i <= value ? 'on' : ''} aria-label={`${i} из 5`}
-            onClick={() => { platform.haptic('select'); onChange(i === value ? 0 : i); }}>{star}</button>
-        ) : <span key={i} className={i <= value ? 'on' : ''}>{star}</span>;
+        const fill = v >= i ? 100 : v >= i - 0.5 ? 50 : 0;
+        const visual = (
+          <span className="star" style={{ ['--fill' as string]: `${fill}%`, width: size, height: size }}>
+            <Icon name="star" size={size} />
+            <span className="star-fill"><Icon name="star" size={size} filled /></span>
+          </span>
+        );
+        if (!onChange) return <span key={i} className="star-cell">{visual}</span>;
+        const pick = (n: number) => { platform.haptic('select'); onChange(n === v ? 0 : n); };
+        return (
+          <span key={i} className="star-cell">
+            {visual}
+            <button type="button" className="star-half left" aria-label={`${String(i - 0.5).replace('.', ',')} из 5`} aria-pressed={v === i - 0.5} onClick={() => pick(i - 0.5)} />
+            <button type="button" className="star-half right" aria-label={`${i} из 5`} aria-pressed={v === i} onClick={() => pick(i)} />
+          </span>
+        );
       })}
     </div>
   );
+}
+
+/** «4,5» → подпись словами */
+export function ratingLabel(v: number) {
+  if (!v) return 'Не оценено';
+  const words = ['Не понравилось', 'Так себе', 'Нормально', 'Хорошо', 'Отлично'];
+  return `${String(v).replace('.', ',')} из 5 · ${words[Math.max(0, Math.ceil(v) - 1)]}`;
 }
 
 /** Шкала 1–5 точками */

@@ -5,7 +5,7 @@ import { useStore, type Brew } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
 import { CuppingForm } from '../ui/CuppingForm';
-import { Button, Chips, Dots, Field, Screen, Section, Stars, Stepper } from '../ui/kit';
+import { Button, Chips, Dots, Field, Screen, Section, Stars, Stepper, ratingLabel } from '../ui/kit';
 import { BeanPicker } from './BeanPicker';
 import { GearPicker } from '../ui/GearPicker';
 
@@ -18,6 +18,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const cuppingRef = useRef<HTMLDivElement>(null);
   const m = methodById(b.methodId);
+  const isCupping = b.methodId === 'cupping';
   const dirty = JSON.stringify(b) !== JSON.stringify(draft);
 
   useBackGuard(dirty || isNew, isNew ? 'Не сохранять эту заварку?' : 'Выйти без сохранения изменений?');
@@ -30,7 +31,10 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
   const toggleDesc = (d: string) => set({ descriptors: b.descriptors.includes(d) ? b.descriptors.filter((x) => x !== d) : [...b.descriptors, d] });
 
   const save = () => {
-    const toSave: Brew = { ...b, cupping: b.cupping ? { ...b.cupping, descriptors: b.descriptors, notes: b.notes } : null };
+    // по анкете SCA оцениваем только каппинг; у остальных методов — звёзды
+    const toSave: Brew = isCupping
+      ? { ...b, rating: 0, cupping: { ...(b.cupping ?? emptyCupping()), descriptors: b.descriptors, notes: b.notes } }
+      : { ...b, cupping: null };
     saveBrew(toSave);
     platform.haptic('success');
     if (isNew) { setTab('journal'); push({ name: 'brew', id: toSave.id }); }
@@ -41,12 +45,14 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
     <Screen title={isNew ? 'Как получилось?' : 'Редактировать'} subtitle={`${m.name} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
       footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty}>Сохранить</Button></div>}>
 
-      <Section title="Оценка" plain>
-        <div className="rating-card">
-          <Stars value={b.rating} onChange={(rating) => set({ rating })} size={36} />
-          <span>{['Не оценено', 'Не понравилось', 'Так себе', 'Нормально', 'Хорошо', 'Отлично'][b.rating]}</span>
-        </div>
-      </Section>
+      {!isCupping && (
+        <Section title="Оценка" plain>
+          <div className="rating-card">
+            <Stars value={b.rating} onChange={(rating) => set({ rating })} size={36} />
+            <span>{ratingLabel(b.rating)}</span>
+          </div>
+        </Section>
+      )}
 
       <Section title="Вкус">
         <Dots label="Кислотность" left="плоско" right="ярко" value={b.taste.acidity} onChange={(v) => set({ taste: { ...b.taste, acidity: v } })} />
@@ -83,7 +89,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
 
       <Section title="Параметры" aside={<span className="muted">{fmtRatio(b.water / b.dose)}</span>}>
         <Field label="Метод" id="method">
-          <select id="method" value={b.methodId} onChange={(e) => set({ methodId: e.target.value, plan: undefined })}>
+          <select id="method" value={b.methodId} onChange={(e) => set({ methodId: e.target.value, plan: undefined, cupping: e.target.value === 'cupping' ? (b.cupping ?? emptyCupping()) : b.cupping })}>
             {allMethods().map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </select>
         </Field>
@@ -100,15 +106,11 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
       </Section>
 
       <div ref={cuppingRef}>
-        <Section title="Каппинг-анкета SCA" aside={
-          <label className="switch">
-            <input type="checkbox" id="cupping-toggle" checked={!!b.cupping} onChange={(e) => set({ cupping: e.target.checked ? emptyCupping() : null })} />
-            <span />
-          </label>} plain>
-          {b.cupping
-            ? <CuppingForm value={b.cupping} onChange={(cupping) => set({ cupping })} />
-            : <p className="muted pad">Включите, чтобы оценить чашку по 100-балльной шкале: аромат, вкус, послевкусие, кислотность, тело, баланс, однородность, чистота, сладость.</p>}
-        </Section>
+        {isCupping && (
+          <Section title="Каппинг-анкета SCA" plain>
+            <CuppingForm value={b.cupping ?? emptyCupping()} onChange={(cupping) => set({ cupping })} />
+          </Section>
+        )}
       </div>
     </Screen>
   );

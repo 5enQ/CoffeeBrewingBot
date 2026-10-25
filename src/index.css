@@ -218,7 +218,6 @@ button.row:active { background: var(--fg-soft); }
 .stars .on { color: var(--star); }
 .stars button { border: 0; background: none; padding: 2px; color: inherit; display: flex; }
 .stars button.on { color: var(--star); }
-.stars:not(.editable) span:not(.on) { opacity: 0.35; }
 
 .dots { padding: 10px 14px 12px; }
 .dots-head { font-size: 15px; margin-bottom: 8px; }
@@ -805,3 +804,16 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 /* числа с единицами не разрываем: «до 700 г», «12:00:00» */
 .pour, .steps-preview time, .recipe-tile-meta span, .stock-text span, .tag, .count, .score-badge b, .pick-stock, .stepper-value, .gear-ul small { white-space: nowrap; }
 .steps-preview.long li { grid-template-columns: 78px 1fr; }
+
+/* ---------- Звёзды с половинками ---------- */
+.star-cell { position: relative; display: inline-flex; }
+.star { position: relative; display: inline-block; color: var(--hint); }
+.stars:not(.editable) .star { opacity: 1; }
+.star > svg { position: absolute; inset: 0; opacity: 0.45; }
+.star-fill { position: absolute; inset: 0; color: var(--star); clip-path: inset(0 calc(100% - var(--fill)) 0 0); }
+.star-fill svg { position: absolute; inset: 0; }
+.star-half { position: absolute; top: 0; bottom: 0; width: 50%; border: 0; background: none; padding: 0; cursor: pointer; }
+.star-half.left { left: 0; }
+.star-half.right { right: 0; }
+.star-half:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 4px; }
+.stars.editable { gap: 4px; }

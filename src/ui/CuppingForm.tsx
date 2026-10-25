@@ -13,9 +13,10 @@ export function ScoreBadge({ c, big = false }: { c: Cupping; big?: boolean }) {
   );
 }
 
-/** Оценка заварки: баллы SCA, если есть каппинг, иначе звёзды. Баллы всегда в приоритете. */
-export function BrewScore({ brew, size = 14, big = false }: { brew: { rating: number; cupping: Cupping | null }; size?: number; big?: boolean }) {
-  return brew.cupping ? <ScoreBadge c={brew.cupping} big={big} /> : <Stars value={brew.rating} size={size} />;
+/** Оценка заварки: у каппинга — баллы SCA, у остальных методов — звёзды */
+export function BrewScore({ brew, size = 14, big = false }: { brew: { methodId: string; rating: number; cupping: Cupping | null }; size?: number; big?: boolean }) {
+  const scored = brew.cupping && (brew.methodId === 'cupping' || !brew.rating); // старые записи без звёзд — показываем баллы
+  return scored ? <ScoreBadge c={brew.cupping!} big={big} /> : <Stars value={brew.rating} size={size} />;
 }
 
 export function CuppingForm({ value, onChange }: { value: Cupping; onChange(c: Cupping): void }) {

@@ -39,7 +39,7 @@ export function toShared(b: Brew, bean: Bean | undefined, author: Author, myId?:
     date: b.date,
     methodId: b.methodId, dose: b.dose, water: b.water, temp: b.temp, grind: b.grind, time: b.time,
     rating: b.rating, descriptors: b.descriptors, notes: b.notes,
-    score: b.cupping ? cupScore(b.cupping).total : undefined,
+    score: b.cupping && (b.methodId === 'cupping' || !b.rating) ? cupScore(b.cupping).total : undefined,
     bean: bean ? Object.fromEntries(BEAN_KEYS.filter((k) => bean[k]).map((k) => [k, bean[k]])) : null,
     gear: (b.gear ?? []).map(({ cat, name, details }) => (details ? { cat, name, details } : { cat, name })),
     plan: b.plan ? { name: b.plan.name, total: b.plan.total, steps: b.plan.steps } : undefined,
@@ -192,7 +192,7 @@ export function recipeText(r: SharedRecipe): string {
   const steps = plan.steps.map((s) => `${fmtTime(s.at)} ${s.title}${s.to !== undefined ? ` — до ${fmtNum(r.water * s.to, 0)} г` : ''}${s.hint ? ` (${s.hint})` : ''}`);
   steps.push(`${fmtTime(plan.total)} Готово`);
   lines.push('', 'Шаги:', ...steps);
-  const taste = [r.descriptors.join(', '), r.score !== undefined ? `оценка SCA ${fmtNum(r.score, 2)}` : r.rating ? '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating) : ''].filter(Boolean);
+  const taste = [r.descriptors.join(', '), r.score !== undefined ? `оценка SCA ${fmtNum(r.score, 2)}` : r.rating ? `${'★'.repeat(Math.floor(r.rating))}${r.rating % 1 ? '½' : ''} ${fmtNum(r.rating)} из 5` : ''].filter(Boolean);
   if (taste.length) lines.push('', `Вкус: ${taste.join(' · ')}`);
   if (r.notes) lines.push(`Заметки: ${r.notes}`);
   return lines.join('\n');

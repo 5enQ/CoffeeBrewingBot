@@ -7,16 +7,15 @@ import { toneOf } from '../data/cupping';
 import { platform } from '../platform';
 import { useRouter } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
+import { AuthorBlock } from '../ui/Badges';
 import { Button, Empty, Field, Screen, Stars } from '../ui/kit';
 
-const initials = (s: string) => s.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 
 /** Карточка рецепта — одинаково выглядит у автора (превью) и у друга */
 export function RecipeCard({ r }: { r: SharedRecipe }) {
   const m = methodById(r.methodId);
   const beanName = r.bean?.name || [r.bean?.country, r.bean?.region].filter(Boolean).join(', ');
   const origin = r.bean ? [r.bean.country, r.bean.region, r.bean.farm].filter(Boolean).join(' · ') : '';
-  const authorName = r.author.name || (r.author.username ? '@' + r.author.username : 'Без имени');
 
   return (
     <article className="recipe-card">
@@ -29,10 +28,7 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
         </div>
       </header>
 
-      <div className="author">
-        <span className="avatar small" aria-hidden="true">{initials(authorName)}</span>
-        <span><small>Рецепт от</small><b>{authorName}</b>{r.author.username && r.author.name && <em>@{r.author.username}</em>}</span>
-      </div>
+      <AuthorBlock author={r.author} />
 
       <dl className="param-grid">
         <div><dt>Кофе</dt><dd>{fmtNum(r.dose, 2)} г</dd></div>
@@ -40,7 +36,7 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
         <div><dt>Пропорция</dt><dd>{fmtRatio(r.water / r.dose)}</dd></div>
         <div><dt>Температура</dt><dd>{r.temp ? `${fmtNum(r.temp)}°C` : 'холодная'}</dd></div>
         <div><dt>Время</dt><dd>{fmtTime(r.time)}</dd></div>
-        <div><dt>Помол</dt><dd>{r.grind || '—'}</dd></div>
+        <div><dt>Помол</dt><dd className="dd-text">{r.grind || '—'}</dd></div>
       </dl>
 
       {r.gear.length > 0 && (
@@ -96,11 +92,16 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
 export function ShareScreen({ id }: { id: string }) {
   const { brews, beans, profile, saveProfile } = useStore();
   const b = brews.find((x) => x.id === id);
-  const user = platform.user();
   const [link, setLink] = useState('');
   const [msg, setMsg] = useState('');
 
-  const recipe = b ? toShared(b, beans.find((x) => x.id === b.beanId), { name: profile.name.trim(), username: user?.username }) : null;
+  const tg = profile.telegram.trim();
+  const me = {
+    name: profile.name.trim(),
+    username: profile.shareTelegram && tg ? tg : undefined,
+    badges: profile.shareBadges && profile.badges.length ? profile.badges.map(({ id: _id, ...rest }) => rest) : undefined,
+  };
+  const recipe = b ? toShared(b, beans.find((x) => x.id === b.beanId), me) : null;
   const key = JSON.stringify(recipe);
 
   useEffect(() => {
@@ -125,12 +126,21 @@ export function ShareScreen({ id }: { id: string }) {
         <button type="button" className="round-btn" onClick={copy} aria-label="Скопировать текст"><Icon name="journal" /></button>
         <Button icon="share" wide onClick={send} disabled={!link}>{platform.kind === 'telegram' ? 'Отправить в Telegram' : 'Поделиться'}</Button>
       </div>}>
-      {!b.author && !profile.name.trim() && (
+      {!b.author && (
         <div className="group">
-          <Field label="Ваше имя" id="share-name" placeholder="как подписать рецепт" value={profile.name}
-            onChange={(e) => saveProfile({ ...profile, name: e.target.value })} />
+          {!profile.name.trim() && (
+            <Field label="Ваше имя" id="share-name" placeholder="как подписать рецепт" value={profile.name}
+              onChange={(e) => saveProfile({ ...profile, name: e.target.value })} />
+          )}
+          <Toggle id="share-tg" label="Ссылка на мой Telegram" checked={profile.shareTelegram && !!tg} disabled={!tg}
+            hint={tg ? `Друг сможет открыть @${tg}` : 'Укажите username в профиле'}
+            onChange={(v) => saveProfile({ ...profile, shareTelegram: v })} />
+          <Toggle id="share-badges" label="Мои значки" checked={profile.shareBadges && profile.badges.length > 0} disabled={!profile.badges.length}
+            hint={profile.badges.length ? `${profile.badges.length} — сертификаты и награды` : 'Добавьте значки в профиле'}
+            onChange={(v) => saveProfile({ ...profile, shareBadges: v })} />
         </div>
       )}
+      {b.author && <p className="muted pad">Это рецепт {b.author.name || 'друга'} — он уйдёт с указанием исходного автора.</p>}
       <RecipeCard r={recipe} />
       {msg && <p className="status">{msg}</p>}
       <p className="muted pad">Друг получит текст рецепта и ссылку: по ней рецепт откроется в приложении, его можно сохранить в дневник и заварить по шагам.</p>
@@ -184,5 +194,19 @@ export function SharedRecipeScreen({ recipe: r }: { recipe: SharedRecipe }) {
       <RecipeCard r={r} />
       <p className="muted pad">«Заварить так же» откроет рецепт с этими параметрами — оборудование выберете своё. Зерно добавится в ваши зёрна.</p>
     </Screen>
+  );
+}
+
+function Toggle({ id, label, hint, checked, disabled, onChange }: {
+  id: string; label: string; hint?: string; checked: boolean; disabled?: boolean; onChange(v: boolean): void;
+}) {
+  return (
+    <label className={'toggle-row' + (disabled ? ' disabled' : '')} htmlFor={id}>
+      <span className="row-main"><span className="row-label">{label}</span>{hint && <span className="row-hint">{hint}</span>}</span>
+      <span className="switch">
+        <input type="checkbox" id={id} checked={checked} disabled={disabled} onChange={(e) => { platform.haptic('select'); onChange(e.target.checked); }} />
+        <span />
+      </span>
+    </label>
   );
 }

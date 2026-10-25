@@ -1,5 +1,6 @@
 import { TELEGRAM_APP, TELEGRAM_BOT, WEB_URL } from '../config';
 import { cupScore } from './cupping';
+import { badgeText, sortBadges, type BadgeKind } from './badges';
 import { catById, type GearCat, type GearRef } from './gear';
 import { methodById, fmtNum, fmtRatio, fmtTime } from './methods';
 import type { Author, Bean, Brew } from './store';
@@ -39,11 +40,13 @@ export function toShared(b: Brew, bean: Bean | undefined, author: Author): Share
 
 /* ---------- Компактная упаковка: короткие ключи → deflate → base64url ---------- */
 
+const KINDS: BadgeKind[] = ['sca', 'q', 'champ', 'custom'];
 const CATS: GearCat[] = ['grinder', 'machine', 'dripper', 'press', 'stovetop', 'kettle', 'scale', 'filter', 'other'];
 
 function pack(r: SharedRecipe) {
   return {
     a: [r.author.name, r.author.username ?? ''],
+    h: r.author.badges?.length ? r.author.badges.map((b) => [KINDS.indexOf(b.kind), b.title, b.detail, b.year]) : undefined,
     t: Math.round(r.date / 60000),
     m: r.methodId, d: r.dose, w: r.water, c: r.temp, g: r.grind, s: r.time, r: r.rating,
     k: r.descriptors.length ? r.descriptors : undefined,
@@ -56,7 +59,10 @@ function pack(r: SharedRecipe) {
 
 function unpack(o: ReturnType<typeof pack>): SharedRecipe {
   return {
-    author: { name: String(o.a?.[0] ?? ''), username: o.a?.[1] || undefined },
+    author: {
+      name: String(o.a?.[0] ?? ''), username: o.a?.[1] || undefined,
+      badges: Array.isArray(o.h) ? o.h.map((b) => ({ kind: KINDS[Number(b[0])] ?? 'custom', title: String(b[1] ?? ''), detail: String(b[2] ?? ''), year: String(b[3] ?? '') })) : undefined,
+    },
     date: (o.t ?? 0) * 60000,
     methodId: String(o.m), dose: Number(o.d), water: Number(o.w), temp: Number(o.c), grind: String(o.g ?? ''),
     time: Number(o.s ?? 0), rating: Number(o.r ?? 0),
@@ -113,7 +119,8 @@ export async function recipeLink(r: SharedRecipe): Promise<string> {
       r,
       { ...r, notes: '' },
       { ...r, notes: '', bean: r.bean ? { name: r.bean.name, country: r.bean.country, process: r.bean.process } : null },
-      { ...r, notes: '', descriptors: [], bean: r.bean ? { name: r.bean.name } : null, gear: r.gear.map(({ cat, name }) => ({ cat, name })) },
+      { ...r, notes: '', author: { ...r.author, badges: r.author.badges?.slice(0, 2) }, bean: r.bean ? { name: r.bean.name, country: r.bean.country, process: r.bean.process } : null },
+      { ...r, notes: '', descriptors: [], author: { ...r.author, badges: undefined }, bean: r.bean ? { name: r.bean.name } : null, gear: r.gear.map(({ cat, name }) => ({ cat, name })) },
     ];
     for (const v of variants) {
       const code = await encodeRecipe(v);
@@ -130,6 +137,7 @@ export function recipeText(r: SharedRecipe): string {
   const beanName = r.bean?.name || [r.bean?.country, r.bean?.region].filter(Boolean).join(', ');
   lines.push(`${m.name}${beanName ? ` — ${beanName}` : ''}`);
   if (r.author.name || r.author.username) lines.push(`Рецепт от ${[r.author.name, r.author.username && '@' + r.author.username].filter(Boolean).join(' ')}`);
+  if (r.author.badges?.length) lines.push(sortBadges(r.author.badges).map(badgeText).join('; '));
   lines.push('');
   if (r.bean) {
     const origin = [r.bean.country, r.bean.region, r.bean.farm].filter(Boolean).join(', ');

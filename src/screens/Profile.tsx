@@ -1,20 +1,22 @@
 import { useState } from 'react';
 import { GEAR_CATS, type Gear } from '../data/gear';
+import { BADGE_KINDS, CHAMPIONSHIPS, PLACES, Q_TYPES, SCA_EXTRA, SCA_LEVELS, SCA_MODULES, sortBadges, type Badge } from '../data/badges';
+import { BadgeChip } from '../ui/Badges';
 import { useStore, uid } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
 import { Icon } from '../ui/icons';
-import { Button, Field, Row, SampleTag, Screen, Section } from '../ui/kit';
+import { Button, Chips, Field, Row, SampleTag, Screen, Section } from '../ui/kit';
 
 export function Profile() {
   const store = useStore();
   const { push } = useRouter();
   const [msg, setMsg] = useState('');
   const [paste, setPaste] = useState('');
-  const user = platform.user();
   const { profile, gear } = store;
-  const initials = (profile.name || user?.username || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+  const initials = (profile.name || profile.telegram || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
+  const addBadge = (kind: Badge['kind'] = 'sca') => push({ name: 'badgeEdit', badge: { id: uid(), kind, title: '', detail: '', year: '' }, isNew: true });
   const addGear = (cat: Gear['cat']) => push({ name: 'gearEdit', gear: { id: uid(), cat, name: '', details: '' }, isNew: true });
 
   const copy = async () => {
@@ -47,12 +49,31 @@ export function Profile() {
         <div className="profile-fields">
           <input id="profile-name" className="profile-name" placeholder="Ваше имя" value={profile.name}
             onChange={(e) => store.saveProfile({ ...profile, name: e.target.value })} aria-label="Имя автора" />
-          {user?.username && <span className="profile-handle">@{user.username}</span>}
+          <label className="profile-handle" htmlFor="profile-tg">
+            <span>@</span>
+            <input id="profile-tg" placeholder="username в Telegram" value={profile.telegram} autoCapitalize="off" autoCorrect="off" spellCheck={false}
+              onChange={(e) => store.saveProfile({ ...profile, telegram: e.target.value.replace(/^@/, '').replace(/[^A-Za-z0-9_]/g, '') })} />
+          </label>
           <textarea id="profile-about" className="profile-about" rows={2} placeholder="Пара слов о себе: как любите кофе"
             value={profile.about} onChange={(e) => store.saveProfile({ ...profile, about: e.target.value })} />
         </div>
       </div>
-      <p className="muted pad">Это имя увидят друзья в рецептах, которыми вы поделитесь.</p>
+      <p className="muted pad">Имя и значки увидят друзья в рецептах, которыми вы поделитесь. Ссылку на Telegram можно не добавлять — это выбирается при отправке.</p>
+
+      <Section title="Значки" aside={
+        <button type="button" className="icon-btn" onClick={() => addBadge()} aria-label="Добавить значок"><Icon name="plus" /></button>
+      } plain>
+        {profile.badges.length > 0 ? (
+          <div className="badge-list">
+            {sortBadges(profile.badges).map((b) => <BadgeChip key={b.id} b={b} onClick={() => push({ name: 'badgeEdit', badge: b, isNew: false })} />)}
+          </div>
+        ) : (
+          <button type="button" className="badge-empty" onClick={() => addBadge()}>
+            <Icon name="medal" size={28} />
+            <span><b>Добавьте сертификат или награду</b><small>SCA, Q Grader, места на чемпионатах</small></span>
+          </button>
+        )}
+      </Section>
 
       <div className="stats">
         <div><b>{store.brews.length}</b><span>заварок</span></div>
@@ -168,6 +189,94 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
           ))}
         </div>
       </Section>
+    </Screen>
+  );
+}
+
+/* ---------- Значок ---------- */
+
+export function BadgeEdit({ badge: initial, isNew }: { badge: Badge; isNew: boolean }) {
+  const { profile, saveProfile } = useStore();
+  const { back } = useRouter();
+  const [b, setB] = useState<Badge>(initial);
+  const dirty = JSON.stringify(b) !== JSON.stringify(initial);
+  useBackGuard(dirty, 'Выйти без сохранения?');
+  const set = (patch: Partial<Badge>) => { platform.haptic('select'); setB((x) => ({ ...x, ...patch })); };
+  const pick = (field: 'title' | 'detail', v: string) => set({ [field]: b[field] === v ? '' : v });
+
+  const save = () => {
+    const clean = { ...b, title: b.title.trim(), detail: b.detail.trim(), year: b.year.trim() };
+    const badges = profile.badges.some((x) => x.id === b.id) ? profile.badges.map((x) => (x.id === b.id ? clean : x)) : [...profile.badges, clean];
+    saveProfile({ ...profile, badges });
+    platform.haptic('success');
+    back(true);
+  };
+  const remove = async () => {
+    if (!(await platform.confirm('Удалить значок?'))) return;
+    saveProfile({ ...profile, badges: profile.badges.filter((x) => x.id !== b.id) });
+    back(true);
+  };
+
+  const years = Array.from({ length: 12 }, (_, i) => String(new Date().getFullYear() - i));
+
+  return (
+    <Screen title={isNew ? 'Новый значок' : 'Значок'}
+      footer={<div className="footer-actions">
+        {!isNew && <button type="button" className="round-btn" onClick={remove} aria-label="Удалить"><Icon name="trash" /></button>}
+        <Button icon="check" wide onClick={save} disabled={!b.title.trim()}>Сохранить</Button>
+      </div>}>
+      <div className="badge-preview">
+        <BadgeChip b={{ ...b, title: b.title || 'Название', detail: b.detail }} />
+      </div>
+
+      <Section title="Тип" plain>
+        <div className="chips">
+          {BADGE_KINDS.map((k) => (
+            <button type="button" key={k.id} className={'chip' + (b.kind === k.id ? ' on' : '')}
+              onClick={() => set({ kind: k.id, title: '', detail: '' })}>{k.label}</button>
+          ))}
+        </div>
+      </Section>
+
+      {b.kind === 'sca' && <>
+        <Section title="Модуль" plain>
+          <Chips options={[...SCA_MODULES, ...SCA_EXTRA]} value={[b.title.replace(/^SCA /, '')]}
+            onToggle={(v) => { const t = SCA_MODULES.includes(v) ? `SCA ${v}` : v; set({ title: b.title === t ? '' : t }); }} />
+        </Section>
+        {!SCA_EXTRA.includes(b.title) && !b.title.startsWith('SCA Coffee') && (
+          <Section title="Уровень" plain>
+            <Chips options={SCA_LEVELS} value={[b.detail]} onToggle={(v) => pick('detail', v)} />
+          </Section>
+        )}
+      </>}
+
+      {b.kind === 'q' && (
+        <Section title="Сертификат" plain>
+          <Chips options={Q_TYPES} value={[b.title]} onToggle={(v) => pick('title', v)} />
+        </Section>
+      )}
+
+      {b.kind === 'champ' && <>
+        <Section title="Чемпионат" plain>
+          <Chips options={CHAMPIONSHIPS} value={[b.title]} onToggle={(v) => pick('title', v)} />
+        </Section>
+        <Section title="Результат" plain>
+          <Chips options={PLACES} value={[b.detail]} onToggle={(v) => pick('detail', v)} />
+        </Section>
+      </>}
+
+      <Section title="Год" plain>
+        <Chips options={years} value={[b.year]} onToggle={(v) => set({ year: b.year === v ? '' : v })} />
+      </Section>
+
+      <Section title={b.kind === 'custom' ? 'Описание' : 'Своё значение'}>
+        <Field label="Название" id="badge-title" value={b.title} placeholder={b.kind === 'champ' ? 'Региональный чемпионат…' : b.kind === 'custom' ? 'Head barista в …' : ''}
+          onChange={(e) => setB({ ...b, title: e.target.value })} />
+        <Field label={b.kind === 'champ' ? 'Место' : 'Уровень'} id="badge-detail" value={b.detail}
+          onChange={(e) => setB({ ...b, detail: e.target.value })} />
+        <Field label="Год" id="badge-year" inputMode="numeric" value={b.year} onChange={(e) => setB({ ...b, year: e.target.value.replace(/\D/g, '').slice(0, 4) })} />
+      </Section>
+      <p className="muted pad">Значки указываете вы сами — в рецепте они видны как информация от автора.</p>
     </Screen>
   );
 }

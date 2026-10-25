@@ -131,7 +131,9 @@ export function createTelegramPlatform(): Platform {
       });
     },
 
-    openLink(url) { tg().openLink(url); },
+    openLink(url) {
+      if (/^https:\/\/t\.me\//.test(url)) tg().openTelegramLink(url); else tg().openLink(url);
+    },
 
     startParam() {
       return tg().initDataUnsafe?.start_param || web.startParam();

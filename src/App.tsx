@@ -8,7 +8,7 @@ import { TimerScreen } from './screens/TimerScreen';
 import { BrewEdit } from './screens/BrewEdit';
 import { Journal, BrewDetail } from './screens/Journal';
 import { Beans, BeanDetail, BeanEdit } from './screens/Beans';
-import { Profile, GearEdit } from './screens/Profile';
+import { Profile, GearEdit, BadgeEdit } from './screens/Profile';
 import { ShareScreen, SharedRecipeScreen } from './screens/Share';
 import { useEffect } from 'react';
 import { platform } from './platform';
@@ -22,6 +22,7 @@ function renderRoute(r: Route) {
     case 'brew': return <BrewDetail id={r.id} />;
     case 'bean': return <BeanDetail id={r.id} />;
     case 'beanEdit': return <BeanEdit bean={r.bean} isNew={r.isNew} scanOnOpen={r.scanOnOpen} />;
+    case 'badgeEdit': return <BadgeEdit badge={r.badge} isNew={r.isNew} />;
     case 'gearEdit': return <GearEdit gear={r.gear} isNew={r.isNew} />;
     case 'share': return <ShareScreen id={r.id} />;
     case 'shared': return <SharedRecipeScreen recipe={r.recipe} />;

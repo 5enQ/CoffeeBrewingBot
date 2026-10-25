@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { platform } from '../platform';
 import type { Cupping } from './cupping';
 import type { Gear, GearRef } from './gear';
+import type { Badge, BadgeLite } from './badges';
 
 export interface Bean {
   id: string;
@@ -55,9 +56,18 @@ export interface Brew {
   sample?: boolean;
 }
 
-export interface Author { name: string; username?: string }
+export interface Author { name: string; username?: string; badges?: BadgeLite[] }
 
-export interface Profile { name: string; about: string }
+export interface Profile {
+  name: string;
+  about: string;
+  /** username в Telegram без @ */
+  telegram: string;
+  badges: Badge[];
+  /** настройки «Поделиться» */
+  shareTelegram: boolean;
+  shareBadges: boolean;
+}
 
 export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[] }
 
@@ -74,7 +84,7 @@ interface DB {
 }
 
 const KEY = 'brewbook.db.v1';
-const EMPTY: DB = { v: 1, beans: [], brews: [], recipes: {}, gear: [], profile: { name: '', about: '' } };
+const EMPTY: DB = { v: 1, beans: [], brews: [], recipes: {}, gear: [], profile: { name: '', about: '', telegram: '', badges: [], shareTelegram: true, shareBadges: true } };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -193,7 +203,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       } catch (e) { console.warn('Не удалось прочитать данные', e); }
       if (!next.seeded) next = { ...next, ...seed(), seeded: true };
       if (!next.gearSeeded) next = { ...next, gear: [...next.gear, ...(next.beans.some((b) => b.sample) ? seedGear() : [])], gearSeeded: true };
-      if (!next.profile.name) next = { ...next, profile: { ...next.profile, name: platform.user()?.name ?? '' } };
+      next = { ...next, profile: { ...EMPTY.profile, ...next.profile } };
+      const tgUser = platform.user();
+      if (!next.profile.name && tgUser?.name) next = { ...next, profile: { ...next.profile, name: tgUser.name } };
+      if (!next.profile.telegram && tgUser?.username) next = { ...next, profile: { ...next.profile, telegram: tgUser.username } };
       loaded.current = true;
       setDb(next);
       setReady(true);
@@ -232,7 +245,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     importJson(json) {
       const data = JSON.parse(json);
       if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл экспорта дневника');
-      setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], profile: data.profile ?? EMPTY.profile, seeded: true, gearSeeded: true });
+      setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true });
     },
   }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile]);
 

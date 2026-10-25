@@ -7,6 +7,7 @@ import { useRouter } from '../router';
 import { ScoreBadge } from '../ui/CuppingForm';
 import { MethodIcon, Icon } from '../ui/icons';
 import { catById } from '../data/gear';
+import { AuthorBlock } from '../ui/Badges';
 import { Button, Chips, Empty, Row, SampleTag, Screen, Section, Stars } from '../ui/kit';
 import { beanOrigin, beanTitle } from './beanUtils';
 
@@ -110,12 +111,7 @@ export function BrewDetail({ id }: { id: string }) {
           <Button icon="repeat" wide onClick={() => push({ name: 'method', methodId: b.methodId, beanId: b.beanId, from: b })}>Повторить</Button>
         </div>
       }>
-      {b.author && (
-        <div className="author">
-          <span className="avatar small" aria-hidden="true">{(b.author.name || b.author.username || '?').slice(0, 1).toUpperCase()}</span>
-          <span><small>Рецепт от</small><b>{b.author.name || '@' + b.author.username}</b>{b.author.username && b.author.name && <em>@{b.author.username}</em>}</span>
-        </div>
-      )}
+      {b.author && <AuthorBlock author={b.author} />}
 
       <div className="detail-head">
         <Stars value={b.rating} size={26} />
@@ -128,7 +124,7 @@ export function BrewDetail({ id }: { id: string }) {
         <div><dt>Пропорция</dt><dd>{fmtRatio(b.water / b.dose)}</dd></div>
         <div><dt>Температура</dt><dd>{b.temp ? `${fmtNum(b.temp)}°C` : 'холодная'}</dd></div>
         <div><dt>Время</dt><dd>{fmtTime(b.time)}</dd></div>
-        <div><dt>Помол</dt><dd>{b.grind || '—'}</dd></div>
+        <div><dt>Помол</dt><dd className="dd-text">{b.grind || '—'}</dd></div>
       </dl>
 
       {b.gear && b.gear.length > 0 && (

@@ -13,7 +13,10 @@ export type HapticKind =
 export interface PlatformUser {
   id?: string;
   name?: string;
+  username?: string;
 }
+
+export type ShareResult = 'shared' | 'copied' | 'failed';
 
 export interface Platform {
   kind: 'telegram' | 'web' | 'native';
@@ -48,4 +51,10 @@ export interface Platform {
   scanQr?: (hint: string) => Promise<string | null>;
 
   openLink(url: string): void;
+
+  /** Параметр запуска: startapp в Telegram, #r=… в вебе */
+  startParam(): string | null;
+
+  /** Отправить текст и ссылку: в Telegram — выбор чата, в вебе — системное «Поделиться» или буфер обмена */
+  share(text: string, url: string): Promise<ShareResult>;
 }

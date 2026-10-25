@@ -1,4 +1,4 @@
-import { useSyncExternalStore, type ReactNode, type InputHTMLAttributes } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type InputHTMLAttributes } from 'react';
 import { platform } from '../platform';
 import { useRouter } from '../router';
 import { Icon } from './icons';
@@ -78,18 +78,59 @@ export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format
   value: number; onChange(v: number): void; step?: number; min?: number; max?: number;
   format?: (v: number) => string; label: string; unit?: string;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
+  const latest = useRef(value);
+  latest.current = value;
+  const hold = useRef<{ t?: ReturnType<typeof setTimeout>; i?: ReturnType<typeof setInterval>; held: boolean }>({ held: false });
+  const decimals = Math.max(0, (String(step).split('.')[1] ?? '').length);
+
+  const clamp = (v: number) => Number(Math.min(max, Math.max(min, Math.round(v / step) * step)).toFixed(Math.max(decimals, 2)));
   const set = (v: number) => {
-    const n = Math.min(max, Math.max(min, Math.round(v / step) * step));
-    platform.haptic('select');
-    onChange(Number(n.toFixed(2)));
+    const n = clamp(v);
+    if (n !== latest.current) { platform.haptic('select'); latest.current = n; onChange(n); }
   };
+
+  // удержание кнопки — быстрый повтор
+  const startHold = (dir: 1 | -1) => {
+    hold.current.held = false;
+    hold.current.t = setTimeout(() => {
+      hold.current.held = true;
+      hold.current.i = setInterval(() => set(latest.current + dir * step), 70);
+    }, 420);
+  };
+  const stopHold = () => { clearTimeout(hold.current.t); clearInterval(hold.current.i); };
+  useEffect(() => stopHold, []);
+  const tap = (dir: 1 | -1) => { if (hold.current.held) { hold.current.held = false; return; } set(latest.current + dir * step); };
+
+  const commit = () => {
+    const n = parseFloat(text.replace(',', '.'));
+    if (!isNaN(n)) set(n);
+    setEditing(false);
+  };
+
+  const btn = (dir: 1 | -1) => (
+    <button type="button" aria-label={`${dir > 0 ? 'Увеличить' : 'Уменьшить'}: ${label}`}
+      onClick={() => tap(dir)} onPointerDown={() => startHold(dir)} onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}
+      onContextMenu={(e) => e.preventDefault()}>{dir > 0 ? '+' : '−'}</button>
+  );
+
   return (
     <div className="stepper">
       <span className="stepper-label">{label}</span>
       <div className="stepper-ctrl">
-        <button type="button" onClick={() => set(value - step)} aria-label={`Уменьшить: ${label}`}>−</button>
-        <output>{format ? format(value) : value}{unit && <small>{unit}</small>}</output>
-        <button type="button" onClick={() => set(value + step)} aria-label={`Увеличить: ${label}`}>+</button>
+        {btn(-1)}
+        {editing ? (
+          <input className="stepper-input" autoFocus inputMode="decimal" aria-label={label} value={text}
+            onChange={(e) => setText(e.target.value)} onBlur={commit}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditing(false); }} />
+        ) : (
+          <button type="button" className="stepper-value" aria-label={`${label}: ввести вручную`}
+            onClick={() => { setText(String(value).replace('.', ',')); setEditing(true); }}>
+            {format ? format(value) : value}{unit && <small>{unit}</small>}
+          </button>
+        )}
+        {btn(1)}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import type { Platform, HapticKind } from './types';
+import type { Platform, HapticKind, ShareResult } from './types';
 import { dialog } from '../ui/dialog';
 
 const memory = new Map<string, string>();
@@ -24,6 +24,15 @@ const vibrateMap: Record<HapticKind, number | number[]> = {
   light: 8, medium: 14, heavy: 22, select: 5,
   success: [10, 40, 10], warning: [20, 40, 20], error: [30, 50, 30],
 };
+
+export async function webShare(text: string, url: string): Promise<ShareResult> {
+  const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+  if (nav.share) {
+    try { await nav.share({ text, url }); return 'shared'; }
+    catch (e) { if ((e as Error).name === 'AbortError') return 'failed'; }
+  }
+  try { await navigator.clipboard.writeText(`${text}\n\n${url}`); return 'copied'; } catch { return 'failed'; }
+}
 
 export function createWebPlatform(): Platform {
   const mq = typeof matchMedia !== 'undefined' ? matchMedia('(prefers-color-scheme: dark)') : null;
@@ -52,5 +61,10 @@ export function createWebPlatform(): Platform {
       window.onbeforeunload = on ? (e) => { e.preventDefault(); return ''; } : null;
     },
     openLink(url) { window.open(url, '_blank', 'noopener'); },
+    startParam() {
+      const m = location.hash.match(/[#&]r=([A-Za-z0-9_-]+)/);
+      return m ? m[1] : null;
+    },
+    share: webShare,
   };
 }

@@ -6,10 +6,12 @@ import { useRouter } from '../router';
 import { MethodIcon } from '../ui/icons';
 import { Button, Field, Screen, Section, Stepper } from '../ui/kit';
 import { BeanPicker } from './BeanPicker';
+import { GearPicker, defaultGear } from '../ui/GearPicker';
+import type { GearRef } from '../data/gear';
 
 export function MethodScreen({ methodId, beanId, from }: { methodId: string; beanId?: string | null; from?: Brew }) {
   const m = methodById(methodId);
-  const { recipes, saveRecipe, beans } = useStore();
+  const { recipes, saveRecipe, beans, gear: myGear } = useStore();
   const { push } = useRouter();
   const saved = recipes[m.id];
 
@@ -17,6 +19,7 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
   const [ratio, setRatio] = useState(from ? from.water / from.dose : saved?.ratio ?? m.ratio);
   const [temp, setTemp] = useState(from?.temp ?? saved?.temp ?? m.temp);
   const [grind, setGrind] = useState(from?.grind ?? saved?.grind ?? m.grind);
+  const [gear, setGear] = useState<GearRef[]>(() => from?.gear?.length ? from.gear : defaultGear(m.id, myGear, saved?.gear));
   const [bean, setBean] = useState<string | null>(beanId ?? from?.beanId ?? beans.find((b) => !b.sample)?.id ?? beans[0]?.id ?? null);
 
   const water = Math.round(dose * ratio * (m.id === 'espresso' ? 10 : 1)) / (m.id === 'espresso' ? 10 : 1);
@@ -27,9 +30,10 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
     id: uid(), date: Date.now(), methodId: m.id, beanId: bean, dose, water, temp, grind, time: m.total,
     rating: 0, taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, descriptors: [], notes: '',
     cupping: m.id === 'cupping' ? emptyCupping() : null,
+    gear,
   });
 
-  const remember = () => saveRecipe(m.id, { dose, ratio, temp, grind });
+  const remember = () => saveRecipe(m.id, { dose, ratio, temp, grind, gear: gear.map((g) => g.id) });
 
   return (
     <Screen title={m.name} subtitle={m.about}
@@ -60,9 +64,13 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
           onChange={(w) => setDose(Math.max(1, Math.round((w / ratio) * 4) / 4))} />
         <Stepper label="Пропорция" value={ratio} step={espresso ? 0.1 : 0.5} min={1} max={25} format={fmtRatio}
           onChange={(r) => setRatio(r)} />
-        <Stepper label="Температура" value={temp} step={1} min={0} max={100} unit={temp ? '°C' : ''}
-          format={(v) => (v === 0 ? 'холодная' : String(v))} onChange={setTemp} />
+        <Stepper label="Температура" value={temp} step={0.1} min={0} max={100} unit={temp ? '°C' : ''}
+          format={(v) => (v === 0 ? 'холодная' : fmtNum(v))} onChange={setTemp} />
         <Field label="Помол" id="grind" value={grind} onChange={(e) => setGrind(e.target.value)} placeholder="например, Comandante 22" />
+      </Section>
+
+      <Section title="Оборудование" plain>
+        <GearPicker methodId={m.id} value={gear} onChange={setGear} />
       </Section>
 
       <Section title="Шаги">

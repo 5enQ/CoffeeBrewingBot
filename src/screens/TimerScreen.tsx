@@ -89,7 +89,7 @@ export function TimerScreen({ draft }: { draft: Brew }) {
   const target = step.to !== undefined ? draft.water * step.to : null;
 
   return (
-    <Screen title={m.name} subtitle={`${fmtNum(draft.dose, 2)} г · ${fmtNum(draft.water)} г · ${draft.temp ? draft.temp + '°C' : 'холодная вода'}`}
+    <Screen title={m.name} subtitle={`${fmtNum(draft.dose, 2)} г · ${fmtNum(draft.water)} г · ${draft.temp ? fmtNum(draft.temp) + '°C' : 'холодная вода'}`}
       action={
         <button type="button" className="icon-btn text" onClick={() => setSound((s) => !s)} aria-pressed={sound}>
           {sound ? 'Звук вкл' : 'Звук выкл'}

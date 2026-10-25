@@ -70,7 +70,7 @@ export function createTelegramPlatform(): Platform {
 
     user() {
       const u = tg().initDataUnsafe?.user;
-      return u ? { id: String(u.id), name: [u.first_name, u.last_name].filter(Boolean).join(' ') } : null;
+      return u ? { id: String(u.id), name: [u.first_name, u.last_name].filter(Boolean).join(' '), username: u.username } : null;
     },
     colorScheme: () => tg().colorScheme,
     onThemeChange(cb) {
@@ -132,5 +132,15 @@ export function createTelegramPlatform(): Platform {
     },
 
     openLink(url) { tg().openLink(url); },
+
+    startParam() {
+      return tg().initDataUnsafe?.start_param || web.startParam();
+    },
+
+    async share(text, url) {
+      // Окно выбора чата Telegram: друг получит текст рецепта и ссылку на него
+      tg().openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
+      return 'shared';
+    },
   };
 }

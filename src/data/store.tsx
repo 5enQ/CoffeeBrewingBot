@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { platform } from '../platform';
 import type { Cupping } from './cupping';
+import type { Gear, GearRef } from './gear';
 
 export interface Bean {
   id: string;
@@ -47,10 +48,18 @@ export interface Brew {
   descriptors: string[];
   notes: string;
   cupping: Cupping | null;
+  /** снимок оборудования, которым варили */
+  gear?: GearRef[];
+  /** автор, если рецепт пришёл от друга */
+  author?: Author;
   sample?: boolean;
 }
 
-export interface Recipe { dose: number; ratio: number; temp: number; grind: string }
+export interface Author { name: string; username?: string }
+
+export interface Profile { name: string; about: string }
+
+export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[] }
 
 interface DB {
   v: 1;
@@ -58,10 +67,14 @@ interface DB {
   brews: Brew[];
   /** Последние параметры по методу — чтобы не вводить каждый раз */
   recipes: Record<string, Recipe>;
+  gear: Gear[];
+  profile: Profile;
   seeded?: boolean;
+  gearSeeded?: boolean;
 }
 
 const KEY = 'brewbook.db.v1';
+const EMPTY: DB = { v: 1, beans: [], brews: [], recipes: {}, gear: [], profile: { name: '', about: '' } };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -79,6 +92,14 @@ export const daysSince = (iso: string) => {
   if (isNaN(+d)) return null;
   return Math.floor((Date.now() - +d) / 86_400_000);
 };
+
+function seedGear(): Gear[] {
+  return [
+    { id: 'sample-grinder', cat: 'grinder', name: 'Comandante C40', details: 'Red Clix', sample: true },
+    { id: 'sample-dripper', cat: 'dripper', name: 'Hario V60 02', details: 'керамика', sample: true },
+    { id: 'sample-kettle', cat: 'kettle', name: 'Fellow Stagg EKG', details: '', sample: true },
+  ];
+}
 
 function seed(): Pick<DB, 'beans' | 'brews'> {
   const now = Date.now();
@@ -105,6 +126,11 @@ function seed(): Pick<DB, 'beans' | 'brews'> {
       descriptors: ['бергамот', 'персик', 'чёрный чай'],
       notes: 'Яркая, чайная. В следующий раз на 1 клик мельче — чуть водянисто в финише.',
       cupping: null, sample: true,
+      gear: [
+        { id: 'sample-grinder', cat: 'grinder', name: 'Comandante C40', details: 'Red Clix' },
+        { id: 'sample-dripper', cat: 'dripper', name: 'Hario V60 02', details: 'керамика' },
+        { id: 'sample-kettle', cat: 'kettle', name: 'Fellow Stagg EKG' },
+      ],
     },
     {
       id: 'sample-brew-2', date: now - 26 * 3_600_000, methodId: 'cupping', beanId: b2.id, dose: 8.25, water: 150,
@@ -135,6 +161,11 @@ interface StoreApi {
   beans: Bean[];
   brews: Brew[];
   recipes: Record<string, Recipe>;
+  gear: Gear[];
+  profile: Profile;
+  saveGear(g: Gear): void;
+  deleteGear(id: string): void;
+  saveProfile(p: Profile): void;
   saveBean(b: Bean): void;
   deleteBean(id: string): void;
   saveBrew(b: Brew): void;
@@ -149,18 +180,20 @@ interface StoreApi {
 const Ctx = createContext<StoreApi | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [db, setDb] = useState<DB>({ v: 1, beans: [], brews: [], recipes: {} });
+  const [db, setDb] = useState<DB>(EMPTY);
   const [ready, setReady] = useState(false);
   const loaded = useRef(false);
 
   useEffect(() => {
     (async () => {
-      let next: DB = { v: 1, beans: [], brews: [], recipes: {} };
+      let next: DB = EMPTY;
       try {
         const raw = await platform.storage.get(KEY);
         if (raw) next = { ...next, ...JSON.parse(raw) };
       } catch (e) { console.warn('Не удалось прочитать данные', e); }
       if (!next.seeded) next = { ...next, ...seed(), seeded: true };
+      if (!next.gearSeeded) next = { ...next, gear: [...next.gear, ...(next.beans.some((b) => b.sample) ? seedGear() : [])], gearSeeded: true };
+      if (!next.profile.name) next = { ...next, profile: { ...next.profile, name: platform.user()?.name ?? '' } };
       loaded.current = true;
       setDb(next);
       setReady(true);
@@ -185,20 +218,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const deleteBrew = useCallback((id: string) => setDb((d) => ({ ...d, brews: d.brews.filter((b) => b.id !== id) })), []);
   const saveRecipe = useCallback((methodId: string, r: Recipe) => setDb((d) => ({ ...d, recipes: { ...d.recipes, [methodId]: r } })), []);
   const removeSamples = useCallback(() => setDb((d) => ({
-    ...d, beans: d.beans.filter((b) => !b.sample), brews: d.brews.filter((b) => !b.sample),
+    ...d, beans: d.beans.filter((b) => !b.sample), brews: d.brews.filter((b) => !b.sample), gear: d.gear.filter((g) => !g.sample),
   })), []);
+  const saveGear = useCallback((g: Gear) => setDb((d) => ({ ...d, gear: d.gear.some((x) => x.id === g.id) ? d.gear.map((x) => (x.id === g.id ? g : x)) : [...d.gear, g] })), []);
+  const deleteGear = useCallback((id: string) => setDb((d) => ({ ...d, gear: d.gear.filter((g) => g.id !== id) })), []);
+  const saveProfile = useCallback((profile: Profile) => setDb((d) => ({ ...d, profile })), []);
 
   const api = useMemo<StoreApi>(() => ({
-    ready, beans: db.beans, brews: db.brews, recipes: db.recipes,
-    saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples,
-    hasSamples: db.beans.some((b) => b.sample) || db.brews.some((b) => b.sample),
+    ready, beans: db.beans, brews: db.brews, recipes: db.recipes, gear: db.gear, profile: db.profile,
+    saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile,
+    hasSamples: db.beans.some((b) => b.sample) || db.brews.some((b) => b.sample) || db.gear.some((g) => g.sample),
     exportJson: () => JSON.stringify({ ...db, exportedAt: new Date().toISOString() }, null, 2),
     importJson(json) {
       const data = JSON.parse(json);
       if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл экспорта дневника');
-      setDb({ v: 1, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, seeded: true });
+      setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], profile: data.profile ?? EMPTY.profile, seeded: true, gearSeeded: true });
     },
-  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples]);
+  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

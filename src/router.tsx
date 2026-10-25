@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { platform } from './platform';
 import type { Bean, Brew } from './data/store';
+import type { Gear } from './data/gear';
+import type { SharedRecipe } from './data/share';
 
-export type Tab = 'brew' | 'journal' | 'beans' | 'more';
+export type Tab = 'brew' | 'journal' | 'beans' | 'profile';
 
 export type Route =
   | { name: 'method'; methodId: string; beanId?: string | null; from?: Brew }
@@ -10,7 +12,10 @@ export type Route =
   | { name: 'brewEdit'; draft: Brew; isNew: boolean; openCupping?: boolean }
   | { name: 'brew'; id: string }
   | { name: 'bean'; id: string }
-  | { name: 'beanEdit'; bean: Bean; isNew: boolean; scanOnOpen?: boolean };
+  | { name: 'beanEdit'; bean: Bean; isNew: boolean; scanOnOpen?: boolean }
+  | { name: 'gearEdit'; gear: Gear; isNew: boolean }
+  | { name: 'share'; id: string }
+  | { name: 'shared'; recipe: SharedRecipe };
 
 interface RouterApi {
   tab: Tab;

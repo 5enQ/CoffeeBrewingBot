@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { FLAVOR_WHEEL, emptyCupping, toneOf } from '../data/cupping';
-import { METHODS, methodById, fmtRatio, fmtTime } from '../data/methods';
+import { METHODS, methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
 import { useStore, type Brew } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
 import { CuppingForm } from '../ui/CuppingForm';
 import { Button, Chips, Dots, Field, Screen, Section, Stars, Stepper } from '../ui/kit';
 import { BeanPicker } from './BeanPicker';
+import { GearPicker } from '../ui/GearPicker';
 
 function parseTime(s: string) {
   const m = s.trim().match(/^(\d+)(?::(\d{1,2}))?$/);
@@ -93,10 +94,14 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
         </Field>
         <Stepper label="Кофе" value={b.dose} step={0.25} min={1} max={100} unit="г" format={(v) => String(v).replace('.', ',')} onChange={(dose) => set({ dose })} />
         <Stepper label={m.yieldLabel ?? 'Вода'} value={b.water} step={b.methodId === 'espresso' ? 1 : 5} min={5} max={2000} unit="г" onChange={(water) => set({ water })} />
-        <Stepper label="Температура" value={b.temp} min={0} max={100} unit={b.temp ? '°C' : ''} format={(v) => (v ? String(v) : 'холодная')} onChange={(temp) => set({ temp })} />
+        <Stepper label="Температура" value={b.temp} step={0.1} min={0} max={100} unit={b.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
         <Field label="Помол" id="edit-grind" value={b.grind} onChange={(e) => set({ grind: e.target.value })} />
         <Field label="Время" id="edit-time" value={timeText} inputMode="numeric" placeholder="3:10"
           onChange={(e) => { setTimeText(e.target.value); const t = parseTime(e.target.value); if (t !== null) set({ time: t }); }} />
+      </Section>
+
+      <Section title="Оборудование" plain>
+        <GearPicker methodId={b.methodId} value={b.gear ?? []} onChange={(gear) => set({ gear })} />
       </Section>
 
       <div ref={cuppingRef}>

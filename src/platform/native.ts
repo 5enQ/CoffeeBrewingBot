@@ -3,7 +3,7 @@
  * Нативная обёртка (Capacitor, Android/iOS).
  * Плагины берутся из window.Capacitor.Plugins, поэтому код компилируется
  * и без установленного Capacitor. Ставятся так:
- *   npm i @capacitor/core @capacitor/cli @capacitor/haptics @capacitor/preferences @capacitor/app @capacitor/dialog
+ *   npm i @capacitor/core @capacitor/cli @capacitor/haptics @capacitor/preferences @capacitor/app @capacitor/dialog @capacitor/share
  * Плагин может отсутствовать — тогда используется веб-реализация.
  */
 import type { Platform } from './types';
@@ -65,6 +65,12 @@ export function createNativePlatform(): Platform {
       const d = plugin('Dialog');
       if (!d) return web.alert(message);
       await d.alert({ message });
+    },
+
+    async share(text, url) {
+      const sh = plugin('Share'); // @capacitor/share
+      if (!sh) return web.share(text, url);
+      try { await sh.share({ text, url, dialogTitle: 'Поделиться рецептом' }); return 'shared'; } catch { return 'failed'; }
     },
 
     async keepAwake(on) {

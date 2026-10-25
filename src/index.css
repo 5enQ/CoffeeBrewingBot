@@ -152,7 +152,10 @@ button.row:active { background: var(--fg-soft); }
 .stepper-ctrl button {
   width: 42px; height: 38px; border: 0; background: none; font-size: 22px; color: var(--accent); font-weight: 400;
 }
-.stepper-ctrl output { min-width: 84px; text-align: center; font-weight: 650; font-variant-numeric: tabular-nums; font-size: 16px; }
+.stepper-ctrl .stepper-value { width: auto; color: var(--fg); min-width: 92px; height: 38px; border: 0; background: none; padding: 0 4px; text-align: center; font-weight: 650; font-variant-numeric: tabular-nums; font-size: 16px; border-radius: 8px; }
+.stepper-ctrl .stepper-value:active { background: var(--fg-soft); }
+.stepper-input { width: 92px; height: 32px; border: 0; border-radius: 8px; background: var(--card); text-align: center; font-weight: 650; font-size: 16px; font-variant-numeric: tabular-nums; outline: 2px solid var(--accent); }
+.stepper-ctrl button { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .stepper-ctrl small { color: var(--hint); font-weight: 500; margin-left: 2px; font-size: 13px; }
 
 /* ---------- Кнопки ---------- */
@@ -445,3 +448,51 @@ button.row:active { background: var(--fg-soft); }
 .dialog p { margin: 0 0 16px; font-size: 16px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 6px; }
 .dialog-actions .btn { min-height: 42px; }
+
+/* ---------- Оборудование ---------- */
+.gear-picker .gear-row { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: center; padding: 10px 14px; }
+.gear-cat { color: var(--hint); font-size: 13px; line-height: 1.2; }
+.gear-items { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.gear-items .chip { padding: 6px 11px; font-size: 13px; }
+.chip-add { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+.gear-more { width: 100%; border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 14px; padding: 12px; }
+.gear-list { display: flex; flex-direction: column; gap: 14px; }
+.gear-block { display: flex; flex-direction: column; gap: 6px; }
+.gear-block-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px; font-weight: 650; font-size: 15px; }
+.link-btn { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 14px; padding: 4px 0; }
+
+/* ---------- Профиль ---------- */
+.profile-card { display: flex; gap: 14px; align-items: flex-start; background: var(--card); border-radius: var(--r); padding: 16px; }
+.avatar {
+  flex-shrink: 0; width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-fg); font-weight: 750; font-size: 22px; letter-spacing: 0.02em;
+}
+.avatar.small { width: 36px; height: 36px; font-size: 14px; }
+.profile-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.profile-name { border: 0; background: none; font-size: 21px; font-weight: 700; padding: 4px 0; width: 100%; color: var(--fg); }
+.profile-name:focus, .profile-about:focus { outline: none; }
+.profile-handle { color: var(--accent); font-size: 14px; font-weight: 600; }
+.profile-about { border: 0; background: none; resize: none; font-size: 15px; color: var(--hint); padding: 4px 0; width: 100%; }
+
+/* ---------- Карточка рецепта ---------- */
+.recipe-card { display: flex; flex-direction: column; gap: 14px; }
+.recipe-head { display: flex; gap: 14px; align-items: center; background: var(--card); border-radius: var(--r); padding: 16px; }
+.recipe-head h2 { margin: 2px 0; font-size: 22px; line-height: 1.2; letter-spacing: -0.01em; text-wrap: balance; }
+.author { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+.author > span:last-child { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.author small { color: var(--hint); font-size: 12px; }
+.author b { font-weight: 650; }
+.author em { font-style: normal; color: var(--accent); font-size: 13px; }
+.recipe-block { background: var(--card); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.recipe-block h3 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--hint); font-weight: 650; }
+.gear-ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.gear-ul li { display: grid; grid-template-columns: 104px 1fr; gap: 10px; font-size: 15px; }
+.gear-ul span { color: var(--hint); font-size: 14px; }
+.gear-ul b { font-weight: 600; overflow-wrap: anywhere; }
+.gear-ul small { color: var(--hint); font-weight: 500; }
+.steps-preview.compact { padding: 0; }
+.steps-preview.compact li { padding: 7px 0; }
+.recipe-taste { display: flex; align-items: center; gap: 14px; }
+.score-inline { color: var(--hint); font-size: 14px; }
+.score-inline b { color: var(--cherry); font-size: 18px; font-variant-numeric: tabular-nums; }
+.note-text.flush { padding: 0; }

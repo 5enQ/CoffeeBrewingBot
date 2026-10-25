@@ -163,7 +163,7 @@ export function Profile() {
 
       {store.hasSamples && (
         <Section title="Примеры" plain>
-          <p className="muted pad">Для наглядности добавлены зёрна, заварки и оборудование с пометкой «пример».</p>
+          <p className="muted pad">Для наглядности добавлены пачки на полке, заварки и оборудование с пометкой «пример».</p>
           <Button kind="secondary" onClick={async () => { if (await platform.confirm('Удалить все примеры?')) store.removeSamples(); }}>Удалить примеры</Button>
         </Section>
       )}

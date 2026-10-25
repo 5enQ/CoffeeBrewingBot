@@ -26,6 +26,10 @@ export interface Bean {
   packNotes: string;   // дескрипторы обжарщика
   comment: string;
   createdAt: number;
+  /** ручная поправка остатка, г (просыпал, отдал другу, взвесил) */
+  adjust?: number;
+  /** пачка допита (убрана с полки) */
+  finished?: boolean;
   sample?: boolean;
 }
 

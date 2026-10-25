@@ -605,3 +605,34 @@ button.row:active { background: var(--fg-soft); }
 .footer-error { margin: 0 auto 8px; max-width: 640px; text-align: center; }
 .pick-method { margin-bottom: 10px; }
 .steps-preview li p { overflow-wrap: anywhere; }
+
+/* ---------- Полка ---------- */
+.stock { display: flex; flex-direction: column; gap: 5px; }
+.stock-bar { height: 8px; border-radius: 99px; background: var(--sep); overflow: hidden; }
+.stock-bar i { display: block; height: 100%; width: var(--w); border-radius: 99px; background: var(--accent); transition: width 0.3s; }
+.stock.low .stock-bar i { background: var(--star); }
+.stock.empty .stock-bar i { background: var(--hint); }
+.stock-text { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--hint); font-variant-numeric: tabular-nums; }
+.stock-text b { color: var(--fg); font-size: 16px; font-weight: 750; }
+.stock.low .stock-text span:last-child { color: var(--star); font-weight: 600; }
+.stock-none { font-size: 13px; color: var(--hint); }
+.foot-right { display: inline-flex; align-items: center; gap: 6px; }
+.bean-list.done .bean-card { opacity: 0.75; }
+.stock-card { background: var(--card); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.stock-card-head { display: flex; justify-content: space-between; align-items: baseline; }
+.stock-card-head span { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--hint); font-weight: 650; }
+.stock-card .stock-bar { height: 12px; }
+.stock-card .stock-text b { font-size: 26px; letter-spacing: -0.02em; }
+.stock-card .stock-text { align-items: baseline; font-size: 15px; }
+.stock-actions { display: flex; gap: 8px; }
+.stock-actions .btn { flex: 1; min-height: 44px; }
+.stock-fix { display: flex; align-items: center; gap: 8px; }
+.stock-fix input { width: 110px; border: 0; border-radius: 11px; background: var(--bg); padding: 10px 12px; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; outline: 2px solid var(--accent); }
+.stock-fix span { flex: 1; color: var(--hint); }
+.stock-fix .btn { min-height: 44px; }
+.pick-stock { position: relative; margin-top: auto; font-size: 12px !important; font-weight: 650; color: var(--fg) !important; font-variant-numeric: tabular-nums; padding-top: 6px; width: 100%; }
+.pick-stock i { position: absolute; top: 0; left: 0; height: 3px; width: var(--w); background: var(--accent); border-radius: 99px; }
+.pick-stock::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--sep); border-radius: 99px; }
+.pick-stock.short { color: var(--danger) !important; }
+.pick-stock.short i { background: var(--danger); }
+.status.warn { color: var(--star); }

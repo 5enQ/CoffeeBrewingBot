@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { lookupCode, mergeEmpty } from '../data/lookup';
-import { METHODS, methodById, fmtRatio } from '../data/methods';
+import { METHODS, methodById, fmtRatio, fmtNum } from '../data/methods';
 import { cupScore } from '../data/cupping';
 import { emptyBean, useStore, type Bean } from '../data/store';
+import { beanStock, isFinished, PACK_SIZES } from '../data/stock';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
 import { MethodIcon, Icon } from '../ui/icons';
@@ -11,13 +12,57 @@ import { Scanner } from '../ui/Scanner';
 import { ScoreBadge } from '../ui/CuppingForm';
 import { beanOrigin, beanTitle, PROCESSES, RestBadge, ROAST_LEVELS } from './beanUtils';
 
-/* ---------- Список ---------- */
+/* ---------- Полка ---------- */
+
+/** Полоска остатка пачки: «осталось N из M г» */
+export function StockBar({ bean, compact = false }: { bean: Bean; compact?: boolean }) {
+  const { brews } = useStore();
+  const st = beanStock(bean, brews);
+  if (!st.total) return compact ? null : <span className="stock-none">Вес пачки не указан</span>;
+  const low = st.left > 0 && (st.brewsLeft !== null ? st.brewsLeft <= 2 : st.ratio < 0.15);
+  return (
+    <div className={'stock' + (compact ? ' compact' : '') + (low ? ' low' : '') + (st.left <= 0 ? ' empty' : '')}>
+      <div className="stock-bar"><i style={{ ['--w' as string]: `${st.ratio * 100}%` }} /></div>
+      <div className="stock-text">
+        <span><b>{fmtNum(st.left, 0)}</b> из {fmtNum(st.total, 0)} г</span>
+        <span>{st.left <= 0 ? 'закончилось' : st.brewsLeft === 0 ? 'меньше чем на заварку' : st.brewsLeft !== null ? `≈ ${st.brewsLeft} ${plural(st.brewsLeft, ['заварка', 'заварки', 'заварок'])}` : 'ещё не заваривали'}</span>
+      </div>
+    </div>
+  );
+}
+
+const plural = (n: number, f: [string, string, string]) => {
+  const a = n % 10, b = n % 100;
+  return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2];
+};
+
+function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
+  const { brews } = useStore();
+  const mine = brews.filter((x) => x.beanId === b.id);
+  const rated = mine.filter((x) => x.rating);
+  const avg = rated.length ? rated.reduce((s, x) => s + x.rating, 0) / rated.length : 0;
+  return (
+    <button type="button" className="bean-card" onClick={onClick}>
+      <div className="bean-card-top">
+        <b>{beanTitle(b)}</b>
+        {b.sample && <SampleTag />}
+      </div>
+      <span className="bean-card-origin">{[beanOrigin(b), b.process].filter(Boolean).join(' · ') || 'Происхождение не указано'}</span>
+      <StockBar bean={b} />
+      <div className="bean-card-foot">
+        <span>{b.roaster || '—'}</span>
+        <span className="foot-right"><RestBadge roastDate={b.roastDate} />{avg ? <Stars value={Math.round(avg)} size={12} /> : null}</span>
+      </div>
+    </button>
+  );
+}
 
 export function Beans() {
   const { beans, brews } = useStore();
   const { push } = useRouter();
   const [scan, setScan] = useState(false);
   const [q, setQ] = useState('');
+  const [showDone, setShowDone] = useState(false);
 
   const onCode = async (code: string) => {
     setScan(false);
@@ -29,46 +74,36 @@ export function Beans() {
   const list = q
     ? beans.filter((b) => [b.name, b.roaster, b.country, b.region, b.process, b.variety].join(' ').toLowerCase().includes(q.toLowerCase()))
     : beans;
+  const active = list.filter((b) => !isFinished(b, beanStock(b, brews)));
+  const done = list.filter((b) => isFinished(b, beanStock(b, brews)));
+  const grams = active.reduce((s, b) => s + beanStock(b, brews).left, 0);
 
   return (
-    <Screen title="Зёрна" root
-      action={<button type="button" className="icon-btn" onClick={() => push({ name: 'beanEdit', bean: emptyBean(), isNew: true })} aria-label="Добавить зерно"><Icon name="plus" /></button>}>
+    <Screen title="Полка" subtitle={active.length ? `${active.length} ${plural(active.length, ['пачка', 'пачки', 'пачек'])} · ${fmtNum(grams / 1000, 2)} кг кофе` : undefined} root
+      action={<button type="button" className="icon-btn" onClick={() => push({ name: 'beanEdit', bean: emptyBean(), isNew: true })} aria-label="Добавить пачку"><Icon name="plus" /></button>}>
       <button type="button" className="scan-cta" onClick={() => setScan(true)}>
         <Icon name="scan" size={28} />
-        <span><b>Сканировать пачку</b><small>Штрихкод или QR — найду зерно или начну новую карточку</small></span>
+        <span><b>Добавить пачку</b><small>Отсканируйте штрихкод или QR — или введите вручную</small></span>
       </button>
 
       {beans.length > 4 && (
         <input id="bean-search" className="search" type="search" placeholder="Поиск: страна, обработка, обжарщик" value={q} onChange={(e) => setQ(e.target.value)} />
       )}
 
-      {list.length === 0 && <Empty title="Зёрен пока нет" text="Отсканируйте пачку или добавьте зерно вручную." />}
+      {active.length === 0 && done.length === 0 && <Empty title="Полка пуста" text="Купили кофе? Добавьте пачку с весом и датой обжарки — остаток будет считаться сам." />}
+      {active.length === 0 && done.length > 0 && <Empty title="Всё допито" text="На полке пусто. Добавьте новую пачку или купите ещё раз одну из допитых." />}
 
       <div className="bean-list">
-        {list.map((b) => {
-          const mine = brews.filter((x) => x.beanId === b.id);
-          const rated = mine.filter((x) => x.rating);
-          const avg = rated.length ? rated.reduce((s, x) => s + x.rating, 0) / rated.length : 0;
-          return (
-            <button type="button" key={b.id} className="bean-card" onClick={() => push({ name: 'bean', id: b.id })}>
-              <div className="bean-card-top">
-                <b>{beanTitle(b)}</b>
-                {b.sample && <SampleTag />}
-              </div>
-              <span className="bean-card-origin">{beanOrigin(b) || 'Происхождение не указано'}</span>
-              <div className="bean-card-tags">
-                {b.process && <span className="tag">{b.process}</span>}
-                {b.variety && <span className="tag">{b.variety}</span>}
-                <RestBadge roastDate={b.roastDate} />
-              </div>
-              <div className="bean-card-foot">
-                <span>{b.roaster || '—'}</span>
-                <span>{mine.length ? `${mine.length} зав.` : 'ещё не заваривали'}{avg ? <> · <Stars value={Math.round(avg)} size={12} /></> : null}</span>
-              </div>
-            </button>
-          );
-        })}
+        {active.map((b) => <PackCard key={b.id} b={b} onClick={() => push({ name: 'bean', id: b.id })} />)}
       </div>
+
+      {done.length > 0 && (
+        <Section title={`Допито · ${done.length}`} aside={
+          <button type="button" className="link-btn" onClick={() => setShowDone((v) => !v)}>{showDone ? 'Скрыть' : 'Показать'}</button>
+        } plain>
+          {showDone && <div className="bean-list done">{done.map((b) => <PackCard key={b.id} b={b} onClick={() => push({ name: 'bean', id: b.id })} />)}</div>}
+        </Section>
+      )}
 
       {scan && <Scanner onResult={onCode} onClose={() => setScan(false)} />}
     </Screen>
@@ -78,11 +113,33 @@ export function Beans() {
 /* ---------- Карточка ---------- */
 
 export function BeanDetail({ id }: { id: string }) {
-  const { beans, brews, deleteBean } = useStore();
+  const { beans, brews, deleteBean, saveBean } = useStore();
   const { push, back } = useRouter();
+  const [fix, setFix] = useState<string | null>(null);
   const b = beans.find((x) => x.id === id);
-  if (!b) return <Screen title="Зерно удалено"><Empty title="Нет такого зерна" text="Его удалили." /></Screen>;
+  if (!b) return <Screen title="Пачка удалена"><Empty title="Нет такой пачки" text="Её удалили." /></Screen>;
   const mine = brews.filter((x) => x.beanId === b.id);
+  const st = beanStock(b, brews);
+  const finished = isFinished(b, st);
+
+  const saveFix = () => {
+    const n = parseFloat((fix ?? '').replace(',', '.'));
+    if (!isNaN(n) && n >= 0) {
+      saveBean({ ...b, adjust: Math.round((n - (st.total - st.used)) * 10) / 10, finished: n <= 0 });
+      platform.haptic('success');
+    }
+    setFix(null);
+  };
+  const toggleFinished = async () => {
+    if (finished && st.total > 0 && st.left <= 0) { setFix(''); return; } // вернуть на полку — сначала взвесить остаток
+    if (!finished && !(await platform.confirm('Отметить пачку допитой? Она переедет в раздел «Допито».'))) return;
+    saveBean({ ...b, finished: !finished });
+    platform.haptic('success');
+  };
+  const buyAgain = () => {
+    const { id: _id, createdAt: _c, roastDate: _r, adjust: _a, finished: _f, sample: _s, ...rest } = b;
+    push({ name: 'beanEdit', bean: { ...emptyBean(), ...rest }, isNew: true });
+  };
 
   const remove = async () => {
     if (!(await platform.confirm(`Удалить «${beanTitle(b)}»? Заварки останутся в дневнике.`))) return;
@@ -96,7 +153,7 @@ export function BeanDetail({ id }: { id: string }) {
     ['Производитель', b.producer], ['Сорт', b.variety], ['Обработка', b.process], ['Высота', b.altitude],
     ['Урожай', b.harvest], ['Обжарка', b.roastLevel],
     ['Дата обжарки', b.roastDate ? new Date(b.roastDate + 'T00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : ''],
-    ['Вес', b.weight ? `${b.weight} г` : ''], ['Штрихкод', b.barcode],
+    ['Штрихкод', b.barcode],
   ] as [string, string][]).filter(([, v]) => v);
 
   return (
@@ -105,6 +162,28 @@ export function BeanDetail({ id }: { id: string }) {
       <div className="bean-hero">
         <RestBadge roastDate={b.roastDate} />
         {b.packNotes && <p className="pack-notes">{b.packNotes}</p>}
+      </div>
+
+      <div className="stock-card">
+        <div className="stock-card-head">
+          <span>{finished ? 'Пачка допита' : 'Осталось в пачке'}</span>
+          {st.total > 0 && fix === null && <button type="button" className="link-btn" onClick={() => setFix(String(st.left).replace('.', ','))}>Взвесить</button>}
+        </div>
+        {fix !== null ? (
+          <form className="stock-fix" onSubmit={(e) => { e.preventDefault(); saveFix(); }}>
+            <input id="stock-fix" autoFocus inputMode="decimal" value={fix} onChange={(e) => setFix(e.target.value)} aria-label="Сколько осталось, г" />
+            <span>г осталось</span>
+            <button type="submit" className="btn btn-primary">OK</button>
+          </form>
+        ) : (
+          <StockBar bean={b} />
+        )}
+        {st.total > 0 && <p className="muted">Списано заварками: {fmtNum(st.used, 1)} г{b.adjust ? ` · поправка ${b.adjust > 0 ? '+' : ''}${fmtNum(b.adjust, 1)} г` : ''}</p>}
+        {!st.total && <Button kind="secondary" onClick={() => push({ name: 'beanEdit', bean: b, isNew: false })}>Указать вес пачки</Button>}
+        <div className="stock-actions">
+          {st.total > 0 && <Button kind="ghost" onClick={toggleFinished}>{finished ? 'Вернуть на полку' : 'Допито'}</Button>}
+          <Button kind="secondary" icon="plus" onClick={buyAgain}>Купить ещё</Button>
+        </div>
       </div>
 
       <Section title="Заварить" plain>
@@ -117,7 +196,7 @@ export function BeanDetail({ id }: { id: string }) {
         </div>
       </Section>
 
-      <Section title="О зерне">
+      <Section title="О пачке">
         {info.map(([k, v]) => <Row key={k} label={k} value={v} />)}
         {b.link && <Row label="Ссылка" value="открыть" onClick={() => platform.openLink(b.link)} />}
         {b.comment && <p className="note-text pad">{b.comment}</p>}
@@ -140,7 +219,7 @@ export function BeanDetail({ id }: { id: string }) {
         )}
       </Section>
 
-      <div className="danger-zone"><Button kind="danger" icon="trash" onClick={remove}>Удалить зерно</Button></div>
+      <div className="danger-zone"><Button kind="danger" icon="trash" onClick={remove}>Удалить пачку</Button></div>
     </Screen>
   );
 }
@@ -155,6 +234,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
   const [b, setB] = useState<Bean>(bean);
   const [scan, setScan] = useState(!!scanOnOpen);
   const [status, setStatus] = useState('');
+  const [leftText, setLeftText] = useState('');
   const dirty = JSON.stringify(b) !== JSON.stringify(bean);
   useBackGuard(dirty, 'Выйти без сохранения?');
 
@@ -183,13 +263,17 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
   };
 
   const save = () => {
-    saveBean({ ...b, sample: dirty ? undefined : b.sample });
+    // Пачку добавили уже начатой: остаток меньше веса — запоминаем поправку
+    const left = parseFloat(leftText.replace(',', '.'));
+    const weight = parseFloat(b.weight.replace(',', '.'));
+    const adjust = isNew && !isNaN(left) && !isNaN(weight) && left < weight ? Math.round((left - weight) * 10) / 10 : b.adjust;
+    saveBean({ ...b, adjust, sample: dirty ? undefined : b.sample });
     platform.haptic('success');
     back(true);
   };
 
   return (
-    <Screen title={isNew ? 'Новое зерно' : 'Редактировать зерно'}
+    <Screen title={isNew ? 'Новая пачка' : 'Редактировать пачку'}
       footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!b.name && !b.country && !b.barcode}>Сохранить</Button></div>}>
 
       <div className="scan-field">
@@ -222,11 +306,20 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
         </div>
       </Section>
 
+      <Section title="Вес пачки" plain>
+        <Chips options={PACK_SIZES.map((x) => `${x} г`)} value={b.weight ? [`${b.weight} г`] : []}
+          onToggle={(v) => set({ weight: b.weight === v.replace(' г', '') ? '' : v.replace(' г', '') })} />
+      </Section>
+
       <Section title="Обжарка" plain>
         <Chips options={ROAST_LEVELS} value={[b.roastLevel]} onToggle={(p) => set({ roastLevel: b.roastLevel === p ? '' : p })} />
         <div className="group" style={{ marginTop: 10 }}>
           {f('roastDate', 'Дата обжарки', { type: 'date', max: new Date().toISOString().slice(0, 10) })}
-          {f('weight', 'Вес пачки', { inputMode: 'numeric', placeholder: '250' })}
+          {f('weight', 'Вес пачки, г', { inputMode: 'numeric', placeholder: '250' })}
+          {isNew && b.weight && (
+            <Field label="Осталось сейчас, г" id="bean-left" inputMode="decimal" placeholder={b.weight}
+              value={leftText} onChange={(e) => setLeftText(e.target.value)} />
+          )}
         </div>
       </Section>
 

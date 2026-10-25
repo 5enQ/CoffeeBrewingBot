@@ -10,10 +10,11 @@ import { GearPicker, defaultGear } from '../ui/GearPicker';
 import type { GearRef } from '../data/gear';
 import { effectivePlan, planFromRecipe, recipeFromStandard, type BrewPlan } from '../data/recipes';
 import { platform } from '../platform';
+import { beanStock } from '../data/stock';
 
 export function MethodScreen({ methodId, beanId, from }: { methodId: string; beanId?: string | null; from?: Brew }) {
   const m = methodById(methodId);
-  const { recipes, saveRecipe, beans, gear: myGear, custom } = useStore();
+  const { recipes, saveRecipe, beans, brews, gear: myGear, custom } = useStore();
   const { push } = useRouter();
   const saved = recipes[m.id];
   const mine = custom.filter((r) => r.methodId === m.id);
@@ -76,6 +77,10 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
     else createRecipe();
   };
 
+  const beanObj = beans.find((x) => x.id === bean);
+  const beanSt = beanObj ? beanStock(beanObj, brews) : null;
+  const lowStock = beanSt && beanSt.total > 0 && beanSt.left < dose ? beanSt : null;
+
   const water = Math.round(dose * ratio * (m.id === 'espresso' ? 10 : 1)) / (m.id === 'espresso' ? 10 : 1);
   const waterLabel = m.yieldLabel ?? 'Вода';
   const espresso = m.id === 'espresso';
@@ -124,7 +129,8 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
       </Section>
 
       <Section title="Зерно" plain>
-        <BeanPicker value={bean} onChange={setBean} />
+        <BeanPicker value={bean} onChange={setBean} dose={dose} />
+        {lowStock && <p className="status warn pad">В пачке осталось {fmtNum(lowStock.left, 0)} г — на эту заварку не хватит {fmtNum(dose - lowStock.left, 1)} г.</p>}
       </Section>
 
       <Section title="Параметры">

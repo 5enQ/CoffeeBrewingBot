@@ -34,7 +34,7 @@ function renderRoute(r: Route) {
 const TABS: { id: Tab; label: string; icon: 'brew' | 'journal' | 'beans' | 'profile' }[] = [
   { id: 'brew', label: 'Заварить', icon: 'brew' },
   { id: 'journal', label: 'Дневник', icon: 'journal' },
-  { id: 'beans', label: 'Зёрна', icon: 'beans' },
+  { id: 'beans', label: 'Полка', icon: 'beans' },
   { id: 'profile', label: 'Профиль', icon: 'profile' },
 ];
 

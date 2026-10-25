@@ -11,7 +11,7 @@ import { Icon, MethodIcon } from '../ui/icons';
 import { AuthorBlock } from '../ui/Badges';
 import { RateBlock } from '../ui/RateBlock';
 import { myTelegramId, newRid, ratingsEnabled } from '../data/ratings';
-import { achievementBadges, litersBrewed } from '../data/achievements';
+import { useBadges } from '../data/featured';
 import { Button, Empty, Field, Screen, Stars } from '../ui/kit';
 
 
@@ -105,7 +105,7 @@ export function ShareScreen({ id }: { id: string }) {
     if (b && !b.author && !b.shareId && ratingsEnabled() && myId) saveBrew({ ...b, shareId: newRid() });
   }, [b?.id, b?.shareId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const achievements = achievementBadges(litersBrewed(brews), profile.ratingStats?.count ?? 0);
+  const shown = useBadges().featured.map((f) => { const { id: _id, ...rest } = f.badge as typeof f.badge & { id?: string }; return rest; });
   const [link, setLink] = useState('');
   const [msg, setMsg] = useState('');
 
@@ -113,8 +113,7 @@ export function ShareScreen({ id }: { id: string }) {
   const me = {
     name: profile.name.trim(),
     username: profile.shareTelegram && tg ? tg : undefined,
-    badges: profile.shareBadges && (profile.badges.length || achievements.length)
-      ? [...achievements, ...profile.badges.map(({ id: _id, ...rest }) => rest)] : undefined,
+    badges: profile.shareBadges && shown.length ? shown : undefined,
   };
   const recipe = b ? toShared(b, beans.find((x) => x.id === b.beanId), me, myId) : null;
   const key = JSON.stringify(recipe);
@@ -150,8 +149,8 @@ export function ShareScreen({ id }: { id: string }) {
           <Toggle id="share-tg" label="Ссылка на мой Telegram" checked={profile.shareTelegram && !!tg} disabled={!tg}
             hint={tg ? `Друг сможет открыть @${tg}` : 'Укажите username в профиле'}
             onChange={(v) => saveProfile({ ...profile, shareTelegram: v })} />
-          <Toggle id="share-badges" label="Мои значки" checked={profile.shareBadges && profile.badges.length + achievements.length > 0} disabled={!profile.badges.length && !achievements.length}
-            hint={profile.badges.length + achievements.length ? `${profile.badges.length + achievements.length} — сертификаты, награды и достижения` : 'Добавьте значки в профиле'}
+          <Toggle id="share-badges" label="Мои значки" checked={profile.shareBadges && shown.length > 0} disabled={!shown.length}
+            hint={shown.length ? `${shown.map((b) => b.title).join(', ')}` : 'Значки появятся в профиле'}
             onChange={(v) => saveProfile({ ...profile, shareBadges: v })} />
         </div>
       )}

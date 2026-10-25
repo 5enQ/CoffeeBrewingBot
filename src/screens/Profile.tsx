@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { TIER_LABEL, TRACKS, litersBrewed, progress, type Track } from '../data/achievements';
 import { fetchStats, myTelegramId, ratingsEnabled } from '../data/ratings';
 import { METHODS, fmtNum, methodById } from '../data/methods';
 import { recipeFromStandard } from '../data/recipes';
 import { GEAR_CATS, type Gear } from '../data/gear';
-import { BADGE_KINDS, CHAMPIONSHIPS, PLACES, Q_TYPES, SCA_EXTRA, SCA_LEVELS, SCA_MODULES, sortBadges, type Badge } from '../data/badges';
-import { BadgeChip } from '../ui/Badges';
+import { BADGE_KINDS, CHAMPIONSHIPS, PLACES, Q_TYPES, SCA_EXTRA, SCA_LEVELS, SCA_MODULES, type Badge } from '../data/badges';
+import { BadgeChip, BadgeRow } from '../ui/Badges';
+import { useBadges, MAX_FEATURED } from '../data/featured';
 import { useStore, uid } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
@@ -44,9 +44,16 @@ export function Profile() {
     catch (e) { setMsg((e as Error).message || 'Не получилось прочитать копию.'); platform.haptic('error'); }
   };
 
-  const liters = litersBrewed(store.brews);
-  const stats = profile.ratingStats;
-  const ratingCount = stats?.count ?? 0;
+  const badges = useBadges();
+  const [pinMsg, setPinMsg] = useState('');
+  const toggleFeatured = (key: string) => {
+    const cur = badges.featuredKeys;
+    if (cur.includes(key)) { setPinMsg(''); store.saveProfile({ ...profile, featured: cur.filter((k) => k !== key) }); platform.haptic('select'); return; }
+    if (cur.length >= MAX_FEATURED) { platform.haptic('error'); setPinMsg(`В профиле максимум ${MAX_FEATURED} значка — сначала уберите один.`); return; }
+    setPinMsg('');
+    platform.haptic('select');
+    store.saveProfile({ ...profile, featured: [...cur, key] });
+  };
   const { setRatingStats } = store;
   useEffect(() => {
     const id = myTelegramId();
@@ -69,39 +76,46 @@ export function Profile() {
             <input id="profile-tg" placeholder="username в Telegram" value={profile.telegram} autoCapitalize="off" autoCorrect="off" spellCheck={false}
               onChange={(e) => store.saveProfile({ ...profile, telegram: e.target.value.replace(/^@/, '').replace(/[^A-Za-z0-9_]/g, '') })} />
           </label>
+          {badges.featured.length > 0 && <div className="profile-badges"><BadgeRow badges={badges.featured.map((f) => f.badge)} max={3} /></div>}
           <textarea id="profile-about" className="profile-about" rows={2} placeholder="Пара слов о себе: как любите кофе"
             value={profile.about} onChange={(e) => store.saveProfile({ ...profile, about: e.target.value })} />
         </div>
       </div>
       <p className="muted pad">Имя и значки увидят друзья в рецептах, которыми вы поделитесь. Ссылку на Telegram можно не добавлять — это выбирается при отправке.</p>
 
-      <Section title="Достижения" plain>
-        <div className="tracks">
-          <TrackCard track={TRACKS.liters} value={liters} format={(v) => `${fmtNum(v, v < 10 ? 1 : 0)} л`} />
-          <TrackCard track={TRACKS.ratings} value={ratingCount}
-            format={(v) => `${v}`}
-            note={!ratingsEnabled() ? 'Появится, когда подключим сервер оценок' : !myTelegramId() ? 'Считается для рецептов, отправленных из Telegram' : stats?.count ? `Средняя оценка ${fmtNum(stats.avg)} ★` : 'Поделитесь рецептом — друзья смогут его оценить'} />
-        </div>
-      </Section>
-
       <Section title="Значки" aside={
         <button type="button" className="icon-btn" onClick={() => addBadge()} aria-label="Добавить значок"><Icon name="plus" /></button>
       } plain>
-        {profile.badges.length > 0 ? (
-          <div className="badge-list">
-            {sortBadges(profile.badges).map((b) => <BadgeChip key={b.id} b={b} onClick={() => push({ name: 'badgeEdit', badge: b, isNew: false })} />)}
-          </div>
+        {badges.all.length > 0 ? (
+          <>
+            <p className="muted pad">Отметьте до трёх — они видны в профиле и в рецептах, которыми вы делитесь. {badges.featured.length}/{MAX_FEATURED}</p>
+            <div className="badge-pick-list">
+              {badges.all.map((it) => {
+                const on = badges.featuredKeys.includes(it.key);
+                return (
+                  <div key={it.key} className={'badge-pick' + (on ? ' on' : '')}>
+                    <BadgeChip b={it.badge} onClick={it.own ? () => push({ name: 'badgeEdit', badge: it.own!, isNew: false }) : undefined} />
+                    <button type="button" className="pin" aria-pressed={on} aria-label={on ? 'Убрать из профиля' : 'Показывать в профиле'}
+                      onClick={() => toggleFeatured(it.key)}>
+                      <Icon name="star" size={20} filled={on} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            {pinMsg && <p className="status warn pad">{pinMsg}</p>}
+          </>
         ) : (
           <button type="button" className="badge-empty" onClick={() => addBadge()}>
             <Icon name="medal" size={28} />
-            <span><b>Добавьте сертификат или награду</b><small>SCA, Q Grader, места на чемпионатах</small></span>
+            <span><b>Добавьте сертификат или награду</b><small>SCA, Q Grader, места на чемпионатах. А за заварки значки появятся сами</small></span>
           </button>
         )}
       </Section>
 
       <div className="stats">
         <div><b>{store.brews.length}</b><span>заварок</span></div>
-        <div><b>{store.beans.length}</b><span>зёрен</span></div>
+        <div><b>{store.beans.length}</b><span>пачек</span></div>
         <div><b>{gear.length}</b><span>оборудования</span></div>
       </div>
 
@@ -328,26 +342,5 @@ export function BadgeEdit({ badge: initial, isNew }: { badge: Badge; isNew: bool
       </Section>
       <p className="muted pad">Значки указываете вы сами — в рецепте они видны как информация от автора.</p>
     </Screen>
-  );
-}
-
-function TrackCard({ track, value, format, note }: { track: Track; value: number; format(v: number): string; note?: string }) {
-  const { current, next, ratio } = progress(track, value);
-  return (
-    <div className="track" data-tier={current?.tier ?? 'none'}>
-      <div className="track-medal" aria-hidden="true"><Icon name="medal" size={26} /></div>
-      <div className="track-body">
-        <div className="track-head">
-          <b>{track.title}</b>
-          <span>{current ? TIER_LABEL[current.tier] : 'Пока без значка'}</span>
-        </div>
-        <div className="track-bar"><i style={{ ['--w' as string]: `${Math.max(2, ratio * 100)}%` }} data-next={next?.tier} /></div>
-        <div className="track-foot">
-          <span>{format(value)}</span>
-          <span>{next ? `${TIER_LABEL[next.tier]} — ${fmtNum(next.at, 0)} ${track.unit}` : 'Максимальный уровень'}</span>
-        </div>
-        {note && <small className="track-note">{note}</small>}
-      </div>
-    </div>
   );
 }

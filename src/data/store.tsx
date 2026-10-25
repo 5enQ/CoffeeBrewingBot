@@ -79,6 +79,8 @@ export interface Profile {
   /** настройки «Поделиться» */
   shareTelegram: boolean;
   shareBadges: boolean;
+  /** значки на витрине профиля (до 3): id своего значка или 'ach:<id>' достижения. undefined — выбрать автоматически */
+  featured?: string[];
   /** оценки моих рецептов с сервера (кэш) */
   ratingStats?: RatingStats;
 }
@@ -97,6 +99,8 @@ interface DB {
   gearSeeded?: boolean;
   /** свои рецепты */
   custom?: CustomRecipe[];
+  /** достижения, о которых уже показали уведомление */
+  seenAch?: string[];
   /** мои оценки чужих рецептов: shareId → звёзды */
   rated?: Record<string, number>;
 }
@@ -198,6 +202,8 @@ interface StoreApi {
   saveRated(rid: string, stars: number): void;
   setRatingStats(st: RatingStats): void;
   custom: CustomRecipe[];
+  seenAch: string[] | null;
+  markSeen(keys: string[]): void;
   saveCustom(r: CustomRecipe): void;
   deleteCustom(id: string): void;
   saveBean(b: Bean): void;
@@ -260,6 +266,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const saveGear = useCallback((g: Gear) => setDb((d) => ({ ...d, gear: d.gear.some((x) => x.id === g.id) ? d.gear.map((x) => (x.id === g.id ? g : x)) : [...d.gear, g] })), []);
   const deleteGear = useCallback((id: string) => setDb((d) => ({ ...d, gear: d.gear.filter((g) => g.id !== id) })), []);
   const saveProfile = useCallback((profile: Profile) => setDb((d) => ({ ...d, profile })), []);
+  const markSeen = useCallback((keys: string[]) => setDb((d) => ({ ...d, seenAch: [...new Set([...(d.seenAch ?? []), ...keys])] })), []);
   const saveCustom = useCallback((r: CustomRecipe) => setDb((d) => {
     const list = d.custom ?? [];
     return { ...d, custom: list.some((x) => x.id === r.id) ? list.map((x) => (x.id === r.id ? r : x)) : [...list, r] };
@@ -273,6 +280,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile,
     rated: db.rated ?? {}, saveRated, setRatingStats,
     custom: db.custom ?? [], saveCustom, deleteCustom,
+    seenAch: db.seenAch ?? null, markSeen,
     hasSamples: db.beans.some((b) => b.sample) || db.brews.some((b) => b.sample) || db.gear.some((g) => g.sample),
     exportJson: () => JSON.stringify({ ...db, exportedAt: new Date().toISOString() }, null, 2),
     importJson(json) {
@@ -280,7 +288,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл экспорта дневника');
       setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true });
     },
-  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom]);
+  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

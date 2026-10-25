@@ -636,3 +636,26 @@ button.row:active { background: var(--fg-soft); }
 .pick-stock.short { color: var(--danger) !important; }
 .pick-stock.short i { background: var(--danger); }
 .status.warn { color: var(--star); }
+
+/* ---------- Витрина значков, уведомление ---------- */
+.profile-badges { margin: 6px 0 2px; }
+.badge-pick-list { display: flex; flex-direction: column; gap: 8px; }
+.badge-pick { display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: var(--r); padding: 8px 6px 8px 8px; border: 1.5px solid transparent; }
+.badge-pick.on { border-color: color-mix(in srgb, var(--star) 55%, transparent); }
+.badge-pick .badge { flex: 1; min-width: 0; background: none; border-color: transparent; }
+.badge-pick span.badge { cursor: default; }
+.pin { flex-shrink: 0; width: 44px; height: 44px; border: 0; background: none; border-radius: 12px; color: var(--hint); display: grid; place-items: center; }
+.badge-pick.on .pin { color: var(--star); }
+.pin:active { background: var(--fg-soft); }
+.toast {
+  position: fixed; z-index: 70; left: 50%; transform: translateX(-50%);
+  top: calc(var(--inset-top) + 12px); width: min(calc(100% - 32px), 380px);
+  background: var(--card); border-radius: 18px; padding: 14px; box-shadow: 0 16px 40px -12px rgba(0,0,0,0.35);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; cursor: pointer;
+  animation: toastIn 0.45s cubic-bezier(.2,1.4,.4,1);
+}
+.toast-eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: var(--star); }
+.toast small { color: var(--hint); font-size: 12px; }
+.toast .badge { transform: scale(1.1); }
+@keyframes toastIn { from { transform: translate(-50%, -24px) scale(0.9); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }

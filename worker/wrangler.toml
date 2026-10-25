@@ -8,9 +8,18 @@ compatibility_date = "2025-09-01"
 name = "AUTHORS"
 class_name = "AuthorRatings"
 
+# Рецепты для коротких ссылок «Поделиться»
+[[durable_objects.bindings]]
+name = "RECIPES"
+class_name = "RecipeStore"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["AuthorRatings"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RecipeStore"]
 
 [vars]
 # Откуда разрешены запросы (сайт мини-приложения)

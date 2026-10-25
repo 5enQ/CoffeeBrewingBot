@@ -14,7 +14,7 @@ import { RecipeEdit } from './screens/RecipeEdit';
 import { ShareScreen, SharedRecipeScreen } from './screens/Share';
 import { useEffect } from 'react';
 import { platform } from './platform';
-import { decodeRecipe } from './data/share';
+import { resolveStartParam } from './data/share';
 
 function renderRoute(r: Route) {
   switch (r.name) {
@@ -48,8 +48,9 @@ function Shell() {
     if (!ready) return;
     const param = platform.startParam();
     if (!param) return;
-    decodeRecipe(param).then((recipe) => {
+    resolveStartParam(param).then((recipe) => {
       if (recipe) push({ name: 'shared', recipe });
+      else platform.alert('Не получилось открыть рецепт по ссылке. Проверьте интернет и попробуйте ещё раз.');
       if (location.hash.includes('r=')) history.replaceState(null, '', location.pathname + location.search);
     });
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps

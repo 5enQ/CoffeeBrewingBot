@@ -3,6 +3,8 @@
  *
  * POST /rate   { initData, rid, author, stars }  — оценить рецепт (только из Telegram, 1 оценка на человека)
  * GET  /stats?author=<telegram id>                — сколько оценок у автора, средняя, по рецептам
+ * POST /recipes { initData, code }               — сохранить рецепт для короткой ссылки (только из Telegram)
+ * GET  /recipes/<id>                             — получить рецепт по короткой ссылке
  *
  * Подлинность пользователя проверяется подписью initData (HMAC с токеном бота),
  * поэтому подделать оценку «от чужого имени» нельзя, а повторная оценка заменяет прежнюю.
@@ -11,6 +13,7 @@ import { DurableObject } from 'cloudflare:workers';
 
 export interface Env {
   AUTHORS: DurableObjectNamespace<AuthorRatings>;
+  RECIPES: DurableObjectNamespace<RecipeStore>;
   BOT_TOKEN: string;
   ALLOWED_ORIGIN: string;
 }
@@ -72,6 +75,35 @@ export class AuthorRatings extends DurableObject<Env> {
   }
 }
 
+/** Рецепты для коротких ссылок: в ссылку Telegram помещается только 512 символов */
+export class RecipeStore extends DurableObject<Env> {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS recipes (
+      id TEXT PRIMARY KEY, code TEXT NOT NULL, author TEXT NOT NULL, ts INTEGER NOT NULL)`);
+  }
+
+  put(code: string, author: string) {
+    // Тот же рецепт от того же автора — та же ссылка
+    const same = this.ctx.storage.sql.exec<{ id: string }>('SELECT id FROM recipes WHERE code = ? AND author = ? LIMIT 1', code, author).toArray()[0];
+    if (same) return same.id;
+    const abc = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const id = Array.from(crypto.getRandomValues(new Uint8Array(9)), (b) => abc[b % abc.length]).join('');
+      const exists = this.ctx.storage.sql.exec('SELECT 1 FROM recipes WHERE id = ?', id).toArray().length;
+      if (!exists) {
+        this.ctx.storage.sql.exec('INSERT INTO recipes (id, code, author, ts) VALUES (?, ?, ?, ?)', id, code, author, Date.now());
+        return id;
+      }
+    }
+    throw new Error('id collision');
+  }
+
+  get(id: string) {
+    return this.ctx.storage.sql.exec<{ code: string }>('SELECT code FROM recipes WHERE id = ?', id).toArray()[0]?.code ?? null;
+  }
+}
+
 function cors(env: Env, req: Request) {
   const origin = req.headers.get('Origin') ?? '';
   const allowed = env.ALLOWED_ORIGIN.split(',').map((s) => s.trim());
@@ -112,6 +144,24 @@ export default {
       const stub = env.AUTHORS.get(env.AUTHORS.idFromName(author));
       const stats = await stub.rate(rid, user.id, stars);
       return json({ ok: true, recipe: stats.recipes[rid] }, 200, h);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/recipes') {
+      let body: { initData?: string; code?: string };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const { initData = '', code = '' } = body;
+      if (!/^r[zj][A-Za-z0-9_-]{8,16000}$/.test(code)) return json({ error: 'bad recipe' }, 400, h);
+      const user = await verifyInitData(initData, env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'Поделиться короткой ссылкой можно из Telegram' }, 401, h);
+      const store = env.RECIPES.get(env.RECIPES.idFromName('all'));
+      return json({ id: await store.put(code, user.id) }, 200, h);
+    }
+
+    const m = url.pathname.match(/^\/recipes\/([A-Za-z0-9]{6,16})$/);
+    if (req.method === 'GET' && m) {
+      const store = env.RECIPES.get(env.RECIPES.idFromName('all'));
+      const code = await store.get(m[1]);
+      return code ? json({ code }, 200, { ...h, 'Cache-Control': 'public, max-age=86400' }) : json({ error: 'not found' }, 404, h);
     }
 
     return json({ error: 'not found' }, 404, h);

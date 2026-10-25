@@ -40,3 +40,35 @@ export async function sendRating(rid: string, author: string, stars: number): Pr
 }
 
 export const newRid = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => (b % 36).toString(36)).join('') + Date.now().toString(36).slice(-4);
+
+/* ---------- Короткие ссылки на рецепты ---------- */
+
+const shortCache = new Map<string, string>();
+
+/** Сохранить рецепт на сервере и получить короткий id (только из Telegram). null — не получилось. */
+export async function storeRecipe(code: string): Promise<string | null> {
+  if (shortCache.has(code)) return shortCache.get(code)!;
+  const initData = platform.initData();
+  if (!RATINGS_API || !initData) return null;
+  try {
+    const r = await fetch(`${RATINGS_API}/recipes`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, code }),
+    });
+    if (!r.ok) return null;
+    const { id } = await r.json();
+    if (typeof id !== 'string') return null;
+    shortCache.set(code, id);
+    return id;
+  } catch { return null; }
+}
+
+export async function loadRecipeCode(id: string): Promise<string | null> {
+  if (!RATINGS_API) return null;
+  try {
+    const r = await fetch(`${RATINGS_API}/recipes/${encodeURIComponent(id)}`);
+    if (!r.ok) return null;
+    const { code } = await r.json();
+    return typeof code === 'string' ? code : null;
+  } catch { return null; }
+}

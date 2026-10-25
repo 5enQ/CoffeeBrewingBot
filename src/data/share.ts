@@ -1,4 +1,5 @@
 import { TELEGRAM_APP, TELEGRAM_BOT, WEB_URL } from '../config';
+import { loadRecipeCode, storeRecipe } from './ratings';
 import { cupScore } from './cupping';
 import { badgeText, sortBadges, type BadgeKind } from './badges';
 import { catById, type GearCat, type GearRef } from './gear';
@@ -115,6 +116,15 @@ export async function encodeRecipe(r: SharedRecipe): Promise<string> {
   return 'rj' + b64url(bytes);
 }
 
+/** Параметр запуска → рецепт: «s…» — короткая ссылка (рецепт на сервере), «r…» — рецепт в самой ссылке */
+export async function resolveStartParam(param: string): Promise<SharedRecipe | null> {
+  if (param.startsWith('s')) {
+    const code = await loadRecipeCode(param.slice(1));
+    return code ? decodeRecipe(code) : null;
+  }
+  return decodeRecipe(param);
+}
+
 export async function decodeRecipe(param: string): Promise<SharedRecipe | null> {
   try {
     if (!param.startsWith('r')) return null;
@@ -131,6 +141,9 @@ export async function decodeRecipe(param: string): Promise<SharedRecipe | null> 
 export async function recipeLink(r: SharedRecipe): Promise<string> {
   if (TELEGRAM_BOT) {
     const base = TELEGRAM_APP ? `https://t.me/${TELEGRAM_BOT}/${TELEGRAM_APP}` : `https://t.me/${TELEGRAM_BOT}`;
+    // Лучший вариант: весь рецепт на сервере, в ссылке — короткий код. Влезает рецепт любого размера.
+    const short = await storeRecipe(await encodeRecipe(r));
+    if (short) return `${base}?startapp=s${short}`;
     // Отбрасываем необязательное, пока не влезет: текст и так придёт в сообщении
     const noHints = r.plan ? { ...r.plan, steps: r.plan.steps.map(({ hint: _h, ...st }) => st) } : undefined;
     const variants: SharedRecipe[] = [

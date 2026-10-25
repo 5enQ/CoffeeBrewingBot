@@ -23,7 +23,7 @@ export function MethodIcon({ icon, size = 32 }: { icon: IconKey; size?: number }
   );
 }
 
-type UiIcon = 'brew' | 'journal' | 'beans' | 'more' | 'profile' | 'share' | 'gear' | 'medal' | 'back' | 'plus' | 'scan' | 'chevron' | 'play' | 'pause' | 'reset' | 'check' | 'star' | 'trash' | 'repeat' | 'edit' | 'camera' | 'image' | 'close';
+type UiIcon = 'brew' | 'journal' | 'beans' | 'more' | 'profile' | 'share' | 'gear' | 'medal' | 'copy' | 'back' | 'plus' | 'scan' | 'chevron' | 'play' | 'pause' | 'reset' | 'check' | 'star' | 'trash' | 'repeat' | 'edit' | 'camera' | 'image' | 'close';
 
 const UI_PATHS: Record<UiIcon, React.ReactNode> = {
   brew: <><path d="M5 8h14l-5 7h-4z" /><path d="M9 19h6M12 15v4" /><path d="M10 3v2M14 3v2" /></>,
@@ -33,6 +33,7 @@ const UI_PATHS: Record<UiIcon, React.ReactNode> = {
   share: <><path d="M12 15V4M8 8l4-4 4 4" /><path d="M6 11H5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1h-1" /></>,
   gear: <><path d="M6 4h12l-1 5H7z" /><path d="M9 9v3h6V9" /><rect x="7" y="12" width="10" height="8" rx="1.5" /><path d="M12 15v2" /></>,
   medal: <><circle cx="12" cy="14.5" r="5.5" /><path d="M8.5 10 6 3h4l2 4 2-4h4l-2.5 7" /><path d="m12 12 .9 1.8 2 .3-1.4 1.4.3 2-1.8-1-1.8 1 .3-2-1.4-1.4 2-.3z" /></>,
+  copy: <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>,
   more: <><circle cx="5" cy="12" r="1.3" /><circle cx="12" cy="12" r="1.3" /><circle cx="19" cy="12" r="1.3" /></>,
   back: <path d="M15 5l-7 7 7 7" />,
   plus: <path d="M12 5v14M5 12h14" />,

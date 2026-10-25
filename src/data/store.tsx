@@ -95,6 +95,8 @@ export interface Profile {
   /** настройки «Поделиться» */
   shareTelegram: boolean;
   shareBadges: boolean;
+  /** отправлять ли свои заметки к заварке */
+  shareNotes?: boolean;
   /** значки на витрине профиля (до 3): id своего значка или 'ach:<id>' достижения. undefined — выбрать автоматически */
   featured?: string[];
   /** оценки моих рецептов с сервера (кэш) */

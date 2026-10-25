@@ -670,3 +670,14 @@ button.row:active { background: var(--fg-soft); }
 .blend-share input { width: 58px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 .blend-part-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding-left: 32px; padding-right: 6px; }
 .warn-text { color: var(--star) !important; font-weight: 600; }
+
+.snack {
+  position: fixed; z-index: 80; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--inset-bottom) + 92px); max-width: calc(100% - 32px);
+  background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 12px;
+  font-size: 14px; font-weight: 600; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.4);
+  animation: snackIn 0.25s ease; pointer-events: none; text-align: center;
+}
+@keyframes snackIn { from { transform: translate(-50%, 10px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .snack { animation: none; } }
+.round-btn:disabled { opacity: 0.4; }

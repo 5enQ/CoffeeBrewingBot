@@ -9,6 +9,7 @@ import { platform } from '../platform';
 import { useRouter } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { AuthorBlock } from '../ui/Badges';
+import { copyText, toast } from '../ui/toast';
 import { beanOrigin, beanTitle, blendLines } from './beanUtils';
 import { RateBlock } from '../ui/RateBlock';
 import { myTelegramId, newRid, prepareShare, ratingsEnabled } from '../data/ratings';
@@ -117,7 +118,6 @@ export function ShareScreen({ id }: { id: string }) {
 
   const shown = useBadges().featured.map((f) => { const { id: _id, ...rest } = f.badge as typeof f.badge & { id?: string }; return rest; });
   const [link, setLink] = useState('');
-  const [msg, setMsg] = useState('');
 
   const tg = profile.telegram.trim();
   const me = {
@@ -125,7 +125,9 @@ export function ShareScreen({ id }: { id: string }) {
     username: profile.shareTelegram && tg ? tg : undefined,
     badges: profile.shareBadges && shown.length ? shown : undefined,
   };
-  const recipe = b ? toShared(b, beans.find((x) => x.id === b.beanId), me, myId) : null;
+  const withNotes = profile.shareNotes ?? true;
+  const full = b ? toShared(b, beans.find((x) => x.id === b.beanId), me, myId) : null;
+  const recipe = full && !withNotes ? { ...full, notes: '' } : full;
   const key = JSON.stringify(recipe);
 
   const [prepared, setPrepared] = useState<string | null>(null);
@@ -151,23 +153,26 @@ export function ShareScreen({ id }: { id: string }) {
   const send = async () => {
     if (prepared && platform.shareMessage) {
       const sent = await platform.shareMessage(prepared);
-      if (sent) { platform.haptic('success'); setMsg(''); return; }
+      if (sent) { platform.haptic('success'); return; }
       if (sent === false) return; // окно закрыли без отправки
       // null — не сработало: отправляем обычным способом
     }
     const res = await platform.share(recipeText(recipe), link);
     platform.haptic(res === 'failed' ? 'error' : 'success');
-    setMsg(res === 'copied' ? 'Рецепт и ссылка скопированы — вставьте в чат другу.' : res === 'failed' ? 'Не получилось отправить. Скопируйте текст вручную.' : '');
+    platform.haptic(res === 'failed' ? 'error' : 'success');
+    if (res === 'copied') toast('Рецепт и ссылка скопированы — вставьте в чат');
+    if (res === 'failed') toast('Не получилось отправить — скопируйте рецепт');
   };
   const copy = async () => {
-    try { await navigator.clipboard.writeText(`${recipeText(recipe)}\n\n${link}`); setMsg('Скопировано.'); platform.haptic('success'); }
-    catch { setMsg('Буфер обмена недоступен.'); }
+    const ok = await copyText(`${recipeText(recipe)}\n\n${link}`);
+    platform.haptic(ok ? 'success' : 'error');
+    toast(ok ? 'Рецепт скопирован' : 'Не получилось скопировать');
   };
 
   return (
     <Screen title="Поделиться" subtitle="Так рецепт увидит друг"
       footer={<div className="footer-actions">
-        <button type="button" className="round-btn" onClick={copy} aria-label="Скопировать текст"><Icon name="journal" /></button>
+        <button type="button" className="round-btn" onClick={copy} disabled={!link} aria-label="Скопировать рецепт"><Icon name="copy" /></button>
         <Button icon="share" wide onClick={send} disabled={!link}>{platform.kind === 'telegram' ? 'Отправить в Telegram' : 'Поделиться'}</Button>
       </div>}>
       {!b.author && (
@@ -179,6 +184,11 @@ export function ShareScreen({ id }: { id: string }) {
           <Toggle id="share-tg" label="Ссылка на мой Telegram" checked={profile.shareTelegram && !!tg} disabled={!tg}
             hint={tg ? `Друг сможет открыть @${tg}` : 'Укажите username в профиле'}
             onChange={(v) => saveProfile({ ...profile, shareTelegram: v })} />
+          {b.notes.trim() && (
+            <Toggle id="share-notes" label="Мои заметки" checked={withNotes}
+              hint={withNotes ? `«${b.notes.trim().slice(0, 60)}${b.notes.trim().length > 60 ? '…' : ''}»` : 'Друг не увидит ваши заметки'}
+              onChange={(v) => saveProfile({ ...profile, shareNotes: v })} />
+          )}
           <Toggle id="share-badges" label="Мои значки" checked={profile.shareBadges && shown.length > 0} disabled={!shown.length}
             hint={shown.length ? `${shown.map((b) => b.title).join(', ')}` : 'Значки появятся в профиле'}
             onChange={(v) => saveProfile({ ...profile, shareBadges: v })} />
@@ -186,7 +196,6 @@ export function ShareScreen({ id }: { id: string }) {
       )}
       {b.author && <p className="muted pad">Это рецепт {b.author.name || 'друга'} — он уйдёт с указанием исходного автора.</p>}
       <RecipeCard r={recipe} />
-      {msg && <p className="status">{msg}</p>}
       <p className="muted pad">Друг получит текст рецепта и ссылку: по ней рецепт откроется в приложении, его можно сохранить в дневник и заварить по шагам.</p>
     </Screen>
   );

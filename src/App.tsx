@@ -2,6 +2,7 @@ import { StoreProvider, useStore } from './data/store';
 import { DepthCtx, RouterProvider, useRouter, type Route, type Tab } from './router';
 import { DialogHost } from './ui/kit';
 import { AchievementToast } from './ui/AchievementToast';
+import { ToastHost } from './ui/toast';
 import { Icon } from './ui/icons';
 import { BrewHome } from './screens/BrewHome';
 import { MethodScreen } from './screens/MethodScreen';
@@ -80,6 +81,7 @@ function Shell() {
       )}
       <DialogHost />
       <AchievementToast />
+      <ToastHost />
     </>
   );
 }

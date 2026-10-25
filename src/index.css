@@ -246,12 +246,12 @@ button.row:active { background: var(--fg-soft); }
 .method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .method-card {
   display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0;
-  background: var(--card); border: 0; border-radius: var(--r); padding: 12px 14px; min-height: 60px;
+  background: var(--card); border: 0; border-radius: var(--r); padding: 10px 12px; min-height: 58px;
   transition: transform 0.1s ease;
 }
 .method-card:active { transform: scale(0.97); }
-.method-icon { color: var(--accent); flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); display: grid; place-items: center; }
-.method-name { font-weight: 650; font-size: 15.5px; line-height: 1.2; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.method-icon { color: var(--accent); flex-shrink: 0; width: 36px; height: 36px; border-radius: 12px; background: var(--accent-soft); display: grid; place-items: center; }
+.method-name { font-weight: 650; font-size: 15px; line-height: 1.2; min-width: 0; text-wrap: balance; }
 @media (min-width: 560px) { .method-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* ---------- Экран метода ---------- */

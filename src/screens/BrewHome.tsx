@@ -34,7 +34,7 @@ export function BrewHome() {
         <div className="method-grid">
           {METHODS.map((m) => (
             <button key={m.id} type="button" className="method-card" onClick={() => push({ name: 'method', methodId: m.id })}>
-              <span className="method-icon"><MethodIcon icon={m.icon} size={30} /></span>
+              <span className="method-icon"><MethodIcon icon={m.icon} size={28} /></span>
               <span className="method-name">{m.name}</span>
             </button>
           ))}

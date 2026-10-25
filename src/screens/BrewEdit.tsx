@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { FLAVOR_WHEEL, emptyCupping, toneOf } from '../data/cupping';
-import { METHODS, methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
+import { allMethods, methodById, fmtRatio, fmtTime, fmtNum, parseTime } from '../data/methods';
 import { useStore, type Brew } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
@@ -9,11 +9,6 @@ import { Button, Chips, Dots, Field, Screen, Section, Stars, Stepper } from '../
 import { BeanPicker } from './BeanPicker';
 import { GearPicker } from '../ui/GearPicker';
 
-function parseTime(s: string) {
-  const m = s.trim().match(/^(\d+)(?::(\d{1,2}))?$/);
-  if (!m) return null;
-  return m[2] !== undefined ? Number(m[1]) * 60 + Number(m[2]) : Number(m[1]);
-}
 
 export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: boolean; openCupping?: boolean }) {
   const { saveBrew } = useStore();
@@ -89,7 +84,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
       <Section title="Параметры" aside={<span className="muted">{fmtRatio(b.water / b.dose)}</span>}>
         <Field label="Метод" id="method">
           <select id="method" value={b.methodId} onChange={(e) => set({ methodId: e.target.value, plan: undefined })}>
-            {METHODS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+            {allMethods().map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </select>
         </Field>
         <Stepper label="Кофе" value={b.dose} step={0.25} min={1} max={100} unit="г" format={(v) => String(v).replace('.', ',')} onChange={(dose) => set({ dose })} />

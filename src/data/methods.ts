@@ -23,11 +23,19 @@ export interface Method {
   total: number;
   steps: BrewStep[];
   tips: string[];
+  /** свой метод пользователя */
+  custom?: boolean;
+  /** свой метод удалён: в списке не показывается, но старые заварки его помнят */
+  archived?: boolean;
 }
 
 export type IconKey =
   | 'v60' | 'chemex' | 'kalita' | 'aeropress' | 'french' | 'clever'
-  | 'espresso' | 'moka' | 'cezve' | 'cupping';
+  | 'espresso' | 'moka' | 'cezve' | 'cupping' | 'siphon' | 'coldbrew'
+  | 'cup' | 'kettle' | 'drop' | 'bean';
+
+/** Значки, которые можно выбрать для своего метода */
+export const ICON_CHOICES: IconKey[] = ['cup', 'drop', 'kettle', 'bean', 'v60', 'kalita', 'chemex', 'aeropress', 'french', 'clever', 'espresso', 'moka', 'cezve', 'siphon', 'coldbrew', 'cupping'];
 
 export const METHODS: Method[] = [
   {
@@ -143,6 +151,28 @@ export const METHODS: Method[] = [
     tips: ['Не доводите до кипения', 'Дайте гуще осесть 1–2 минуты'],
   },
   {
+    id: 'siphon', name: 'Сифон', icon: 'siphon',
+    about: 'Вакуумная заварка: чистый, ароматный и очень горячий кофе.',
+    dose: 20, ratio: 15, temp: 92, grind: 'средний', total: 120,
+    steps: [
+      { at: 0, title: 'Засыпать кофе', to: 1, hint: 'Вода поднялась в верхнюю колбу — всыпьте кофе и погрузите его ложкой' },
+      { at: 30, title: 'Перемешать', hint: '3–4 мягких круга, чтобы не было сухих комков' },
+      { at: 60, title: 'Снять с огня', hint: 'Перемешайте 4–5 кругов — начнётся слив в нижнюю колбу' },
+      { at: 90, title: 'Слив', hint: 'Цель — куполок кофейной гущи на фильтре к 2:00' },
+    ],
+    tips: ['Кисло — дольше настаивание или мельче помол', 'Горько и мутно — убавьте огонь, крупнее помол', 'Ткань фильтра храните в воде в холодильнике'],
+  },
+  {
+    id: 'coldbrew', name: 'Колд брю', icon: 'coldbrew',
+    about: 'Холодная экстракция 12–18 часов: мягкий, сладкий, без горечи.',
+    dose: 70, ratio: 10, temp: 0, grind: 'крупный', total: 43200,
+    steps: [
+      { at: 0, title: 'Залить холодной водой', to: 1, hint: 'Вода комнатной температуры или холодная, перемешайте' },
+      { at: 120, title: 'Перемешать и закрыть', hint: 'Убедитесь, что весь кофе намок. Уберите в холодильник на 12–18 часов, потом процедите через бумажный фильтр' },
+    ],
+    tips: ['Таймер можно закрыть — запишите заварку и процедите через 12–18 часов', 'Пейте с водой или льдом 1:1', 'Слишком крепко — разбавьте водой', 'Хранится в холодильнике до 2 недель'],
+  },
+  {
     id: 'cupping', name: 'Каппинг', icon: 'cupping',
     about: 'Протокол SCA: 8,25 г на 150 мл, оценка по анкете.',
     dose: 8.25, ratio: 18.18, temp: 93, grind: 'средне-крупный', total: 660,
@@ -157,7 +187,14 @@ export const METHODS: Method[] = [
   },
 ];
 
-export const methodById = (id: string) => METHODS.find((m) => m.id === id) ?? METHODS[0];
+/** Свои методы пользователя — регистрирует хранилище при загрузке и изменениях */
+let customMethods: Method[] = [];
+export function setCustomMethods(list: Method[]) { customMethods = list; }
+/** Все методы: стандартные и свои (без архивных — они только для старых заварок) */
+export const allMethods = () => [...METHODS, ...customMethods.filter((m) => !m.archived)];
+
+export const methodById = (id: string) =>
+  METHODS.find((m) => m.id === id) ?? customMethods.find((m) => m.id === id) ?? { ...METHODS[0], id, name: 'Удалённый метод' };
 
 export function fmtRatio(r: number) {
   return `1:${(Math.round(r * 10) / 10).toString().replace('.', ',')}`;
@@ -165,7 +202,17 @@ export function fmtRatio(r: number) {
 
 export function fmtTime(sec: number) {
   const s = Math.max(0, Math.round(sec));
+  if (s >= 3600) return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** «1:30», «90», «12:00:00» → секунды */
+export function parseTime(text: string): number | null {
+  const m = text.trim().match(/^(\d{1,4})(?::(\d{1,2}))?(?::(\d{1,2}))?$/);
+  if (!m) return null;
+  if (m[3] !== undefined) return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+  if (m[2] !== undefined) return Number(m[1]) * 60 + Number(m[2]);
+  return Number(m[1]);
 }
 
 export function fmtNum(n: number, digits = 1) {

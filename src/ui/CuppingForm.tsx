@@ -1,7 +1,7 @@
 import { CUP_ATTRS, QUALITY, SCORE_MAX, SCORE_MIN, SCORE_STEP, cupScore, scoreGrade, type Cupping } from '../data/cupping';
 import { fmtNum } from '../data/methods';
 import { platform } from '../platform';
-import { Dots, Stepper } from './kit';
+import { Dots, Stars, Stepper } from './kit';
 
 export function ScoreBadge({ c, big = false }: { c: Cupping; big?: boolean }) {
   const s = cupScore(c);
@@ -11,6 +11,11 @@ export function ScoreBadge({ c, big = false }: { c: Cupping; big?: boolean }) {
       <span>{scoreGrade(s.total)}</span>
     </div>
   );
+}
+
+/** Оценка заварки: баллы SCA, если есть каппинг, иначе звёзды. Баллы всегда в приоритете. */
+export function BrewScore({ brew, size = 14, big = false }: { brew: { rating: number; cupping: Cupping | null }; size?: number; big?: boolean }) {
+  return brew.cupping ? <ScoreBadge c={brew.cupping} big={big} /> : <Stars value={brew.rating} size={size} />;
 }
 
 export function CuppingForm({ value, onChange }: { value: Cupping; onChange(c: Cupping): void }) {

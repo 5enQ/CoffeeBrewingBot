@@ -192,7 +192,7 @@ export function recipeText(r: SharedRecipe): string {
   const steps = plan.steps.map((s) => `${fmtTime(s.at)} ${s.title}${s.to !== undefined ? ` — до ${fmtNum(r.water * s.to, 0)} г` : ''}${s.hint ? ` (${s.hint})` : ''}`);
   steps.push(`${fmtTime(plan.total)} Готово`);
   lines.push('', 'Шаги:', ...steps);
-  const taste = [r.descriptors.join(', '), r.rating ? '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating) : '', r.score ? `каппинг ${fmtNum(r.score, 2)}` : ''].filter(Boolean);
+  const taste = [r.descriptors.join(', '), r.score !== undefined ? `оценка SCA ${fmtNum(r.score, 2)}` : r.rating ? '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating) : ''].filter(Boolean);
   if (taste.length) lines.push('', `Вкус: ${taste.join(' · ')}`);
   if (r.notes) lines.push(`Заметки: ${r.notes}`);
   return lines.join('\n');

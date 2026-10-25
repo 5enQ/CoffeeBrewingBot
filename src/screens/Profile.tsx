@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchStats, myTelegramId, ratingsEnabled } from '../data/ratings';
-import { METHODS, fmtNum, methodById } from '../data/methods';
+import { allMethods, fmtNum, methodById } from '../data/methods';
 import { recipeFromStandard } from '../data/recipes';
 import { GEAR_CATS, type Gear } from '../data/gear';
 import { BADGE_KINDS, CHAMPIONSHIPS, PLACES, Q_TYPES, SCA_EXTRA, SCA_LEVELS, SCA_MODULES, type Badge } from '../data/badges';
@@ -127,7 +127,7 @@ export function Profile() {
       } plain>
         {pickMethod && (
           <div className="chips pick-method">
-            {METHODS.map((m) => (
+            {allMethods().map((m) => (
               <button type="button" key={m.id} className="chip" onClick={() => { setPickMethod(false); push({ name: 'recipeEdit', isNew: true, recipe: recipeFromStandard(m.id, uid()) }); }}>{m.name}</button>
             ))}
           </div>

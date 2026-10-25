@@ -1,4 +1,4 @@
-import { methodById, type BrewStep } from './methods';
+import { methodById, type BrewStep, type IconKey, type Method } from './methods';
 import type { Author } from './store';
 
 /** Свой рецепт: параметры + собственная схема проливов */
@@ -50,4 +50,30 @@ export function recipeFromStandard(methodId: string, id: string, params?: Partia
 
 export function sortSteps(steps: BrewStep[]) {
   return [...steps].sort((a, b) => a.at - b.at);
+}
+
+/** Свой метод заваривания: как стандартный, но создан пользователем */
+export interface CustomMethod {
+  id: string;
+  name: string;
+  about: string;
+  icon: IconKey;
+  dose: number;
+  ratio: number;
+  temp: number;
+  grind: string;
+  total: number;
+  steps: BrewStep[];
+  tips: string[];
+  archived?: boolean;
+  createdAt: number;
+}
+
+export const toMethod = (c: CustomMethod): Method => ({ ...c, custom: true });
+
+export function newCustomMethod(id: string): CustomMethod {
+  return {
+    id, name: '', about: '', icon: 'cup', dose: 15, ratio: 16, temp: 93, grind: 'средний', total: 180,
+    steps: [{ at: 0, title: 'Залить', to: 1 }], tips: [], createdAt: Date.now(),
+  };
 }

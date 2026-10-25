@@ -3,7 +3,7 @@ import { platform } from './platform';
 import type { Bean, Brew } from './data/store';
 import type { Gear } from './data/gear';
 import type { Badge } from './data/badges';
-import type { CustomRecipe } from './data/recipes';
+import type { CustomMethod, CustomRecipe } from './data/recipes';
 import type { SharedRecipe } from './data/share';
 
 export type Tab = 'brew' | 'journal' | 'beans' | 'profile';
@@ -18,6 +18,7 @@ export type Route =
   | { name: 'beanEdit'; bean: Bean; isNew: boolean; scanOnOpen?: boolean }
   | { name: 'gearEdit'; gear: Gear; isNew: boolean }
   | { name: 'recipeEdit'; recipe: CustomRecipe; isNew: boolean }
+  | { name: 'methodEdit'; method: CustomMethod; isNew: boolean }
   | { name: 'badgeEdit'; badge: Badge; isNew: boolean }
   | { name: 'share'; id: string }
   | { name: 'shared'; recipe: SharedRecipe };

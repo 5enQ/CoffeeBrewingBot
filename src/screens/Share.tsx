@@ -92,7 +92,7 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
         <div className="recipe-block">
           <h3>Вкус</h3>
           <div className="recipe-taste">
-            {r.rating > 0 && <Stars value={r.rating} size={18} />}
+            {r.rating > 0 && r.score === undefined && <Stars value={r.rating} size={18} />}
             {r.score !== undefined && <span className="score-inline">каппинг <b>{fmtNum(r.score, 2)}</b></span>}
           </div>
           {r.descriptors.length > 0 && <div className="chips static">{r.descriptors.map((d) => <span key={d} className="chip on" data-tone={toneOf(d)}>{d}</span>)}</div>}

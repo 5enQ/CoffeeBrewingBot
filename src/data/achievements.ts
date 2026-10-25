@@ -1,5 +1,5 @@
 import type { BadgeLite } from './badges';
-import { METHODS } from './methods';
+import { allMethods } from './methods';
 import type { Brew } from './store';
 
 export type Tier = 'bronze' | 'silver' | 'gold' | 'diamond';
@@ -41,7 +41,7 @@ export function earnedAchievements(brews: Brew[], ratingsCount: number): Achieve
   const rat = reached(RATINGS, ratingsCount);
   if (rat) out.push({ id: 'ratings', unlock: `ratings:${rat.tier}`, badge: { kind: 'achieve', title: `${fmt(rat.at)} оценок рецептов`, detail: TIER_LABEL[rat.tier], year: '' } });
 
-  for (const m of METHODS) {
+  for (const m of allMethods()) {
     const n = own.filter((b) => b.methodId === m.id).length;
     const lv = reached(METHOD_COUNT, n);
     if (lv) out.push({ id: `method:${m.id}`, unlock: `method:${m.id}:${lv.tier}`, badge: { kind: 'achieve', title: `${m.name} · ${fmt(lv.at)} заварок`, detail: TIER_LABEL[lv.tier], year: '' } });

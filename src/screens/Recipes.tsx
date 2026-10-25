@@ -13,7 +13,8 @@ const plural = (n: number, f: [string, string, string]) => {
 /** Шаг 1 заварки: выбор рецепта для метода. Дальше — зерно и параметры. */
 export function RecipesScreen({ methodId, beanId }: { methodId: string; beanId?: string | null }) {
   const m = methodById(methodId);
-  const { custom, recipes } = useStore();
+  const { custom, recipes, customMethods } = useStore();
+  const own = customMethods.find((x) => x.id === m.id);
   const { push } = useRouter();
   const sel = useSelected();
   const mine = custom.filter((r) => r.methodId === m.id);
@@ -39,18 +40,19 @@ export function RecipesScreen({ methodId, beanId }: { methodId: string; beanId?:
   );
 
   return (
-    <Screen title={m.name} subtitle="Выберите рецепт"
+    <Screen title={m.name} subtitle={own ? 'Свой метод · выберите рецепт' : 'Выберите рецепт'}
+      action={own ? <button type="button" className="icon-btn" aria-label="Изменить метод" onClick={() => push({ name: 'methodEdit', isNew: false, method: own })}><Icon name="edit" /></button> : undefined}
       footer={<div className="footer-actions">
         <Button kind="secondary" icon="plus" wide onClick={() => push({ name: 'recipeEdit', isNew: true, recipe: recipeFromStandard(m.id, uid()) })}>Свой рецепт</Button>
       </div>}>
       <div className="method-hero compact">
         <span className="method-hero-icon"><MethodIcon icon={m.icon} size={36} /></span>
-        <p className="muted">{m.about}</p>
+        <p className="muted">{m.about || 'Свой метод заваривания'}</p>
       </div>
 
       <Section title="Рецепт" plain>
         <div className="recipe-tiles">
-          {card('std', 'Стандартный', m.dose, m.ratio, m.total, m.steps.length, `${m.temp ? `${m.temp}°C` : 'холодная вода'} · помол ${m.grind}`)}
+          {card('std', own ? 'Базовый' : 'Стандартный', m.dose, m.ratio, m.total, m.steps.length, `${m.temp ? `${m.temp}°C` : 'холодная вода'} · помол ${m.grind}`)}
           {mine.map((r) => card(r.id, r.name, r.dose, r.ratio, r.total, r.steps.length,
             [r.author && `от ${r.author.name || '@' + r.author.username}`, r.notes].filter(Boolean).join(' · ') || undefined))}
         </div>

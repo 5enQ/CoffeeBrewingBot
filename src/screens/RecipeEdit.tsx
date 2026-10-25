@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { fmtNum, fmtRatio, fmtTime, methodById } from '../data/methods';
-import { sortSteps, type CustomRecipe } from '../data/recipes';
+import { ICON_CHOICES, fmtNum, fmtRatio, fmtTime, methodById, parseTime, type IconKey } from '../data/methods';
+import { sortSteps, type CustomMethod, type CustomRecipe } from '../data/recipes';
 import { useStore } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
@@ -10,11 +10,6 @@ import { Button, Field, Screen, Section, Stepper } from '../ui/kit';
 /** Шаг в редакторе: время и граммы — строками, чтобы удобно печатать */
 interface DraftStep { key: string; at: string; title: string; grams: string; hint: string }
 
-const parseTime = (s: string) => {
-  const m = s.trim().match(/^(\d{1,3})(?::(\d{1,2}))?$/);
-  if (!m) return null;
-  return m[2] !== undefined ? Number(m[1]) * 60 + Number(m[2]) : Number(m[1]);
-};
 const parseNum = (s: string) => {
   const n = parseFloat(s.replace(',', '.'));
   return isNaN(n) ? null : n;
@@ -22,8 +17,21 @@ const parseNum = (s: string) => {
 let k = 0;
 const key = () => `s${++k}`;
 
-export function RecipeEdit({ recipe: initial, isNew }: { recipe: CustomRecipe; isNew: boolean }) {
-  const { saveCustom, deleteCustom } = useStore();
+interface MethodMeta { icon: IconKey; about: string; createdAt: number }
+
+/** Редактор своего метода — тот же редактор, что у рецепта, плюс значок и описание */
+export function MethodEdit({ method, isNew }: { method: CustomMethod; isNew: boolean }) {
+  const recipe: CustomRecipe = {
+    id: method.id, methodId: method.id, name: method.name, dose: method.dose, ratio: method.ratio, temp: method.temp,
+    grind: method.grind, total: method.total, steps: method.steps, notes: method.tips.join('\n'), createdAt: method.createdAt,
+  };
+  return <RecipeEdit recipe={recipe} isNew={isNew} asMethod={{ icon: method.icon, about: method.about, createdAt: method.createdAt }} />;
+}
+
+export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: CustomRecipe; isNew: boolean; asMethod?: MethodMeta }) {
+  const { saveCustom, deleteCustom, saveMethod } = useStore();
+  const [meta, setMeta] = useState<MethodMeta | undefined>(asMethod);
+  const kind = asMethod ? 'метод' : 'рецепт';
   const { back } = useRouter();
   const m = methodById(initial.methodId);
   const espresso = m.id === 'espresso';
@@ -37,7 +45,7 @@ export function RecipeEdit({ recipe: initial, isNew }: { recipe: CustomRecipe; i
   })));
   const [error, setError] = useState('');
   // Изменения считаем сравнением с тем, что открыли: вернули как было — кнопка снова неактивна
-  const snap = () => JSON.stringify({ r, totalText, steps: steps.map(({ key: _k, ...st }) => st) });
+  const snap = () => JSON.stringify({ r, totalText, meta, steps: steps.map(({ key: _k, ...st }) => st) });
   const initialSnap = useRef<string | null>(null);
   if (initialSnap.current === null) initialSnap.current = snap();
   const dirty = isNew || snap() !== initialSnap.current;
@@ -64,7 +72,7 @@ export function RecipeEdit({ recipe: initial, isNew }: { recipe: CustomRecipe; i
     const parsed = [];
     for (const [i, s] of steps.entries()) {
       const at = parseTime(s.at);
-      if (at === null) return fail(`Шаг ${i + 1}: время в формате мин:сек, например 1:30`);
+      if (at === null) return fail(`Шаг ${i + 1}: время в формате мин:сек, например 1:30 (или ч:мм:сс)`);
       const g = s.grams.trim() ? parseNum(s.grams) : null;
       if (s.grams.trim() && (g === null || g < 0)) return fail(`Шаг ${i + 1}: граммы — число, например 150`);
       parsed.push({ at, title: s.title.trim() || 'Шаг', to: g !== null ? Math.min(1.5, g / water) : undefined, hint: s.hint.trim() || undefined });
@@ -74,29 +82,62 @@ export function RecipeEdit({ recipe: initial, isNew }: { recipe: CustomRecipe; i
     if (total === null || total <= 0) return fail('Время до готовности — в формате мин:сек');
     const sorted = sortSteps(parsed);
     if (total < sorted[sorted.length - 1].at) return fail('Время до готовности не может быть раньше последнего шага');
-    saveCustom({ ...r, name: r.name.trim() || `Мой ${m.name}`, total, steps: sorted });
+    if (meta) {
+      saveMethod({
+        id: r.methodId, name: r.name.trim() || 'Мой метод', about: meta.about.trim(), icon: meta.icon,
+        dose: r.dose, ratio: r.ratio, temp: r.temp, grind: r.grind, total, steps: sorted,
+        tips: r.notes.split('\n').map((t) => t.trim()).filter(Boolean), createdAt: meta.createdAt,
+      });
+    } else {
+      saveCustom({ ...r, name: r.name.trim() || `Мой ${m.name}`, total, steps: sorted });
+    }
     platform.haptic('success');
     back(true);
   };
 
   const remove = async () => {
-    if (!(await platform.confirm(`Удалить рецепт «${r.name}»? Заварки по нему останутся в дневнике.`))) return;
-    deleteCustom(r.id);
+    if (!(await platform.confirm(`Удалить ${kind} «${r.name}»? Заварки останутся в дневнике.`))) return;
+    if (meta) {
+      // метод не стираем совсем — его помнят старые заварки; просто убираем из списка
+      saveMethod({
+        id: r.methodId, name: r.name, about: meta.about, icon: meta.icon, dose: r.dose, ratio: r.ratio, temp: r.temp,
+        grind: r.grind, total: r.total, steps: r.steps, tips: [], createdAt: meta.createdAt, archived: true,
+      });
+    } else deleteCustom(r.id);
     back(true);
   };
 
   return (
-    <Screen title={isNew ? 'Новый рецепт' : 'Рецепт'} subtitle={m.name}
+    <Screen title={isNew ? (meta ? 'Новый метод' : 'Новый рецепт') : (meta ? 'Свой метод' : 'Рецепт')}
+      subtitle={meta ? 'Метод заваривания: название, значок, базовый рецепт и шаги' : m.name}
       footer={<>{error && <p className="error footer-error">{error}</p>}<div className="footer-actions">
-        {!isNew && <button type="button" className="round-btn" onClick={remove} aria-label="Удалить рецепт"><Icon name="trash" /></button>}
-        <Button icon="check" wide onClick={save} disabled={!dirty}>{isNew ? 'Сохранить рецепт' : dirty ? 'Сохранить изменения' : 'Изменений нет'}</Button>
+        {!isNew && <button type="button" className="round-btn" onClick={remove} aria-label={`Удалить ${kind}`}><Icon name="trash" /></button>}
+        <Button icon="check" wide onClick={save} disabled={!dirty}>{isNew ? `Сохранить ${kind}` : dirty ? 'Сохранить изменения' : 'Изменений нет'}</Button>
       </div></>}>
 
       <div className="method-hero">
-        <span className="method-hero-icon"><MethodIcon icon={m.icon} size={40} /></span>
-        <input id="recipe-name" className="recipe-name-input" value={r.name} placeholder={`Мой ${m.name}`}
-          onChange={(e) => set({ name: e.target.value })} aria-label="Название рецепта" />
+        <span className="method-hero-icon"><MethodIcon icon={meta?.icon ?? m.icon} size={40} /></span>
+        <input id="recipe-name" className="recipe-name-input" value={r.name} placeholder={meta ? 'Название метода' : `Мой ${m.name}`}
+          onChange={(e) => set({ name: e.target.value })} aria-label={meta ? 'Название метода' : 'Название рецепта'} />
       </div>
+      {meta && (
+        <>
+          <Section title="Значок" plain>
+            <div className="icon-pick">
+              {ICON_CHOICES.map((ic) => (
+                <button type="button" key={ic} className={'icon-pick-btn' + (meta.icon === ic ? ' on' : '')} aria-label={`Значок ${ic}`} aria-pressed={meta.icon === ic}
+                  onClick={() => { platform.haptic('select'); setMeta({ ...meta, icon: ic }); }}>
+                  <MethodIcon icon={ic} size={28} />
+                </button>
+              ))}
+            </div>
+          </Section>
+          <Section>
+            <Field label="Описание" id="method-about" value={meta.about} placeholder="Например: турка на песке, восточный кофе"
+              onChange={(e) => { setError(''); setMeta({ ...meta, about: e.target.value }); }} />
+          </Section>
+        </>
+      )}
       {r.author && <p className="muted pad">Рецепт от {r.author.name || '@' + r.author.username}. Можно менять под себя.</p>}
 
       <Section title="Параметры" aside={<span className="muted">{fmtNum(r.dose, 2)} г → {fmtNum(water)} г</span>}>
@@ -138,8 +179,8 @@ export function RecipeEdit({ recipe: initial, isNew }: { recipe: CustomRecipe; i
         </div>
       </Section>
 
-      <Section title="Заметки">
-        <textarea id="recipe-notes" className="notes" rows={3} placeholder="Вода, фильтр, для какого зерна рецепт" value={r.notes}
+      <Section title={meta ? 'Подсказки' : 'Заметки'}>
+        <textarea id="recipe-notes" className="notes" rows={3} placeholder={meta ? 'Что делать, если кисло или горько — по строке на подсказку' : 'Вода, фильтр, для какого зерна рецепт'} value={r.notes}
           onChange={(e) => set({ notes: e.target.value })} />
       </Section>
 

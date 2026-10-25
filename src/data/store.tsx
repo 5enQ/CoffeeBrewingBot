@@ -4,7 +4,8 @@ import type { Cupping } from './cupping';
 import type { Gear, GearRef } from './gear';
 import type { Badge, BadgeLite } from './badges';
 import type { RatingStats } from './ratings';
-import type { BrewPlan, CustomRecipe } from './recipes';
+import { toMethod, type BrewPlan, type CustomMethod, type CustomRecipe } from './recipes';
+import { setCustomMethods } from './methods';
 
 export interface Bean {
   id: string;
@@ -119,6 +120,8 @@ interface DB {
   gearSeeded?: boolean;
   /** свои рецепты */
   custom?: CustomRecipe[];
+  /** свои методы заваривания */
+  customMethods?: CustomMethod[];
   /** достижения, о которых уже показали уведомление */
   seenAch?: string[];
   /** мои оценки чужих рецептов: shareId → звёзды */
@@ -222,6 +225,8 @@ interface StoreApi {
   saveRated(rid: string, stars: number): void;
   setRatingStats(st: RatingStats): void;
   custom: CustomRecipe[];
+  customMethods: CustomMethod[];
+  saveMethod(m: CustomMethod): void;
   seenAch: string[] | null;
   markSeen(keys: string[]): void;
   saveCustom(r: CustomRecipe): void;
@@ -288,6 +293,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const saveGear = useCallback((g: Gear) => setDb((d) => ({ ...d, gear: d.gear.some((x) => x.id === g.id) ? d.gear.map((x) => (x.id === g.id ? g : x)) : [...d.gear, g] })), []);
   const deleteGear = useCallback((id: string) => setDb((d) => ({ ...d, gear: d.gear.filter((g) => g.id !== id) })), []);
   const saveProfile = useCallback((profile: Profile) => setDb((d) => ({ ...d, profile })), []);
+  const saveMethod = useCallback((m: CustomMethod) => setDb((d) => {
+    const list = d.customMethods ?? [];
+    return { ...d, customMethods: list.some((x) => x.id === m.id) ? list.map((x) => (x.id === m.id ? m : x)) : [...list, m] };
+  }), []);
   const markSeen = useCallback((keys: string[]) => setDb((d) => ({ ...d, seenAch: [...new Set([...(d.seenAch ?? []), ...keys])] })), []);
   const saveCustom = useCallback((r: CustomRecipe) => setDb((d) => {
     const list = d.custom ?? [];
@@ -302,15 +311,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile,
     rated: db.rated ?? {}, saveRated, setRatingStats,
     custom: db.custom ?? [], saveCustom, deleteCustom,
+    customMethods: db.customMethods ?? [], saveMethod,
     seenAch: db.seenAch ?? null, markSeen,
     hasSamples: db.beans.some((b) => b.sample) || db.brews.some((b) => b.sample) || db.gear.some((g) => g.sample),
     exportJson: () => JSON.stringify({ ...db, exportedAt: new Date().toISOString() }, null, 2),
     importJson(json) {
       const data = JSON.parse(json);
       if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл экспорта дневника');
-      setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true });
+      setDb({ ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], customMethods: data.customMethods ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true });
     },
-  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen]);
+  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen, saveMethod]);
+
+  // Свои методы должны быть известны methodById() до отрисовки экранов
+  setCustomMethods((db.customMethods ?? []).map(toMethod));
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

@@ -1,8 +1,12 @@
-import { METHODS, methodById, fmtNum } from '../data/methods';
+import { allMethods, methodById, fmtNum } from '../data/methods';
+import { newCustomMethod } from '../data/recipes';
+import { uid } from '../data/store';
+import { Icon } from '../ui/icons';
 import { useStore } from '../data/store';
 import { useRouter, useSelected } from '../router';
 import { MethodIcon } from '../ui/icons';
-import { Row, Screen, Section, Stars } from '../ui/kit';
+import { Row, Screen, Section } from '../ui/kit';
+import { BrewScore } from '../ui/CuppingForm';
 import { beanTitle } from './beanUtils';
 
 export function BrewHome() {
@@ -23,7 +27,7 @@ export function BrewHome() {
                 leading={<MethodIcon icon={m.icon} size={26} />}
                 label={beanTitle(bean)}
                 hint={`${m.name}${b.plan ? ` · ${b.plan.name}` : ''} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г`}
-                value={<Stars value={b.rating} size={14} />}
+                value={<BrewScore brew={b} size={14} />}
                 onClick={() => push({ name: 'method', methodId: b.methodId, beanId: b.beanId, from: b })}
                 active={sel?.name === 'method' && sel.from?.id === b.id}
               />
@@ -32,9 +36,12 @@ export function BrewHome() {
         </Section>
       )}
 
-      <Section title="Метод приготовления" plain>
+      <Section title="Метод приготовления" aside={
+        <button type="button" className="icon-btn" aria-label="Свой метод"
+          onClick={() => push({ name: 'methodEdit', isNew: true, method: newCustomMethod('cm' + uid()) })}><Icon name="plus" /></button>
+      } plain>
         <div className="method-grid">
-          {METHODS.map((m) => (
+          {allMethods().map((m) => (
             <button key={m.id} type="button" className={'method-card' + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === m.id ? ' active' : '')} onClick={() => push({ name: 'recipes', methodId: m.id })}>
               <span className="method-icon"><MethodIcon icon={m.icon} size={28} /></span>
               <span className="method-name">{m.name}</span>

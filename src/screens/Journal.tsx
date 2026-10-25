@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { cupScore, QUALITY, CUP_ATTRS, toneOf, SCORE_MIN, SCORE_MAX } from '../data/cupping';
-import { METHODS, methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
+import { allMethods, methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
 import { useStore } from '../data/store';
 import { platform } from '../platform';
 import { useRouter, useSelected } from '../router';
-import { ScoreBadge } from '../ui/CuppingForm';
+import { BrewScore, ScoreBadge } from '../ui/CuppingForm';
 import { MethodIcon, Icon } from '../ui/icons';
 import { catById } from '../data/gear';
 import { AuthorBlock } from '../ui/Badges';
@@ -26,7 +26,7 @@ export function Journal() {
   const [method, setMethod] = useState<string | null>(null);
   const sel = useSelected();
 
-  const used = useMemo(() => METHODS.filter((m) => brews.some((b) => b.methodId === m.id)), [brews]);
+  const used = useMemo(() => allMethods().filter((m) => brews.some((b) => b.methodId === m.id)), [brews]);
   const list = method ? brews.filter((b) => b.methodId === method) : brews;
 
   const groups = useMemo(() => {
@@ -76,7 +76,7 @@ export function Journal() {
                 leading={<MethodIcon icon={m.icon} size={26} />}
                 label={<>{beanTitle(bean)} {b.sample && <SampleTag />}</>}
                 hint={`${b.author ? `от ${b.author.name || '@' + b.author.username} · ` : ''}${m.name} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г · ${fmtRatio(b.water / b.dose)} · ${fmtTime(b.time)}`}
-                value={b.cupping ? <ScoreBadge c={b.cupping} /> : <Stars value={b.rating} size={14} />}
+                value={<BrewScore brew={b} size={14} />}
                 onClick={() => push({ name: 'brew', id: b.id })}
                 active={sel?.name === 'brew' && sel.id === b.id}
               />
@@ -125,8 +125,7 @@ export function BrewDetail({ id }: { id: string }) {
       )}
 
       <div className="detail-head">
-        <Stars value={b.rating} size={26} />
-        {c && <ScoreBadge c={c} big />}
+        {c ? <><span className="muted">Оценка по анкете SCA</span><ScoreBadge c={c} big /></> : <Stars value={b.rating} size={26} />}
       </div>
 
       <dl className="param-grid">

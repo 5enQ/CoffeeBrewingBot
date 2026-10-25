@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { lookupCode, mergeEmpty } from '../data/lookup';
-import { METHODS, methodById, fmtRatio, fmtNum } from '../data/methods';
+import { allMethods, methodById, fmtRatio, fmtNum } from '../data/methods';
 import { cupScore } from '../data/cupping';
 import { emptyBean, uid, useStore, type Bean, type BlendPart } from '../data/store';
 import { beanStock, isFinished, PACK_SIZES } from '../data/stock';
@@ -9,7 +9,7 @@ import { useBackGuard, useRouter, useSelected } from '../router';
 import { MethodIcon, Icon } from '../ui/icons';
 import { Button, Chips, Empty, Field, Row, SampleTag, Screen, Section, Segmented, Stars } from '../ui/kit';
 import { Scanner } from '../ui/Scanner';
-import { ScoreBadge } from '../ui/CuppingForm';
+import { BrewScore } from '../ui/CuppingForm';
 import { beanMeta, beanOrigin, beanTitle, blendLines, PROCESSES, RestBadge, ROAST_LEVELS } from './beanUtils';
 
 /* ---------- Полка ---------- */
@@ -43,6 +43,9 @@ function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
   const mine = brews.filter((x) => x.beanId === b.id);
   const rated = mine.filter((x) => x.rating);
   const avg = rated.length ? rated.reduce((s, x) => s + x.rating, 0) / rated.length : 0;
+  // баллы SCA важнее звёзд: если пачку каппинговали — показываем средний балл
+  const cupped = mine.filter((x) => x.cupping);
+  const avgScore = cupped.length ? cupped.reduce((s, x) => s + cupScore(x.cupping!).total, 0) / cupped.length : 0;
   return (
     <button type="button" className={'bean-card' + (active ? ' active' : '')} aria-current={active || undefined} onClick={onClick}>
       <div className="bean-card-top">
@@ -53,7 +56,7 @@ function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
       <StockBar bean={b} />
       <div className="bean-card-foot">
         <span>{b.roaster || '—'}</span>
-        <span className="foot-right"><RestBadge roastDate={b.roastDate} />{avg ? <Stars value={Math.round(avg)} size={12} /> : null}</span>
+        <span className="foot-right"><RestBadge roastDate={b.roastDate} />{avgScore ? <span className="score-mini">{fmtNum(avgScore, 2)}</span> : avg ? <Stars value={Math.round(avg)} size={12} /> : null}</span>
       </div>
     </button>
   );
@@ -191,7 +194,7 @@ export function BeanDetail({ id }: { id: string }) {
 
       <Section title="Заварить" plain>
         <div className="quick-methods">
-          {METHODS.map((m) => (
+          {allMethods().map((m) => (
             <button type="button" key={m.id} onClick={() => push({ name: 'recipes', methodId: m.id, beanId: b.id })}>
               <MethodIcon icon={m.icon} size={26} /><span>{m.name}</span>
             </button>
@@ -222,7 +225,7 @@ export function BeanDetail({ id }: { id: string }) {
             <Row key={x.id} leading={<MethodIcon icon={m.icon} size={24} />}
               label={m.name}
               hint={`${new Date(x.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} · ${fmtRatio(x.water / x.dose)} · ${x.grind || 'помол не указан'}`}
-              value={x.cupping ? <ScoreBadge c={x.cupping} /> : <Stars value={x.rating} size={13} />}
+              value={<BrewScore brew={x} size={13} />}
               onClick={() => push({ name: 'brew', id: x.id })} />
           );
         })}

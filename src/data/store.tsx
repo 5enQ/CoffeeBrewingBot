@@ -1,8 +1,10 @@
 import { CloudFullError, CloudSync, type SyncStatus } from './sync';
 import { merge, toBuckets } from './persist';
+import { fromMarkdown, toMarkdown } from './backup';
+import { emptyAffective, emptyDescriptive } from './cva';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { platform } from '../platform';
-import type { Cupping } from './cupping';
+import { emptyCupping, type Cupping } from './cupping';
 import type { Gear, GearRef } from './gear';
 import type { Badge, BadgeLite } from './badges';
 import type { RatingStats } from './ratings';
@@ -141,6 +143,34 @@ export interface DB {
 }
 
 /** Отметить изменённые и удалённые записи */
+/** Подставить значения по умолчанию в данные из резервной копии (в Markdown пустые поля не пишутся) */
+function normalizeBackup(data: { beans: Partial<Bean>[]; brews: Partial<Brew>[]; gear?: Partial<Gear>[]; custom?: Partial<CustomRecipe>[]; customMethods?: Partial<CustomMethod>[]; profile?: Partial<Profile> }) {
+  const bean0 = emptyBean();
+  return {
+    ...data,
+    beans: data.beans.map((b) => ({
+      ...bean0, ...b, id: String(b.id ?? uid()),
+      parts: b.parts?.map((x) => ({ share: '', country: '', region: '', farm: '', variety: '', process: '', ...(x as Partial<BlendPart>) })),
+    }) as Bean).map((b) => { if (!b.parts) delete b.parts; return b; }),
+    brews: data.brews.map((b) => ({
+      beanId: null, grind: '', notes: '', time: 0, temp: 0, dose: 0, water: 0, rating: 0, descriptors: [],
+      taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, date: Date.now(), methodId: 'v60',
+      ...b, id: String(b.id ?? uid()),
+      cupping: b.cupping ? { ...emptyCupping(), ...b.cupping } : null,
+      cva: b.cva ? { purpose: '', ...(b.cva as Partial<CvaSession>), samples: (b.cva.samples ?? []).map((x) => ({
+        code: '', beanId: null, ...(x as Partial<typeof x>),
+        affective: x.affective ? { ...emptyAffective(b.cva!.cups), ...x.affective } : undefined,
+        descriptive: x.descriptive ? { ...emptyDescriptive(), ...x.descriptive } : undefined,
+        extrinsic: x.extrinsic ? { checked: [], notes: {}, ...(x.extrinsic as Partial<typeof x.extrinsic>) } : undefined,
+      })) } : undefined,
+    }) as Brew),
+    gear: (data.gear ?? []).map((g) => ({ details: '', cat: 'other' as const, name: '', ...g, id: String(g.id ?? uid()) }) as Gear),
+    custom: (data.custom ?? []).map((r) => ({ notes: '', grind: '', steps: [], ...r }) as CustomRecipe),
+    customMethods: (data.customMethods ?? []).map((m) => ({ about: '', grind: '', steps: [], tips: [], icon: 'cup' as const, ...m }) as CustomMethod),
+    profile: { ...data.profile, badges: (data.profile?.badges ?? []).map((x) => ({ title: '', detail: '', year: '', ...(x as Partial<Badge>) }) as Badge) },
+  };
+}
+
 export function stamp(d: DB, changed: string[], removed: string[] = []): Pick<DB, 'mod' | 'del'> {
   const t = Date.now();
   const mod = { ...(d.mod ?? {}) };
@@ -262,7 +292,9 @@ interface StoreApi {
   saveRecipe(methodId: string, r: Recipe): void;
   removeSamples(): void;
   exportJson(): string;
-  importJson(json: string): void;
+  exportMarkdown(): string;
+  /** Markdown или JSON */
+  importBackup(text: string): void;
   hasSamples: boolean;
   /** синхронизация между устройствами (Telegram CloudStorage) */
   sync: SyncStatus;
@@ -403,11 +435,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     hasSamples: db.beans.some((b) => b.sample) || db.brews.some((b) => b.sample) || db.gear.some((g) => g.sample),
     sync, syncNow: () => { runSync(); },
     exportJson: () => JSON.stringify({ ...db, exportedAt: new Date().toISOString() }, null, 2),
-    importJson(json) {
-      const data = JSON.parse(json);
-      if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл экспорта дневника');
+    exportMarkdown: () => toMarkdown(db),
+    importBackup(text) {
+      const t = text.trim();
+      let data: Record<string, unknown> & { beans: Bean[]; brews: Brew[]; recipes?: Record<string, Recipe>; gear?: Gear[]; custom?: CustomRecipe[]; customMethods?: CustomMethod[]; pinned?: string[]; profile?: Partial<Profile>; rated?: Record<string, number>; seenAch?: string[] };
+      try { data = (t.startsWith('{') ? JSON.parse(t) : fromMarkdown(t)) as typeof data; }
+      catch (e) { throw new Error(e instanceof Error && e.message.startsWith('Не похоже') ? e.message : 'Не получилось прочитать копию — проверьте файл'); }
+      if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл резервной копии');
+      data = normalizeBackup(data) as typeof data;
       setDb((d) => {
-        const next: DB = { ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], customMethods: data.customMethods ?? [], pinned: data.pinned ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true };
+        const next: DB = { ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], customMethods: data.customMethods ?? [], pinned: data.pinned ?? [], rated: data.rated ?? {}, seenAch: data.seenAch ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true };
         const keys = (x: DB) => [
           ...x.beans.map((b) => 'k:' + b.id), ...x.brews.map((b) => 'b:' + b.id), ...x.gear.map((g) => 'g:' + g.id),
           ...(x.custom ?? []).map((c) => 'c:' + c.id), ...(x.customMethods ?? []).map((m) => 'x:' + m.id),

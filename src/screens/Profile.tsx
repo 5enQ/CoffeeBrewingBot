@@ -26,23 +26,23 @@ export function Profile() {
   const addGear = (cat: Gear['cat']) => push({ name: 'gearEdit', gear: { id: uid(), cat, name: '', details: '' }, isNew: true });
 
   const copy = async () => {
-    const json = store.exportJson();
+    const json = store.exportMarkdown();
     try { await navigator.clipboard.writeText(json); setMsg('Резервная копия скопирована в буфер обмена.'); platform.haptic('success'); }
     catch { setPaste(json); setMsg('Буфер недоступен — копия ниже, выделите и скопируйте вручную.'); }
   };
 
   const download = () => {
-    const blob = new Blob([store.exportJson()], { type: 'application/json' });
+    const blob = new Blob([store.exportMarkdown()], { type: 'text/markdown;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `brewbook-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `brewbook-${new Date().toISOString().slice(0, 10)}.md`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
 
   const importText = async (text: string) => {
     if (!(await platform.confirm('Заменить все текущие данные данными из копии?'))) return;
-    try { store.importJson(text); setMsg('Данные восстановлены.'); setPaste(''); platform.haptic('success'); }
+    try { store.importBackup(text); setMsg('Данные восстановлены.'); setPaste(''); platform.haptic('success'); }
     catch (e) { setMsg((e as Error).message || 'Не получилось прочитать копию.'); platform.haptic('error'); }
   };
 
@@ -191,16 +191,17 @@ export function Profile() {
       <SyncSection />
 
       <Section title="Резервная копия" plain>
+        <p className="muted pad">Копия в формате Markdown — обычный текст с разделами «Полка», «Дневник», «Оборудование». Его можно открыть и поправить в любом редакторе, а потом загрузить обратно. Старые копии в JSON тоже принимаются.</p>
         <div className="btn-col">
-          <Button kind="secondary" onClick={copy}>Скопировать JSON</Button>
+          <Button kind="secondary" onClick={copy}>Скопировать текстом</Button>
           {platform.kind === 'web' && <Button kind="secondary" onClick={download}>Сохранить файлом</Button>}
           <label className="btn btn-secondary">
             <span>Восстановить из файла</span>
-            <input type="file" accept="application/json,.json" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) importText(await f.text()); }} />
+            <input type="file" accept=".md,.markdown,.txt,.json,text/markdown,text/plain,application/json" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) importText(await f.text()); }} />
           </label>
         </div>
-        <textarea id="backup-paste" className="notes mono" rows={4} placeholder="…или вставьте JSON сюда" value={paste} onChange={(e) => setPaste(e.target.value)} />
-        {paste.trim().startsWith('{') && <Button onClick={() => importText(paste)}>Восстановить из текста</Button>}
+        <textarea id="backup-paste" className="notes mono" rows={4} placeholder="…или вставьте текст копии сюда" value={paste} onChange={(e) => setPaste(e.target.value)} />
+        {(paste.trim().startsWith('{') || paste.includes('## ')) && <Button onClick={() => importText(paste)}>Восстановить из текста</Button>}
         {msg && <p className="status">{msg}</p>}
       </Section>
 

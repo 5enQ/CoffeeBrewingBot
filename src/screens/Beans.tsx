@@ -192,7 +192,7 @@ export function BeanDetail({ id }: { id: string }) {
       <Section title="Заварить" plain>
         <div className="quick-methods">
           {METHODS.map((m) => (
-            <button type="button" key={m.id} onClick={() => push({ name: 'method', methodId: m.id, beanId: b.id })}>
+            <button type="button" key={m.id} onClick={() => push({ name: 'recipes', methodId: m.id, beanId: b.id })}>
               <MethodIcon icon={m.icon} size={26} /><span>{m.name}</span>
             </button>
           ))}

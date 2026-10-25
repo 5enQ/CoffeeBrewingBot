@@ -4,15 +4,15 @@ import { emptyCupping } from '../data/cupping';
 import { useStore, uid, type Brew } from '../data/store';
 import { useRouter } from '../router';
 import { MethodIcon } from '../ui/icons';
-import { Button, Field, Screen, Section, Stepper } from '../ui/kit';
+import { Button, Field, Row, Screen, Section, Stepper } from '../ui/kit';
+import { beanMeta, beanTitle } from './beanUtils';
 import { BeanPicker } from './BeanPicker';
 import { GearPicker, defaultGear } from '../ui/GearPicker';
 import type { GearRef } from '../data/gear';
 import { effectivePlan, planFromRecipe, recipeFromStandard, type BrewPlan } from '../data/recipes';
-import { platform } from '../platform';
 import { beanStock } from '../data/stock';
 
-export function MethodScreen({ methodId, beanId, from }: { methodId: string; beanId?: string | null; from?: Brew }) {
+export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }) {
   const m = methodById(methodId);
   const { recipes, saveRecipe, beans, brews, gear: myGear, custom } = useStore();
   const { push } = useRouter();
@@ -24,7 +24,9 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
   const sameAsFrom = from?.plan
     ? mine.find((r) => r.id === from.plan!.recipeId) ?? mine.find((r) => r.name === from.plan!.name && JSON.stringify(r.steps) === JSON.stringify(from.plan!.steps))
     : undefined;
-  const initialChoice = from?.plan
+  const initialChoice = recipeId
+    ? (recipeId === 'std' || !mine.some((r) => r.id === recipeId) ? 'std' : recipeId)
+    : from?.plan
     ? (sameAsFrom ? sameAsFrom.id : 'from')
     : from ? 'std' : saved?.recipeId && mine.some((r) => r.id === saved.recipeId) ? saved.recipeId : 'std';
   const [choice, setChoice] = useState<string>(initialChoice);
@@ -42,15 +44,6 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
   const apply = (r: { dose: number; ratio: number; temp: number; grind: string }) => {
     setDose(r.dose); setRatio(r.ratio); setTemp(r.temp); setGrind(r.grind);
   };
-  const pick = (id: string) => {
-    platform.haptic('select');
-    setChoice(id);
-    const r = mine.find((x) => x.id === id);
-    if (r) apply(r);
-    else if (id === 'std') apply({ dose: m.dose, ratio: m.ratio, temp: m.temp, grind: m.grind });
-    else if (id === 'from' && from) apply({ dose: from.dose, ratio: from.water / from.dose, temp: from.temp, grind: from.grind });
-  };
-
   // Рецепт изменили в редакторе — подхватываем новые параметры
   const activeJson = active ? JSON.stringify(active) : '';
   const firstRun = useRef(true);
@@ -77,6 +70,8 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
     else createRecipe();
   };
 
+  // При повторе зерно то же, что в прошлый раз; выбор открывается по «Сменить»
+  const [changeBean, setChangeBean] = useState(false);
   const beanObj = beans.find((x) => x.id === bean);
   const beanSt = beanObj ? beanStock(beanObj, brews) : null;
   const lowStock = beanSt && beanSt.total > 0 && beanSt.left < dose ? beanSt : null;
@@ -96,7 +91,7 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
   const remember = () => saveRecipe(m.id, { dose, ratio, temp, grind, gear: gear.map((g) => g.id), recipeId: active?.id });
 
   return (
-    <Screen title={m.name} subtitle={m.about}
+    <Screen title={m.name} subtitle={choice === 'std' ? 'Стандартный рецепт' : `Рецепт: ${plan.name}${active?.author ? ` · от ${active.author.name || '@' + active.author.username}` : ''}`}
       footer={
         <div className="footer-actions">
           <Button kind="secondary" onClick={() => { remember(); push({ name: 'brewEdit', draft: draft(), isNew: true }); }}>Без таймера</Button>
@@ -113,23 +108,18 @@ export function MethodScreen({ methodId, beanId, from }: { methodId: string; bea
         </dl>
       </div>
 
-      <Section title="Рецепт" aside={<button type="button" className="link-btn" onClick={createRecipe}>+ Свой</button>} plain>
-        <div className="recipe-picker">
-          <button type="button" className={'chip' + (choice === 'std' ? ' on' : '')} onClick={() => pick('std')}>Стандартный</button>
-          {from?.plan && !sameAsFrom && (
-            <button type="button" className={'chip' + (choice === 'from' ? ' on' : '')} onClick={() => pick('from')}>{from.plan.name}</button>
-          )}
-          {mine.map((r) => (
-            <button type="button" key={r.id} className={'chip' + (choice === r.id ? ' on' : '')} onClick={() => pick(r.id)}>
-              {r.name}{r.author && <small> · {r.author.name || '@' + r.author.username}</small>}
-            </button>
-          ))}
-        </div>
-        {active?.notes && <p className="muted pad">{active.notes}</p>}
-      </Section>
+      {active?.notes && <p className="muted pad">{active.notes}</p>}
 
-      <Section title="Зерно" plain>
-        <BeanPicker value={bean} onChange={setBean} dose={dose} />
+      <Section title="Зерно" aside={from && !changeBean ? <button type="button" className="link-btn" onClick={() => setChangeBean(true)}>Сменить</button> : undefined} plain>
+        {from && !changeBean ? (
+          <div className="group">
+            <Row label={beanObj ? beanTitle(beanObj) : 'Без зерна'}
+              hint={beanObj ? [beanMeta(beanObj), beanSt?.total ? `осталось ${fmtNum(beanSt.left, 0)} из ${fmtNum(beanSt.total, 0)} г` : ''].filter(Boolean).join(' · ') : 'как в прошлый раз'}
+              chevron={false} />
+          </div>
+        ) : (
+          <BeanPicker value={bean} onChange={setBean} dose={dose} />
+        )}
         {lowStock && <p className="status warn pad">В пачке осталось {fmtNum(lowStock.left, 0)} г — на эту заварку не хватит {fmtNum(dose - lowStock.left, 1)} г.</p>}
       </Section>
 

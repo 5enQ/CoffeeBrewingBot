@@ -12,6 +12,7 @@ import { Journal, BrewDetail } from './screens/Journal';
 import { Beans, BeanDetail, BeanEdit } from './screens/Beans';
 import { Profile, GearEdit, BadgeEdit } from './screens/Profile';
 import { RecipeEdit } from './screens/RecipeEdit';
+import { RecipesScreen } from './screens/Recipes';
 import { ShareScreen, SharedRecipeScreen } from './screens/Share';
 import { useEffect, type ReactNode } from 'react';
 import { LayoutCtx, useLayoutMode } from './layout';
@@ -21,7 +22,8 @@ import { resolveStartParam } from './data/share';
 
 function renderRoute(r: Route) {
   switch (r.name) {
-    case 'method': return <MethodScreen methodId={r.methodId} beanId={r.beanId} from={r.from} />;
+    case 'recipes': return <RecipesScreen methodId={r.methodId} beanId={r.beanId} />;
+    case 'method': return <MethodScreen methodId={r.methodId} beanId={r.beanId} from={r.from} recipeId={r.recipeId} />;
     case 'timer': return <TimerScreen draft={r.draft} />;
     case 'brewEdit': return <BrewEdit draft={r.draft} isNew={r.isNew} openCupping={r.openCupping} />;
     case 'brew': return <BrewDetail id={r.id} />;

@@ -9,7 +9,8 @@ import type { SharedRecipe } from './data/share';
 export type Tab = 'brew' | 'journal' | 'beans' | 'profile';
 
 export type Route =
-  | { name: 'method'; methodId: string; beanId?: string | null; from?: Brew }
+  | { name: 'recipes'; methodId: string; beanId?: string | null }
+  | { name: 'method'; methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }
   | { name: 'timer'; draft: Brew }
   | { name: 'brewEdit'; draft: Brew; isNew: boolean; openCupping?: boolean }
   | { name: 'brew'; id: string }

@@ -35,7 +35,7 @@ export function BrewHome() {
       <Section title="Метод приготовления" plain>
         <div className="method-grid">
           {METHODS.map((m) => (
-            <button key={m.id} type="button" className={'method-card' + (sel?.name === 'method' && sel.methodId === m.id && !sel.from ? ' active' : '')} onClick={() => push({ name: 'method', methodId: m.id })}>
+            <button key={m.id} type="button" className={'method-card' + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === m.id ? ' active' : '')} onClick={() => push({ name: 'recipes', methodId: m.id })}>
               <span className="method-icon"><MethodIcon icon={m.icon} size={28} /></span>
               <span className="method-name">{m.name}</span>
             </button>

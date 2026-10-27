@@ -11,7 +11,6 @@ import { Button, Chips, Empty, Field, Row, SampleTag, Screen, Section, Segmented
 import { Scanner } from '../ui/Scanner';
 import { BrewScore } from '../ui/CuppingForm';
 import { beanMeta, beanOrigin, beanTitle, blendLines, brewBeanTitle, dripMeta, dripTitle, PROCESSES, RestBadge, ROAST_LEVELS } from './beanUtils';
-import { emptyDripBox } from './BeanPicker';
 
 /* ---------- Полка ---------- */
 
@@ -109,7 +108,6 @@ export function Beans() {
         <Icon name="scan" size={28} />
         <span><b>Добавить пачку</b><small>Отсканируйте штрихкод или QR — или введите вручную</small></span>
       </button>
-      <button type="button" className="link-btn add-drip" onClick={() => push({ name: 'beanEdit', bean: emptyDripBox(), isNew: true })}>+ Коробка дрипов</button>
 
       {beans.length > 4 && (
         <input id="bean-search" className="search" type="search" placeholder="Поиск: страна, обработка, обжарщик" value={q} onChange={(e) => setQ(e.target.value)} />

@@ -190,6 +190,7 @@ export interface Meta {
   custom: NonNullable<DB['custom']>;
   methods: NonNullable<DB['customMethods']>;
   pinned: string[];
+  tiles?: DB['tiles'];
   rated: Record<string, number>;
   seen: string[];
   /** отметки времени записей из метаданных, сек */
@@ -231,6 +232,7 @@ export function toBuckets(db: DB): Record<string, string> {
     custom: db.custom ?? [],
     methods: db.customMethods ?? [],
     pinned: db.pinned ?? [],
+    tiles: db.tiles,
     rated: db.rated ?? {},
     seen: db.seenAch ?? [],
     s: Object.fromEntries(metaKeys.map((k) => [k, sec(mod[k])!])),
@@ -347,6 +349,7 @@ export function merge(local: DB, remote: Remote): DB {
       next.profile = { ...EMPTY.profile, ...m.profile, layout: local.profile.layout, ratingStats: local.profile.ratingStats };
       if (rmod.p) mod.p = rmod.p;
     }
+    if (m.tiles && (newer('h') || (!local.tiles && !mod.h))) { next.tiles = m.tiles; mod.h = Math.max(mod.h ?? 0, rmod.h ?? 0); }
     if (newer('n') || (!local.pinned?.length && m.pinned.length && !mod.n)) { next.pinned = m.pinned; mod.n = Math.max(mod.n ?? 0, rmod.n ?? 0); }
     next.rated = { ...m.rated, ...(local.rated ?? {}) };
     next.seenAch = [...new Set([...(local.seenAch ?? []), ...m.seen])];

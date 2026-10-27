@@ -144,6 +144,8 @@ export interface Profile {
 
 export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[]; recipeId?: string }
 
+export interface TileLayout { order: string[]; size: Record<string, 1 | 2> }
+
 export interface DB {
   v: 1;
   beans: Bean[];
@@ -164,6 +166,8 @@ export interface DB {
   rated?: Record<string, number>;
   /** закреплённые методы — наверху списка, в порядке закрепления */
   pinned?: string[];
+  /** раскладка плиток методов на главной: порядок и размер (1 — только значок, 2 — значок с названием) */
+  tiles?: TileLayout;
   /** когда менялась запись (для синхронизации): «b:id» заварка, «k:id» пачка, «g:id» оборудование,
    *  «c:id» свой рецепт, «x:id» свой метод, «r:метод» последние параметры, «p» профиль, «n» закрепы. Мс. */
   mod?: Record<string, number>;
@@ -311,6 +315,9 @@ interface StoreApi {
   saveMethod(m: CustomMethod): void;
   seenAch: string[] | null;
   pinned: string[];
+  tiles: TileLayout;
+  /** сохранить раскладку плиток (и закрепы — они идут первыми) */
+  saveTiles(t: TileLayout, pinned: string[]): void;
   togglePin(methodId: string): void;
   markSeen(keys: string[]): void;
   saveCustom(r: CustomRecipe): void;
@@ -445,6 +452,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const list = d.customMethods ?? [];
     return { ...d, customMethods: list.some((x) => x.id === m.id) ? list.map((x) => (x.id === m.id ? m : x)) : [...list, m], ...stamp(d, ['x:' + m.id]) };
   }), []);
+  const saveTiles = useCallback((tiles: TileLayout, pinned: string[]) => setDb((d) => ({ ...d, tiles, pinned, ...stamp(d, ['h', 'n']) })), []);
   const togglePin = useCallback((id: string) => setDb((d) => { const p = d.pinned ?? []; return { ...d, pinned: p.includes(id) ? p.filter((x) => x !== id) : [...p, id], ...stamp(d, ['n']) }; }), []);
   const markSeen = useCallback((keys: string[]) => setDb((d) => ({ ...d, seenAch: [...new Set([...(d.seenAch ?? []), ...keys])] })), []);
   const saveCustom = useCallback((r: CustomRecipe) => setDb((d) => {
@@ -461,20 +469,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     rated: db.rated ?? {}, saveRated, setRatingStats,
     custom: db.custom ?? [], saveCustom, deleteCustom,
     customMethods: db.customMethods ?? [], saveMethod,
-    seenAch: db.seenAch ?? null, markSeen, pinned: db.pinned ?? [], togglePin,
+    seenAch: db.seenAch ?? null, markSeen, pinned: db.pinned ?? [], togglePin, tiles: db.tiles ?? { order: [], size: {} }, saveTiles,
     hasSamples: db.beans.some((b) => b.sample) || db.brews.some((b) => b.sample) || db.gear.some((g) => g.sample),
     sync, syncNow: () => { runSync(); },
     exportJson: () => JSON.stringify({ ...db, exportedAt: new Date().toISOString() }, null, 2),
     exportMarkdown: () => toMarkdown(db),
     importBackup(text) {
       const t = text.trim();
-      let data: Record<string, unknown> & { beans: Bean[]; brews: Brew[]; recipes?: Record<string, Recipe>; gear?: Gear[]; custom?: CustomRecipe[]; customMethods?: CustomMethod[]; pinned?: string[]; profile?: Partial<Profile>; rated?: Record<string, number>; seenAch?: string[] };
+      let data: Record<string, unknown> & { beans: Bean[]; brews: Brew[]; recipes?: Record<string, Recipe>; gear?: Gear[]; custom?: CustomRecipe[]; customMethods?: CustomMethod[]; pinned?: string[]; tiles?: TileLayout; profile?: Partial<Profile>; rated?: Record<string, number>; seenAch?: string[] };
       try { data = (t.startsWith('{') ? JSON.parse(t) : fromMarkdown(t)) as typeof data; }
       catch (e) { throw new Error(e instanceof Error && e.message.startsWith('Не похоже') ? e.message : 'Не получилось прочитать копию — проверьте файл'); }
       if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл резервной копии');
       data = normalizeBackup(data) as typeof data;
       setDb((d) => {
-        const next: DB = { ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], customMethods: data.customMethods ?? [], pinned: data.pinned ?? [], rated: data.rated ?? {}, seenAch: data.seenAch ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true };
+        const next: DB = { ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], customMethods: data.customMethods ?? [], pinned: data.pinned ?? [], tiles: data.tiles, rated: data.rated ?? {}, seenAch: data.seenAch ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true };
         const keys = (x: DB) => [
           ...x.beans.map((b) => 'k:' + b.id), ...x.brews.map((b) => 'b:' + b.id), ...x.gear.map((g) => 'g:' + g.id),
           ...(x.custom ?? []).map((c) => 'c:' + c.id), ...(x.customMethods ?? []).map((m) => 'x:' + m.id),
@@ -484,7 +492,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ...next, ...stamp(d, fresh, keys(d).filter((k) => !fresh.includes(k))) };
       });
     },
-  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen, saveMethod, togglePin, sync, runSync]);
+  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen, saveMethod, togglePin, saveTiles, sync, runSync]);
 
   // Свои методы должны быть известны methodById() до отрисовки экранов
   setCustomMethods((db.customMethods ?? []).map(toMethod));

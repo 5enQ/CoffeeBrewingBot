@@ -40,7 +40,7 @@ const LABELS: Record<string, string> = {
   intensity: 'Интенсивность', olfactory: 'Запах', retronasal: 'Вкус ретроназально', mainTastes: 'Основные вкусы',
   mouthfeel: 'Тактильность', checked: 'Отмечено', fragrance: 'Сухой аромат', aroma: 'Аромат', flavor: 'Вкус',
   aftertaste: 'Послевкусие', overall: 'Общее', balance: 'Баланс', defects: 'Дефекты', uniformity: 'Однородность',
-  cleanCup: 'Чистота чашки', recipeId: 'Свой рецепт', pinned: 'Закреплённые методы', rated: 'Мои оценки рецептов друзей',
+  cleanCup: 'Чистота чашки', recipeId: 'Свой рецепт', pinned: 'Закреплённые методы', tiles: 'Плитки методов', order: 'Порядок', size: 'Размер плиток', rated: 'Мои оценки рецептов друзей',
   seenAch: 'Показанные достижения', seeded: 'Примеры добавлены', gearSeeded: 'Примеры оборудования добавлены',
   dripCount: 'Дрипов в коробке', dripWeight: 'Кофе в дрипе, г', assorted: 'Разные дрипы', drips: 'Дрипы', count: 'Штук', dripId: 'Дрип',
 };
@@ -51,7 +51,7 @@ const TIME_KEYS = new Set(['time', 'total', 'at']);
 /** всегда текст, даже если похоже на число */
 const STRING_KEYS = new Set(['weight', 'barcode', 'code', 'share', 'year', 'harvest', 'altitude', 'roastDate', 'name', 'title', 'detail', 'details', 'grind', 'comment', 'notes', 'hint', 'about', 'purpose', 'roast', 'id']);
 /** списки слов — одной строкой через запятую */
-const INLINE_LISTS = new Set(['descriptors', 'olfactory', 'retronasal', 'mainTastes', 'checked', 'pinned', 'seenAch', 'featured']);
+const INLINE_LISTS = new Set(['descriptors', 'olfactory', 'retronasal', 'mainTastes', 'checked', 'pinned', 'seenAch', 'featured', 'order']);
 
 /* ---------- запись ---------- */
 
@@ -152,7 +152,7 @@ export function toMarkdown(db: DB): string {
   Object.entries(db.recipes).forEach(([id, r]) => record(methodById(id).name, { methodId: id, ...r }));
 
   section('Служебное');
-  writeObject(out, '', { pinned: db.pinned ?? [], rated: db.rated ?? {}, seenAch: db.seenAch ?? [], seeded: !!db.seeded, gearSeeded: !!db.gearSeeded }, names);
+  writeObject(out, '', { pinned: db.pinned ?? [], tiles: db.tiles, rated: db.rated ?? {}, seenAch: db.seenAch ?? [], seeded: !!db.seeded, gearSeeded: !!db.gearSeeded }, names);
   out.push('');
   return out.join('\n');
 }
@@ -308,6 +308,6 @@ export function fromMarkdown(text: string): Record<string, unknown> {
   return {
     beans, brews, recipes,
     gear: data.gear ?? [], custom: data.custom ?? [], customMethods: data.customMethods ?? [],
-    profile: data.profile ?? {}, pinned: meta.pinned ?? [], rated: meta.rated ?? {}, seenAch: meta.seenAch ?? [],
+    profile: data.profile ?? {}, pinned: meta.pinned ?? [], tiles: meta.tiles, rated: meta.rated ?? {}, seenAch: meta.seenAch ?? [],
   };
 }

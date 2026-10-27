@@ -9,18 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Lookup via worker
+      - name: Fetch welder pages
         run: |
           mkdir -p out
-          W='https://brewbook-ratings.brewbook.workers.dev/lookup'
-          q() { curl -sS -m 40 -G "$W" --data-urlencode "url=$2" -o "out/$1.json" -w "$1 %{http_code} %{time_total}s\n" >> out/_status.txt; }
-          q kojo 'https://kojocoffee.ru/catalog/drips/tproduct/2080571661-426369877852-kofe-ruanda-muremure-drip'
-          q submarine 'https://sbmrne.ru/katalog/drip-pakety/eth-gedeb-6-sht/'
-          q hq 'https://hq-coffee.com/el-salvador-san-francisco-bourbon-2/'
-          q welder 'https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/filtr_pakety_kosta_rika_esteban_zamora/'
-          q welder_mix 'https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/assorti_filtr_paketov_start_4_60_sht/'
-          q kojo_again 'https://kojocoffee.ru/catalog/drips/tproduct/2080571661-426369877852-kofe-ruanda-muremure-drip?utm_source=qr'
+          UA='Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36'
+          curl -sSL -m 30 -A "$UA" -o out/welder.html 'https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/filtr_pakety_kosta_rika_esteban_zamora/'
+          curl -sSL -m 30 -A "$UA" -o out/welder_mix.html 'https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/assorti_filtr_paketov_start_4_60_sht/'
       - name: Commit
         run: |
           git config user.name probe; git config user.email probe@example.com
-          git add out && git commit -m "probe: lookup [skip ci]" && git push
+          git add out && git commit -m "probe: welder [skip ci]" && git push

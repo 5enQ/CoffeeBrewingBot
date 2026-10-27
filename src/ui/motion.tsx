@@ -1,5 +1,5 @@
 /** Анимации интерфейса: перелистывание вкладок, «пузырёк» под активной вкладкой, перестановка плиток */
-import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 
 export const reduceMotion = () => {
   try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
@@ -99,30 +99,51 @@ export function useTabPill(navRef: RefObject<HTMLElement | null>, pillRef: RefOb
 
 /* ---------- Плавная перестановка (FLIP) ---------- */
 
+type Box = { x: number; y: number; w: number };
+
 /**
  * Дети контейнера с атрибутом data-flip плавно переезжают на новое место и меняют ширину.
+ * Перед изменением вызовите snapshot(): он запоминает, где плитки видны сейчас (с учётом идущей анимации),
+ * и новая анимация продолжится с этого места, а не прыгнет к старой точке.
  * Контейнер должен быть position: relative (offsetLeft считается от него).
  */
 export function useFlip(ref: RefObject<HTMLElement | null>, skip?: string | null) {
-  const prev = useRef(new Map<string, { x: number; y: number; w: number }>());
+  const prev = useRef(new Map<string, Box>());
+  const snap = useRef<Map<string, Box> | null>(null);
+
+  const snapshot = useCallback(() => {
+    const box = ref.current;
+    if (!box) return;
+    const br = box.getBoundingClientRect();
+    const m = new Map<string, Box>();
+    box.querySelectorAll<HTMLElement>('[data-flip]').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      m.set(el.dataset.flip!, { x: r.left - br.left - box.clientLeft, y: r.top - br.top - box.clientTop, w: r.width });
+    });
+    snap.current = m;
+  }, [ref]);
+
   useLayoutEffect(() => {
     const box = ref.current;
     if (!box) return;
-    const next = new Map<string, { x: number; y: number; w: number }>();
+    const next = new Map<string, Box>();
     const calm = reduceMotion();
     box.querySelectorAll<HTMLElement>('[data-flip]').forEach((el) => {
       const id = el.dataset.flip!;
       const now = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth };
       next.set(id, now);
-      const was = prev.current.get(id);
+      const was = snap.current?.get(id) ?? prev.current.get(id);
       if (calm || !was || id === skip) return;
-      if (was.x === now.x && was.y === now.y && was.w === now.w) return;
+      if (Math.abs(was.x - now.x) < 0.5 && Math.abs(was.y - now.y) < 0.5 && Math.abs(was.w - now.w) < 0.5) return;
       el.getAnimations().forEach((a) => a.cancel());
       el.animate([
         { transform: `translate(${was.x - now.x}px, ${was.y - now.y}px)`, width: `${was.w}px` },
         { transform: 'translate(0, 0)', width: `${now.w}px` },
-      ], { duration: 260, easing: EASE });
+      ], { duration: 240, easing: EASE });
     });
     prev.current = next;
+    snap.current = null;
   });
+
+  return snapshot;
 }

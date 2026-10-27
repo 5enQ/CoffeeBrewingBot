@@ -170,6 +170,7 @@ export function BrewHome() {
     if (!last) return;
     platform.haptic('light');
     setHistory((h) => h.slice(0, -1));
+    snapshot();
     saveTiles(last.tiles, last.pinned);
   };
 
@@ -184,7 +185,10 @@ export function BrewHome() {
   };
 
   const gridRef = useRef<HTMLDivElement>(null);
-  useFlip(gridRef, drag?.id);
+  const snapshot = useFlip(gridRef, drag?.id);
+  const dragRef = useRef(drag);
+  dragRef.current = drag;
+  const lastHit = useRef<string | null>(null);
   // плитка едет за пальцем: смещение от её места в сетке до пальца
   const grab = useRef<{ id: string; ox: number; oy: number; x: number; y: number } | null>(null);
   const placeGhost = () => {
@@ -193,13 +197,17 @@ export function BrewHome() {
     const el = grid.querySelector<HTMLElement>(`[data-tile="${g.id}"]`);
     if (!el) return;
     const gr = grid.getBoundingClientRect();
-    el.style.transform = `translate(${g.x - gr.left - g.ox - el.offsetLeft}px, ${g.y - gr.top - g.oy - el.offsetTop}px) scale(1.05)`;
+    // не даём плитке уехать за край сетки: иначе страница начинает сдвигаться вбок
+    const left = Math.max(-8, Math.min(grid.clientWidth - el.offsetWidth + 8, g.x - gr.left - g.ox));
+    const top = Math.max(-16, Math.min(grid.clientHeight - el.offsetHeight + 16, g.y - gr.top - g.oy));
+    el.style.transform = `translate(${left - el.offsetLeft}px, ${top - el.offsetTop}px) scale(1.05)`;
   };
   useLayoutEffect(placeGhost);
 
   const dragStart = (id: string, el: HTMLElement, x: number, y: number) => {
     const r = el.getBoundingClientRect();
     grab.current = { id, ox: x - r.left, oy: y - r.top, x, y };
+    lastHit.current = null;
     setSelected(null);
     setDrag({ id, order: savedOrder });
     platform.haptic('light');
@@ -214,15 +222,16 @@ export function BrewHome() {
     const gx = x - gr.left, gy = y - gr.top;
     const els = [...grid.querySelectorAll<HTMLElement>('[data-tile]')].filter((e) => e.dataset.tile !== id);
     const hit = els.find((e) => gx >= e.offsetLeft && gx <= e.offsetLeft + e.offsetWidth && gy >= e.offsetTop && gy <= e.offsetTop + e.offsetHeight);
-    if (!hit) return;
-    setDrag((d) => {
-      const cur = d?.order ?? savedOrder;
-      const without = cur.filter((t) => t !== id);
-      let to = without.indexOf(hit.dataset.tile!);
-      if (gx > hit.offsetLeft + hit.offsetWidth / 2) to += 1;
-      const next = place(cur, id, to);
-      return next.join() === cur.join() && d ? d : { id, order: next };
-    });
+    // одна плитка — один обмен: пока палец над той же плиткой, повторно не переставляем (иначе дрожит)
+    const hitId = hit?.dataset.tile ?? null;
+    if (!hitId || hitId === lastHit.current) { if (!hitId) lastHit.current = null; return; }
+    lastHit.current = hitId;
+    const cur = dragRef.current?.order ?? savedOrder;
+    // встаём на место той плитки, над которой палец: остальные сдвигаются на одну позицию
+    const next = place(cur, id, cur.indexOf(hitId));
+    if (next.join() === cur.join()) return;
+    snapshot();
+    setDrag({ id, order: next });
   };
   const dragEnd = () => {
     // отпустили — плитка доезжает до своего места
@@ -239,7 +248,7 @@ export function BrewHome() {
       return null;
     });
   };
-  const resize = (id: string, s: Size) => { platform.haptic('select'); commit({ size: { ...tiles.size, [id]: s } }); };
+  const resize = (id: string, s: Size) => { platform.haptic('select'); snapshot(); commit({ size: { ...tiles.size, [id]: s } }); };
   const keyMove = (id: string, e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected((x) => (x === id ? null : id)); return; }
     const dir = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : 0;
@@ -247,7 +256,7 @@ export function BrewHome() {
     e.preventDefault();
     const i = savedOrder.indexOf(id);
     const next = place(savedOrder, id, i + dir);
-    if (next.join() !== savedOrder.join()) commit({ order: next });
+    if (next.join() !== savedOrder.join()) { snapshot(); commit({ order: next }); }
   };
   const finish = () => { setEditing(false); setSelected(null); setHistory([]); setDrag(null); };
   const recent = brews.filter((b) => b.methodId !== 'cupping').slice(0, 3);

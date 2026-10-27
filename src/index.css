@@ -48,6 +48,8 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); }
+/* ничего не должно сдвигать страницу вбок: иначе в Telegram «едет» вся вкладка вместе с нижним меню */
+html, body { overflow-x: clip; }
 body {
   font: 16px/1.4 var(--font);
   -webkit-font-smoothing: antialiased;
@@ -96,9 +98,10 @@ button { cursor: pointer; }
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 25;
   display: grid; grid-template-columns: repeat(4, 1fr);
   padding: 6px var(--gutter-r) calc(6px + var(--inset-bottom)) var(--gutter-l);
-  background: color-mix(in srgb, var(--card) 90%, transparent);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  /* без размытия фона: в Android WebView оно мигает, пока под меню идут анимации */
+  background: var(--card);
   border-top: 1px solid var(--sep);
+  transform: translateZ(0);
 }
 .tabbar button {
   position: relative; z-index: 1;
@@ -979,7 +982,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .method-card.edit.selected { box-shadow: inset 0 0 0 2px var(--accent); }
 .method-card.edit.dragging { cursor: grabbing; transform: scale(1.06); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), inset 0 0 0 2px var(--accent); opacity: 0.92; z-index: 2; }
 .method-card.edit:active { transform: none; }
-.tile-handle { position: absolute; right: -4px; top: 50%; width: 10px; height: 28px; transform: translateY(-50%); border-radius: 99px; border: 0; padding: 0;
+.tile-handle { position: absolute; right: 3px; top: 50%; width: 10px; height: 28px; transform: translateY(-50%); border-radius: 99px; border: 0; padding: 0;
   background: var(--accent); box-shadow: 0 0 0 3px var(--card); cursor: ew-resize; touch-action: none; }
 .tile-handle::before { content: ''; position: absolute; inset: -14px -16px; } /* палец промахивается — делаем зону побольше */
 .edit-hint { margin: 0 0 10px; }

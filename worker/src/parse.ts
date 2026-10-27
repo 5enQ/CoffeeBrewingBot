@@ -155,6 +155,7 @@ function cleanValue(field: Field, v: string) {
     s = s.replace(/\s*[—–-]+\s*/g, '–').replace(/\s*(м|m|метр\w*)\.?$/i, '').trim();
     if (/^\d/.test(s)) s += ' м';
   }
+  if (field === 'process') s = s.replace(/(carbonic\s+maceration|карбонич\S*\s+мацерац\S*)/gi, 'углекислая мацерация');
   if (field === 'process' || field === 'roastLevel') s = cap(s);
   return s;
 }

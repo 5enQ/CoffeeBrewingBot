@@ -58,5 +58,6 @@ export function RestBadge({ roastDate }: { roastDate: string }) {
   return <span className={`tag tag-rest-${state}`} title={state === 'young' ? 'Зерну стоит отдохнуть' : state === 'old' ? 'Вкус может угасать' : 'Хорошее окно'}>{label}</span>;
 }
 
-export const PROCESSES = ['Мытая', 'Натуральная', 'Хани', 'Анаэробная', 'Карбоническая мацерация', 'Wet-hulled', 'Экспериментальная'];
+// нет в списке — пользователь пишет свою обработку в поле «Своя обработка»
+export const PROCESSES = ['Мытая', 'Натуральная', 'Хани', 'Анаэробная', 'Углекислая мацерация', 'Wet-hulled'];
 export const ROAST_LEVELS = ['Светлая', 'Омни', 'Средняя', 'Тёмная'];

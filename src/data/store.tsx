@@ -400,6 +400,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       next = { ...next, profile: { ...EMPTY.profile, ...next.profile } };
       // старые подписи степени обжарки: «Светлая (фильтр)» → «Светлая»
       next = { ...next, beans: next.beans.map((b) => (/ \(.+\)$/.test(b.roastLevel ?? '') ? { ...b, roastLevel: b.roastLevel.replace(/ \(.+\)$/, '') } : b)) };
+      // «Карбоническая мацерация» теперь называется «Углекислая мацерация»
+      const carb = (s?: string) => (s ?? '').replace(/карбонич\S*\s+мацерац\S*/gi, 'Углекислая мацерация');
+      next = { ...next, beans: next.beans.map((b) => (/карбонич/i.test(JSON.stringify([b.process, b.parts, b.drips]))
+        ? { ...b, process: carb(b.process), parts: b.parts?.map((p) => ({ ...p, process: carb(p.process) })), drips: b.drips?.map((d) => ({ ...d, process: carb(d.process) })) }
+        : b)) };
       const tgUser = platform.user();
       if (!next.profile.name && tgUser?.name) next = { ...next, profile: { ...next.profile, name: tgUser.name } };
       if (!next.profile.telegram && tgUser?.username) next = { ...next, profile: { ...next.profile, telegram: tgUser.username } };

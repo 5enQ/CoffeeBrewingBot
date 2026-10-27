@@ -43,7 +43,7 @@ add('variety', 'сорт', 'сорта', 'разновидность', 'разн
 add('process', 'обработка', 'способ обработки', 'метод обработки', 'тип обработки');
 add('altitude', 'высота', 'высота произрастания', 'высота над уровнем моря');
 add('roastLevel', 'обжарка', 'степень обжарки', 'профиль обжарки', 'уровень обжарки');
-add('packNotes', 'дескрипторы', 'вкус', 'ноты', 'вкусовые ноты', 'вкусовой профиль', 'во вкусе', 'вкусовые дескрипторы', 'дескрипторы вкуса');
+add('packNotes', 'дескрипторы', 'вкус', 'букет', 'ноты', 'вкусовые ноты', 'вкусовой профиль', 'во вкусе', 'вкусовые дескрипторы', 'дескрипторы вкуса');
 add('roaster', 'бренд', 'обжарщик', 'производитель кофе', 'торговая марка');
 
 const COUNTRIES = ['Эфиопия', 'Кения', 'Руанда', 'Бурунди', 'Танзания', 'Уганда', 'Конго', 'Малави', 'Замбия', 'Камерун', 'Колумбия',
@@ -109,6 +109,10 @@ function wooPairs(html: string): [string, string][] {
   for (const m of html.matchAll(/class="product-detail"[\s\S]{0,200}?class="label"[^>]*>([\s\S]*?)<\/span>[\s\S]{0,300}?class="value[^"]*"[^>]*>([\s\S]*?)<\/span>/g)) {
     out.push([text(m[1]), text(m[2])]);
   }
+  // список «name / value» (Битрикс со своим шаблоном, например Сварщица Екатерина)
+  for (const m of html.matchAll(/<div class="name">([\s\S]{1,80}?)<\/div>\s*<div class="value">([\s\S]{0,300}?)<\/div>/g)) {
+    out.push([text(m[1]), text(m[2])]);
+  }
   // стандартная таблица атрибутов WooCommerce
   for (const m of html.matchAll(/woocommerce-product-attributes-item__label"[^>]*>([\s\S]*?)<\/th>[\s\S]{0,200}?woocommerce-product-attributes-item__value"[^>]*>([\s\S]*?)<\/td>/g)) {
     out.push([text(m[1]), text(m[2])]);
@@ -162,6 +166,7 @@ function cleanName(h1: string) {
     .replace(/\s*\(?\d+\s*(шт|штук|пакет\w*)\.?\)?\s*$/i, '')
     .replace(/\s+в\s+дрип-пакетах.*$/i, '')
     .replace(/\s+/g, ' ')
+    .replace(/[\s,;:–—-]+$/, '')
     .trim();
 }
 

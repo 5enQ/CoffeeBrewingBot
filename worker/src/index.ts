@@ -105,8 +105,6 @@ export class RecipeStore extends DurableObject<Env> {
   }
 }
 
-const ROASTER_HOSTS = new Set(['kojocoffee.ru', 'hq-coffee.com', 'sbmrne.ru', 'theweldercatherine.ru']);
-
 function cors(env: Env, req: Request) {
   const origin = req.headers.get('Origin') ?? '';
   const allowed = env.ALLOWED_ORIGIN.split(',').map((s) => s.trim());
@@ -126,25 +124,6 @@ export default {
     const h = cors(env, req);
     if (req.method === 'OPTIONS') return new Response(null, { headers: h });
     const url = new URL(req.url);
-
-    // Временно: кусок исходного кода страницы обжарщика — чтобы настроить разбор характеристик.
-    // Только для известных сайтов, только GET, только вырезка вокруг слова.
-    if (req.method === 'GET' && url.pathname === '/page') {
-      let target: URL;
-      try { target = new URL(url.searchParams.get('url') ?? ''); } catch { return json({ error: 'bad url' }, 400, h); }
-      if (target.protocol !== 'https:' || !ROASTER_HOSTS.has(target.hostname.replace(/^www\./, ''))) return json({ error: 'host not allowed' }, 403, h);
-      const r = await fetch(target.toString(), { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36', 'Accept-Language': 'ru' }, redirect: 'follow' });
-      const html = await r.text();
-      const around = url.searchParams.get('around') ?? '';
-      const width = Math.min(6000, Number(url.searchParams.get('width') ?? 2500));
-      let out = `status ${r.status}, final ${r.url}, length ${html.length}\n\n`;
-      if (around) {
-        let i = html.indexOf(around), n = 0;
-        while (i >= 0 && n < 3) { out += `----- match ${n + 1} at ${i} -----\n` + html.slice(Math.max(0, i - 300), i + width) + '\n\n'; i = html.indexOf(around, i + width); n++; }
-        if (n === 0) out += 'no match';
-      } else out += html.slice(0, width);
-      return new Response(out, { headers: { ...h, 'Content-Type': 'text/plain; charset=utf-8' } });
-    }
 
     if (req.method === 'GET' && url.pathname === '/stats') {
       const author = url.searchParams.get('author') ?? '';

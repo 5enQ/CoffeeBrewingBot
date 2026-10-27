@@ -6,7 +6,7 @@ import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
 import { CuppingForm } from '../ui/CuppingForm';
 import { Button, Chips, Dots, Field, Screen, Section, Stars, Stepper, ratingLabel } from '../ui/kit';
-import { BeanPicker } from './BeanPicker';
+import { BeanPicker, DripPicker } from './BeanPicker';
 import { GearPicker } from '../ui/GearPicker';
 import { CvaEditor } from '../ui/Cva';
 import { MODES } from '../data/cva';
@@ -123,20 +123,26 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
           onChange={(e) => set({ notes: e.target.value })} />
       </Section>
 
-      <Section title="Зерно" plain>
-        <BeanPicker value={b.beanId} onChange={(beanId) => set({ beanId })} />
-      </Section>
+      {b.methodId === 'drip' ? (
+        <Section title="Дрип" plain>
+          <DripPicker value={b.beanId} dripId={b.dripId} onChange={(beanId, dripId) => set({ beanId, dripId })} />
+        </Section>
+      ) : (
+        <Section title="Зерно" plain>
+          <BeanPicker value={b.beanId} onChange={(beanId) => set({ beanId, dripId: undefined })} />
+        </Section>
+      )}
 
       <Section title="Параметры" aside={<span className="muted">{fmtRatio(b.water / b.dose)}</span>}>
         <Field label="Метод" id="method">
           <select id="method" value={b.methodId} onChange={(e) => set({ methodId: e.target.value, plan: undefined, cupping: e.target.value === 'cupping' ? (b.cupping ?? emptyCupping()) : b.cupping })}>
-            {allMethods().filter((x) => x.id !== 'cupping' || isCupping).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+            {allMethods().filter((x) => (x.id !== 'cupping' || isCupping) && (x.id === 'drip') === (b.methodId === 'drip')).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </select>
         </Field>
         <Stepper label="Кофе" value={b.dose} step={0.25} min={1} max={100} unit="г" format={(v) => String(v).replace('.', ',')} onChange={(dose) => set({ dose })} />
         <Stepper label={m.yieldLabel ?? 'Вода'} value={b.water} step={b.methodId === 'espresso' ? 1 : 5} min={5} max={2000} unit="г" onChange={(water) => set({ water })} />
         <Stepper label="Температура" value={b.temp} step={0.1} min={0} max={100} unit={b.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
-        <Field label="Помол" id="edit-grind" value={b.grind} onChange={(e) => set({ grind: e.target.value })} />
+        {b.methodId !== 'drip' && <Field label="Помол" id="edit-grind" value={b.grind} onChange={(e) => set({ grind: e.target.value })} />}
         <Field label="Время" id="edit-time" value={timeText} inputMode="numeric" placeholder="3:10"
           onChange={(e) => { setTimeText(e.target.value); const t = parseTime(e.target.value); if (t !== null) set({ time: t }); }} />
       </Section>

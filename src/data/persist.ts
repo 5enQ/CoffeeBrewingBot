@@ -29,7 +29,7 @@ const bits = (a: boolean[]) => a.reduce((m, v, i) => (v ? m | (1 << i) : m), 0);
 const unbits = (m: number | undefined, n: number) => Array.from({ length: n }, (_, i) => !!((m ?? 0) & (1 << i)));
 
 /* ---------- 1. без пустого ---------- */
-const KEEP_AS_IS = new Set(['author', 'plan', 'parts']);
+const KEEP_AS_IS = new Set(['author', 'plan', 'parts', 'drips']);
 /** Убирает null, undefined, '', [] и {} (рекурсивно). Ноль и false оставляет — они что-то значат. */
 export function strip<T>(v: T): T {
   if (Array.isArray(v)) return v.map(strip) as T;

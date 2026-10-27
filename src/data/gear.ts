@@ -35,6 +35,7 @@ export function catsForMethod(methodId: string): GearCat[] {
     case 'aeropress': case 'french': return [...base, 'press', 'kettle', 'scale'];
     case 'espresso': return [...base, 'machine', 'scale', 'other'];
     case 'moka': case 'cezve': return [...base, 'stovetop', 'scale'];
+    case 'drip': return ['kettle', 'scale'];
     case 'batch': return [...base, 'machine', 'filter', 'scale'];
     case 'cupping': return [...base, 'kettle', 'scale'];
     default: return [...base, 'kettle', 'scale'];

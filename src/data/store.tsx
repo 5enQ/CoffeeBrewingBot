@@ -41,7 +41,34 @@ export interface Bean {
   /** пачка допита (убрана с полки) */
   finished?: boolean;
   sample?: boolean;
+  /** 'drip' — коробка дрип-пакетов (иначе — пачка зерна) */
+  kind?: 'beans' | 'drip';
+  /** дрипов в коробке (если все одинаковые) */
+  dripCount?: number;
+  /** кофе в одном дрипе, г */
+  dripWeight?: number;
+  /** в коробке разные дрипы — каждый описан в drips */
+  assorted?: boolean;
+  drips?: DripItem[];
 }
+
+/** Дрип в коробке-ассорти: своё происхождение и сколько штук */
+export interface DripItem {
+  id: string;
+  name: string;
+  country: string;
+  region: string;
+  farm: string;
+  variety: string;
+  process: string;
+  roastLevel: string;
+  /** дескрипторы с упаковки */
+  notes: string;
+  count: number;
+}
+
+export const isDrip = (b?: Pick<Bean, 'kind'> | null) => b?.kind === 'drip';
+export const newDripItem = (): DripItem => ({ id: uid(), name: '', country: '', region: '', farm: '', variety: '', process: '', roastLevel: '', notes: '', count: 1 });
 
 /** Компонент бленда */
 export interface BlendPart {
@@ -89,6 +116,8 @@ export interface Brew {
   shareId?: string;
   /** telegram id автора (для чужих рецептов) — куда уходят оценки */
   authorId?: string;
+  /** какой дрип из коробки-ассорти заварили */
+  dripId?: string;
   sample?: boolean;
 }
 
@@ -151,7 +180,8 @@ function normalizeBackup(data: { beans: Partial<Bean>[]; brews: Partial<Brew>[];
     beans: data.beans.map((b) => ({
       ...bean0, ...b, id: String(b.id ?? uid()),
       parts: b.parts?.map((x) => ({ share: '', country: '', region: '', farm: '', variety: '', process: '', ...(x as Partial<BlendPart>) })),
-    }) as Bean).map((b) => { if (!b.parts) delete b.parts; return b; }),
+      drips: b.drips?.map((x) => ({ ...newDripItem(), ...(x as Partial<DripItem>) })),
+    }) as Bean).map((b) => { if (!b.parts) delete b.parts; if (!b.drips) delete b.drips; return b; }),
     brews: data.brews.map((b) => ({
       beanId: null, grind: '', notes: '', time: 0, temp: 0, dose: 0, water: 0, rating: 0, descriptors: [],
       taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, date: Date.now(), methodId: 'v60',

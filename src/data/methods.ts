@@ -31,11 +31,11 @@ export interface Method {
 
 export type IconKey =
   | 'v60' | 'chemex' | 'kalita' | 'aeropress' | 'french' | 'clever'
-  | 'espresso' | 'moka' | 'cezve' | 'cupping' | 'siphon' | 'coldbrew' | 'batch'
+  | 'espresso' | 'moka' | 'cezve' | 'cupping' | 'siphon' | 'coldbrew' | 'batch' | 'dripbag'
   | 'cup' | 'kettle' | 'drop' | 'bean';
 
 /** Значки, которые можно выбрать для своего метода */
-export const ICON_CHOICES: IconKey[] = ['cup', 'drop', 'kettle', 'bean', 'v60', 'kalita', 'chemex', 'aeropress', 'french', 'clever', 'espresso', 'moka', 'cezve', 'siphon', 'coldbrew', 'batch', 'cupping'];
+export const ICON_CHOICES: IconKey[] = ['cup', 'drop', 'kettle', 'bean', 'v60', 'kalita', 'chemex', 'aeropress', 'french', 'clever', 'espresso', 'moka', 'cezve', 'siphon', 'coldbrew', 'batch', 'dripbag', 'cupping'];
 
 export const METHODS: Method[] = [
   {
@@ -183,6 +183,18 @@ export const METHODS: Method[] = [
       { at: 330, title: 'Перемешать в кувшине', hint: 'Первые и последние капли разные по крепости — перемешайте перед подачей' },
     ],
     tips: ['SCA Golden Cup — около 55–60 г на литр', 'Кисло и пусто — мельче помол', 'Горько и долго капает — крупнее помол или меньше кофе', 'Не держите на подогреве дольше 30 минут — лучше термос'],
+  },
+  {
+    id: 'drip', name: 'Дрип', icon: 'dripbag',
+    about: 'Дрип-пакет: уже смолотый кофе в фильтре, который вешается на чашку. Зерно и помол задаёт сам пакет.',
+    dose: 11, ratio: 15, temp: 92, grind: 'уже смолот в пакете', total: 150,
+    steps: [
+      { at: 0, title: 'Блум', to: 0.2, hint: 'Раскройте держатели, повесьте на чашку. Смочите кофе равномерно — около 30 г воды' },
+      { at: 30, title: 'Второй пролив', to: 0.6, hint: 'Тонкой струёй по кругу, не заливая край фильтра' },
+      { at: 70, title: 'Третий пролив', to: 1, hint: 'Доливайте небольшими порциями, чтобы вода не переливалась через пакет' },
+      { at: 120, title: 'Дать стечь', hint: 'Снимите пакет, когда капли станут редкими' },
+    ],
+    tips: ['Чашка повыше — пакет не должен касаться кофе', 'Кисло и пусто — горячее вода или медленнее пролив', 'Горько — меньше воды или снимите пакет раньше', 'Лучше выпить коробку в течение месяца после обжарки'],
   },
   {
     id: 'cupping', name: 'Каппинг', icon: 'cupping',

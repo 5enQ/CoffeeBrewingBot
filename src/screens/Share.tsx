@@ -10,7 +10,7 @@ import { useRouter } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { AuthorBlock } from '../ui/Badges';
 import { copyText, toast } from '../ui/toast';
-import { beanOrigin, beanTitle, blendLines } from './beanUtils';
+import { beanOrigin, beanTitle, blendLines, dripAsBean } from './beanUtils';
 import { RateBlock } from '../ui/RateBlock';
 import { myTelegramId, newRid, prepareShare, ratingsEnabled } from '../data/ratings';
 import { useBadges } from '../data/featured';
@@ -126,7 +126,7 @@ export function ShareScreen({ id }: { id: string }) {
     badges: profile.shareBadges && shown.length ? shown : undefined,
   };
   const withNotes = profile.shareNotes ?? true;
-  const full = b ? toShared(b, beans.find((x) => x.id === b.beanId), me, myId) : null;
+  const full = b ? toShared(b, (() => { const x = beans.find((y) => y.id === b.beanId); return x ? dripAsBean(x, b.dripId) : undefined; })(), me, myId) : null;
   const recipe = full && !withNotes ? { ...full, notes: '' } : full;
   const key = JSON.stringify(recipe);
 

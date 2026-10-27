@@ -1,6 +1,6 @@
-import { daysSince, type Bean } from '../data/store';
+import { daysSince, type Bean, type Brew, type DripItem } from '../data/store';
 
-type BeanLike = Partial<Pick<Bean, 'name' | 'country' | 'region' | 'farm' | 'process' | 'variety' | 'isBlend' | 'parts'>>;
+type BeanLike = Partial<Pick<Bean, 'name' | 'country' | 'region' | 'farm' | 'process' | 'variety' | 'isBlend' | 'parts' | 'kind' | 'assorted' | 'drips'>>;
 
 const isBlend = (b: BeanLike) => !!b.isBlend;
 
@@ -9,16 +9,37 @@ export const blendSummary = (b: BeanLike) =>
   (b.parts ?? []).map((p) => [p.country || 'компонент', p.share && `${p.share}%`].filter(Boolean).join(' ')).join(' · ');
 
 export const beanTitle = (b?: BeanLike | null) => (b
-  ? b.name || (isBlend(b) ? `Бленд ${blendSummary(b)}`.trim() : [b.country, b.region].filter(Boolean).join(', ')) || 'Без названия'
+  ? b.name || (b.kind === 'drip' && b.assorted ? 'Дрипы ассорти' : isBlend(b) ? `Бленд ${blendSummary(b)}`.trim() : [b.country, b.region].filter(Boolean).join(', ')) || (b.kind === 'drip' ? 'Дрип-пакеты' : 'Без названия')
   : 'Без зерна');
 
+/** Название одного дрипа из коробки-ассорти */
+export const dripTitle = (d: Partial<DripItem>) => d.name || [d.country, d.region].filter(Boolean).join(', ') || 'Дрип';
+export const dripMeta = (d: Partial<DripItem>) => [[d.country, d.region, d.farm].filter(Boolean).join(' · '), d.process].filter(Boolean).join(' · ');
+
+/** Что заварили: «Гуджи Шакисо» или «Кения Ньери · Ассорти от Х» для дрипа из ассорти */
+export function brewBeanTitle(brew: Pick<Brew, 'beanId' | 'dripId'>, bean?: Bean | null) {
+  if (!bean) return beanTitle(null);
+  const item = brew.dripId ? bean.drips?.find((d) => d.id === brew.dripId) : undefined;
+  return item ? `${dripTitle(item)} · ${beanTitle(bean)}` : beanTitle(bean);
+}
+
+/** Дрип из ассорти как «пачка» — для рецепта, который отправляют другу */
+export function dripAsBean(bean: Bean, dripId?: string): Bean {
+  const item = dripId ? bean.drips?.find((d) => d.id === dripId) : undefined;
+  if (!item) return bean;
+  return { ...bean, name: dripTitle(item), country: item.country, region: item.region, farm: item.farm, variety: item.variety,
+    process: item.process, roastLevel: item.roastLevel || bean.roastLevel, packNotes: item.notes || bean.packNotes, isBlend: false, parts: undefined };
+}
+
 /** Происхождение: для моносорта — страна · регион · ферма, для бленда — состав */
-export const beanOrigin = (b: BeanLike) => isBlend(b)
+export const beanOrigin = (b: BeanLike) => b.kind === 'drip' && b.assorted
+  ? `Ассорти · ${(b.drips ?? []).length} ${(b.drips ?? []).length === 1 ? 'вид' : (b.drips ?? []).length < 5 ? 'вида' : 'видов'}`
+  : isBlend(b)
   ? ['Бленд', blendSummary(b)].filter(Boolean).join(': ')
   : [b.country, b.region, b.farm].filter(Boolean).join(' · ');
 
 /** Происхождение + обработка — короткая подпись под названием */
-export const beanMeta = (b: BeanLike) => isBlend(b)
+export const beanMeta = (b: BeanLike) => isBlend(b) || (b.kind === 'drip' && b.assorted)
   ? beanOrigin(b)
   : [beanOrigin(b), b.process].filter(Boolean).join(' · ');
 

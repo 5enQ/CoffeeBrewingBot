@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
 import { emptyCupping } from '../data/cupping';
-import { useStore, uid, type Brew } from '../data/store';
+import { isDrip, useStore, uid, type Brew } from '../data/store';
 import { useRouter } from '../router';
 import { MethodIcon } from '../ui/icons';
 import { Button, Field, Row, Screen, Section, Stepper } from '../ui/kit';
-import { beanMeta, beanTitle } from './beanUtils';
-import { BeanPicker } from './BeanPicker';
+import { beanMeta, brewBeanTitle } from './beanUtils';
+import { BeanPicker, DripPicker } from './BeanPicker';
 import { GearPicker, defaultGear } from '../ui/GearPicker';
 import type { GearRef } from '../data/gear';
 import { effectivePlan, planFromRecipe, recipeFromStandard, type BrewPlan } from '../data/recipes';
-import { beanStock } from '../data/stock';
+import { beanStock, dripItemLeft } from '../data/stock';
 
 export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }) {
   const m = methodById(methodId);
@@ -39,7 +39,25 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const [temp, setTemp] = useState(from?.temp ?? startActive?.temp ?? saved?.temp ?? m.temp);
   const [grind, setGrind] = useState(from?.grind ?? startActive?.grind ?? saved?.grind ?? m.grind);
   const [gear, setGear] = useState<GearRef[]>(() => from?.gear?.length ? from.gear : defaultGear(m.id, myGear, saved?.gear));
-  const [bean, setBean] = useState<string | null>(beanId ?? from?.beanId ?? beans.find((b) => !b.sample)?.id ?? beans[0]?.id ?? null);
+  const drip = m.id === 'drip';
+  const [bean, setBean] = useState<string | null>(() => {
+    const ok = (id?: string | null) => !!id && beans.some((b) => b.id === id && isDrip(b) === drip);
+    if (ok(beanId)) return beanId!;
+    if (ok(from?.beanId)) return from!.beanId;
+    const pool = beans.filter((b) => isDrip(b) === drip && !b.finished && beanStock(b, brews).left !== 0);
+    return pool.find((b) => !b.sample)?.id ?? pool[0]?.id ?? (drip ? null : beans.find((b) => !isDrip(b))?.id ?? null);
+  });
+  const [dripId, setDripId] = useState<string | undefined>(() => {
+    const box = beans.find((b) => b.id === bean);
+    if (!box?.assorted) return undefined;
+    if (from?.dripId && box.drips?.some((d) => d.id === from.dripId)) return from.dripId;
+    return (box.drips ?? []).find((d) => dripItemLeft(box, d.id, brews) > 0)?.id ?? box.drips?.[0]?.id;
+  });
+  // у дрипа доза — сколько кофе в пакете
+  const dripBox = drip ? beans.find((b) => b.id === bean) : undefined;
+  useEffect(() => {
+    if (dripBox?.dripWeight) setDose(dripBox.dripWeight);
+  }, [dripBox?.id, dripBox?.dripWeight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const apply = (r: { dose: number; ratio: number; temp: number; grind: string }) => {
     setDose(r.dose); setRatio(r.ratio); setTemp(r.temp); setGrind(r.grind);
@@ -74,14 +92,16 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const [changeBean, setChangeBean] = useState(false);
   const beanObj = beans.find((x) => x.id === bean);
   const beanSt = beanObj ? beanStock(beanObj, brews) : null;
-  const lowStock = beanSt && beanSt.total > 0 && beanSt.left < dose ? beanSt : null;
+  const lowStock = !drip && beanSt && beanSt.total > 0 && beanSt.left < dose ? beanSt : null;
+  const dripLeft = drip && beanObj ? (beanObj.assorted && dripId ? dripItemLeft(beanObj, dripId, brews) : beanSt?.total ? beanSt.left : null) : null;
 
   const water = Math.round(dose * ratio * (m.id === 'espresso' ? 10 : 1)) / (m.id === 'espresso' ? 10 : 1);
   const waterLabel = m.yieldLabel ?? 'Вода';
   const espresso = m.id === 'espresso';
 
   const draft = (): Brew => ({
-    id: uid(), date: Date.now(), methodId: m.id, beanId: bean, dose, water, temp, grind, time: plan.total,
+    id: uid(), date: Date.now(), methodId: m.id, beanId: bean, dose, water, temp, grind: drip ? '' : grind, time: plan.total,
+    ...(drip && dripId ? { dripId } : {}),
     rating: 0, taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, descriptors: [], notes: '',
     cupping: m.id === 'cupping' ? emptyCupping() : null,
     gear,
@@ -94,8 +114,8 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     <Screen title={m.name} subtitle={choice === 'std' ? 'Стандартный рецепт' : `Рецепт: ${plan.name}${active?.author ? ` · от ${active.author.name || '@' + active.author.username}` : ''}`}
       footer={
         <div className="footer-actions">
-          <Button kind="secondary" onClick={() => { remember(); push({ name: 'brewEdit', draft: draft(), isNew: true }); }}>Без таймера</Button>
-          <Button icon="play" wide onClick={() => { remember(); push({ name: 'timer', draft: draft() }); }}>Начать</Button>
+          <Button kind="secondary" disabled={drip && !bean} onClick={() => { remember(); push({ name: 'brewEdit', draft: draft(), isNew: true }); }}>Без таймера</Button>
+          <Button icon="play" wide disabled={drip && !bean} onClick={() => { remember(); push({ name: 'timer', draft: draft() }); }}>Начать</Button>
         </div>
       }>
       <div className="method-hero">
@@ -110,21 +130,25 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
 
       {active?.notes && <p className="muted pad">{active.notes}</p>}
 
-      <Section title="Зерно" aside={from && !changeBean ? <button type="button" className="link-btn" onClick={() => setChangeBean(true)}>Сменить</button> : undefined} plain>
+      <Section title={drip ? 'Дрип' : 'Зерно'} aside={from && !changeBean ? <button type="button" className="link-btn" onClick={() => setChangeBean(true)}>Сменить</button> : undefined} plain>
         {from && !changeBean ? (
           <div className="group">
-            <Row label={beanObj ? beanTitle(beanObj) : 'Без зерна'}
-              hint={beanObj ? [beanMeta(beanObj), beanSt?.total ? `осталось ${fmtNum(beanSt.left, 0)} из ${fmtNum(beanSt.total, 0)} г` : ''].filter(Boolean).join(' · ') : 'как в прошлый раз'}
+            <Row label={beanObj ? brewBeanTitle({ beanId: bean, dripId }, beanObj) : drip ? 'Дрип не выбран' : 'Без зерна'}
+              hint={beanObj ? [beanMeta(beanObj), beanSt?.total ? `осталось ${fmtNum(beanSt.left, 0)} из ${fmtNum(beanSt.total, 0)} ${beanSt.unit === 'pcs' ? 'шт' : 'г'}` : ''].filter(Boolean).join(' · ') : 'как в прошлый раз'}
               chevron={false} />
           </div>
+        ) : drip ? (
+          <DripPicker value={bean} dripId={dripId} onChange={(id, d) => { setBean(id); setDripId(d); }} />
         ) : (
           <BeanPicker value={bean} onChange={setBean} dose={dose} />
         )}
+        {dripLeft === 0 && <p className="status warn pad">{beanObj?.assorted ? 'Таких дрипов в коробке не осталось' : 'В коробке не осталось дрипов'} — заварка всё равно запишется.</p>}
         {lowStock && <p className="status warn pad">В пачке осталось {fmtNum(lowStock.left, 0)} г — на эту заварку не хватит {fmtNum(dose - lowStock.left, 1)} г.</p>}
       </Section>
 
       <Section title="Параметры">
-        <Stepper label="Кофе" value={dose} onChange={setDose} step={espresso ? 0.5 : m.id === 'cupping' ? 0.25 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} />
+        {drip ? <Row label="Кофе в дрипе" value={`${fmtNum(dose, 1)} г`} hint={dripBox?.dripWeight ? 'как указано на коробке' : 'укажите вес дрипа в карточке коробки'} chevron={false} /> :
+        <Stepper label="Кофе" value={dose} onChange={setDose} step={espresso ? 0.5 : m.id === 'cupping' ? 0.25 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} />}
         <Stepper label={waterLabel} value={water} step={espresso ? 1 : 10} min={espresso ? 10 : 30} max={2000} unit="г"
           format={(v) => fmtNum(v)}
           onChange={(w) => setDose(Math.max(1, Math.round((w / ratio) * 4) / 4))} />
@@ -132,7 +156,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
           onChange={(r) => setRatio(r)} />
         <Stepper label="Температура" value={temp} step={0.1} min={0} max={100} unit={temp ? '°C' : ''}
           format={(v) => (v === 0 ? 'холодная' : fmtNum(v))} onChange={setTemp} />
-        <Field label="Помол" id="grind" value={grind} onChange={(e) => setGrind(e.target.value)} placeholder="например, Comandante 22" />
+        {!drip && <Field label="Помол" id="grind" value={grind} onChange={(e) => setGrind(e.target.value)} placeholder="например, Comandante 22" />}
       </Section>
 
       <Section title="Оборудование" plain>

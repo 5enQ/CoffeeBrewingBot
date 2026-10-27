@@ -15,6 +15,7 @@ const METHOD_PATHS: Record<IconKey, React.ReactNode> = {
   siphon: <><path d="M11 3h10v7l-3 3h-4l-3-3z" /><path d="M16 13v3" /><circle cx="16" cy="22" r="6" /><path d="M11 30h10" /><path d="M10 3h12" /></>,
   coldbrew: <><path d="M9 8h14v18a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2z" /><path d="M8 4h16v4H8z" /><rect x="12" y="13" width="4" height="4" rx="1" /><rect x="16.5" y="18" width="4" height="4" rx="1" /></>,
   batch: <><path d="M7 4h18v6H7z" /><path d="M9 10l2 5h10l2-5" /><path d="M16 15v2" /><path d="M11 18h10v8a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2z" /><path d="M21 20h1.5a2 2 0 0 1 0 4H21" /><path d="M7 4v24h3" /></>,
+  dripbag: <><path d="M9 5h14v11l-7 5-7-5z" /><path d="M9 8L5 11M23 8l4 3" /><path d="M12 10h8" /><path d="M7 22h18v2a5 5 0 0 1-5 5h-8a5 5 0 0 1-5-5z" /></>,
   cup: <><path d="M7 11h16v7a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7z" /><path d="M23 13h2a3 3 0 0 1 0 6h-2.5" /><path d="M6 28h19" /></>,
   kettle: <><path d="M8 14h15l-1.5 13h-12z" /><path d="M10 14a5.5 4 0 0 1 11 0" /><path d="M15.5 8.5v1.5" /><path d="M8 17l-5-5" /><path d="M23 16h2a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2.5" /></>,
   drop: <><path d="M16 4c5 6.5 8 11 8 15a8 8 0 0 1-16 0c0-4 3-8.5 8-15z" /><path d="M12 20a4 4 0 0 0 4 4" /></>,

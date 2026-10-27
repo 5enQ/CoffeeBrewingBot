@@ -12,7 +12,7 @@ import { catById } from '../data/gear';
 import { AuthorBlock } from '../ui/Badges';
 import { RateBlock, plural } from '../ui/RateBlock';
 import { Button, Chips, Empty, Row, SampleTag, Screen, Section, Stars } from '../ui/kit';
-import { beanMeta, beanTitle } from './beanUtils';
+import { beanMeta, beanTitle, brewBeanTitle, dripAsBean } from './beanUtils';
 
 function dayLabel(ts: number) {
   const d = new Date(ts); const today = new Date();
@@ -76,7 +76,7 @@ export function Journal() {
             return (
               <Row key={b.id}
                 leading={<MethodIcon icon={m.icon} size={26} />}
-                label={<>{b.cva && b.cva.samples.length > 1 ? `Каппинг · ${b.cva.samples.length} образца` : beanTitle(bean)} {b.sample && <SampleTag />}</>}
+                label={<>{b.cva && b.cva.samples.length > 1 ? `Каппинг · ${b.cva.samples.length} образца` : brewBeanTitle(b, bean)} {b.sample && <SampleTag />}</>}
                 hint={b.cva ? `${m.name} · ${b.cva.samples.map((s) => beanTitle(beans.find((x) => x.id === s.beanId))).join(', ')}` : `${b.author ? `от ${b.author.name || '@' + b.author.username} · ` : ''}${m.name} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г · ${fmtRatio(b.water / b.dose)} · ${fmtTime(b.time)}`}
                 value={<BrewScore brew={b} size={14} />}
                 onClick={() => push({ name: 'brew', id: b.id })}
@@ -107,7 +107,7 @@ export function BrewDetail({ id }: { id: string }) {
   };
 
   return (
-    <Screen title={b.cva && b.cva.samples.length > 1 ? `Каппинг · ${b.cva.samples.length} образца` : beanTitle(bean)} subtitle={`${m.name} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
+    <Screen title={b.cva && b.cva.samples.length > 1 ? `Каппинг · ${b.cva.samples.length} образца` : brewBeanTitle(b, bean)} subtitle={`${m.name} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
       action={<button type="button" className="icon-btn" onClick={() => push({ name: 'share', id: b.id })} aria-label="Поделиться"><Icon name="share" /></button>}
       footer={
         <div className="footer-actions">
@@ -176,7 +176,7 @@ export function BrewDetail({ id }: { id: string }) {
 
       {bean && (
         <Section title="Зерно">
-          <Row label={beanTitle(bean)} hint={beanMeta(bean)} onClick={() => push({ name: 'bean', id: bean.id })} />
+          <Row label={brewBeanTitle(b, bean)} hint={b.dripId ? beanMeta(dripAsBean(bean, b.dripId)) : beanMeta(bean)} onClick={() => push({ name: 'bean', id: bean.id })} />
         </Section>
       )}
 

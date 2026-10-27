@@ -7,7 +7,7 @@ import { useRouter, useSelected } from '../router';
 import { MethodIcon } from '../ui/icons';
 import { Row, Screen, Section } from '../ui/kit';
 import { BrewScore } from '../ui/CuppingForm';
-import { beanTitle } from './beanUtils';
+import { brewBeanTitle } from './beanUtils';
 import { platform } from '../platform';
 import { toast } from '../ui/toast';
 import { useRef, type ReactNode } from 'react';
@@ -81,7 +81,7 @@ export function BrewHome() {
             return (
               <Row key={b.id}
                 leading={<MethodIcon icon={m.icon} size={26} />}
-                label={beanTitle(bean)}
+                label={brewBeanTitle(b, bean)}
                 hint={`${m.name}${b.plan ? ` · ${b.plan.name}` : ''} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г`}
                 value={<BrewScore brew={b} size={14} />}
                 onClick={() => push({ name: 'method', methodId: b.methodId, beanId: b.beanId, from: b })}

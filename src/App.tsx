@@ -1,3 +1,4 @@
+import { TabPages, useTabPill } from './ui/motion';
 import { CuppingSetup } from './screens/CuppingSetup';
 import { StoreProvider, useStore } from './data/store';
 import { DepthCtx, RouterProvider, useRouter, type Route, type Tab } from './router';
@@ -15,7 +16,7 @@ import { Profile, GearEdit, BadgeEdit } from './screens/Profile';
 import { MethodEdit, RecipeEdit } from './screens/RecipeEdit';
 import { RecipesScreen } from './screens/Recipes';
 import { ShareScreen, SharedRecipeScreen } from './screens/Share';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { LayoutCtx, useLayoutMode } from './layout';
 import { MethodIcon } from './ui/icons';
 import { platform } from './platform';
@@ -52,6 +53,9 @@ function Shell() {
   const { tab, setTab, stack, push } = useRouter();
   const { ready, profile } = useStore();
   const { mode } = useLayoutMode();
+  const navRef = useRef<HTMLElement>(null);
+  const pillRef = useRef<HTMLSpanElement>(null);
+  useTabPill(navRef, pillRef, `${tab}-${stack.length === 0}-${mode}-${ready}`);
 
   useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
 
@@ -69,7 +73,8 @@ function Shell() {
 
   if (!ready) return <div className="boot" />;
 
-  const root = { brew: <BrewHome />, journal: <Journal />, beans: <Beans />, profile: <Profile /> }[tab];
+  const renderTab = (t: Tab) => ({ brew: <BrewHome />, journal: <Journal />, beans: <Beans />, profile: <Profile /> }[t]);
+  const root = renderTab(tab);
   const top = stack.length;
   // Экраны стека остаются смонтированными, чтобы не терять ввод и таймер
   const stackScreens = stack.map((r, i) => (
@@ -112,10 +117,11 @@ function Shell() {
 
   return (
     <LayoutCtx.Provider value="mobile">
-      <div hidden={top > 0}><DepthCtx.Provider value={0}>{root}</DepthCtx.Provider></div>
+      <div hidden={top > 0}><DepthCtx.Provider value={0}><TabPages tab={tab} order={TABS.map((t) => t.id)} render={renderTab} /></DepthCtx.Provider></div>
       {stackScreens}
       {top === 0 && (
-        <nav className="tabbar">
+        <nav className="tabbar" ref={navRef}>
+          <span className="tab-pill" ref={pillRef} aria-hidden="true" />
           {TABS.map((t) => (
             <button key={t.id} type="button" className={t.id === tab ? 'on' : ''} onClick={() => setTab(t.id)} aria-current={t.id === tab ? 'page' : undefined}>
               <Icon name={t.icon} size={24} /><span>{t.label}</span>

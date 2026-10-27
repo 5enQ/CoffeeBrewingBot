@@ -10,7 +10,8 @@ import { BrewScore } from '../ui/CuppingForm';
 import { brewBeanTitle } from './beanUtils';
 import { platform } from '../platform';
 import { toast } from '../ui/toast';
-import { useRef, useState, type KeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
+import { useFlip } from '../ui/motion';
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import type { Method } from '../data/methods';
 import type { TileLayout } from '../data/store';
 
@@ -29,15 +30,15 @@ function pinOnce(onPin: () => void) {
 }
 
 /** Плитка метода: нажатие открывает, долгое нажатие (или правая кнопка мыши) закрепляет */
-function MethodTile({ className, onOpen, onPin, pinned, label, children }: {
-  className: string; onOpen(): void; onPin(): void; pinned: boolean; label: string; children: ReactNode;
+function MethodTile({ id, className, onOpen, onPin, pinned, label, children }: {
+  id: string; className: string; onOpen(): void; onPin(): void; pinned: boolean; label: string; children: ReactNode;
 }) {
   const timer = useRef<number | null>(null);
   const held = useRef(false);
   const start = useRef<{ x: number; y: number } | null>(null);
   const cancel = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
   return (
-    <button type="button" className={className}
+    <button type="button" className={className} data-flip={id}
       aria-label={`${label}${pinned ? ', закреплён' : ''}`}
       title={pinned ? 'Зажмите или правый клик — открепить' : 'Зажмите или правый клик — закрепить'}
       onPointerDown={(e) => {
@@ -68,10 +69,10 @@ type Size = 1 | 2;
 /** Плитка в режиме редактирования: нажатие — выбрать, перетаскивание — переставить, ручка справа — размер */
 function EditTile({ m, size, selected, pinned, dragging, onSelect, onDragStart, onDragMove, onDragEnd, onResize, onKey }: {
   m: Method; size: Size; selected: boolean; pinned: boolean; dragging: boolean;
-  onSelect(): void; onDragStart(): void; onDragMove(x: number, y: number): void; onDragEnd(): void;
+  onSelect(): void; onDragStart(el: HTMLElement, x: number, y: number): void; onDragMove(x: number, y: number): void; onDragEnd(): void;
   onResize(s: Size): void; onKey(e: KeyboardEvent): void;
 }) {
-  const start = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const start = useRef<{ x: number; y: number; moved: boolean; el: HTMLElement } | null>(null);
   const handle = useRef<{ x: number; base: Size } | null>(null);
   const [preview, setPreview] = useState<Size | null>(null);
   const shown = preview ?? size;
@@ -79,12 +80,12 @@ function EditTile({ m, size, selected, pinned, dragging, onSelect, onDragStart, 
   const down = (e: RPointerEvent) => {
     if (e.button !== 0) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    start.current = { x: e.clientX, y: e.clientY, moved: false };
+    start.current = { x: e.clientX, y: e.clientY, moved: false, el: e.currentTarget as HTMLElement };
   };
   const move = (e: RPointerEvent) => {
     const s = start.current;
     if (!s) return;
-    if (!s.moved && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 8) { s.moved = true; onDragStart(); }
+    if (!s.moved && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 8) { s.moved = true; onDragStart(s.el, s.x, s.y); }
     if (s.moved) onDragMove(e.clientX, e.clientY);
   };
   const up = () => {
@@ -117,7 +118,7 @@ function EditTile({ m, size, selected, pinned, dragging, onSelect, onDragStart, 
   };
 
   return (
-    <div data-tile={m.id} role="button" tabIndex={0}
+    <div data-tile={m.id} data-flip={m.id} role="button" tabIndex={0}
       aria-label={`${m.name}: ${shown === 2 ? 'большая' : 'маленькая'} плитка${pinned ? ', закреплена' : ''}`} aria-pressed={selected}
       className={'method-card edit' + (shown === 1 ? ' small' : '') + (selected ? ' selected' : '') + (dragging ? ' dragging' : '') + (pinned ? ' pinned' : '')}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { start.current = null; onDragEnd(); }}
@@ -182,21 +183,57 @@ export function BrewHome() {
     return [...rest.slice(0, i), id, ...rest.slice(i)];
   };
 
-  const dragMove = (id: string, x: number, y: number) => {
-    const el = document.elementsFromPoint(x, y).map((e) => (e as HTMLElement).closest?.('[data-tile]') as HTMLElement | null).find((e) => e && e.dataset.tile !== id);
+  const gridRef = useRef<HTMLDivElement>(null);
+  useFlip(gridRef, drag?.id);
+  // плитка едет за пальцем: смещение от её места в сетке до пальца
+  const grab = useRef<{ id: string; ox: number; oy: number; x: number; y: number } | null>(null);
+  const placeGhost = () => {
+    const g = grab.current, grid = gridRef.current;
+    if (!g || !grid) return;
+    const el = grid.querySelector<HTMLElement>(`[data-tile="${g.id}"]`);
     if (!el) return;
+    const gr = grid.getBoundingClientRect();
+    el.style.transform = `translate(${g.x - gr.left - g.ox - el.offsetLeft}px, ${g.y - gr.top - g.oy - el.offsetTop}px) scale(1.05)`;
+  };
+  useLayoutEffect(placeGhost);
+
+  const dragStart = (id: string, el: HTMLElement, x: number, y: number) => {
+    const r = el.getBoundingClientRect();
+    grab.current = { id, ox: x - r.left, oy: y - r.top, x, y };
+    setSelected(null);
+    setDrag({ id, order: savedOrder });
+    platform.haptic('light');
+  };
+  const dragMove = (id: string, x: number, y: number) => {
+    const grid = gridRef.current;
+    if (!grid || !grab.current) return;
+    grab.current.x = x; grab.current.y = y;
+    placeGhost();
+    // место ищем по сетке (без учёта анимаций), а не по тому, что сейчас под пальцем
+    const gr = grid.getBoundingClientRect();
+    const gx = x - gr.left, gy = y - gr.top;
+    const els = [...grid.querySelectorAll<HTMLElement>('[data-tile]')].filter((e) => e.dataset.tile !== id);
+    const hit = els.find((e) => gx >= e.offsetLeft && gx <= e.offsetLeft + e.offsetWidth && gy >= e.offsetTop && gy <= e.offsetTop + e.offsetHeight);
+    if (!hit) return;
     setDrag((d) => {
       const cur = d?.order ?? savedOrder;
-      const target = el.dataset.tile!;
-      const r = el.getBoundingClientRect();
       const without = cur.filter((t) => t !== id);
-      let to = without.indexOf(target);
-      if (x > r.left + r.width / 2) to += 1;
+      let to = without.indexOf(hit.dataset.tile!);
+      if (gx > hit.offsetLeft + hit.offsetWidth / 2) to += 1;
       const next = place(cur, id, to);
       return next.join() === cur.join() && d ? d : { id, order: next };
     });
   };
   const dragEnd = () => {
+    // отпустили — плитка доезжает до своего места
+    const g = grab.current;
+    grab.current = null;
+    const el = g && gridRef.current?.querySelector<HTMLElement>(`[data-tile="${g.id}"]`);
+    if (el) {
+      el.classList.add('dropping');
+      el.style.transform = '';
+      setTimeout(() => el.classList.remove('dropping'), 260);
+    }
     setDrag((d) => {
       if (d && d.order.join() !== savedOrder.join()) { commit({ order: d.order }); platform.haptic('select'); }
       return null;
@@ -250,18 +287,18 @@ export function BrewHome() {
         </span>
       )} plain>
         {editing && <p className="muted small-note pad edit-hint">Нажмите на плитку, чтобы выбрать её, и тяните ручку справа — плитка станет больше или меньше. Перетащите плитку, чтобы переставить.</p>}
-        <div className={'method-grid' + (editing ? ' editing' : '')}>
+        <div className={'method-grid' + (editing ? ' editing' : '')} ref={gridRef}>
           {editing && ordered.map((m) => (
             <EditTile key={m.id} m={m} size={sizeOf(m.id)} selected={selected === m.id} pinned={pinned.includes(m.id)} dragging={drag?.id === m.id}
               onSelect={() => { platform.haptic('select'); setSelected((x) => (x === m.id ? null : m.id)); }}
-              onDragStart={() => { setSelected(null); setDrag({ id: m.id, order: savedOrder }); platform.haptic('light'); }}
+              onDragStart={(el, x, y) => dragStart(m.id, el, x, y)}
               onDragMove={(x, y) => dragMove(m.id, x, y)} onDragEnd={dragEnd}
               onResize={(s) => resize(m.id, s)} onKey={(e) => keyMove(m.id, e)} />
           ))}
           {!editing && ordered.map((m) => {
             const isPinned = pinned.includes(m.id);
             return (
-              <MethodTile key={m.id} pinned={isPinned}
+              <MethodTile key={m.id} id={m.id} pinned={isPinned}
                 className={'method-card' + (sizeOf(m.id) === 1 ? ' small' : '') + (isPinned ? ' pinned' : '') + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === m.id ? ' active' : '')}
                 onOpen={() => push({ name: 'recipes', methodId: m.id })}
                 onPin={() => { togglePin(m.id); platform.haptic('success'); toast(isPinned ? `«${m.name}» откреплён` : `«${m.name}» закреплён наверху`); }}

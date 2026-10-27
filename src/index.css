@@ -12,6 +12,8 @@
   --sep: rgba(27, 33, 29, 0.09);
   --star: #c8862a;        /* карамель */
   --cherry: #b4283c;      /* спелая ягода */
+  --pill-bg: #1f2a24;     /* «пузырёк» активной вкладки */
+  --pill-fg: #ffffff;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-num: "SF Pro Display", -apple-system, "Segoe UI", Roboto, sans-serif;
   --r: 14px;
@@ -26,6 +28,7 @@
     --bg: #0f1311; --card: #1a201c; --fg: #e6ebe7; --hint: #8a958d;
     --accent: #68c294; --accent-fg: #0c1912; --link: #68c294; --danger: #ef6b5b;
     --sep: rgba(255, 255, 255, 0.08); --star: #e2a64e; --cherry: #e0566a;
+    --pill-bg: #313b35; --pill-fg: #f1f5f2;
     color-scheme: dark;
   }
 }
@@ -33,6 +36,7 @@
   --bg: #0f1311; --card: #1a201c; --fg: #e6ebe7; --hint: #8a958d;
   --accent: #68c294; --accent-fg: #0c1912; --link: #68c294; --danger: #ef6b5b;
   --sep: rgba(255, 255, 255, 0.08); --star: #e2a64e; --cherry: #e0566a;
+  --pill-bg: #313b35; --pill-fg: #f1f5f2;
   color-scheme: dark;
 }
 
@@ -97,10 +101,18 @@ button { cursor: pointer; }
   border-top: 1px solid var(--sep);
 }
 .tabbar button {
+  position: relative; z-index: 1;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  background: none; border: 0; padding: 4px 0; color: var(--hint); font-size: 11px; font-weight: 600;
+  background: none; border: 0; padding: 6px 0; color: var(--hint); font-size: 11px; font-weight: 600;
+  transition: color 0.25s ease;
 }
-.tabbar button.on { color: var(--accent); }
+.tabbar button.on { color: var(--pill-fg); }
+.tab-pill { position: absolute; left: 0; top: 6px; height: 48px; width: 0; border-radius: 16px; background: var(--pill-bg); pointer-events: none; z-index: 0; opacity: 0; will-change: transform, width; }
+
+/* ---------- Перелистывание вкладок ---------- */
+.tab-pages { position: relative; }
+.tab-pages.moving { overflow-x: clip; }
+.tab-page.leaving { position: absolute; top: 0; left: 0; right: 0; pointer-events: none; }
 
 /* ---------- Секции и строки ---------- */
 .section { display: flex; flex-direction: column; gap: 8px; }
@@ -971,3 +983,8 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
   background: var(--accent); box-shadow: 0 0 0 3px var(--card); cursor: ew-resize; touch-action: none; }
 .tile-handle::before { content: ''; position: absolute; inset: -14px -16px; } /* палец промахивается — делаем зону побольше */
 .edit-hint { margin: 0 0 10px; }
+
+/* плитки: плавная перестановка и перетаскивание */
+.method-grid { position: relative; }
+.method-card.edit.dragging { transition: none; }
+.method-card.edit.dropping { transition: transform 0.22s cubic-bezier(0.3, 0.7, 0.2, 1); }

@@ -1,0 +1,6 @@
+kojo 200 2.871327s
+submarine 200 2.526957s
+hq 200 3.364325s
+welder 200 1.981545s
+welder_mix 200 2.004112s
+kojo_again 200 0.081161s

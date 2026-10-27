@@ -1006,3 +1006,22 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .scale-row.editable .scale-dots button::after { content: ''; position: absolute; inset: 10px; border-radius: 50%; border: 1.5px solid var(--hint); }
 .scale-row.editable .scale-dots button.on { background: transparent; }
 .scale-row.editable .scale-dots button.on::after { background: var(--fg); border-color: var(--fg); }
+
+/* ---------- Остаток зёрнами и дрипами ---------- */
+:root { --bean: #6f4528; --bean-empty: color-mix(in srgb, var(--hint) 30%, transparent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bean: #c99367; } }
+:root[data-theme="dark"] { --bean: #c99367; }
+.stock-icons { display: flex; flex-wrap: wrap; gap: 3px; }
+.stock-ico { position: relative; width: 18px; height: 18px; display: inline-block; flex-shrink: 0; }
+.stock-ico svg { width: 18px; height: 18px; display: block; }
+.stock-ico .ico-empty path { fill: var(--bean-empty); }
+.stock-ico .ico-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; }
+.stock-ico .ico-fill path { fill: var(--bean); }
+.stock-ico .seam { fill: none !important; stroke: var(--card); stroke-width: 1.4; stroke-linecap: round; }
+.stock-ico.drip path { fill: var(--bean-empty); }
+.stock-ico.drip .ears { fill: none; stroke: var(--bean-empty); stroke-width: 1.6; stroke-linecap: round; }
+.stock-ico.drip.on path { fill: var(--bean); }
+.stock-ico.drip.on .ears { fill: none; stroke: var(--bean); }
+.stock-card .stock-icons { gap: 5px; }
+.stock-card .stock-ico, .stock-card .stock-ico svg { width: 24px; height: 24px; }
+.stock.empty .stock-icons { opacity: 0.6; }

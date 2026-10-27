@@ -36,7 +36,8 @@ type UiIcon = 'brew' | 'journal' | 'beans' | 'more' | 'profile' | 'share' | 'gea
 const UI_PATHS: Record<UiIcon, React.ReactNode> = {
   brew: <><path d="M5 8h14l-5 7h-4z" /><path d="M9 19h6M12 15v4" /><path d="M10 3v2M14 3v2" /></>,
   journal: <><path d="M6 3h11a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2V4a1 1 0 0 1 1-1z" /><path d="M5 18a2 2 0 0 1 2-2h12" /><path d="M9 7h6M9 10h4" /></>,
-  beans: <><ellipse cx="12" cy="12" rx="6.5" ry="9" transform="rotate(30 12 12)" /><path d="M9 5c3 3 0 8 6 14" /></>,
+  // полка: две доски, на них пачки кофе и банка
+  beans: <><path d="M3 11h18M3 20.5h18" /><path d="M5.5 11V6.5L7 4.5h3l1.5 2V11" /><rect x="13.5" y="6.5" width="4.5" height="4.5" rx="1" /><path d="M14.5 6.5V5.5h2.5v1" /><path d="M6 20.5v-5l1.2-1.5h2.6l1.2 1.5v5" /><path d="M13.5 20.5v-4.5h4.5v4.5" /></>,
   profile: <><circle cx="12" cy="8" r="3.6" /><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6" /></>,
   share: <><path d="M12 15V4M8 8l4-4 4 4" /><path d="M6 11H5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1h-1" /></>,
   gear: <><path d="M6 4h12l-1 5H7z" /><path d="M9 9v3h6V9" /><rect x="7" y="12" width="10" height="8" rx="1.5" /><path d="M12 15v2" /></>,

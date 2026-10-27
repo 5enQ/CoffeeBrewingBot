@@ -15,7 +15,47 @@ import { beanMeta, beanOrigin, beanTitle, blendLines, brewBeanTitle, dripMeta, d
 
 /* ---------- Полка ---------- */
 
-/** Полоска остатка пачки: «осталось N из M г» */
+/* ---------- Остаток картинками ---------- */
+
+const BEAN_PATH = 'M12 2.5c-4.2 0-7 4.3-7 9.5s2.8 9.5 7 9.5 7-4.3 7-9.5-2.8-9.5-7-9.5z';
+const BEAN_SEAM = 'M12 3.5c-1.8 2.6-1.6 5.4 0 8.3s1.8 5.7 0 8.7';
+const DRIP_PATH = 'M6 4.5h12V15l-6 5.5L6 15z';
+
+function BeanIcon({ part }: { part: number }) {
+  // part 0..1 — какая доля зерна «осталась»: последнее зерно может быть закрашено частично
+  return (
+    <span className="stock-ico">
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="ico-empty"><path d={BEAN_PATH} /><path d={BEAN_SEAM} className="seam" /></svg>
+      {part > 0 && (
+        <span className="ico-fill" style={{ width: `${Math.round(part * 100)}%` }}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d={BEAN_PATH} /><path d={BEAN_SEAM} className="seam" /></svg>
+        </span>
+      )}
+    </span>
+  );
+}
+
+function DripIcon({ on }: { on: boolean }) {
+  return (
+    <span className={'stock-ico drip' + (on ? ' on' : '')}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6.5 3 9M18 6.5 21 9" className="ears" /><path d={DRIP_PATH} /><path d="M9 8.5h6" className="seam" /></svg>
+    </span>
+  );
+}
+
+/** Сколько осталось: зёрна (10 штук = вся пачка) или нарисованные дрипы (каждый — один пакет) */
+function StockIcons({ unit, left, total }: { unit: 'g' | 'pcs'; left: number; total: number }) {
+  if (unit === 'pcs') {
+    // больше 20 дрипов не рисуем по одному — делим на 20 равных частей
+    const n = Math.min(total, 20);
+    const on = total <= 20 ? left : Math.round((left / total) * 20);
+    return <div className="stock-icons" aria-hidden="true">{Array.from({ length: n }, (_, i) => <DripIcon key={i} on={i < on} />)}</div>;
+  }
+  const units = total ? (left / total) * 10 : 0;
+  return <div className="stock-icons" aria-hidden="true">{Array.from({ length: 10 }, (_, i) => <BeanIcon key={i} part={Math.max(0, Math.min(1, units - i))} />)}</div>;
+}
+
+/** Остаток пачки: «осталось N из M г» с зёрнами или дрипами вместо полоски */
 export function StockBar({ bean, compact = false }: { bean: Bean; compact?: boolean }) {
   const { brews } = useStore();
   const st = beanStock(bean, brews);
@@ -23,7 +63,7 @@ export function StockBar({ bean, compact = false }: { bean: Bean; compact?: bool
   if (st.unit === 'pcs') {
     return (
       <div className={'stock' + (compact ? ' compact' : '') + (st.left > 0 && st.left <= 2 ? ' low' : '') + (st.left <= 0 ? ' empty' : '')}>
-        <div className="stock-bar"><i style={{ ['--w' as string]: `${st.ratio * 100}%` }} /></div>
+        <StockIcons unit="pcs" left={st.left} total={st.total} />
         <div className="stock-text">
           <span><b>{st.left}</b> из {st.total} {plural(st.total, ['дрипа', 'дрипов', 'дрипов'])}</span>
           <span>{st.left <= 0 ? 'закончились' : st.used ? `заварено ${st.used}` : 'ещё не заваривали'}</span>
@@ -34,7 +74,7 @@ export function StockBar({ bean, compact = false }: { bean: Bean; compact?: bool
   const low = st.left > 0 && (st.brewsLeft !== null ? st.brewsLeft <= 2 : st.ratio < 0.15);
   return (
     <div className={'stock' + (compact ? ' compact' : '') + (low ? ' low' : '') + (st.left <= 0 ? ' empty' : '')}>
-      <div className="stock-bar"><i style={{ ['--w' as string]: `${st.ratio * 100}%` }} /></div>
+      <StockIcons unit="g" left={st.left} total={st.total} />
       <div className="stock-text">
         <span><b>{fmtNum(st.left, 0)}</b> из {fmtNum(st.total, 0)} г</span>
         <span>{st.left <= 0 ? 'закончилось' : st.brewsLeft === 0 ? 'меньше чем на заварку' : st.brewsLeft !== null ? `≈ ${st.brewsLeft} ${plural(st.brewsLeft, ['заварка', 'заварки', 'заварок'])}` : 'ещё не заваривали'}</span>
@@ -215,7 +255,8 @@ export function BeanDetail({ id }: { id: string }) {
         </div>
       </div>
 
-      <Section title="Заварить" plain>
+      {/* дрипы заваривают только как дрип — выбирать способ не из чего */}
+      {!drip && <Section title="Заварить" plain>
         <div className="quick-methods">
           {allMethods().filter((m) => (m.id === 'drip') === drip && !(drip && m.id === 'cupping')).map((m) => (
             <button type="button" key={m.id} onClick={() => push({ name: 'recipes', methodId: m.id, beanId: b.id })}>
@@ -223,7 +264,7 @@ export function BeanDetail({ id }: { id: string }) {
             </button>
           ))}
         </div>
-      </Section>
+      </Section>}
 
       {drip && b.assorted && (
         <Section title={`Дрипы в коробке · ${(b.drips ?? []).length}`}>

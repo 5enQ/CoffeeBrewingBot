@@ -1008,9 +1008,8 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .scale-row.editable .scale-dots button.on::after { background: var(--fg); border-color: var(--fg); }
 
 /* ---------- Остаток зёрнами и дрипами ---------- */
-:root { --bean: #6f4528; --bean-empty: color-mix(in srgb, var(--hint) 30%, transparent); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bean: #c99367; } }
-:root[data-theme="dark"] { --bean: #c99367; }
+/* цвета — из темы интерфейса (в Telegram — из его настроек): закрашенные как кнопки, пустые как подсказки */
+:root { --bean: var(--accent); --bean-empty: color-mix(in srgb, var(--hint) 28%, transparent); }
 .stock-icons { display: flex; flex-wrap: wrap; gap: 3px; }
 .stock-ico { position: relative; width: 18px; height: 18px; display: inline-block; flex-shrink: 0; }
 .stock-ico svg { width: 18px; height: 18px; display: block; }

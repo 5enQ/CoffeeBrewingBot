@@ -60,10 +60,12 @@ export function StockBar({ bean, compact = false }: { bean: Bean; compact?: bool
   const { brews } = useStore();
   const st = beanStock(bean, brews);
   if (!st.total) return compact ? null : <span className="stock-none">{st.unit === 'pcs' ? 'Сколько дрипов в коробке — не указано' : 'Вес пачки не указан'}</span>;
+  // допитое — без картинок: рисовать пустые зёрна незачем
+  const done = isFinished(bean, st);
   if (st.unit === 'pcs') {
     return (
       <div className={'stock' + (compact ? ' compact' : '') + (st.left > 0 && st.left <= 2 ? ' low' : '') + (st.left <= 0 ? ' empty' : '')}>
-        <StockIcons unit="pcs" left={st.left} total={st.total} />
+        {!done && <StockIcons unit="pcs" left={st.left} total={st.total} />}
         <div className="stock-text">
           <span><b>{st.left}</b> из {st.total} {plural(st.total, ['дрипа', 'дрипов', 'дрипов'])}</span>
           <span>{st.left <= 0 ? 'закончились' : st.used ? `заварено ${st.used}` : 'ещё не заваривали'}</span>
@@ -74,7 +76,7 @@ export function StockBar({ bean, compact = false }: { bean: Bean; compact?: bool
   const low = st.left > 0 && (st.brewsLeft !== null ? st.brewsLeft <= 2 : st.ratio < 0.15);
   return (
     <div className={'stock' + (compact ? ' compact' : '') + (low ? ' low' : '') + (st.left <= 0 ? ' empty' : '')}>
-      <StockIcons unit="g" left={st.left} total={st.total} />
+      {!done && <StockIcons unit="g" left={st.left} total={st.total} />}
       <div className="stock-text">
         <span><b>{fmtNum(st.left, 0)}</b> из {fmtNum(st.total, 0)} г</span>
         <span>{st.left <= 0 ? 'закончилось' : st.brewsLeft === 0 ? 'меньше чем на заварку' : st.brewsLeft !== null ? `≈ ${st.brewsLeft} ${plural(st.brewsLeft, ['заварка', 'заварки', 'заварок'])}` : 'ещё не заваривали'}</span>

@@ -1,5 +1,0 @@
-submarine 200 334489 https://sbmrne.ru/katalog/drip-pakety/eth-gedeb-6-sht/
-kojo 200 670623 https://kojocoffee.ru/catalog/drips/tproduct/2080571661-426369877852-kofe-ruanda-muremure-drip
-hq 200 172006 https://hq-coffee.com/el-salvador-san-francisco-bourbon-2/
-welder 200 260422 https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/
-tildaapi 200 24 https://store.tildaapi.com/api/getproduct/?productuid=426369877852

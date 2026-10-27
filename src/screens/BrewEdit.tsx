@@ -37,7 +37,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
       const toSave: Brew = { ...b, rating: 0, cupping: null, beanId: b.cva.samples[0]?.beanId ?? b.beanId };
       saveBrew(toSave);
       platform.haptic('success');
-      if (isNew) { setTab('journal'); push({ name: 'brew', id: toSave.id }); }
+      if (isNew) { setTab('journal'); push({ name: 'brew', id: toSave.id, fresh: true }); }
       else back(true);
       return;
     }
@@ -47,7 +47,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
       : { ...b, cupping: null };
     saveBrew(toSave);
     platform.haptic('success');
-    if (isNew) { setTab('journal'); push({ name: 'brew', id: toSave.id }); }
+    if (isNew) { setTab('journal'); push({ name: 'brew', id: toSave.id, fresh: true }); }
     else back(true);
   };
 

@@ -13,7 +13,8 @@ export type Route =
   | { name: 'method'; methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }
   | { name: 'timer'; draft: Brew }
   | { name: 'brewEdit'; draft: Brew; isNew: boolean; openCupping?: boolean }
-  | { name: 'brew'; id: string }
+  /** fresh — только что сварили: вместо «Повторить» кнопка «Домой» */
+  | { name: 'brew'; id: string; fresh?: boolean }
   | { name: 'bean'; id: string }
   | { name: 'beanEdit'; bean: Bean; isNew: boolean; scanOnOpen?: boolean }
   | { name: 'gearEdit'; gear: Gear; isNew: boolean }

@@ -90,9 +90,9 @@ export function Journal() {
   );
 }
 
-export function BrewDetail({ id }: { id: string }) {
+export function BrewDetail({ id, fresh }: { id: string; fresh?: boolean }) {
   const { brews, beans, deleteBrew, profile } = useStore();
-  const { push, back } = useRouter();
+  const { push, back, setTab } = useRouter();
   const b = brews.find((x) => x.id === id);
   if (!b) return <Screen title="Запись удалена"><Empty title="Нет такой записи" text="Её удалили." /></Screen>;
   const m = methodById(b.methodId);
@@ -113,7 +113,9 @@ export function BrewDetail({ id }: { id: string }) {
         <div className="footer-actions">
           <button type="button" className="round-btn" onClick={remove} aria-label="Удалить"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" /></svg></button>
           <Button kind="secondary" icon="edit" onClick={() => push({ name: 'brewEdit', draft: b, isNew: false })}>Изменить</Button>
-          <Button icon="repeat" wide onClick={() => push({ name: 'method', methodId: b.methodId, beanId: b.beanId, from: b })}>Повторить</Button>
+          {fresh
+            ? <Button icon="home" wide onClick={() => setTab('brew')}>Домой</Button>
+            : <Button icon="repeat" wide onClick={() => push({ name: 'method', methodId: b.methodId, beanId: b.beanId, from: b })}>Повторить</Button>}
         </div>
       }>
       {b.author && <AuthorBlock author={b.author} />}

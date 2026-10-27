@@ -30,7 +30,7 @@ function renderRoute(r: Route) {
       return <MethodScreen methodId={r.methodId} beanId={r.beanId} from={r.from} recipeId={r.recipeId} />;
     case 'timer': return <TimerScreen draft={r.draft} />;
     case 'brewEdit': return <BrewEdit draft={r.draft} isNew={r.isNew} openCupping={r.openCupping} />;
-    case 'brew': return <BrewDetail id={r.id} />;
+    case 'brew': return <BrewDetail id={r.id} fresh={r.fresh} />;
     case 'bean': return <BeanDetail id={r.id} />;
     case 'beanEdit': return <BeanEdit bean={r.bean} isNew={r.isNew} scanOnOpen={r.scanOnOpen} />;
     case 'methodEdit': return <MethodEdit method={r.method} isNew={r.isNew} />;

@@ -1,0 +1,22 @@
+name: Probe roaster pages
+on:
+  push:
+    branches: [probe-pages]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch pages
+        run: |
+          UA='Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36'
+          mkdir pages
+          fetch() { curl -sSL -m 30 -A "$UA" -H 'Accept-Language: ru' -o "pages/$1.html" -w "$1 %{http_code} %{size_download} %{url_effective}\n" "$2" || echo "$1 failed"; }
+          fetch submarine 'https://sbmrne.ru/katalog/drip-pakety/eth-gedeb-6-sht/'
+          fetch kojo 'https://kojocoffee.ru/catalog/drips/tproduct/2080571661-426369877852-kofe-ruanda-muremure-drip'
+          fetch hq 'https://hq-coffee.com/el-salvador-san-francisco-bourbon-2/'
+          fetch welder 'https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/'
+          fetch tildaapi 'https://store.tildaapi.com/api/getproduct/?productuid=426369877852'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pages
+          path: pages

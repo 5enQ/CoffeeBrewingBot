@@ -7,7 +7,8 @@ import { beanStock, dripItemLeft, dripTotal, isFinished, DRIP_COUNTS, DRIP_WEIGH
 import { platform } from '../platform';
 import { useBackGuard, useRouter, useSelected } from '../router';
 import { MethodIcon, Icon } from '../ui/icons';
-import { Button, Chips, Empty, Field, Row, SampleTag, Screen, Section, Segmented, Stars } from '../ui/kit';
+import { Button, Chips, Empty, Field, Row, SampleTag, ScaleDots, Screen, Section, Segmented, Stars } from '../ui/kit';
+import { SCALES, hasScales } from '../data/scales';
 import { Scanner } from '../ui/Scanner';
 import { BrewScore } from '../ui/CuppingForm';
 import { beanMeta, beanOrigin, beanTitle, blendLines, brewBeanTitle, dripMeta, dripTitle, PROCESSES, RestBadge, ROAST_LEVELS } from './beanUtils';
@@ -238,6 +239,14 @@ export function BeanDetail({ id }: { id: string }) {
         <Section title={`Состав бленда · ${(b.parts ?? []).length}`}>
           {blendLines(b).map((l, i) => <Row key={i} label={l.text} value={l.share || undefined} />)}
           {!(b.parts ?? []).length && <p className="muted pad">Компоненты не указаны.</p>}
+        </Section>
+      )}
+
+      {hasScales(b.scales) && (
+        <Section title="Профиль от обжарщика">
+          <div className="scales">
+            {SCALES.filter((s) => b.scales?.[s.key]).map((s) => <ScaleDots key={s.key} label={s.label} value={b.scales?.[s.key]} />)}
+          </div>
         </Section>
       )}
 
@@ -500,6 +509,20 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
             <Field label="Осталось сейчас, г" id="bean-left" inputMode="decimal" placeholder={b.weight}
               value={leftText} onChange={(e) => setLeftText(e.target.value)} />
           )}
+        </div>
+      </Section>
+
+      <Section title="Профиль от обжарщика" aside={hasScales(b.scales) ? <button type="button" className="link-btn" onClick={() => set({ scales: undefined })}>Очистить</button> : undefined}>
+        <p className="muted pad small-note">Если обжарщик даёт шкалы на сайте или пачке. Нажмите ещё раз, чтобы убрать значение.</p>
+        <div className="scales">
+          {SCALES.map((s) => (
+            <ScaleDots key={s.key} label={s.label} value={b.scales?.[s.key]}
+              onChange={(v) => setB((x) => {
+                const next = { ...(x.scales ?? {}), [s.key]: v };
+                if (v === undefined) delete next[s.key];
+                return { ...x, scales: Object.keys(next).length ? next : undefined };
+              })} />
+          ))}
         </div>
       </Section>
 

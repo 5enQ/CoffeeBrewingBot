@@ -229,6 +229,22 @@ export function Dots({ value, onChange, left, right, label }: {
   );
 }
 
+/** Шкала 1–5 точками. С onChange — можно выбрать (повторное нажатие снимает), без — только показать */
+export function ScaleDots({ label, value, onChange }: { label: string; value?: number; onChange?(v: number | undefined): void }) {
+  const v = value ?? 0;
+  return (
+    <div className={'scale-row' + (onChange ? ' editable' : '')}>
+      <span className="scale-label">{label}</span>
+      <div className="scale-dots" role={onChange ? 'radiogroup' : 'img'} aria-label={onChange ? label : `${label}: ${v ? `${v} из 5` : 'не указано'}`}>
+        {[1, 2, 3, 4, 5].map((i) => onChange ? (
+          <button type="button" key={i} role="radio" aria-checked={v === i} aria-label={`${label}: ${i} из 5`} className={i <= v ? 'on' : ''}
+            onClick={() => { platform.haptic('select'); onChange(v === i ? undefined : i); }} />
+        ) : <i key={i} className={i <= v ? 'on' : ''} />)}
+      </div>
+    </div>
+  );
+}
+
 export function Button({ children, onClick, kind = 'primary', icon, disabled, wide }: {
   children: ReactNode; onClick?: () => void; kind?: 'primary' | 'secondary' | 'danger' | 'ghost';
   icon?: Parameters<typeof Icon>[0]['name']; disabled?: boolean; wide?: boolean;

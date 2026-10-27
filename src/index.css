@@ -992,3 +992,17 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .method-card.edit.dragging { transition: none; }
 .method-card.edit.dropping { transition: transform 0.22s cubic-bezier(0.3, 0.7, 0.2, 1); }
 .icon-btn.invisible { visibility: hidden; }
+
+/* ---------- Профиль от обжарщика ---------- */
+.scales { display: grid; }
+.scale-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--sep); }
+.scales .scale-row:first-child { border-top: 0; }
+.scale-label { font-size: 15px; }
+.scale-dots { display: flex; gap: 8px; }
+.scale-dots i, .scale-dots button { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--hint); background: transparent; padding: 0; display: block; }
+.scale-dots i.on, .scale-dots button.on { background: var(--fg); border-color: var(--fg); }
+.scale-row.editable .scale-dots { gap: 4px; }
+.scale-row.editable .scale-dots button { width: 32px; height: 32px; border: 0; position: relative; }
+.scale-row.editable .scale-dots button::after { content: ''; position: absolute; inset: 10px; border-radius: 50%; border: 1.5px solid var(--hint); }
+.scale-row.editable .scale-dots button.on { background: transparent; }
+.scale-row.editable .scale-dots button.on::after { background: var(--fg); border-color: var(--fg); }

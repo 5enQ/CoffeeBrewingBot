@@ -5,6 +5,7 @@ import { emptyAffective, emptyDescriptive } from './cva';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { platform } from '../platform';
 import { emptyCupping, type Cupping } from './cupping';
+import type { Scales } from './scales';
 import type { Gear, GearRef } from './gear';
 import type { Badge, BadgeLite } from './badges';
 import type { RatingStats } from './ratings';
@@ -50,6 +51,8 @@ export interface Bean {
   /** в коробке разные дрипы — каждый описан в drips */
   assorted?: boolean;
   drips?: DripItem[];
+  /** профиль от обжарщика: шкалы 1–5 (кислотность, сладость, горечь, плотность, ферментация) */
+  scales?: Scales;
 }
 
 /** Дрип в коробке-ассорти: своё происхождение и сколько штук */

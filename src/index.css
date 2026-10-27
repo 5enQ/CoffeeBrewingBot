@@ -991,3 +991,4 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .method-grid { position: relative; }
 .method-card.edit.dragging { transition: none; }
 .method-card.edit.dropping { transition: transform 0.22s cubic-bezier(0.3, 0.7, 0.2, 1); }
+.icon-btn.invisible { visibility: hidden; }

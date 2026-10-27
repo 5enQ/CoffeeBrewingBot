@@ -67,15 +67,15 @@ function MethodTile({ id, className, onOpen, onPin, pinned, label, children }: {
 type Size = 1 | 2;
 
 /** Плитка в режиме редактирования: нажатие — выбрать, перетаскивание — переставить, ручка справа — размер */
-function EditTile({ m, size, selected, pinned, dragging, onSelect, onDragStart, onDragMove, onDragEnd, onResize, onKey }: {
-  m: Method; size: Size; selected: boolean; pinned: boolean; dragging: boolean;
+function EditTile({ m, size, shown, selected, pinned, dragging, onSelect, onDragStart, onDragMove, onDragEnd, onResize, onPreview, onKey }: {
+  m: Method; size: Size; shown: Size; selected: boolean; pinned: boolean; dragging: boolean; onPreview(s: Size | null): void;
   onSelect(): void; onDragStart(el: HTMLElement, x: number, y: number): void; onDragMove(x: number, y: number): void; onDragEnd(): void;
   onResize(s: Size): void; onKey(e: KeyboardEvent): void;
 }) {
   const start = useRef<{ x: number; y: number; moved: boolean; el: HTMLElement } | null>(null);
   const handle = useRef<{ x: number; base: Size } | null>(null);
-  const [preview, setPreview] = useState<Size | null>(null);
-  const shown = preview ?? size;
+  // размер, пока тянут ручку, хранится у родителя: так соседние плитки плавно переезжают вместе с ней
+  const setPreview = onPreview;
 
   const down = (e: RPointerEvent) => {
     if (e.button !== 0) return;
@@ -104,7 +104,8 @@ function EditTile({ m, size, selected, pinned, dragging, onSelect, onDragStart, 
     const h = handle.current;
     if (!h) return;
     const dx = e.clientX - h.x;
-    setPreview(dx > 24 ? 2 : dx < -24 ? 1 : h.base);
+    const want: Size = dx > 24 ? 2 : dx < -24 ? 1 : h.base;
+    if (want !== shown) setPreview(want);
   };
   const hUp = (e: RPointerEvent) => {
     e.stopPropagation();
@@ -113,8 +114,9 @@ function EditTile({ m, size, selected, pinned, dragging, onSelect, onDragStart, 
     if (!h) return;
     const dx = e.clientX - h.x;
     setPreview(null);
-    const next: Size = Math.abs(dx) < 6 ? (h.base === 2 ? 1 : 2) : dx > 0 ? 2 : 1;
+    const next: Size = Math.abs(dx) < 6 ? (h.base === 2 ? 1 : 2) : dx > 24 ? 2 : dx < -24 ? 1 : h.base;
     if (next !== size) onResize(next);
+    else setPreview(null);
   };
 
   return (
@@ -157,7 +159,9 @@ export function BrewHome() {
   const [drag, setDrag] = useState<{ id: string; order: string[] } | null>(null);
   const order = drag?.order ?? savedOrder;
   const ordered = order.map((id) => all.find((m) => m.id === id)!).filter(Boolean);
+  const [preview, setPreviewState] = useState<{ id: string; size: Size } | null>(null);
   const sizeOf = (id: string): Size => tiles.size[id] ?? 2;
+  const shownOf = (id: string): Size => (preview?.id === id ? preview.size : sizeOf(id));
 
   const commit = (next: { order?: string[]; size?: Record<string, Size> }) => {
     setHistory((h) => [...h.slice(-30), { tiles, pinned }]);
@@ -248,7 +252,17 @@ export function BrewHome() {
       return null;
     });
   };
-  const resize = (id: string, s: Size) => { platform.haptic('select'); snapshot(); commit({ size: { ...tiles.size, [id]: s } }); };
+  const resize = (id: string, s: Size) => {
+    platform.haptic('select');
+    snapshot();
+    setPreviewState(null);
+    commit({ size: { ...tiles.size, [id]: s } });
+  };
+  const previewSize = (id: string, s: Size | null) => {
+    snapshot();
+    setPreviewState(s === null ? null : { id, size: s });
+    if (s !== null) platform.haptic('select');
+  };
   const keyMove = (id: string, e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected((x) => (x === id ? null : id)); return; }
     const dir = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : 0;
@@ -285,7 +299,8 @@ export function BrewHome() {
 
       <Section title="Метод приготовления" aside={editing ? (
         <span className="aside-actions">
-          {history.length > 0 && <button type="button" className="icon-btn" aria-label="Отменить" onClick={undo}><Icon name="undo" /></button>}
+          {/* кнопка есть всегда, чтобы шапка не прыгала, когда появляется первое изменение */}
+          <button type="button" className={'icon-btn' + (history.length ? '' : ' invisible')} aria-label="Отменить" aria-hidden={!history.length} tabIndex={history.length ? 0 : -1} onClick={undo} disabled={!history.length}><Icon name="undo" /></button>
           <button type="button" className="btn btn-primary btn-small" onClick={finish}>Готово</button>
         </span>
       ) : (
@@ -298,7 +313,7 @@ export function BrewHome() {
         {editing && <p className="muted small-note pad edit-hint">Нажмите на плитку, чтобы выбрать её, и тяните ручку справа — плитка станет больше или меньше. Перетащите плитку, чтобы переставить.</p>}
         <div className={'method-grid' + (editing ? ' editing' : '')} ref={gridRef}>
           {editing && ordered.map((m) => (
-            <EditTile key={m.id} m={m} size={sizeOf(m.id)} selected={selected === m.id} pinned={pinned.includes(m.id)} dragging={drag?.id === m.id}
+            <EditTile key={m.id} m={m} size={sizeOf(m.id)} shown={shownOf(m.id)} onPreview={(s) => previewSize(m.id, s)} selected={selected === m.id} pinned={pinned.includes(m.id)} dragging={drag?.id === m.id}
               onSelect={() => { platform.haptic('select'); setSelected((x) => (x === m.id ? null : m.id)); }}
               onDragStart={(el, x, y) => dragStart(m.id, el, x, y)}
               onDragMove={(x, y) => dragMove(m.id, x, y)} onDragEnd={dragEnd}

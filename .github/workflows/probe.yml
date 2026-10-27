@@ -9,13 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch welder pages
+      - name: Lookup welder via worker
         run: |
           mkdir -p out
-          UA='Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36'
-          curl -sSL -m 30 -A "$UA" -o out/welder.html 'https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/filtr_pakety_kosta_rika_esteban_zamora/'
-          curl -sSL -m 30 -A "$UA" -o out/welder_mix.html 'https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/assorti_filtr_paketov_start_4_60_sht/'
+          W='https://brewbook-ratings.brewbook.workers.dev/lookup'
+          curl -sS -m 40 -G "$W" --data-urlencode 'url=https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/filtr_pakety_kosta_rika_esteban_zamora/' -o out/welder_live.json
       - name: Commit
         run: |
           git config user.name probe; git config user.email probe@example.com
-          git add out && git commit -m "probe: welder [skip ci]" && git push
+          git add out && git commit -m "probe: welder live [skip ci]" && git push

@@ -12,8 +12,6 @@
   --sep: rgba(27, 33, 29, 0.09);
   --star: #c8862a;        /* карамель */
   --cherry: #b4283c;      /* спелая ягода */
-  --pill-bg: #1f2a24;     /* «пузырёк» активной вкладки */
-  --pill-fg: #ffffff;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-num: "SF Pro Display", -apple-system, "Segoe UI", Roboto, sans-serif;
   --r: 14px;
@@ -28,7 +26,6 @@
     --bg: #0f1311; --card: #1a201c; --fg: #e6ebe7; --hint: #8a958d;
     --accent: #68c294; --accent-fg: #0c1912; --link: #68c294; --danger: #ef6b5b;
     --sep: rgba(255, 255, 255, 0.08); --star: #e2a64e; --cherry: #e0566a;
-    --pill-bg: #313b35; --pill-fg: #f1f5f2;
     color-scheme: dark;
   }
 }
@@ -36,11 +33,13 @@
   --bg: #0f1311; --card: #1a201c; --fg: #e6ebe7; --hint: #8a958d;
   --accent: #68c294; --accent-fg: #0c1912; --link: #68c294; --danger: #ef6b5b;
   --sep: rgba(255, 255, 255, 0.08); --star: #e2a64e; --cherry: #e0566a;
-  --pill-bg: #313b35; --pill-fg: #f1f5f2;
   color-scheme: dark;
 }
 
 :root {
+  /* «пузырёк» активной вкладки — цвета кнопок из темы (в Telegram — из его настроек) */
+  --pill-bg: var(--accent);
+  --pill-fg: var(--accent-fg);
   --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
   --hint-soft: color-mix(in srgb, var(--hint) 14%, transparent);
   --fg-soft: color-mix(in srgb, var(--fg) 6%, transparent);

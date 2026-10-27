@@ -9,13 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Lookup and fetch
+      - name: Lookup live
         run: |
           mkdir -p out
-          U='https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/filtr_pakety_efiopiya_pod_molochko_gorbufet_x_twc/'
-          curl -sS -m 40 -G 'https://brewbook-ratings.brewbook.workers.dev/lookup' --data-urlencode "url=$U" -o out/welder2_live.json
-          curl -sSL -m 30 -A 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36' -o out/welder2.html "$U"
+          W='https://brewbook-ratings.brewbook.workers.dev/lookup'
+          q() { curl -sS -m 40 -G "$W" --data-urlencode "url=$2" -o "out/$1.json"; }
+          q w2a 'https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/filtr_pakety_efiopiya_pod_molochko_gorbufet_x_twc/'
+          q w2b 'https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/filtr_pakety_efiopiya_pod_molochko_gorbufet_x_twc/'
+          q kojo 'https://kojocoffee.ru/catalog/drips/tproduct/2080571661-426369877852-kofe-ruanda-muremure-drip'
       - name: Commit
         run: |
           git config user.name probe; git config user.email probe@example.com
-          git add out && git commit -m "probe: welder2 [skip ci]" && git push
+          git add out && git commit -m "probe: refresh [skip ci]" && git push

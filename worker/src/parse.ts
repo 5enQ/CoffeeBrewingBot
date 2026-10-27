@@ -170,6 +170,22 @@ function cleanName(h1: string) {
     .trim();
 }
 
+/** Разметка schema.org Product (JSON-LD), если она есть */
+function ldProduct(html: string): { name: string; description: string; brand: string } {
+  for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const data = JSON.parse(m[1]);
+      const list = (Array.isArray(data) ? data : data['@graph'] ?? [data]) as Record<string, unknown>[];
+      const p = list.find((x) => x && (x['@type'] === 'Product' || (Array.isArray(x['@type']) && (x['@type'] as string[]).includes('Product'))));
+      if (p) {
+        const brand = p.brand as { name?: string } | string | undefined;
+        return { name: String(p.name ?? ''), description: String(p.description ?? ''), brand: typeof brand === 'string' ? brand : brand?.name ?? '' };
+      }
+    } catch { /* битый JSON-LD — пропускаем */ }
+  }
+  return { name: '', description: '', brand: '' };
+}
+
 const meta = (html: string, prop: string) =>
   decode(html.match(new RegExp(`<meta[^>]+(?:property|name)="${prop}"[^>]+content="([^"]*)"`, 'i'))?.[1]
     ?? html.match(new RegExp(`<meta[^>]+content="([^"]*)"[^>]+(?:property|name)="${prop}"`, 'i'))?.[1] ?? '');
@@ -221,8 +237,10 @@ export function parsePage(html: string, pageUrl: string): Parsed {
   if (!out.roaster) out.roaster = ROASTERS[host] || meta(html, 'og:site_name') || undefined;
   if (!out.roaster) delete out.roaster;
 
-  // дрип-пакеты и сколько их в коробке
-  const titles = [h1, meta(html, 'og:title'), decode(html.match(/"json_options":"((?:[^"\\]|\\.)*)"/)?.[1] ?? '')].join(' ');
+  // дрип-пакеты и сколько их в коробке (в т. ч. из разметки товара для поисковиков)
+  const ld = ldProduct(html);
+  if (!out.roaster && ld.brand) out.roaster = ld.brand;
+  const titles = [h1, meta(html, 'og:title'), ld.name, ld.description, decode(html.match(/"json_options":"((?:[^"\\]|\\.)*)"/)?.[1] ?? '')].join(' ');
   if (/дрип|drip|фильтр[- ]?пакет/i.test(`${url.pathname} ${titles}`)) {
     out.kind = 'drip';
     const n = titles.match(/(\d{1,3})\s*(?:шт|штук|пакет|дрип)/i);

@@ -179,19 +179,25 @@ export default {
       if (!keys.length) return json({ error: 'bad request' }, 400, h);
       const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
       const found = await catalog.find(keys);
-      if (found) return json({ source: 'catalog', ...found }, 200, h);
+      const stale = found && found.source === 'page' && found.confirms === 0 && (found.pv ?? 0) < PARSER_VERSION && pageUrl;
+      if (found && !stale) return json(publicFound(found), 200, h);
       if (!pageUrl) return json({ source: 'none' }, 200, h);
       // в каталоге нет — открываем страницу обжарщика
       const page = await fetchPage(pageUrl);
       if (!page) return json({ source: 'none' }, 200, h);
       keys = [...new Set([...keys, ...keysFor(page.url, null)])];
-      const again = page.url !== pageUrl ? await catalog.find(keys) : null;
-      if (again) return json({ source: 'catalog', ...again }, 200, h);
       const coffee = cleanCoffee(parsePage(page.html, page.url));
+      if (found) {
+        // лот разобран старой версией и никем не подтверждён — обновляем
+        const fresh = await catalog.refreshPage(found.id, coffee, PARSER_VERSION);
+        return json({ ...publicFound(fresh ?? found), source: 'page' }, 200, h);
+      }
+      const again = page.url !== pageUrl ? await catalog.find(keys) : null;
+      if (again) return json(publicFound(again), 200, h);
       const useful = ['country', 'region', 'variety', 'process', 'altitude', 'packNotes', 'farm'].filter((k) => (coffee as Record<string, unknown>)[k]).length;
       if (useful < 2) return json({ source: 'none', coffee }, 200, h);
-      const saved = await catalog.savePage(keys, coffee);
-      return json({ source: 'page', ...saved }, 200, h);
+      const saved = await catalog.savePage(keys, coffee, PARSER_VERSION);
+      return json({ ...publicFound(saved), source: 'page' }, 200, h);
     }
 
     if (req.method === 'POST' && url.pathname === '/catalog') {
@@ -204,7 +210,7 @@ export default {
       const coffee = cleanCoffee(body.coffee);
       if (!Object.keys(coffee).length) return json({ error: 'empty' }, 400, h);
       const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
-      return json(await catalog.contribute(keys, coffee, user.id), 200, h);
+      return json(publicFound(await catalog.contribute(keys, coffee, user.id)), 200, h);
     }
 
     if (req.method === 'POST' && url.pathname === '/share') {
@@ -247,6 +253,11 @@ async function prepareMessage(token: string, userId: string, title: string, text
   if (!j.ok) console.log('savePreparedInlineMessage failed:', j.description);
   return j.ok ? j.result!.id : null;
 }
+
+/** Версия разбора страниц: увеличить, когда разбор научился новому, — неподтверждённые лоты обновятся при следующем скане */
+const PARSER_VERSION = 2;
+
+const publicFound = (f: { id: string; coffee: unknown; confirms: number }) => ({ source: 'catalog', id: f.id, coffee: f.coffee, confirms: f.confirms });
 
 /** Открыть страницу обжарщика: только https/http, не больше 3 МБ и 8 секунд */
 async function fetchPage(raw: string): Promise<{ html: string; url: string } | null> {

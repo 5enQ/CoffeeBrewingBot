@@ -80,7 +80,7 @@ export function keysFor(url?: string | null, code?: string | null): string[] {
   return keys;
 }
 
-export interface Found { id: string; coffee: Coffee; source: 'page' | 'user'; confirms: number }
+export interface Found { id: string; coffee: Coffee; source: 'page' | 'user'; confirms: number; pv?: number }
 
 export class CoffeeCatalog extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
@@ -103,7 +103,18 @@ export class CoffeeCatalog extends DurableObject<Env> {
 
   private get(id: string): Found | null {
     const row = this.ctx.storage.sql.exec<{ data: string; source: string; confirms: number }>('SELECT data, source, confirms FROM coffee WHERE id = ?', id).toArray()[0];
-    return row ? { id, coffee: JSON.parse(row.data), source: row.source as Found['source'], confirms: row.confirms } : null;
+    if (!row) return null;
+    // pv — версия разбора, которой лот получен со страницы (служебное, наружу не отдаём)
+    const { pv, ...coffee } = JSON.parse(row.data) as Coffee & { pv?: number };
+    return { id, coffee, source: row.source as Found['source'], confirms: row.confirms, pv };
+  }
+
+  /** Разбор стал лучше — обновить лот, который никто ещё не подтверждал */
+  refreshPage(id: string, coffee: Coffee, pv: number): Found | null {
+    const cur = this.get(id);
+    if (!cur || cur.source !== 'page' || cur.confirms > 0) return cur;
+    this.ctx.storage.sql.exec('UPDATE coffee SET data = ?, updated = ? WHERE id = ?', JSON.stringify({ ...coffee, pv }), Date.now(), id);
+    return this.get(id);
   }
 
   private link(id: string, keys: string[]) {
@@ -124,10 +135,10 @@ export class CoffeeCatalog extends DurableObject<Env> {
   }
 
   /** Разобранная страница: сохраняем, если такого лота ещё нет */
-  savePage(keys: string[], coffee: Coffee): Found {
+  savePage(keys: string[], coffee: Coffee, pv: number): Found {
     const found = this.find(keys);
     if (found) { this.link(found.id, keys); return found; }
-    const id = this.create(coffee, 'page', keys);
+    const id = this.create({ ...coffee, pv } as Coffee, 'page', keys);
     return this.get(id)!;
   }
 
@@ -146,7 +157,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
       return this.get(id)!;
     }
     const trusted = found.confirms >= 2;
-    const merged: Record<string, unknown> = { ...found.coffee };
+    const merged: Record<string, unknown> = { ...found.coffee, pv: found.pv };
     for (const [k, v] of Object.entries(coffee)) {
       if (merged[k] === undefined || !trusted) merged[k] = v;
     }

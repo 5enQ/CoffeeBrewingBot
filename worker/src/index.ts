@@ -6,15 +6,22 @@
  * POST /recipes { initData, code }               — сохранить рецепт для короткой ссылки (только из Telegram)
  * GET  /recipes/<id>                             — получить рецепт по короткой ссылке
  * POST /share { initData, title, body, url }     — подготовить красивое сообщение для WebApp.shareMessage
+ * GET  /lookup?url=…&code=…                       — кофе по QR или штрихкоду: из общего каталога или со страницы обжарщика
+ * POST /catalog { initData, url, code, coffee }  — пользователь сохранил пачку: дополнить или подтвердить лот в каталоге
  *
  * Подлинность пользователя проверяется подписью initData (HMAC с токеном бота),
  * поэтому подделать оценку «от чужого имени» нельзя, а повторная оценка заменяет прежнюю.
  */
 import { DurableObject } from 'cloudflare:workers';
+import { CoffeeCatalog, cleanCoffee, keysFor } from './catalog';
+import { parsePage } from './parse';
+
+export { CoffeeCatalog };
 
 export interface Env {
   AUTHORS: DurableObjectNamespace<AuthorRatings>;
   RECIPES: DurableObjectNamespace<RecipeStore>;
+  CATALOG: DurableObjectNamespace<CoffeeCatalog>;
   BOT_TOKEN: string;
   ALLOWED_ORIGIN: string;
 }
@@ -165,6 +172,41 @@ export default {
       return code ? json({ code }, 200, { ...h, 'Cache-Control': 'public, max-age=86400' }) : json({ error: 'not found' }, 404, h);
     }
 
+    if (req.method === 'GET' && url.pathname === '/lookup') {
+      const pageUrl = url.searchParams.get('url');
+      const code = url.searchParams.get('code');
+      let keys = keysFor(pageUrl, code);
+      if (!keys.length) return json({ error: 'bad request' }, 400, h);
+      const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
+      const found = await catalog.find(keys);
+      if (found) return json({ source: 'catalog', ...found }, 200, h);
+      if (!pageUrl) return json({ source: 'none' }, 200, h);
+      // в каталоге нет — открываем страницу обжарщика
+      const page = await fetchPage(pageUrl);
+      if (!page) return json({ source: 'none' }, 200, h);
+      keys = [...new Set([...keys, ...keysFor(page.url, null)])];
+      const again = page.url !== pageUrl ? await catalog.find(keys) : null;
+      if (again) return json({ source: 'catalog', ...again }, 200, h);
+      const coffee = cleanCoffee(parsePage(page.html, page.url));
+      const useful = ['country', 'region', 'variety', 'process', 'altitude', 'packNotes', 'farm'].filter((k) => (coffee as Record<string, unknown>)[k]).length;
+      if (useful < 2) return json({ source: 'none', coffee }, 200, h);
+      const saved = await catalog.savePage(keys, coffee);
+      return json({ source: 'page', ...saved }, 200, h);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/catalog') {
+      let body: { initData?: string; url?: string; code?: string; coffee?: unknown };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const keys = keysFor(body.url, body.code);
+      if (!keys.length) return json({ error: 'bad request' }, 400, h);
+      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      const coffee = cleanCoffee(body.coffee);
+      if (!Object.keys(coffee).length) return json({ error: 'empty' }, 400, h);
+      const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
+      return json(await catalog.contribute(keys, coffee, user.id), 200, h);
+    }
+
     if (req.method === 'POST' && url.pathname === '/share') {
       let body: { initData?: string; title?: string; body?: string; url?: string };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
@@ -204,4 +246,43 @@ async function prepareMessage(token: string, userId: string, title: string, text
   const j = await res.json<{ ok: boolean; result?: { id: string }; description?: string }>();
   if (!j.ok) console.log('savePreparedInlineMessage failed:', j.description);
   return j.ok ? j.result!.id : null;
+}
+
+/** Открыть страницу обжарщика: только https/http, не больше 3 МБ и 8 секунд */
+async function fetchPage(raw: string): Promise<{ html: string; url: string } | null> {
+  let u: URL;
+  try { u = new URL(raw); } catch { return null; }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+  if (u.port && u.port !== '80' && u.port !== '443') return null;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await fetch(u.toString(), {
+      signal: ctrl.signal, redirect: 'follow',
+      headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36 BrewbookBot', 'Accept-Language': 'ru,en;q=0.8', Accept: 'text/html' },
+    });
+    if (!r.ok || !(r.headers.get('content-type') ?? '').includes('html')) return null;
+    const reader = r.body?.getReader();
+    if (!reader) return null;
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > 3_000_000) { reader.cancel(); break; }
+      chunks.push(value);
+    }
+    const buf = new Uint8Array(size > 3_000_000 ? 3_000_000 : size);
+    let off = 0;
+    for (const c of chunks) { if (off + c.length > buf.length) break; buf.set(c, off); off += c.length; }
+    const charset = (r.headers.get('content-type') ?? '').match(/charset=([\w-]+)/i)?.[1] ?? 'utf-8';
+    let html: string;
+    try { html = new TextDecoder(charset).decode(buf.subarray(0, off)); } catch { html = new TextDecoder().decode(buf.subarray(0, off)); }
+    return { html, url: r.url || u.toString() };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
 }

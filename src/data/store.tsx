@@ -53,6 +53,8 @@ export interface Bean {
   drips?: DripItem[];
   /** профиль от обжарщика: шкалы 1–5 (кислотность, сладость, горечь, плотность, ферментация) */
   scales?: Scales;
+  /** id лота в общем каталоге кофе (для глобального рейтинга) */
+  catalogId?: string;
 }
 
 /** Дрип в коробке-ассорти: своё происхождение и сколько штук */
@@ -326,6 +328,8 @@ interface StoreApi {
   saveCustom(r: CustomRecipe): void;
   deleteCustom(id: string): void;
   saveBean(b: Bean): void;
+  /** дописать поля пачки (например, id лота из общего каталога) */
+  patchBean(id: string, patch: Partial<Bean>): void;
   deleteBean(id: string): void;
   saveBrew(b: Brew): void;
   deleteBrew(id: string): void;
@@ -433,6 +437,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [item, ...list];
 
   const saveBean = useCallback((b: Bean) => setDb((d) => ({ ...d, beans: upsert(d.beans, b), ...stamp(d, ['k:' + b.id]) })), []);
+  const patchBean = useCallback((id: string, patch: Partial<Bean>) => setDb((d) => ({ ...d, beans: d.beans.map((b) => (b.id === id ? { ...b, ...patch } : b)), ...stamp(d, ['k:' + id]) })), []);
   const deleteBean = useCallback((id: string) => setDb((d) => ({
     ...d, beans: d.beans.filter((b) => b.id !== id),
     brews: d.brews.map((r) => (r.beanId === id ? { ...r, beanId: null } : r)),
@@ -468,7 +473,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const api = useMemo<StoreApi>(() => ({
     ready, beans: db.beans, brews: db.brews, recipes: db.recipes, gear: db.gear, profile: db.profile,
-    saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile,
+    saveBean, patchBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile,
     rated: db.rated ?? {}, saveRated, setRatingStats,
     custom: db.custom ?? [], saveCustom, deleteCustom,
     customMethods: db.customMethods ?? [], saveMethod,
@@ -495,7 +500,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ...next, ...stamp(d, fresh, keys(d).filter((k) => !fresh.includes(k))) };
       });
     },
-  }), [db, ready, saveBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen, saveMethod, togglePin, saveTiles, sync, runSync]);
+  }), [db, ready, saveBean, patchBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen, saveMethod, togglePin, saveTiles, sync, runSync]);
 
   // Свои методы должны быть известны methodById() до отрисовки экранов
   setCustomMethods((db.customMethods ?? []).map(toMethod));

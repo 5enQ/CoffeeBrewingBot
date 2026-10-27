@@ -13,6 +13,11 @@ class_name = "AuthorRatings"
 name = "RECIPES"
 class_name = "RecipeStore"
 
+# Общий каталог кофе: лоты по ссылке из QR и штрихкоду (основа для глобального рейтинга зёрен)
+[[durable_objects.bindings]]
+name = "CATALOG"
+class_name = "CoffeeCatalog"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["AuthorRatings"]
@@ -20,6 +25,10 @@ new_sqlite_classes = ["AuthorRatings"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["RecipeStore"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["CoffeeCatalog"]
 
 [vars]
 # Откуда разрешены запросы (сайт мини-приложения)

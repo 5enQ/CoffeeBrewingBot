@@ -1,4 +1,7 @@
-import type { Bean } from './store';
+import { RATINGS_API } from '../config';
+import { platform } from '../platform';
+import { newDripItem, uid, type Bean } from './store';
+import { SCALES } from './scales';
 
 export interface LookupResult {
   code: string;
@@ -6,6 +9,100 @@ export interface LookupResult {
   existing?: Bean;
   patch: Partial<Bean>;
   source?: string;
+}
+
+/* ---------- Общий каталог кофе на сервере ---------- */
+
+/** Что хранится в каталоге: описание лота без личного (дата обжарки, остаток, заметки — только у вас) */
+const COFFEE_TEXT = ['name', 'roaster', 'country', 'region', 'farm', 'producer', 'variety', 'process', 'altitude', 'roastLevel', 'packNotes'] as const;
+
+type Coffee = Partial<Pick<Bean, typeof COFFEE_TEXT[number] | 'kind' | 'dripCount' | 'assorted' | 'isBlend' | 'scales'>> & {
+  parts?: Partial<NonNullable<Bean['parts']>[number]>[];
+  drips?: Partial<NonNullable<Bean['drips']>[number]>[];
+};
+
+interface Remote { source: 'catalog' | 'page' | 'none'; id?: string; coffee?: Coffee; confirms?: number }
+
+async function remoteLookup(q: { url?: string; code?: string }): Promise<Remote | null> {
+  if (!RATINGS_API) return null;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const qs = new URLSearchParams(Object.entries(q).filter(([, v]) => v) as [string, string][]);
+    const r = await fetch(`${RATINGS_API}/lookup?${qs}`, { signal: ctrl.signal });
+    return r.ok ? await r.json() : null;
+  } catch { return null; } finally { clearTimeout(t); }
+}
+
+function coffeeToPatch(c: Coffee, id?: string): Partial<Bean> {
+  const out: Partial<Bean> = {};
+  for (const k of COFFEE_TEXT) if (c[k]) out[k] = c[k];
+  if (c.kind === 'drip') out.kind = 'drip';
+  if (c.dripCount) out.dripCount = c.dripCount;
+  if (c.assorted) out.assorted = true;
+  if (c.isBlend && c.parts?.length) {
+    out.isBlend = true;
+    out.parts = c.parts.map((p) => ({ share: '', country: '', region: '', farm: '', variety: '', process: '', ...p, id: uid() }));
+  }
+  if (c.drips?.length) out.drips = c.drips.map((d) => ({ ...newDripItem(), ...d, count: d.count || 1 }));
+  if (c.scales && Object.keys(c.scales).length) out.scales = { ...c.scales };
+  if (id) out.catalogId = id;
+  return out;
+}
+
+/** Пачка → описание для каталога */
+export function beanToCoffee(b: Bean): Coffee {
+  const c: Coffee = {};
+  for (const k of COFFEE_TEXT) { const v = (b[k] ?? '').trim(); if (v) c[k] = v; }
+  if (b.kind === 'drip') {
+    c.kind = 'drip';
+    if (b.assorted) c.assorted = true; else if (b.dripCount) c.dripCount = b.dripCount;
+    if (b.assorted && b.drips?.length) c.drips = b.drips.map(({ id: _i, ...d }) => { void _i; return d; });
+  }
+  if (b.isBlend && b.parts?.length) { c.isBlend = true; c.parts = b.parts.map(({ id: _i, ...p }) => { void _i; return p; }); }
+  if (b.scales && Object.keys(b.scales).length) c.scales = b.scales;
+  return c;
+}
+
+/** Ключи пачки в каталоге: ссылка из QR и штрихкод */
+export function catalogKeys(b: Pick<Bean, 'link' | 'barcode'>) {
+  const url = [b.link, b.barcode].find((x) => /^https?:\/\//i.test(x ?? ''));
+  const code = /^\d{8,14}$/.test(b.barcode ?? '') ? b.barcode : undefined;
+  return { url, code };
+}
+
+/** Сохранили пачку — дополнить или подтвердить лот в общем каталоге. Возвращает id лота. */
+export async function contributeCoffee(b: Bean): Promise<string | null> {
+  const initData = platform.initData();
+  const { url, code } = catalogKeys(b);
+  const coffee = beanToCoffee(b);
+  if (!RATINGS_API || !initData || (!url && !code) || Object.keys(coffee).length < 2) return null;
+  try {
+    const r = await fetch(`${RATINGS_API}/catalog`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, url, code, coffee }),
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return typeof j.id === 'string' ? j.id : null;
+  } catch { return null; }
+}
+
+/** Подписи заполненных полей — для сообщения «Заполнено: …» */
+const FIELD_LABELS: Partial<Record<keyof Bean, string>> = {
+  name: 'название', roaster: 'обжарщик', country: 'страна', region: 'регион', farm: 'ферма', producer: 'производитель',
+  variety: 'сорт', process: 'обработка', altitude: 'высота', roastLevel: 'обжарка', packNotes: 'дескрипторы',
+  parts: 'состав бленда', drips: 'дрипы в коробке', scales: 'профиль от обжарщика',
+};
+export function filledLabels(before: Bean, after: Bean) {
+  const out: string[] = [];
+  for (const [k, label] of Object.entries(FIELD_LABELS)) {
+    const a = (before as unknown as Record<string, unknown>)[k], b = (after as unknown as Record<string, unknown>)[k];
+    if (!a && b) out.push(label!);
+  }
+  if (before.kind !== 'drip' && after.kind === 'drip') out.unshift(after.dripCount ? `дрип-пакеты, ${after.dripCount} шт` : 'дрип-пакеты');
+  void SCALES;
+  return out;
 }
 
 /** Синонимы полей для QR с текстом или JSON на пачке */
@@ -84,15 +181,28 @@ export async function lookupCode(raw: string, beans: Bean[]): Promise<LookupResu
 
   if (/^\d{8,14}$/.test(code)) {
     if (existing) return { code, kind: 'ean', existing, patch: {} };
+    const remote = await remoteLookup({ code });
+    if (remote?.coffee && remote.source !== 'none') {
+      return { code, kind: 'ean', patch: { barcode: code, ...coffeeToPatch(remote.coffee, remote.id) }, source: sourceText(remote) };
+    }
     const off = await openFoodFacts(code);
     return { code, kind: 'ean', patch: { barcode: code, ...(off ?? {}) }, source: off ? 'Open Food Facts' : undefined };
   }
   if (/^https?:\/\//i.test(code)) {
-    return { code, kind: 'url', existing, patch: { barcode: code, link: code } };
+    if (existing) return { code, kind: 'url', existing, patch: {} };
+    const remote = await remoteLookup({ url: code });
+    const patch: Partial<Bean> = { barcode: code.slice(0, 300), link: code };
+    if (remote?.coffee && remote.source !== 'none') return { code, kind: 'url', patch: { ...patch, ...coffeeToPatch(remote.coffee, remote.id) }, source: sourceText(remote) };
+    return { code, kind: 'url', patch };
   }
   const parsed = parseQrText(code);
   if (Object.keys(parsed).length) return { code, kind: 'qr-data', existing, patch: { barcode: code.slice(0, 64), ...parsed }, source: 'QR-код на пачке' };
   return { code, kind: 'text', existing, patch: { barcode: code } };
+}
+
+function sourceText(r: Remote) {
+  if (r.source === 'catalog') return r.confirms && r.confirms > 1 ? `общий каталог · подтвердили ${r.confirms}` : 'общий каталог';
+  return 'страница обжарщика';
 }
 
 /** Перенести данные, не затирая то, что пользователь уже ввёл */

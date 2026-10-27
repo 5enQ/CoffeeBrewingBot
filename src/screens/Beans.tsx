@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { lookupCode, mergeEmpty } from '../data/lookup';
+import { contributeCoffee, filledLabels, lookupCode, mergeEmpty } from '../data/lookup';
 import { allMethods, methodById, fmtRatio, fmtNum } from '../data/methods';
 import { beanSca, brewBeanIds } from '../data/cva';
 import { emptyBean, isDrip, newDripItem, uid, useStore, type Bean, type BlendPart, type DripItem } from '../data/store';
@@ -286,7 +286,7 @@ export function BeanDetail({ id }: { id: string }) {
 const COUNTRIES = ['Эфиопия', 'Кения', 'Руанда', 'Бурунди', 'Танзания', 'Уганда', 'Колумбия', 'Бразилия', 'Перу', 'Эквадор', 'Боливия', 'Коста-Рика', 'Панама', 'Гватемала', 'Гондурас', 'Сальвадор', 'Никарагуа', 'Мексика', 'Йемен', 'Индонезия', 'Индия', 'Вьетнам', 'Китай', 'Папуа — Новая Гвинея'];
 
 export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boolean; scanOnOpen?: boolean }) {
-  const { saveBean, beans, brews } = useStore();
+  const { saveBean, patchBean, beans, brews } = useStore();
   const { back } = useRouter();
   // тип можно сменить, пока пачкой ничего не заварено
   const kindLocked = !isNew && brews.some((x) => brewBeanIds(x).includes(bean.id));
@@ -297,7 +297,9 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
   const dirty = JSON.stringify(b) !== JSON.stringify(bean);
   useBackGuard(dirty, 'Выйти без сохранения?');
 
-  useEffect(() => { if (bean.barcode && isNew && bean.name) setStatus('Данные подставлены по коду — проверьте и дополните.'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (bean.barcode && isNew && bean.name) setStatus(bean.catalogId ? 'Данные из общего каталога — проверьте и укажите дату обжарки.' : 'Данные подставлены по коду — проверьте и дополните.');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (patch: Partial<Bean>) => setB((x) => ({ ...x, ...patch }));
   const newPart = (): BlendPart => ({ id: uid(), share: '', country: '', region: '', farm: '', variety: '', process: '' });
@@ -348,8 +350,16 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
         return;
       }
     }
-    setB((x) => mergeEmpty({ ...x, barcode: r.patch.barcode ?? code }, r.patch));
-    setStatus(r.source ? `Найдено: ${r.source}. Проверьте поля.` : 'Код сохранён. Данных о зерне в открытых базах нет — заполните вручную, при следующем скане подставлю сам.');
+    const before = b;
+    const next = mergeEmpty({ ...b, barcode: r.patch.barcode ?? code }, r.patch);
+    // число дрипов в коробке со страницы точнее, чем 10 по умолчанию
+    if (r.patch.dripCount) next.dripCount = r.patch.dripCount;
+    setB(next);
+    const filled = filledLabels(before, next);
+    setStatus(r.source && filled.length
+      ? `Найдено: ${r.source}. Заполнено: ${filled.join(', ')}. Проверьте поля и укажите дату обжарки.`
+      : r.source ? `Найдено: ${r.source}. Проверьте поля.`
+      : 'Код сохранён. Данных об этом кофе пока нет — заполните вручную: после сохранения пачка попадёт в общий каталог, и у следующих она заполнится сама.');
   };
 
   const save = () => {
@@ -359,7 +369,10 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
     const adjust = isNew && !isNaN(left) && !isNaN(weight) && left < weight ? Math.round((left - weight) * 10) / 10 : b.adjust;
     // ассорти: пустые строки-дрипы не сохраняем
     const drips = b.assorted ? (b.drips ?? []).filter((d) => d.name || d.country || d.region || d.notes) : b.drips;
-    saveBean({ ...b, drips, adjust, sample: dirty ? undefined : b.sample });
+    const saved: Bean = { ...b, drips, adjust, sample: dirty ? undefined : b.sample };
+    saveBean(saved);
+    // описание кофе (без даты обжарки, остатка и заметок) — в общий каталог, чтобы у других заполнилось само
+    if (!saved.sample && (isNew || dirty)) contributeCoffee(saved).then((id) => { if (id && id !== saved.catalogId) patchBean(saved.id, { catalogId: id }); });
     platform.haptic('success');
     back(true);
   };
@@ -375,7 +388,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
 
       <div className="scan-field">
         <Field label="Штрихкод / QR" id="bean-barcode" value={b.barcode} inputMode="numeric" onChange={(e) => set({ barcode: e.target.value })}
-          onBlur={() => { if (b.barcode && b.barcode !== bean.barcode && /^\d{8,14}$/.test(b.barcode)) onCode(b.barcode); }}
+          onBlur={() => { if (b.barcode && b.barcode !== bean.barcode && (/^\d{8,14}$/.test(b.barcode) || /^https?:\/\/\S+$/i.test(b.barcode))) onCode(b.barcode); }}
           suffix={<button type="button" className="icon-btn" onClick={() => setScan(true)} aria-label="Сканировать"><Icon name="scan" /></button>} />
         {status && <p className="status">{status}</p>}
       </div>
@@ -528,7 +541,10 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
 
       <Section title="Заметки">
         {f('packNotes', 'Дескрипторы с пачки', { placeholder: 'бергамот, персик, жасмин' })}
-        {f('link', 'Ссылка на лот', { type: 'url', placeholder: 'https://' })}
+        {f('link', 'Ссылка на лот', { type: 'url', placeholder: 'https://', onBlur: () => {
+          // вставили ссылку на страницу обжарщика — заполним поля так же, как по QR
+          if (b.link && b.link !== bean.link && /^https?:\/\/\S+$/i.test(b.link) && !b.country && !(b.drips ?? []).length) onCode(b.link);
+        } })}
         <textarea id="bean-comment" className="notes" rows={3} placeholder="Где купил, цена, впечатления" value={b.comment} onChange={(e) => set({ comment: e.target.value })} />
       </Section>
 

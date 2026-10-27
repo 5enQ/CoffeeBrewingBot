@@ -1,3 +1,4 @@
+import { GRIND_TYPES, guessGrindType } from '../data/grind';
 import { CLOUD_LIMITS } from '../platform/types';
 import { useEffect, useState } from 'react';
 import { fetchStats, myTelegramId, ratingsEnabled } from '../data/ratings';
@@ -268,8 +269,10 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
   useBackGuard(dirty, 'Выйти без сохранения?');
   const cat = GEAR_CATS.find((c) => c.id === g.cat)!;
 
+  // выбрали популярную ручную кофемолку — тип подставим сам (если ещё не выбран)
+  const setName = (name: string) => setG((x) => ({ ...x, name, grindType: x.cat === 'grinder' && !x.grindType ? guessGrindType(name) : x.grindType }));
   const save = () => {
-    saveGear({ ...g, name: g.name.trim(), details: g.details.trim(), sample: dirty ? undefined : g.sample });
+    saveGear({ ...g, name: g.name.trim(), details: g.details.trim(), sample: dirty ? undefined : g.sample, grindType: g.cat === 'grinder' ? g.grindType : undefined });
     platform.haptic('success');
     back(true);
   };
@@ -296,16 +299,24 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
 
       <Section title={cat.one}>
         <Field label="Модель" id="gear-name" value={g.name} list={`sugg-${g.cat}`} placeholder={cat.suggestions[0]}
-          onChange={(e) => setG({ ...g, name: e.target.value })} />
+          onChange={(e) => setName(e.target.value)} />
         <datalist id={`sugg-${g.cat}`}>{cat.suggestions.map((s) => <option key={s} value={s} />)}</datalist>
         <Field label="Детали" id="gear-details" value={g.details} placeholder={g.cat === 'grinder' ? 'жернова, доработки' : 'объём, материал, заметки'}
           onChange={(e) => setG({ ...g, details: e.target.value })} />
       </Section>
 
+      {g.cat === 'grinder' && (
+        <Section title="Тип кофемолки" plain>
+          <Segmented value={g.grindType ?? 'mechanical'} onChange={(v) => setG({ ...g, grindType: v })}
+            options={GRIND_TYPES.map((t) => ({ value: t.id, label: t.label }))} />
+          <p className="muted pad small-note">{GRIND_TYPES.find((t) => t.id === (g.grindType ?? 'mechanical'))!.hint}. От этого зависит, в чём записывается помол в заварках.</p>
+        </Section>
+      )}
+
       <Section title="Популярное" plain>
         <div className="chips">
           {cat.suggestions.map((s) => (
-            <button type="button" key={s} className={'chip' + (g.name === s ? ' on' : '')} onClick={() => { platform.haptic('select'); setG({ ...g, name: s }); }}>{s}</button>
+            <button type="button" key={s} className={'chip' + (g.name === s ? ' on' : '')} onClick={() => { platform.haptic('select'); setName(s); }}>{s}</button>
           ))}
         </div>
       </Section>

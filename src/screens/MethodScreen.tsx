@@ -4,13 +4,15 @@ import { emptyCupping } from '../data/cupping';
 import { isDrip, useStore, uid, type Brew } from '../data/store';
 import { useRouter } from '../router';
 import { MethodIcon } from '../ui/icons';
-import { Button, Field, Row, Screen, Section, Stepper } from '../ui/kit';
+import { Button, Row, Screen, Section, Stepper } from '../ui/kit';
 import { beanMeta, brewBeanTitle } from './beanUtils';
 import { BeanPicker, DripPicker } from './BeanPicker';
 import { GearPicker, defaultGear } from '../ui/GearPicker';
 import type { GearRef } from '../data/gear';
 import { effectivePlan, planFromRecipe, recipeFromStandard, type BrewPlan } from '../data/recipes';
 import { beanStock, dripItemLeft } from '../data/stock';
+import { GRIND_RULES, fmtGrind, grinderOf, unitOf } from '../data/grind';
+import { GrindField } from '../ui/GrindField';
 
 export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }) {
   const m = methodById(methodId);
@@ -39,6 +41,22 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const [temp, setTemp] = useState(from?.temp ?? startActive?.temp ?? saved?.temp ?? m.temp);
   const [grind, setGrind] = useState(from?.grind ?? startActive?.grind ?? saved?.grind ?? m.grind);
   const [gear, setGear] = useState<GearRef[]>(() => from?.gear?.length ? from.gear : defaultGear(m.id, myGear, saved?.gear));
+  // помол числом — если выбрана ручная (щелчки) или электронная (µm) кофемолка
+  const grinder = grinderOf(gear, myGear);
+  const grindUnit = unitOf(grinder?.type);
+  const grindStart = () => {
+    if (!grinder || !grindUnit) return undefined;
+    if (from?.grindUnit === grindUnit && from.grindValue !== undefined && from.gear?.some((g) => g.id === grinder.id)) return from.grindValue;
+    return saved?.grindBy?.[`${grinder.id}:${grindUnit}`] ?? GRIND_RULES[grindUnit].def;
+  };
+  const [grindValue, setGrindValue] = useState<number | undefined>(grindStart);
+  // сменили кофемолку — помол, который запомнили для неё
+  const grinderKey = `${grinder?.id}-${grindUnit}`;
+  const firstGrinder = useRef(true);
+  useEffect(() => {
+    if (firstGrinder.current) { firstGrinder.current = false; return; }
+    setGrindValue(grindStart());
+  }, [grinderKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const drip = m.id === 'drip';
   const [bean, setBean] = useState<string | null>(() => {
     const ok = (id?: string | null) => !!id && beans.some((b) => b.id === id && isDrip(b) === drip);
@@ -100,7 +118,8 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const espresso = m.id === 'espresso';
 
   const draft = (): Brew => ({
-    id: uid(), date: Date.now(), methodId: m.id, beanId: bean, dose, water, temp, grind: drip ? '' : grind, time: plan.total,
+    id: uid(), date: Date.now(), methodId: m.id, beanId: bean, dose, water, temp, grind: drip ? '' : grindUnit && grindValue !== undefined ? fmtGrind(grindValue, grindUnit) : grind, time: plan.total,
+    ...(!drip && grindUnit && grindValue !== undefined ? { grindValue, grindUnit } : {}),
     ...(drip && dripId ? { dripId } : {}),
     rating: 0, taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, descriptors: [], notes: '',
     cupping: m.id === 'cupping' ? emptyCupping() : null,
@@ -108,7 +127,10 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     plan: choice === 'std' ? undefined : plan,
   });
 
-  const remember = () => saveRecipe(m.id, { dose, ratio, temp, grind, gear: gear.map((g) => g.id), recipeId: active?.id });
+  const remember = () => saveRecipe(m.id, {
+    dose, ratio, temp, grind, gear: gear.map((g) => g.id), recipeId: active?.id,
+    grindBy: grinder && grindUnit && grindValue !== undefined ? { ...(saved?.grindBy ?? {}), [`${grinder.id}:${grindUnit}`]: grindValue } : saved?.grindBy,
+  });
 
   return (
     <Screen title={m.name} subtitle={choice === 'std' ? 'Стандартный рецепт' : `Рецепт: ${plan.name}${active?.author ? ` · от ${active.author.name || '@' + active.author.username}` : ''}`}
@@ -156,7 +178,8 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
           onChange={(r) => setRatio(r)} />
         <Stepper label="Температура" value={temp} step={0.1} min={0} max={100} unit={temp ? '°C' : ''}
           format={(v) => (v === 0 ? 'холодная' : fmtNum(v))} onChange={setTemp} />
-        {!drip && <Field label="Помол" id="grind" value={grind} onChange={(e) => setGrind(e.target.value)} placeholder="например, Comandante 22" />}
+        {!drip && <GrindField id="grind" unit={grindUnit} value={grindValue} text={grind} onValue={setGrindValue} onText={setGrind}
+          grinderName={gear.find((g) => g.cat === 'grinder')?.name} />}
       </Section>
 
       <Section title="Оборудование" plain>

@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { platform } from '../platform';
 import { emptyCupping, type Cupping } from './cupping';
 import type { Scales } from './scales';
+import { guessGrindType, type GrindUnit } from './grind';
 import type { Gear, GearRef } from './gear';
 import type { Badge, BadgeLite } from './badges';
 import type { RatingStats } from './ratings';
@@ -103,6 +104,9 @@ export interface Brew {
   water: number;     // вода или выход (для эспрессо)
   temp: number;
   grind: string;
+  /** помол числом, если кофемолка ручная (щелчки) или электронная (µm); grind — то же текстом */
+  grindValue?: number;
+  grindUnit?: GrindUnit;
   time: number;      // фактическое время, сек
   rating: number;    // 0..5
   taste: QuickTaste;
@@ -147,7 +151,9 @@ export interface Profile {
   ratingStats?: RatingStats;
 }
 
-export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[]; recipeId?: string }
+export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[]; recipeId?: string;
+  /** последний помол числом для каждой кофемолки: «id:clicks» / «id:um» → значение */
+  grindBy?: Record<string, number> }
 
 export interface TileLayout { order: string[]; size: Record<string, 1 | 2> }
 
@@ -400,6 +406,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       next = { ...next, profile: { ...EMPTY.profile, ...next.profile } };
       // старые подписи степени обжарки: «Светлая (фильтр)» → «Светлая»
       next = { ...next, beans: next.beans.map((b) => (/ \(.+\)$/.test(b.roastLevel ?? '') ? { ...b, roastLevel: b.roastLevel.replace(/ \(.+\)$/, '') } : b)) };
+      // известные ручные кофемолки (Comandante, 1Zpresso, Timemore C…) — сразу с помолом в щелчках
+      next = { ...next, gear: next.gear.map((g) => (g.cat === 'grinder' && !g.grindType && guessGrindType(g.name) ? { ...g, grindType: guessGrindType(g.name) } : g)) };
       // «Карбоническая мацерация» теперь называется «Углекислая мацерация»
       const carb = (s?: string) => (s ?? '').replace(/карбонич\S*\s+мацерац\S*/gi, 'Углекислая мацерация');
       next = { ...next, beans: next.beans.map((b) => (/карбонич/i.test(JSON.stringify([b.process, b.parts, b.drips]))

@@ -42,7 +42,7 @@ const LABELS: Record<string, string> = {
   aftertaste: 'Послевкусие', overall: 'Общее', balance: 'Баланс', defects: 'Дефекты', uniformity: 'Однородность',
   cleanCup: 'Чистота чашки', recipeId: 'Свой рецепт', pinned: 'Закреплённые методы', tiles: 'Плитки методов', order: 'Порядок', size: 'Размер плиток', rated: 'Мои оценки рецептов друзей',
   seenAch: 'Показанные достижения', seeded: 'Примеры добавлены', gearSeeded: 'Примеры оборудования добавлены',
-  scales: 'Профиль от обжарщика', catalogId: 'Лот в каталоге', ferment: 'Ферментация', dripCount: 'Дрипов в коробке', dripWeight: 'Кофе в дрипе, г', assorted: 'Разные дрипы', drips: 'Дрипы', count: 'Штук', dripId: 'Дрип',
+  scales: 'Профиль от обжарщика', grindType: 'Тип кофемолки', grindValue: 'Помол, число', grindUnit: 'Единицы помола', grindBy: 'Помол по кофемолкам', catalogId: 'Лот в каталоге', ferment: 'Ферментация', dripCount: 'Дрипов в коробке', dripWeight: 'Кофе в дрипе, г', assorted: 'Разные дрипы', drips: 'Дрипы', count: 'Штук', dripId: 'Дрип',
 };
 const KEY_OF = Object.fromEntries(Object.entries(LABELS).map(([k, l]) => [l.toLowerCase(), k]));
 

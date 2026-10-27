@@ -8,12 +8,14 @@ import { CuppingForm } from '../ui/CuppingForm';
 import { Button, Chips, Dots, Field, Screen, Section, Stars, Stepper, ratingLabel } from '../ui/kit';
 import { BeanPicker, DripPicker } from './BeanPicker';
 import { GearPicker } from '../ui/GearPicker';
+import { GRIND_RULES, fmtGrind, grinderOf, unitOf } from '../data/grind';
+import { GrindField } from '../ui/GrindField';
 import { CvaEditor } from '../ui/Cva';
 import { MODES } from '../data/cva';
 
 
 export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: boolean; openCupping?: boolean }) {
-  const { saveBrew } = useStore();
+  const { saveBrew, gear: myGear } = useStore();
   const { setTab, push, back } = useRouter();
   const [b, setB] = useState<Brew>(draft);
   const [timeText, setTimeText] = useState(fmtTime(draft.time));
@@ -142,7 +144,18 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
         <Stepper label="Кофе" value={b.dose} step={0.25} min={1} max={100} unit="г" format={(v) => String(v).replace('.', ',')} onChange={(dose) => set({ dose })} />
         <Stepper label={m.yieldLabel ?? 'Вода'} value={b.water} step={b.methodId === 'espresso' ? 1 : 5} min={5} max={2000} unit="г" onChange={(water) => set({ water })} />
         <Stepper label="Температура" value={b.temp} step={0.1} min={0} max={100} unit={b.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
-        {b.methodId !== 'drip' && <Field label="Помол" id="edit-grind" value={b.grind} onChange={(e) => set({ grind: e.target.value })} />}
+        {b.methodId !== 'drip' && (() => {
+          const grinder = grinderOf(b.gear, myGear);
+          // кофемолку удалили — единицы берём из самой заварки
+          const unit = unitOf(grinder?.type) ?? (grinder && !myGear.some((g) => g.id === grinder.id) ? b.grindUnit ?? null : null);
+          const value = unit && b.grindUnit === unit ? b.grindValue : undefined;
+          return (
+            <GrindField id="edit-grind" unit={unit} value={value ?? (unit ? GRIND_RULES[unit].def : undefined)} text={b.grind}
+              grinderName={b.gear?.find((g) => g.cat === 'grinder')?.name}
+              onValue={(v) => set({ grindValue: v, grindUnit: unit!, grind: fmtGrind(v, unit!) })}
+              onText={(t) => set({ grind: t, grindValue: undefined, grindUnit: undefined })} />
+          );
+        })()}
         <Field label="Время" id="edit-time" value={timeText} inputMode="numeric" placeholder="3:10"
           onChange={(e) => { setTimeText(e.target.value); const t = parseTime(e.target.value); if (t !== null) set({ time: t }); }} />
       </Section>

@@ -1,3 +1,5 @@
+import type { GrindType } from './grind';
+
 export type GearCat = 'grinder' | 'machine' | 'dripper' | 'press' | 'stovetop' | 'kettle' | 'scale' | 'filter' | 'other';
 
 export interface Gear {
@@ -7,6 +9,8 @@ export interface Gear {
   /** жернова, доработки, настройки — что угодно */
   details: string;
   sample?: boolean;
+  /** только для кофемолок: ручная (щелчки), электронная (µm), механическая (как раньше) */
+  grindType?: GrindType;
 }
 
 /** Снимок оборудования внутри заварки: остаётся, даже если предмет потом удалят */

@@ -1,5 +1,8 @@
 name: Deploy to GitHub Pages
 
+# Releases only: `main` is updated when a release is merged from `dev`.
+# The version comes from package.json, the release title from CHANGELOG.md.
+# After a successful deploy the commit is tagged vX.Y.Z.
 on:
   push:
     branches: [main]
@@ -24,11 +27,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Версия приложения «1.N» (N — номер сборки) — видна в Профиле → «О приложении»
+      # App version is shown in Profile → "О приложении"
+      - id: v
+        run: |
+          echo "version=$(node scripts/release-info.mjs version)" >> "$GITHUB_OUTPUT"
+          echo "built=$(date -u +%s)000" >> "$GITHUB_OUTPUT"
       - run: npm run build
         env:
-          VITE_APP_VERSION: 1.${{ github.run_number }}
-          VITE_APP_BUILT: ${{ github.event.head_commit.timestamp }}
+          VITE_APP_VERSION: ${{ steps.v.outputs.version }}
+          VITE_APP_BUILT: ${{ steps.v.outputs.built }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -42,3 +49,21 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  tag:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag the release
+        run: |
+          V="v$(node scripts/release-info.mjs version)"
+          TITLE="$(node scripts/release-info.mjs title)"
+          if git rev-parse -q --verify "refs/tags/$V" >/dev/null; then echo "$V already tagged"; exit 0; fi
+          git config user.name "release-bot"; git config user.email "release-bot@users.noreply.github.com"
+          git tag -a "$V" -m "$TITLE"
+          git push origin "$V"

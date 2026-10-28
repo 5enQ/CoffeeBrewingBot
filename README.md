@@ -1,151 +1,125 @@
-# Brewbook — дневник заварки кофе
+# Brewbook — coffee brewing journal
 
-Мини-приложение для Telegram, которое без изменений кода собирается в приложение для Android и iOS.
+A Telegram Mini App that also builds, without code changes, into an Android/iOS app (Capacitor).
+The user interface is in Russian; code, comments and documentation are in English.
 
-**Что умеет**
-- Гиды по 14 способам: V60, Kalita Wave, Chemex, AeroPress, френч-пресс, Clever, эспрессо, мока, джезва, сифон, колд брю, батч брю, дрип, каппинг. Любой метод можно закрепить наверху долгим нажатием (на компьютере — правой кнопкой). Можно добавить свой метод (плюс в разделе «Метод приготовления»): название, значок, описание, базовый рецепт и шаги. У каждого пошаговый таймер, отметки «долить до N г», вибрация и звук на каждом шаге. Экран не гаснет, пока идёт заварка.
-- Дрип-пакеты: на полку добавляется коробка дрипов (сколько штук, сколько кофе в одном дрипе). Если в коробке разные дрипы — у каждого своё происхождение и количество. Метод «Дрип» берёт дрип только с полки или предлагает добавить новый, остаток считается в штуках.
-- Каппинг по протоколу SCA Coffee Value Assessment (стандарты 102–105): до 6 образцов со слепыми кодами, 8,25 г на 150 мл чашки, 93 °C, 5 чашек на образец (3–5 для дескриптивной). Параметры протокола зафиксированы. Аффективная форма 1–9 с баллом S = 0,65625·Σ + 52,75 − 2u − 4d, дескриптивная (интенсивность 0–15, CATA с лимитами), внешняя информация. Старые записи по протоколу 2004 года остаются как были.
-- Рецепт пересчитывается от дозы, объёма воды или пропорции. Последние параметры запоминаются для каждого метода.
-- Полка: пачки зерна с весом и датой обжарки. Доза каждой заварки списывается с пачки автоматически. Видно «осталось N из M г» и на сколько заварок хватит. Остаток можно поправить, взвесив пачку. Допитые пачки переезжают в раздел «Допито», а кнопка «Купить ещё» создаёт новую пачку того же зерна.
-- Карточка пачки: страна, регион, ферма, производитель, сорт, обработка, высота, урожай, степень и дата обжарки, дескрипторы с пачки. Показывается, сколько дней прошло после обжарки.
-- Сканер штрихкода и QR (подробности ниже). Зерно можно ввести и вручную.
-- Дневник: оценка, быстрые шкалы вкуса, дескрипторы по колесу вкусов SCA, заметки. Любую заварку можно повторить в один тап.
-- Если заварка оценена по анкете SCA, везде вместо звёзд показываются баллы.
-- Каппинг-анкета SCA на 100 баллов: 7 атрибутов по шкале 6–10 с шагом 0,25, интенсивность, однородность, чистота и сладость по 5 чашкам, дефекты. Итог считается автоматически.
-- Свои рецепты: название, доза, вода, температура, помол и собственная схема шагов (время, «долить до N г», подсказка). Рецепт выбирается на экране метода, и таймер ведёт по нему. В «Поделиться» рецепт уходит вместе со шагами, а друг может добавить его к своим.
-- Профиль: имя автора и своё оборудование по категориям (кофемолки, кофемашины, воронки, AeroPress и прессы, мока и джезвы, чайники, весы, фильтры). Оборудование отмечается в каждой заварке.
-- «Поделиться» заваркой: друг получает текст рецепта с автором, зерном, оборудованием и шагами, а также ссылку. По ссылке рецепт открывается в приложении: его можно сохранить в дневник или сразу заварить по шагам.
-- Температура с точностью до 0,1°. Значение любого параметра можно ввести с клавиатуры, нажав на число; если удерживать «+» или «−», значение меняется быстро.
-- Резервная копия в Markdown: обычный текст с разделами «Полка», «Дневник», «Оборудование» и т. д. Его можно открыть и поправить в любом редакторе и загрузить обратно (`src/data/backup.ts`). Старые копии в JSON тоже принимаются.
+## Features
 
-## Раскладка для компьютера
+- **Brew guides** for 14 methods: V60, Kalita Wave, Chemex, AeroPress, French press, Clever, espresso, moka, cezve, siphon, cold brew, batch brew, drip bags and cupping. Step-by-step timer with "pour to N g" marks, haptics and sound; the screen stays awake while brewing.
+- **Home screen tiles**: long-press to pin a method; the pencil button opens edit mode to reorder tiles (drag) and resize them (handle on the right, like Android Quick Settings). Undo is available while editing.
+- **Custom recipes and methods**: own steps, dose, water, temperature, grind; shared recipes keep their steps.
+- **Grind by grinder type**: hand grinders use clicks, electronic grinders use microns (µm), mechanical grinders keep free text. The last value is remembered per grinder and method.
+- **Shelf**: coffee packs with weight and roast date; every brew deducts its dose. Remaining coffee is drawn as beans (10 beans = full pack). Finished packs move to "Finished"; "Buy again" copies a pack.
+- **Drip bags**: a drip box holds N bags (default 1), or an assorted box with different drips, each with its own origin and count. Remaining bags are drawn one icon per bag. The Drip method only takes drips from the shelf.
+- **Roaster profile**: optional 1–5 scales (acidity, sweetness, bitterness, body, fermentation).
+- **Cupping** by the SCA Coffee Value Assessment (standards 102–105): up to 6 blind-coded samples, locked protocol parameters, affective form with the official score formula, descriptive form with CATA limits, extrinsic information.
+- **Journal** with stars (half stars), quick taste scales, flavor-wheel descriptors and notes.
+- **Sharing** a brew to friends via short links; friends can rate recipes (stored on the server).
+- **Achievements** (hidden until earned) and a showcase of up to 3 badges in the profile.
+- **Desktop layout** (window wider than 860 px): sidebar, list and detail panes.
+- **Sync between devices** via Telegram CloudStorage (see below).
+- **Backup** as a Markdown file that can be edited in any text editor and restored (old JSON backups are accepted too).
+- **Scanning** barcodes and QR codes; QR links to roaster pages fill in the coffee automatically (see "Coffee catalog").
 
-В Telegram Desktop, macOS, веб-версиях Telegram и в браузере с мышью включается отдельная раскладка, если окно шире 860 px:
-- меню слева;
-- список в средней колонке;
-- карточка выбранного (заварка, пачка, рецепт, метод с таймером) справа. Если выбрать другой пункт, карточка заменится. Если в ней есть несохранённые изменения, приложение сначала спросит.
-
-Горячие клавиши таймера: пробел — старт и пауза, R — сброс, Enter — записать. Вид можно выбрать вручную в профиле: «Авто», «Компьютер» или «Телефон». Код один: `src/layout.tsx` выбирает раскладку, `App.tsx` рисует оболочку, экраны общие.
-
-## Запуск
+## Development
 
 ```bash
 npm install
 npm run dev           # http://localhost:5173
-npm run build         # dist/ — для хостинга, Telegram и Capacitor
-npm run build:single  # dist-single/index.html — всё в одном файле
+npm run build         # dist/ — for hosting, Telegram and Capacitor
+npm run build:single  # dist-single/index.html — everything in one file (used by the browser tests)
 ```
 
-## Как устроена переносимость
+Server (Cloudflare Worker) locally: `cd worker && npm i && echo 'BOT_TOKEN="123:TEST"' > .dev.vars && npx wrangler dev`.
 
-Весь код обращается к окружению только через `src/platform`:
+## Branches, releases and versions
 
-| | Telegram | Браузер | Capacitor (телефон) |
+- Day-to-day work goes to the **`dev`** branch. Pushing to `dev` deploys nothing.
+- A release is a merge of `dev` into **`main`**. Pushing `main` deploys the app (GitHub Pages) and, if server code changed, the server (Cloudflare). After the deploy, CI tags the commit **`vX.Y.Z`**.
+- Before merging: set `"version"` in `package.json` (semantic versioning: `X` — major changes or data format breaks, `Y` — new features, `Z` — fixes only) and turn **Unreleased** in [`CHANGELOG.md`](CHANGELOG.md) into `## vX.Y.Z — Title (YYYY-MM-DD)`. The title is used as the release name everywhere (`scripts/release-info.mjs`).
+- The running versions are visible in the app (Profile → "О приложении": app and server versions), at `https://brewbook-ratings.brewbook.workers.dev/version`, and in the Cloudflare dashboard (Workers → brewbook-ratings → Deployments: tag `v1.1.0` with the release title).
+- Before a release the change set is tested: unit tests (parser, scales), browser end-to-end tests on mobile/desktop and light/dark themes, a two-device sync simulation, backup round trip, a local server run and a live check of the roaster-page parser.
+
+## Platform layer
+
+All environment access goes through `src/platform`:
+
+| | Telegram | Browser | Capacitor (phone) |
 |---|---|---|---|
-| Хранилище | `DeviceStorage` (Bot API 9.0+), иначе localStorage | localStorage | `@capacitor/preferences` |
-| Синхронизация | `CloudStorage` (Bot API 6.9+), общая для всех устройств аккаунта | — | — |
-| Кнопка «назад» | `BackButton` Telegram | стрелка в шапке | аппаратная «назад» на Android и стрелка в шапке |
-| Вибрация | `HapticFeedback` | `navigator.vibrate` | `@capacitor/haptics` |
-| Диалоги | `showConfirm` / `showAlert` | встроенный диалог | `@capacitor/dialog` |
-| Тема | цвета темы Telegram в CSS-переменных | системная светлая или тёмная | системная |
-| Экран не гаснет | Wake Lock API | Wake Lock API | `@capacitor-community/keep-awake` |
+| Storage | `DeviceStorage` (Bot API 9.0+), otherwise localStorage | localStorage | `@capacitor/preferences` |
+| Sync | `CloudStorage` (Bot API 6.9+), shared by all devices of the account | — | — |
+| Back button | Telegram `BackButton` | arrow in the header | hardware back on Android + header arrow |
+| Haptics | `HapticFeedback` | `navigator.vibrate` | `@capacitor/haptics` |
+| Dialogs | `showConfirm` / `showAlert` | built-in dialog | `@capacitor/dialog` |
+| Theme | Telegram theme colors → CSS variables | system light/dark | system |
+| Keep awake | Wake Lock API | Wake Lock API | `@capacitor-community/keep-awake` |
 
-Платформа определяется сама при запуске. SDK Telegram подгружается только внутри Telegram. Плагины Capacitor берутся из `window.Capacitor.Plugins`, поэтому без них веб-сборка тоже работает.
+In Telegram the interface takes its colors from the Telegram theme (background, cards, text, hints, buttons/accent, links, separators). The active-tab bubble and the remaining-coffee icons use the button color.
 
-## Подключение к Telegram
+## Telegram setup
 
-1. Выложите `dist/` на любой HTTPS-хостинг: GitHub Pages, Netlify, Vercel или Cloudflare Pages.
-2. В @BotFather создайте бота (`/newbot`), затем откройте `/mybots` → ваш бот → **Bot Settings → Configure Mini App** и укажите URL. Ещё вариант — `/newapp`, тогда у приложения будет ссылка вида `t.me/<бот>/<app>`.
-3. По желанию: **Menu Button** → тот же URL, чтобы приложение открывалось кнопкой в чате с ботом.
+1. The app is hosted on GitHub Pages (`https://5enq.github.io/CoffeeBrewingBot/`).
+2. In @BotFather: `/mybots` → the bot → **Bot Settings → Configure Mini App** → the URL above (or `/newapp` for a `t.me/<bot>/<app>` link).
+3. Optional: **Menu Button** → the same URL.
 
-Бэкенд не нужен, все данные хранятся на устройстве.
-
-## Перенос на телефон (Capacitor)
+## Phone app (Capacitor)
 
 ```bash
 npm i @capacitor/core @capacitor/cli @capacitor/app @capacitor/haptics @capacitor/preferences @capacitor/dialog @capacitor-community/keep-awake
 npx cap init Brewbook com.example.brewbook --web-dir dist
 npm run build
-npx cap add android      # и/или: npx cap add ios
+npx cap add android      # and/or: npx cap add ios
 npx cap sync
-npx cap open android     # дальше сборка в Android Studio / Xcode
+npx cap open android
 ```
 
-Разрешение на камеру для сканера:
-- Android: в `android/app/src/main/AndroidManifest.xml` добавьте `<uses-permission android:name="android.permission.CAMERA" />`.
-- iOS: в `ios/App/App/Info.plist` добавьте ключ `NSCameraUsageDescription`, например со строкой «Сканировать штрихкод на пачке кофе».
+Camera permission for the scanner: Android — `<uses-permission android:name="android.permission.CAMERA" />` in `AndroidManifest.xml`; iOS — `NSCameraUsageDescription` in `Info.plist`.
 
-## Ссылки «Поделиться»
+## Server (Cloudflare Worker)
 
-В `src/config.ts` укажите username бота (`TELEGRAM_BOT`). Если создавали приложение через `/newapp`, укажите и его короткое имя (`TELEGRAM_APP`). Тогда ссылка будет вида `t.me/бот?startapp=…` и рецепт откроется прямо в Telegram. Без этих настроек ссылка ведёт на веб-версию (`#r=…`). Если данные не помещаются в лимит Telegram (512 символов), заметки и часть полей в ссылке сокращаются. Полный рецепт всё равно приходит текстом в сообщении.
+`worker/` — a Cloudflare Worker with Durable Objects (SQLite), free plan. It verifies Telegram `initData` signatures with the bot token.
 
-## Достижения и оценки друзей
+| Endpoint | Purpose |
+|---|---|
+| `GET /version` | running server version and build time |
+| `POST /rate`, `GET /stats` | friends' ratings of shared recipes (one rating per user, own recipes can't be rated) |
+| `POST /recipes`, `GET /recipes/:id` | short share links |
+| `POST /share` | prepared Telegram message for `shareMessage` |
+| `GET /lookup?url=…&code=…` | coffee by QR link or barcode (catalog first, then the roaster page) |
+| `POST /catalog` | a user saved a pack: fill in or confirm the catalog entry |
 
-Достижения скрыты, пока их не получишь. Когда значок получен, приложение показывает уведомление, и значок появляется в профиле.
-- **Литры:** сумма воды во всех своих заварках. Уровни: 10, 100, 1000 и 10 000 л (бронза, серебро, золото, бриллиант).
-- **Оценки рецептов друзьями:** 10, 100, 1000 и 10 000 оценок.
-- **Методы:** 100, 1000 и 10 000 заварок одним способом (бронза, серебро, золото).
+Setup: Cloudflare account → Account ID and an API token (template "Edit Cloudflare Workers") → GitHub **Settings → Secrets and variables → Actions**: secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `BOT_TOKEN`; variable `RATINGS_ENABLED` = `true`. The server address is `RATINGS_API` in `src/config.ts`.
 
-Пороги задаются в `src/data/achievements.ts`. В профиле можно отметить до трёх значков, свои или полученные. Они показываются в профиле и в рецептах, которыми вы делитесь.
+## Coffee catalog
 
-Чтобы оценки друга дошли до автора, нужен общий сервер. Он лежит в папке `worker/` (Cloudflare Worker и Durable Object с SQLite, бесплатный тариф). Сервер проверяет подпись Telegram `initData` токеном бота, поэтому оценку нельзя подделать. Каждый пользователь может поставить рецепту одну оценку; если оценить повторно, она заменит прежнюю. Свой рецепт оценить нельзя.
+A shared catalog of coffee lots on the server — the basis for a future global coffee rating.
 
-Как подключить:
-1. Зарегистрируйтесь на dash.cloudflare.com. При первом заходе в **Workers & Pages** выберите поддомен `*.workers.dev`.
-2. Скопируйте **Account ID** со страницы Workers & Pages.
-3. Создайте токен: **My Profile → API Tokens → Create Token**, шаблон **Edit Cloudflare Workers**.
-4. В GitHub откройте **Settings → Secrets and variables → Actions**.
-   - На вкладке **Secrets** добавьте `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` и `BOT_TOKEN` (токен бота из @BotFather).
-   - На вкладке **Variables** добавьте `RATINGS_ENABLED` = `true`.
-5. Запустите вручную **Actions → Deploy ratings worker → Run workflow**.
-6. Впишите адрес воркера в `RATINGS_API` в `src/config.ts`.
+- Scanning a QR link (or pasting a roaster page link) calls `/lookup`. If the lot is already in the catalog, fields are filled instantly; otherwise the server fetches the roaster page, parses it (`worker/src/parse.ts`) and stores the lot.
+- The parser understands Tilda stores, 1C-Bitrix (Aspro template and name/value lists), WooCommerce, schema.org Product JSON-LD and "Label: value" lines. New labels go to the `LABELS` dictionary; roaster scales are mapped by `src/data/scales.ts` (dots `one…five`, words, numbers).
+- When `parse.ts` learns something new, bump `PARSER_VERSION` in `worker/src/index.ts`: unconfirmed lots are re-parsed on the next scan.
+- Saving a pack sends only the coffee description (no roast date, stock, notes or brews). While a lot has at most one confirmation, user edits replace parsed values; after that edits only fill empty fields. Each Telegram user counts once.
+- Missing fields are simply not stored.
 
-Проверить сервер локально: `cd worker && npm i && echo 'BOT_TOKEN=…' > .dev.vars && npx wrangler dev`.
+## Sync between devices
 
-## Про сканер
+In Telegram data lives on the device (DeviceStorage) and is mirrored to the account's CloudStorage (up to 1024 keys × 4096 chars). Code: `src/data/persist.ts` (format) and `src/data/sync.ts` (exchange).
 
-- Камера: используется встроенный `BarcodeDetector`, если он есть (Chrome на Android), иначе ZXing. Читаются EAN-13/8, UPC, Code 128/39, QR и DataMatrix.
-- Если камеры нет: можно сфотографировать пачку, ввести цифры вручную или в Telegram открыть нативный QR-сканер.
-- **Что подставляется.** Обычный штрихкод EAN — это только номер товара, данных о зерне в нём нет. Поэтому:
-  1. Если такой код уже есть в ваших зёрнах, откроется это зерно. Для новой пачки можно скопировать все поля и ввести только новую дату обжарки.
-  2. Если кода нет, приложение ищет его в Open Food Facts и подставляет название, бренд и вес. Для спешелти-кофе там обычно пусто.
-  3. Если на пачке QR с текстом или JSON (`Страна: Эфиопия`, `"process": "washed"` и т. п.), поля разбираются автоматически.
-  
-  После первого ручного ввода следующий скан той же пачки заполнит карточку сам.
+- Buckets: `m` — profile, gear, custom recipes and methods, tiles; `k` — packs; `bYYYYMM` — brews of a month. Each bucket is deflated, base64url-encoded and split into 4096-char parts; `idx` lists bucket hashes. Only changed buckets are transferred.
+- Per-record merge: the later edit wins; deletions travel as tombstones (kept 180 days).
+- Not synced: sample data, cached friends' ratings, layout preference (per device).
+- Space savings: empty/default fields are omitted; brew gear is stored by id, or as a versioned snapshot `id~hash` in the metadata archive when the gear was renamed or deleted (a brew always shows the gear as it was); descriptors from the dictionary are stored as indices (**only append to the dictionary in `cupping.ts`**); cup marks are bitmasks; dates are in seconds.
 
-## Структура
+## Project structure
 
 ```
 src/
-  platform/      адаптеры Telegram / web / native + общий интерфейс
-  data/          методы и рецепты, каппинг SCA, хранилище, поиск по коду
-  screens/       экраны
-  ui/            компоненты, сканер, анкета, иконки
-  router.tsx     стек экранов + подтверждение «выйти без сохранения»
+  platform/      Telegram / web / native adapters and the shared interface
+  data/          methods, recipes, cupping (SCA CVA), store, sync, backup, catalog client
+  screens/       screens
+  ui/            components, scanner, forms, icons, animations
+  router.tsx     screen stack and "leave without saving?" guards
+worker/
+  src/index.ts   server endpoints
+  src/catalog.ts coffee catalog (Durable Object)
+  src/parse.ts   roaster page parser
 ```
-
-## Что можно добавить дальше
-
-- Синхронизацию между устройствами: Telegram `CloudStorage` (ограничение 4 КБ на ключ) или свой бэкенд.
-- Свои рецепты с произвольными шагами.
-- Анкету CVA SCA 2024 в дополнение к классической.
-
-## Синхронизация между устройствами
-
-В Telegram данные хранятся на устройстве (DeviceStorage) и дублируются в облако аккаунта (CloudStorage: до 1024 ключей по 4096 символов). Код — `src/data/persist.ts` (формат) и `src/data/sync.ts` (обмен).
-
-- Данные разложены по корзинам: `m` — профиль, оборудование, свои рецепты и методы; `k` — пачки; `bГГГГММ` — заварки за месяц. Каждая корзина сжимается (deflate + base64url) и режется на части по 4096 символов. Ключ `idx` — оглавление с хешами корзин.
-- Скачиваются и отправляются только изменившиеся корзины.
-- Слияние по записям: побеждает более поздняя правка, удаления передаются отметками (хранятся 180 дней). Правки с двух устройств не затирают друг друга.
-- Не синхронизируются: демо-записи, кэш оценок друзей, вид интерфейса (он у каждого устройства свой).
-- Экономия места: пустые поля и значения по умолчанию не пишутся, оборудование в заварке — по id, если снимок совпадает с текущей вещью, иначе ключом версии «id~хеш» со снимком в архиве метаданных (заварка всегда показывает оборудование на момент записи), дескрипторы из словаря — номером (словарь в `cupping.ts` только дополнять в конец!), отметки чашек — битовой маской, даты — в секундах.
-
-## Общий каталог кофе
-
-Сервер (`worker/`) хранит общий каталог лотов — основа для будущего глобального рейтинга зёрен.
-
-- `GET /lookup?url=…&code=…` — кофе по ссылке из QR или штрихкоду. Сначала ищется в каталоге; если нет — сервер открывает страницу обжарщика, разбирает её (`worker/src/parse.ts`) и сохраняет лот.
-- `POST /catalog` — пользователь сохранил пачку (из Telegram, с проверкой подписи): пустые поля лота дополняются; пока лот подтвердил максимум один человек, правки заменяют разобранное со страницы.
-- В каталоге только описание кофе: название, обжарщик, происхождение, сорт, обработка, высота, дескрипторы, дрипы, профиль от обжарщика. Дата обжарки, остаток, заметки и заварки остаются у пользователя.
-- Разбор понимает Tilda, 1С-Битрикс (шаблон Aspro и списки name/value), WooCommerce и строки «Подпись: значение». Новые подписи добавляются в словарь `LABELS` в `parse.ts`.

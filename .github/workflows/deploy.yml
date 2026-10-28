@@ -24,7 +24,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Версия приложения «1.N» (N — номер сборки) — видна в Профиле → «О приложении»
       - run: npm run build
+        env:
+          VITE_APP_VERSION: 1.${{ github.run_number }}
+          VITE_APP_BUILT: ${{ github.event.head_commit.timestamp }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

@@ -1,3 +1,4 @@
+import { RATINGS_API } from '../config';
 import { GRIND_TYPES, guessGrindType } from '../data/grind';
 import { CLOUD_LIMITS } from '../platform/types';
 import { useEffect, useState } from 'react';
@@ -226,9 +227,31 @@ export function Profile() {
       <Section title="О приложении">
         <Row label="Платформа" value={{ telegram: 'Telegram', web: 'Браузер', native: 'Приложение' }[platform.kind]} />
         <Row label="Хранилище" value={store.sync.state !== 'off' ? 'Устройство + облако Telegram' : platform.kind === 'telegram' ? 'Telegram на устройстве' : platform.kind === 'native' ? 'Память приложения' : 'Браузер'} />
+        <Row label="Версия приложения" value={appVersion()} chevron={false} />
+        <ServerVersionRow />
       </Section>
     </Screen>
   );
+}
+
+const fmtWhen = (iso?: string | null) => {
+  if (!iso) return '';
+  const d = new Date(/^\d+$/.test(iso) ? Number(iso) : iso);
+  return isNaN(+d) ? '' : d.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
+const appVersion = () => [import.meta.env.VITE_APP_VERSION || 'разработка', fmtWhen(import.meta.env.VITE_APP_BUILT)].filter(Boolean).join(' · ');
+
+/** Версия сервера — чтобы понимать, какая выкладка сейчас работает */
+function ServerVersionRow() {
+  const [v, setV] = useState<string | null>(null);
+  useEffect(() => {
+    if (!RATINGS_API) return;
+    fetch(`${RATINGS_API}/version`).then((r) => (r.ok ? r.json() : null))
+      .then((j) => setV(j ? [j.version, fmtWhen(j.builtAt)].filter(Boolean).join(' · ') : 'нет связи'))
+      .catch(() => setV('нет связи'));
+  }, []);
+  if (!RATINGS_API) return null;
+  return <Row label="Версия сервера" value={v ?? '…'} chevron={false} />;
 }
 
 /** Синхронизация между устройствами через облако Telegram */

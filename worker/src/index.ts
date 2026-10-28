@@ -6,6 +6,7 @@
  * POST /recipes { initData, code }               — сохранить рецепт для короткой ссылки (только из Telegram)
  * GET  /recipes/<id>                             — получить рецепт по короткой ссылке
  * POST /share { initData, title, body, url }     — подготовить красивое сообщение для WebApp.shareMessage
+ * GET  /version                                 — версия сервера (1.N) и когда он выложен
  * GET  /lookup?url=…&code=…                       — кофе по QR или штрихкоду: из общего каталога или со страницы обжарщика
  * POST /catalog { initData, url, code, coffee }  — пользователь сохранил пачку: дополнить или подтвердить лот в каталоге
  *
@@ -24,6 +25,9 @@ export interface Env {
   CATALOG: DurableObjectNamespace<CoffeeCatalog>;
   BOT_TOKEN: string;
   ALLOWED_ORIGIN: string;
+  /** версия сервера «1.N» и время сборки — подставляются при выкладке (GitHub Actions) */
+  VERSION?: string;
+  BUILT_AT?: string;
 }
 
 const enc = new TextEncoder();
@@ -131,6 +135,10 @@ export default {
     const h = cors(env, req);
     if (req.method === 'OPTIONS') return new Response(null, { headers: h });
     const url = new URL(req.url);
+
+    if (req.method === 'GET' && url.pathname === '/version') {
+      return json({ version: env.VERSION ?? 'dev', builtAt: env.BUILT_AT ?? null }, 200, { ...h, 'Cache-Control': 'max-age=60' });
+    }
 
     if (req.method === 'GET' && url.pathname === '/stats') {
       const author = url.searchParams.get('author') ?? '';

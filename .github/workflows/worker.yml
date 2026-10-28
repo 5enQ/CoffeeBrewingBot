@@ -18,11 +18,20 @@ jobs:
           node-version: 22
       - run: npm install
         working-directory: worker
+      # Понятная версия сервера: «1.N» (N — номер сборки) и что изменилось — видно в дашборде Cloudflare
+      # (Workers → brewbook-ratings → Deployments) и по адресу /version
+      - id: v
+        run: |
+          SUBJ=$(git log -1 --pretty=%s | tr -d '"\\$`' | cut -c1-90)
+          echo "version=1.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "message=1.${{ github.run_number }} · $SUBJ" >> "$GITHUB_OUTPUT"
+          echo "built=$(date -u +%s)000" >> "$GITHUB_OUTPUT"
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
+          command: deploy --tag "v${{ steps.v.outputs.version }}" --message "${{ steps.v.outputs.message }}" --var VERSION:${{ steps.v.outputs.version }} --var BUILT_AT:${{ steps.v.outputs.built }}
           secrets: |
             BOT_TOKEN
         env:

@@ -9,15 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Lookup live
+      - name: Version
         run: |
           mkdir -p out
-          W='https://brewbook-ratings.brewbook.workers.dev/lookup'
-          q() { curl -sS -m 40 -G "$W" --data-urlencode "url=$2" -o "out/$1.json"; }
-          q w2a 'https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/filtr_pakety_efiopiya_pod_molochko_gorbufet_x_twc/'
-          q w2b 'https://theweldercatherine.ru/catalog/kofe_v_filtr_pakete/filtr_pakety_efiopiya_pod_molochko_gorbufet_x_twc/'
-          q kojo 'https://kojocoffee.ru/catalog/drips/tproduct/2080571661-426369877852-kofe-ruanda-muremure-drip'
+          curl -sS -m 20 https://brewbook-ratings.brewbook.workers.dev/version -o out/version.json
       - name: Commit
         run: |
           git config user.name probe; git config user.email probe@example.com
-          git add out && git commit -m "probe: refresh [skip ci]" && git push
+          git add out && git commit -m "probe: version [skip ci]" && git push

@@ -60,6 +60,5 @@ export function dripItemLeft(bean: Bean, itemId: string, brews: Brew[]) {
 }
 
 export const DRIP_COUNTS = [1, 5, 6, 8, 10, 12, 15, 20];
-export const DRIP_WEIGHTS = [10, 11, 12, 13, 15];
 
 export const PACK_SIZES = ['100', '200', '250', '500', '1000'];

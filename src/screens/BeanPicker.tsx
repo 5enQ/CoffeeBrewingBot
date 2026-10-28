@@ -54,7 +54,7 @@ export function BeanPicker({ value, onChange, dose }: { value: string | null; on
 }
 
 /** Новая коробка дрипов: тип уже выбран */
-export const emptyDripBox = (): Bean => ({ ...emptyBean(), kind: 'drip', dripCount: 10, dripWeight: 11 });
+export const emptyDripBox = (): Bean => ({ ...emptyBean(), kind: 'drip', dripCount: 1 });
 
 /**
  * Выбор дрипа: только коробки дрипов с полки + «новый дрип».

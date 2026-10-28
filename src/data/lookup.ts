@@ -39,6 +39,8 @@ function coffeeToPatch(c: Coffee, id?: string): Partial<Bean> {
   for (const k of COFFEE_TEXT) if (c[k]) out[k] = c[k];
   if (c.kind === 'drip') out.kind = 'drip';
   if (c.dripCount) out.dripCount = c.dripCount;
+  // на сайте количество не указано — считаем, что дрип один
+  else if (c.kind === 'drip' && !c.assorted) out.dripCount = 1;
   if (c.assorted) out.assorted = true;
   if (c.isBlend && c.parts?.length) {
     out.isBlend = true;

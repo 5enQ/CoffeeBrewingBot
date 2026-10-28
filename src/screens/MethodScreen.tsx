@@ -169,11 +169,11 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
       </Section>
 
       <Section title="Параметры">
-        {drip ? <Row label="Кофе в дрипе" value={`${fmtNum(dose, 1)} г`} hint={dripBox?.dripWeight ? 'как указано на коробке' : 'укажите вес дрипа в карточке коробки'} chevron={false} /> :
-        <Stepper label="Кофе" value={dose} onChange={setDose} step={espresso ? 0.5 : m.id === 'cupping' ? 0.25 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} />}
+        {/* у дрипа кофе уже отмерен в пакете — меняется только вода */}
+        {!drip && <Stepper label="Кофе" value={dose} onChange={setDose} step={espresso ? 0.5 : m.id === 'cupping' ? 0.25 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} />}
         <Stepper label={waterLabel} value={water} step={espresso ? 1 : 10} min={espresso ? 10 : 30} max={2000} unit="г"
           format={(v) => fmtNum(v)}
-          onChange={(w) => setDose(Math.max(1, Math.round((w / ratio) * 4) / 4))} />
+          onChange={(w) => (drip ? setRatio(Math.max(1, w / dose)) : setDose(Math.max(1, Math.round((w / ratio) * 4) / 4)))} />
         <Stepper label="Пропорция" value={ratio} step={espresso ? 0.1 : 0.5} min={1} max={25} format={fmtRatio}
           onChange={(r) => setRatio(r)} />
         <Stepper label="Температура" value={temp} step={0.1} min={0} max={100} unit={temp ? '°C' : ''}

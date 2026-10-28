@@ -3,7 +3,7 @@ import { contributeCoffee, filledLabels, lookupCode, mergeEmpty } from '../data/
 import { allMethods, methodById, fmtRatio, fmtNum } from '../data/methods';
 import { beanSca, brewBeanIds } from '../data/cva';
 import { emptyBean, isDrip, newDripItem, uid, useStore, type Bean, type BlendPart, type DripItem } from '../data/store';
-import { beanStock, dripItemLeft, dripTotal, isFinished, DRIP_COUNTS, DRIP_WEIGHTS, PACK_SIZES } from '../data/stock';
+import { beanStock, dripItemLeft, dripTotal, isFinished, DRIP_COUNTS, PACK_SIZES } from '../data/stock';
 import { platform } from '../platform';
 import { useBackGuard, useRouter, useSelected } from '../router';
 import { MethodIcon, Icon } from '../ui/icons';
@@ -219,10 +219,10 @@ export function BeanDetail({ id }: { id: string }) {
 
   const info: [string, string][] = ([
     ['Обжарщик', b.roaster],
-    ...(drip ? [['Дрипов в коробке', b.assorted ? `${dripTotal(b)} (ассорти)` : b.dripCount ? String(b.dripCount) : ''], ['Кофе в дрипе', b.dripWeight ? `${fmtNum(b.dripWeight, 1)} г` : '']] : []),
+    ...(drip ? [['Дрипов в коробке', b.assorted ? `${dripTotal(b)} (ассорти)` : b.dripCount ? String(b.dripCount) : '']] : []),
     ...(b.isBlend || (drip && b.assorted) ? [] : [['Страна', b.country], ['Регион', b.region], ['Ферма / станция', b.farm],
       ['Производитель', b.producer], ['Сорт', b.variety], ['Обработка', b.process], ['Высота', b.altitude]]),
-    ['Урожай', b.harvest], ['Обжарка', b.roastLevel],
+    ...(drip ? [] : [['Урожай', b.harvest]]), ['Обжарка', b.roastLevel],
     ['Дата обжарки', b.roastDate ? new Date(b.roastDate + 'T00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : ''],
     ['Штрихкод', b.barcode],
   ] as [string, string][]).filter(([, v]) => v);
@@ -358,7 +358,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
   const removePart = (i: number) => { platform.haptic('light'); setB((x) => ({ ...x, parts: (x.parts ?? []).filter((_, j) => j !== i) })); };
   const drip = isDrip(b);
   const setKind = (k: 'beans' | 'drip') => setB((x) => (k === 'drip'
-    ? { ...x, kind: 'drip', dripCount: x.dripCount ?? 10, dripWeight: x.dripWeight ?? 11 }
+    ? { ...x, kind: 'drip', dripCount: x.dripCount ?? 1, harvest: '' }
     : { ...x, kind: undefined, assorted: undefined }));
   const setAssorted = (on: boolean) => setB((x) => ({
     ...x, assorted: on || undefined,
@@ -450,12 +450,8 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
             <Chips options={DRIP_COUNTS.map((n) => `${n} шт`)} value={b.dripCount ? [`${b.dripCount} шт`] : []}
               onToggle={(v) => set({ dripCount: b.dripCount === parseInt(v) ? undefined : parseInt(v) })} />
           </>}
-          <p className="muted pad small-note">Кофе в одном дрипе</p>
-          <Chips options={DRIP_WEIGHTS.map((n) => `${n} г`)} value={b.dripWeight ? [`${b.dripWeight} г`] : []}
-            onToggle={(v) => set({ dripWeight: b.dripWeight === parseInt(v) ? undefined : parseInt(v) })} />
           <div className="group" style={{ marginTop: 10 }}>
             {!b.assorted && numField('Дрипов в коробке', 'bean-drip-count', b.dripCount, (n) => set({ dripCount: n === undefined ? undefined : Math.round(n) }), 'шт')}
-            {numField('Кофе в дрипе', 'bean-drip-weight', b.dripWeight, (n) => set({ dripWeight: n }), 'г')}
             {isNew && (
               <Field label="Осталось сейчас, шт" id="bean-left" inputMode="numeric" placeholder={String(dripTotal(b) || '')}
                 value={leftText} onChange={(e) => setLeftText(e.target.value)} />
@@ -517,7 +513,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
           <div className="group" style={{ marginTop: 10 }}>
             {f('process', 'Своя обработка', { placeholder: 'например, Double fermentation' })}
             {f('variety', 'Сорт', { placeholder: 'Гейша, SL28, Бурбон…' })}
-            {f('harvest', 'Урожай', { placeholder: '2026' })}
+            {!drip && f('harvest', 'Урожай', { placeholder: '2026' })}
           </div>
         </Section>
       </> : (

@@ -6,8 +6,14 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Added
+- Timers survive closing the app: the running timer is kept on the device by the clock, and reopening the app resumes it where it is (with pause). The brew tab shows a banner with the running timer («Колд брю · 3:00:01 из 12:00:00 · осталось 8:59:59»).
+- Long timers (an hour and more — cold brew) run in the background: leaving the screen does not abandon them («Свернуть»), the screen is not kept awake, and the bot sends a Telegram message when the time is up, with a button that opens the timer — even if the app is closed. The app asks Telegram once for permission to receive bot messages. Pause, reset and «готово» cancel the message.
+- Health warning: the 11th own brew of a day shows a one-time note that this much coffee is a lot for the body (cuppings and sample brews are not counted).
 - Grinder mileage in Profile → equipment: «смолото 12,4 кг · 820 заварок» — what went through the burrs (dose plus loss; every cup in cupping), without drips and sample brews.
 - Grinder loss: a grinder has «Потери при помоле, г» (what is purged or cleaned out per grind). The pack gives dose + loss, the recipe, ratio and timer use the dose that went into the brewer; the method screen shows «Из пачки 16,5 г → в воронку 15 г», and the brew editor has «Из пачки» to correct it for one brew. Not applied to drips and cupping.
+
+### Changed
+- No daily limit on brews any more: every brew counts toward achievements. Only a technical ceiling of 100 brews a day stays against scripts; the water limits (3 L per brew, 6 L per day) and the no-backdating rule are unchanged.
 
 ## v1.3.1 — Hotfix (2026-10-30)
 

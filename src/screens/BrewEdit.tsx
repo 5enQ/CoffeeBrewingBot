@@ -12,10 +12,11 @@ import { GRIND_RULES, fmtGrind, grinderOf, unitOf } from '../data/grind';
 import { GrindField } from '../ui/GrindField';
 import { CvaEditor } from '../ui/Cva';
 import { MODES } from '../data/cva';
+import { healthWarning } from '../data/health';
 
 
 export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: boolean; openCupping?: boolean }) {
-  const { saveBrew, gear: myGear } = useStore();
+  const { saveBrew, gear: myGear, brews } = useStore();
   const { setTab, push, back } = useRouter();
   const [b, setB] = useState<Brew>(draft);
   const [timeText, setTimeText] = useState(fmtTime(draft.time));
@@ -47,8 +48,10 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
     const toSave: Brew = isCupping
       ? { ...b, rating: 0, cupping: { ...(b.cupping ?? emptyCupping()), descriptors: b.descriptors, notes: b.notes } }
       : { ...b, cupping: null };
+    const warn = isNew ? healthWarning(brews, toSave) : null;
     saveBrew(toSave);
     platform.haptic('success');
+    if (warn) setTimeout(() => void platform.alert(warn), 400);
     if (isNew) { setTab('journal'); push({ name: 'brew', id: toSave.id, fresh: true }); }
     else back(true);
   };

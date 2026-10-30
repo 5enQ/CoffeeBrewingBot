@@ -260,6 +260,21 @@ export default {
       return json({ id: await accounts().putCard('tg', user.id, data) }, 200, h);
     }
 
+    // ---- bot reminder when a long timer ends ----
+    if (req.method === 'POST' && url.pathname === '/reminders') {
+      let body: { initData?: string; at?: unknown; title?: unknown; link?: unknown; cancel?: unknown };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      if (body.cancel) return json({ ok: await accounts().cancelReminder('tg', user.id) }, 200, h);
+      const at = Number(body.at), now = Date.now();
+      const title = String(body.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Заварка';
+      const link = String(body.link ?? '');
+      if (!Number.isFinite(at) || at < now + 30_000 || at > now + 72 * 3_600_000) return json({ error: 'bad time' }, 400, h);
+      if (!/^https:\/\/t\.me\/[A-Za-z0-9_]+(\/[A-Za-z0-9_]+)?\?startapp=timer$/.test(link)) return json({ error: 'bad link' }, 400, h);
+      return json({ ok: await accounts().setReminder('tg', user.id, Math.round(at), title, link) }, 200, h);
+    }
+
     const card = url.pathname.match(/^\/cards\/([A-Za-z0-9]{6,16})$/);
     if (req.method === 'GET' && card) {
       const data = await accounts().getCard(card[1]);

@@ -167,6 +167,13 @@ export function createTelegramPlatform(): Platform {
       if (can('8.0') && tg().requestFullscreen) tg().requestFullscreen();
     },
 
+    requestWriteAccess() {
+      if (!can('6.9') || !tg().requestWriteAccess) return Promise.resolve(true); // older clients: the bot can write if the chat exists
+      return new Promise((res) => {
+        try { tg().requestWriteAccess((ok: boolean) => res(!!ok)); } catch { res(false); }
+      });
+    },
+
     startParam() {
       return tg().initDataUnsafe?.start_param || web.startParam();
     },

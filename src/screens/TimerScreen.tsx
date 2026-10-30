@@ -7,6 +7,8 @@ import { useBackGuard, useRouter } from '../router';
 import { useLayout } from '../layout';
 import { Button, Screen } from '../ui/kit';
 import { Icon } from '../ui/icons';
+import { LONG_TIMER, clearTimer, elapsedOf, loadTimer, saveTimer } from '../data/timer';
+import { cancelReminder, remindersAvailable, scheduleReminder } from '../data/remind';
 
 let audio: AudioContext | null = null;
 function beep(freq = 880, ms = 140) {
@@ -23,33 +25,67 @@ function beep(freq = 880, ms = 140) {
   } catch { /* no sound */ }
 }
 
-export function TimerScreen({ draft }: { draft: Brew }) {
+type RemindState = 'off' | 'pending' | 'on' | 'fail';
+
+export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: boolean }) {
+  // a timer left running (the app was closed, or a long one in the background) picks up where it was
+  const [stored] = useState(() => { const t = loadTimer(); return t && (resume || t.draft.id === given.id) ? t : null; });
+  const draft = stored?.draft ?? given;
   const m = methodById(draft.methodId);
   const plan = effectivePlan(draft.methodId, draft.plan);
-  const { replace } = useRouter();
-  const [elapsed, setElapsed] = useState(0);
-  const [running, setRunning] = useState(false);
+  const long = plan.total >= LONG_TIMER;
+  const { replace, reset: home, setTab } = useRouter();
+  const [elapsed, setElapsed] = useState(() => (stored ? elapsedOf(stored) : 0));
+  const [running, setRunning] = useState(() => stored?.startedAt != null);
   const [sound, setSound] = useState(true);
-  const base = useRef(0);       // time accumulated before the last start
-  const startedAt = useRef(0);
-  const lastStep = useRef(-1);
-  const finished = useRef(false);
+  const [remind, setRemind] = useState<RemindState>(stored?.remind ? 'on' : 'off');
+  const base = useRef(stored?.base ?? 0);       // seconds accumulated before the last start
+  const startedAt = useRef(stored?.startedAt ?? 0); // epoch ms of the last start
+  const lastStep = useRef(stored ? plan.steps.reduce((acc, s, i) => (s.at <= elapsedOf(stored) ? i : acc), -1) : -1);
+  const finished = useRef(stored ? elapsedOf(stored) >= plan.total : false);
+  const closed = useRef(false);
 
   useEffect(() => {
     if (!running) return;
-    startedAt.current = performance.now();
-    const t = setInterval(() => setElapsed(base.current + (performance.now() - startedAt.current) / 1000), 100);
-    return () => clearInterval(t);
+    const tick = () => setElapsed(base.current + (Date.now() - startedAt.current) / 1000);
+    tick();
+    const t = setInterval(tick, 100);
+    // the screen may have slept: catch up as soon as it is visible again
+    document.addEventListener('visibilitychange', tick);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', tick); };
   }, [running]);
 
-  // the screen stays on, closing requires confirmation
-  useEffect(() => {
-    platform.keepAwake(running);
-    platform.setClosingConfirmation(running || elapsed > 0);
-  }, [running, elapsed > 0]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => { platform.keepAwake(false); platform.setClosingConfirmation(false); }, []);
+  const persist = (on: boolean, rem = remind) => {
+    // a quick brew does not push out a long one kept in the background
+    const cur = loadTimer();
+    if (!long && cur && cur.draft.id !== draft.id && cur.total >= LONG_TIMER) return;
+    saveTimer({ draft, base: base.current, startedAt: on ? startedAt.current : null, total: plan.total, remind: rem === 'on' || rem === 'pending' });
+  };
 
-  useBackGuard(elapsed > 0, 'Прервать заварку? Время не сохранится.');
+  // the bot writes when a long timer ends — the app may be closed by then
+  const armReminder = async () => {
+    const left = plan.total - base.current;
+    if (!long || left < 60 || !remindersAvailable()) return;
+    setRemind('pending');
+    const ok = await scheduleReminder(startedAt.current + left * 1000, draft.plan ? `${m.name} · ${draft.plan.name}` : m.name);
+    if (closed.current) return;
+    setRemind(ok ? 'on' : 'fail');
+    if (loadTimer()?.draft.id === draft.id) persist(true, ok ? 'on' : 'fail');
+  };
+  const dropReminder = () => { if (remind === 'on' || remind === 'pending') { void cancelReminder(); setRemind('off'); } };
+
+  // the screen stays on, closing requires confirmation (not for long timers: they live on without the app)
+  useEffect(() => {
+    platform.keepAwake(running && !long);
+    platform.setClosingConfirmation(!long && (running || elapsed > 0));
+  }, [running, elapsed > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => {
+    platform.keepAwake(false); platform.setClosingConfirmation(false);
+    // leaving the screen: a short brew is abandoned, a long one keeps going (banner on the brew tab)
+    if (!long && !closed.current) clearTimer(draft.id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useBackGuard(elapsed > 0 && !long, 'Прервать заварку? Время не сохранится.');
 
   const idx = plan.steps.reduce((acc, s, i) => (s.at <= elapsed ? i : acc), -1);
   const step = idx >= 0 ? plan.steps[idx] : plan.steps[0];
@@ -71,18 +107,27 @@ export function TimerScreen({ draft }: { draft: Brew }) {
 
   const toggle = () => {
     platform.haptic('medium');
-    if (running) { base.current += (performance.now() - startedAt.current) / 1000; setElapsed(base.current); }
-    else if (elapsed === 0) { lastStep.current = 0; if (sound) beep(); }
+    if (running) {
+      base.current += (Date.now() - startedAt.current) / 1000; setElapsed(base.current);
+      persist(false); dropReminder();
+    } else {
+      if (elapsed === 0) { lastStep.current = 0; if (sound) beep(); }
+      startedAt.current = Date.now();
+      persist(true); void armReminder();
+    }
     setRunning(!running);
   };
   const reset = async () => {
     if (elapsed > 0 && !(await platform.confirm('Сбросить таймер?'))) return;
     setRunning(false); base.current = 0; setElapsed(0); lastStep.current = -1; finished.current = false;
+    dropReminder(); clearTimer(draft.id);
   };
   const finish = () => {
-    if (running) base.current += (performance.now() - startedAt.current) / 1000;
+    if (running) base.current += (Date.now() - startedAt.current) / 1000;
     const total = running ? base.current : elapsed;
     setRunning(false);
+    closed.current = true;
+    dropReminder(); clearTimer(draft.id);
     platform.haptic('success');
     replace({ name: 'brewEdit', draft: { ...draft, time: Math.round(total || plan.total), date: Date.now() }, isNew: true, openCupping: m.id === 'cupping' });
   };
@@ -150,6 +195,16 @@ export function TimerScreen({ draft }: { draft: Brew }) {
         <div className="step-next">
           <span>Через {fmtTime(next.at - elapsed)}</span>
           <b>{next.title}{next.to !== undefined ? ` · до ${fmtNum(draft.water * next.to, 0)} г` : ''}</b>
+        </div>
+      )}
+      {long && (
+        <div className="timer-long">
+          <p>Таймер идёт и без приложения — его можно закрыть, время не собьётся.</p>
+          {remind === 'on' && <p className="ok">Бот пришлёт сообщение в Telegram, когда время выйдет.</p>}
+          {remind === 'pending' && <p>Ставим напоминание…</p>}
+          {remind === 'fail' && <p className="warn">Не получилось поставить напоминание в Telegram{platform.kind === 'telegram' ? ' — разрешите боту писать вам и нажмите «Пауза» и «Продолжить»' : ''}.</p>}
+          {remind === 'off' && running && !remindersAvailable() && <p>Напоминание от бота работает в Telegram.</p>}
+          {elapsed > 0 && <Button kind="secondary" onClick={() => { setTab('brew'); home(); }}>Свернуть</Button>}
         </div>
       )}
       {layout === 'desktop' && <p className="kbd-hint"><kbd>Пробел</kbd> старт / пауза · <kbd>R</kbd> сброс · <kbd>Enter</kbd> записать</p>}

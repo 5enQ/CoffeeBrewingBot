@@ -43,6 +43,9 @@ export class Accounts extends DurableObject<Env> {
     sql.exec(`CREATE TABLE IF NOT EXISTS identity (provider TEXT NOT NULL, subject TEXT NOT NULL, account TEXT NOT NULL, PRIMARY KEY (provider, subject))`);
     sql.exec(`CREATE TABLE IF NOT EXISTS brew (account TEXT NOT NULL, bid TEXT NOT NULL, m TEXT NOT NULL, w INTEGER NOT NULL, t INTEGER NOT NULL, r INTEGER NOT NULL, PRIMARY KEY (account, bid))`);
     sql.exec(`CREATE TABLE IF NOT EXISTS card (id TEXT PRIMARY KEY, account TEXT NOT NULL UNIQUE, data TEXT NOT NULL, ts INTEGER NOT NULL)`);
+    // one pending "your brew is ready" message per account; the alarm fires at the earliest one
+    sql.exec(`CREATE TABLE IF NOT EXISTS reminder (account TEXT PRIMARY KEY, chat TEXT NOT NULL, at INTEGER NOT NULL, title TEXT NOT NULL, link TEXT NOT NULL)`);
+    sql.exec('CREATE INDEX IF NOT EXISTS reminder_at ON reminder (at)');
     // one-time migrations, gated by the schema version (the object wakes up often; see CoffeeCatalog)
     sql.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
     if (!sql.exec("SELECT 1 FROM meta WHERE key = 'schema'").toArray().length) {
@@ -176,4 +179,54 @@ export class Accounts extends DurableObject<Env> {
       no: theme?.ach === 'liters' ? (tester ? TEST_NO : acc.diamond_no ?? undefined) : undefined,
     };
   }
+
+  /* ---------- bot reminders (a long timer ended, the app may be closed) ---------- */
+
+  /** schedule (or move) this person's reminder; the Telegram chat with the bot is the user id */
+  async setReminder(provider: string, subject: string, at: number, title: string, link: string) {
+    const acc = this.resolve(provider, subject);
+    const chat = provider === 'tg' ? subject : this.tgOf(acc.id);
+    if (!chat) return false;
+    this.sql.exec('INSERT INTO reminder (account, chat, at, title, link) VALUES (?, ?, ?, ?, ?) ON CONFLICT(account) DO UPDATE SET chat = excluded.chat, at = excluded.at, title = excluded.title, link = excluded.link',
+      acc.id, chat, at, title, link);
+    await this.nextAlarm();
+    return true;
+  }
+
+  async cancelReminder(provider: string, subject: string) {
+    const row = this.sql.exec<{ account: string }>('SELECT account FROM identity WHERE provider = ? AND subject = ?', provider, subject).toArray()[0];
+    if (row) this.sql.exec('DELETE FROM reminder WHERE account = ?', row.account);
+    await this.nextAlarm();
+    return true;
+  }
+
+  private async nextAlarm() {
+    const next = this.sql.exec<{ at: number | null }>('SELECT MIN(at) AS at FROM reminder').toArray()[0]?.at ?? null;
+    if (next === null) await this.ctx.storage.deleteAlarm();
+    else await this.ctx.storage.setAlarm(Math.max(next, Date.now() + 1000));
+  }
+
+  async alarm() {
+    const due = this.sql.exec<{ account: string; chat: string; title: string; link: string; at: number }>(
+      'SELECT account, chat, title, link, at FROM reminder WHERE at <= ? ORDER BY at LIMIT 50', Date.now() + 5000).toArray();
+    for (const r of due) {
+      this.sql.exec('DELETE FROM reminder WHERE account = ? AND at = ?', r.account, r.at);
+      await sendReminder(this.env.BOT_TOKEN, r.chat, r.title, r.link);
+    }
+    await this.nextAlarm();
+  }
+}
+
+/** the bot's message with a button back into the timer */
+export async function sendReminder(token: string, chat: string, title: string, link: string) {
+  const text = `☕ ${title}: время вышло!\nПора процедить и записать заварку.`;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: Number(chat), text, reply_markup: { inline_keyboard: [[{ text: 'Открыть таймер', url: link }]] } }),
+    });
+    const j = await r.json<{ ok: boolean; description?: string }>();
+    if (!j.ok) console.log('reminder not sent:', j.description);
+    return j.ok;
+  } catch (e) { console.log('reminder error', e); return false; }
 }

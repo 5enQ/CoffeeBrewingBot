@@ -1,3 +1,4 @@
+import { loadTimer } from './data/timer';
 import { TabPages, useTabPill } from './ui/motion';
 import { CuppingSetup } from './screens/CuppingSetup';
 import { StoreProvider, useStore } from './data/store';
@@ -32,7 +33,7 @@ function renderRoute(r: Route) {
       return <RecipesScreen methodId={r.methodId} beanId={r.beanId} />;
     case 'method': if (r.methodId === 'cupping') return <CuppingSetup beanId={r.beanId} from={r.from} />;
       return <MethodScreen methodId={r.methodId} beanId={r.beanId} from={r.from} recipeId={r.recipeId} />;
-    case 'timer': return <TimerScreen draft={r.draft} />;
+    case 'timer': return <TimerScreen draft={r.draft} resume={r.resume} />;
     case 'brewEdit': return <BrewEdit draft={r.draft} isNew={r.isNew} openCupping={r.openCupping} />;
     case 'brew': return <BrewDetail id={r.id} fresh={r.fresh} />;
     case 'bean': return <BeanDetail id={r.id} />;
@@ -71,6 +72,12 @@ function Shell() {
     if (!ready) return;
     const param = platform.startParam();
     if (!param) return;
+    // "timer" — from the bot's "brew is ready" message
+    if (param === 'timer') {
+      const t = loadTimer();
+      if (t) push({ name: 'timer', draft: t.draft, resume: true });
+      return;
+    }
     // "p…" — a profile card
     if (param.startsWith('p')) {
       loadCard(param.slice(1)).then((card) => {

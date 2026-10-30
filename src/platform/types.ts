@@ -70,6 +70,9 @@ export interface Platform {
   /** Signed Telegram launch data (initData) — to verify the user on the server */
   initData(): string | null;
 
+  /** Let the bot write to the user (Telegram 6.9+, WebApp.requestWriteAccess). Absent outside Telegram */
+  requestWriteAccess?: () => Promise<boolean>;
+
   /** Launch parameter: startapp in Telegram, #r=… on the web */
   startParam(): string | null;
 

@@ -1,0 +1,55 @@
+User-Agent: *
+Allow: /bitrix/catalog_export/yandex_848006.php
+Allow: /bitrix/components/
+Allow: /bitrix/cache/
+Allow: /bitrix/js/
+Allow: /bitrix/templates/
+Disallow: /bitrix/
+Disallow: /auth/
+Disallow: /personal/
+Disallow: /cart/
+Disallow: /order/
+Disallow: /ajax/
+Disallow: /search/
+Disallow: /*login=yes
+Disallow: /*/order/result-pay/
+Disallow: /*/make_order/
+# Блокировка мусорных GET-параметров поиска, сортировок и сброса кэша
+Disallow: /*?*q=
+Disallow: /*?*s=
+Disallow: /*?*filter*
+Disallow: /*?*sort=
+Disallow: /*?*order=
+Disallow: /*?*clear_cache=
+Disallow: /*?*PAGEN_
+Sitemap: https://theweldercatherine.ru/sitemap.xml
+
+User-Agent: Yandex
+Allow: /bitrix/catalog_export/yandex_848006.php
+Allow: /bitrix/components/
+Allow: /bitrix/cache/
+Allow: /bitrix/js/
+Allow: /bitrix/templates/
+Disallow: /bitrix/
+Disallow: /auth/
+Disallow: /personal/
+Disallow: /cart/
+Disallow: /order/
+Disallow: /ajax/
+Disallow: /search/
+Disallow: /*login=yes
+Disallow: /*/order/result-pay/
+Disallow: /*/make_order/
+# Блокировка мусорных GET-параметров
+Disallow: /*?*q=
+Disallow: /*?*s=
+Disallow: /*?*filter*
+Disallow: /*?*sort=
+Disallow: /*?*order=
+Disallow: /*?*clear_cache=
+Disallow: /*?*PAGEN_
+# Склейка страниц с метками и сессиями в один канонический URL
+Clean-param: utm_source&utm_medium&utm_campaign&utm_content&utm_term /
+Clean-param: InvId&ORDER_ID&backurl /
+Clean-param: bxrand&clear_cache /
+Sitemap: https://theweldercatherine.ru/sitemap.xml

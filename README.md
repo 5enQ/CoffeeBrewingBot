@@ -98,9 +98,6 @@ Camera permission for the scanner: Android — `<uses-permission android:name="a
 | `POST /share` | prepared Telegram message for `shareMessage` |
 | `GET /lookup?url=…&code=…` | coffee by QR link or barcode (catalog first, then the roaster page if the site is approved) |
 | `POST /catalog` | a user saved a pack: fill in or confirm the catalog entry |
-| `GET /roasters` | approved roasters with lot counts |
-| `GET /catalog/list?host=…&kind=beans\|drip` | lots of one roaster for the in-app picker |
-| `GET /catalog/<id>` | one lot |
 | `POST /admin { initData, action, host, roaster }` | owner only: list / approve / reject / recrawl roaster sites |
 
 Setup: Cloudflare account → Account ID and an API token (template "Edit Cloudflare Workers") → GitHub **Settings → Secrets and variables → Actions**: secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `BOT_TOKEN`, `OWNER_TELEGRAM_ID` (your numeric Telegram id, shown in the app under Profile → "О приложении" → "Ваш Telegram ID"; several ids can be comma-separated); variable `RATINGS_ENABLED` = `true`. The server address is `RATINGS_API` in `src/config.ts`.
@@ -114,14 +111,14 @@ A shared catalog of coffee lots on the server — the basis for a future global 
 - When `parse.ts` learns something new, bump `PARSER_VERSION` in `worker/src/index.ts`: unconfirmed lots are re-parsed on the next scan.
 - Saving a pack sends only the coffee description (no roast date, stock, notes or brews). While a lot has at most one confirmation, user edits replace parsed values; after that edits only fill empty fields. Each Telegram user counts once.
 - Missing fields are simply not stored.
-- Lot state: `active` (on sale), `out` (out of stock), `archived` (the roaster's archive section), `gone` (removed from the site). Lots are never deleted: an old pack in hand can still be found.
+- Lot state: `active` (on sale), `out` (out of stock), `archived` (the roaster's archive section), `gone` (removed from the site). Lots are never deleted: an old pack in hand is still recognized.
 
 ### Roaster sites and the crawler
 
 - The server fetches pages **only from approved domains**. A scan from an unknown site is queued as "pending", the owner gets a Telegram message from the bot and approves or rejects the site in the app (Profile → "Сайты обжарщиков", visible only to `OWNER_TELEGRAM_ID`).
 - Approved from the start (`SEED_SITES` in `worker/src/crawl.ts`, with per-site URL rules): kojocoffee.ru, sbmrne.ru, hq-coffee.com, theweldercatherine.ru, shop.tastycoffee.ru. A newly approved site uses all sitemap URLs; a page becomes a lot only if it has at least two coffee facts (or a name and a country).
 - The crawler is a Durable Object alarm: one request per step, a step every 15 s, at least 30 s between requests to the same site; robots.txt is respected. Each site's sitemaps are re-read every 3 days; a page is re-fetched when its `lastmod` changes or every 14 days. Pages that leave the sitemap or return 404 turn their lots `gone`. A cron trigger every 6 hours only makes sure the loop is running.
-- The in-app picker (pack editor → "Выбрать из каталога обжарщиков") shows a roaster's lots on sale first; past lots are one tap away and always included in search.
+- Users never browse the catalog: it is a server-side cache, so a scan of a known pack is filled instantly without fetching the roaster page. The lot state is kept for the future global rating and is not shown in the app.
 - Local test of the crawler: run a fixture server and set `CRAWL_PROXY="http://127.0.0.1:8800/"` and `CRAWL_STEP_MS="300"` in `worker/.dev.vars` (requests to `https://host/path` go to `http://127.0.0.1:8800/host/path`).
 
 ## Sync between devices

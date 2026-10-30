@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { coffeeToPatch, contributeCoffee, filledLabels, lookupCode, mergeEmpty, STATE_LABEL, type Lot } from '../data/lookup';
+import { contributeCoffee, filledLabels, lookupCode, mergeEmpty } from '../data/lookup';
 import { allMethods, methodById, fmtRatio, fmtNum } from '../data/methods';
 import { beanSca, brewBeanIds } from '../data/cva';
 import { emptyBean, isDrip, newDripItem, uid, useStore, type Bean, type BlendPart, type DripItem } from '../data/store';
@@ -9,7 +9,6 @@ import { useBackGuard, useRouter, useSelected } from '../router';
 import { MethodIcon, Icon } from '../ui/icons';
 import { Button, Chips, Empty, Field, Row, SampleTag, ScaleDots, Screen, Section, Segmented, Stars } from '../ui/kit';
 import { SCALES, hasScales } from '../data/scales';
-import { CatalogPicker } from '../ui/CatalogPicker';
 import { Scanner } from '../ui/Scanner';
 import { BrewScore } from '../ui/CuppingForm';
 import { beanMeta, beanOrigin, beanTitle, blendLines, brewBeanTitle, dripMeta, dripTitle, PROCESSES, RestBadge, ROAST_LEVELS } from './beanUtils';
@@ -336,7 +335,6 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
   const kindLocked = !isNew && brews.some((x) => brewBeanIds(x).includes(bean.id));
   const [b, setB] = useState<Bean>(bean);
   const [scan, setScan] = useState(!!scanOnOpen);
-  const [picker, setPicker] = useState(false);
   const [status, setStatus] = useState('');
   const [leftText, setLeftText] = useState('');
   const dirty = JSON.stringify(b) !== JSON.stringify(bean);
@@ -408,20 +406,6 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
       : 'Код сохранён. Данных об этом кофе пока нет — заполните вручную: после сохранения пачка попадёт в общий каталог, и у следующих она заполнится сама.');
   };
 
-  const onLot = (lot: Lot, kind: 'beans' | 'drip') => {
-    setPicker(false);
-    const before = b;
-    const base: Bean = kind === 'drip' && !isDrip(b) ? { ...b, kind: 'drip', dripCount: undefined } : b;
-    const patch = { ...coffeeToPatch(lot.coffee, lot.id, kind === 'drip'), ...(lot.url ? { link: lot.url } : {}) };
-    const next = mergeEmpty(base, patch);
-    if (patch.dripCount) next.dripCount = patch.dripCount;
-    if (kind === 'drip' && !next.dripCount) next.dripCount = 1;
-    setB(next);
-    const filled = filledLabels(before, next);
-    const note = STATE_LABEL[lot.state] ? ` (${STATE_LABEL[lot.state]})` : '';
-    setStatus(`Из каталога${note}. Заполнено: ${filled.join(', ') || 'ничего нового'}. Проверьте поля и укажите дату обжарки.`);
-  };
-
   const save = () => {
     // Pack added already opened: stock below weight — remember the correction
     const left = parseFloat(leftText.replace(',', '.'));
@@ -451,11 +435,6 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
           onBlur={() => { if (b.barcode && b.barcode !== bean.barcode && (/^\d{8,14}$/.test(b.barcode) || /^https?:\/\/\S+$/i.test(b.barcode))) onCode(b.barcode); }}
           suffix={<button type="button" className="icon-btn" onClick={() => setScan(true)} aria-label="Сканировать"><Icon name="scan" /></button>} />
         {status && <p className="status">{status}</p>}
-        {isNew && !b.name && (
-          <button type="button" className="link-btn catalog-open" onClick={() => setPicker(true)}>
-            <Icon name="search" size={18} /> Выбрать из каталога обжарщиков
-          </button>
-        )}
       </div>
 
       <Section title="Основное">
@@ -610,7 +589,6 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
       </Section>
 
       {scan && <Scanner onResult={onCode} onClose={() => setScan(false)} />}
-      {picker && <CatalogPicker kind={drip ? 'drip' : 'beans'} kindLocked={kindLocked} onPick={onLot} onClose={() => setPicker(false)} />}
     </Screen>
   );
 }

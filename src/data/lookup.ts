@@ -211,27 +211,6 @@ export async function lookupCode(raw: string, beans: Bean[], drip = false): Prom
   return { code, kind: 'text', existing, patch: { barcode: code } };
 }
 
-/* ---------- Browsing the catalog by roaster ---------- */
-
-export interface Roaster { host: string; roaster: string; lots: number; drips: number; onSale: number }
-export interface Lot { id: string; coffee: Coffee; state: LotState; url?: string }
-
-async function getJson<T>(path: string): Promise<T | null> {
-  if (!RATINGS_API) return null;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 12000);
-  try {
-    const r = await fetch(`${RATINGS_API}${path}`, { signal: ctrl.signal });
-    return r.ok ? await r.json() : null;
-  } catch { return null; } finally { clearTimeout(t); }
-}
-
-export const fetchRoasters = async () => (await getJson<{ roasters: Roaster[] }>('/roasters'))?.roasters ?? null;
-export const fetchLots = async (host: string, kind: 'beans' | 'drip') =>
-  (await getJson<{ lots: Lot[] }>(`/catalog/list?${new URLSearchParams({ host, kind })}`))?.lots ?? null;
-
-export const STATE_LABEL: Record<LotState, string> = { active: '', out: 'нет в наличии', archived: 'архив', gone: 'снят с продажи' };
-
 /* ---------- Owner tools: roaster sites ---------- */
 
 export interface SiteInfo {

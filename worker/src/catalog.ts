@@ -114,8 +114,6 @@ let PER_SITE = 30_000;
 /** Sitemap entries handled per step (the rest wait in the sitemap row) */
 const CHUNK = 250;
 
-const STATE_ORDER: Record<LotState, number> = { active: 0, out: 1, archived: 2, gone: 3 };
-
 export class CoffeeCatalog extends DurableObject<Env> {
   private sql: SqlStorage;
 
@@ -174,8 +172,6 @@ export class CoffeeCatalog extends DurableObject<Env> {
     const { pv, ...coffee } = JSON.parse(row.data) as Coffee & { pv?: number };
     return { id, coffee, source: row.source as Found['source'], confirms: row.confirms, pv, state: (row.state as LotState) || 'active', url: row.url ?? undefined };
   }
-
-  lot(id: string) { return this.get(id); }
 
   /** The parser improved — update a lot nobody has confirmed yet */
   refreshPage(id: string, coffee: Coffee, pv: number): Found | null {
@@ -257,35 +253,6 @@ export class CoffeeCatalog extends DurableObject<Env> {
     }
     this.sql.exec('UPDATE coffee SET data = ?, updated = ?, state = ?, host = ?, url = ? WHERE id = ?', JSON.stringify(data), Date.now(), state, host, url, found.id);
     return found.id;
-  }
-
-  /* ---------- catalog browsing ---------- */
-
-  /** Approved roasters with lot counts (only sites that have lots) */
-  roasters() {
-    const counts = this.sql.exec<{ host: string; n: number; drips: number; live: number }>(
-      `SELECT host, COUNT(*) AS n,
-         SUM(CASE WHEN data LIKE '%"kind":"drip"%' OR data LIKE '%"dripOptions"%' THEN 1 ELSE 0 END) AS drips,
-         SUM(CASE WHEN state = 'active' THEN 1 ELSE 0 END) AS live
-       FROM coffee WHERE host IS NOT NULL GROUP BY host`).toArray();
-    const by = new Map(counts.map((c) => [c.host, c]));
-    return this.sql.exec<{ host: string; roaster: string }>("SELECT host, roaster FROM site WHERE status = 'approved' ORDER BY roaster").toArray()
-      .map((s) => ({ host: s.host, roaster: s.roaster || s.host, lots: by.get(s.host)?.n ?? 0, drips: by.get(s.host)?.drips ?? 0, onSale: by.get(s.host)?.live ?? 0 }))
-      .filter((s) => s.lots > 0);
-  }
-
-  /** Lots of one roaster: on sale first, then by name. kind: 'beans' | 'drip'; q — search in name, country, process, notes. */
-  list(host: string, kind: string | null, q: string, limit = 300) {
-    const rows = this.sql.exec<{ id: string; data: string; state: string; url: string | null }>(
-      'SELECT id, data, state, url FROM coffee WHERE host = ?', normHost(host)).toArray();
-    const needle = q.trim().toLowerCase();
-    return rows
-      .map((r) => { const { pv: _pv, ...coffee } = JSON.parse(r.data) as Coffee & { pv?: number }; void _pv; return { id: r.id, coffee, state: (r.state || 'active') as LotState, url: r.url ?? undefined }; })
-      .filter((r) => !r.coffee.isBlend || r.coffee.name)
-      .filter((r) => kind === 'drip' ? r.coffee.kind === 'drip' || !!r.coffee.dripOptions?.length : kind === 'beans' ? r.coffee.kind !== 'drip' : true)
-      .filter((r) => !needle || [r.coffee.name, r.coffee.country, r.coffee.region, r.coffee.process, r.coffee.variety, r.coffee.packNotes].some((v) => v?.toLowerCase().includes(needle)))
-      .sort((a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state] || (a.coffee.name ?? '').localeCompare(b.coffee.name ?? '', 'ru'))
-      .slice(0, limit);
   }
 
   /* ---------- sites ---------- */

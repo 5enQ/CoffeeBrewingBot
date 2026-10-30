@@ -237,26 +237,6 @@ export default {
       return json(publicFound(await catalog.contribute(keys, coffee, user.id)), 200, h);
     }
 
-    if (req.method === 'GET' && url.pathname === '/roasters') {
-      const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
-      return json({ roasters: await catalog.roasters() }, 200, { ...h, 'Cache-Control': 'max-age=600' });
-    }
-
-    if (req.method === 'GET' && url.pathname === '/catalog/list') {
-      const host = url.searchParams.get('host') ?? '';
-      const kind = url.searchParams.get('kind');
-      if (!/^[a-z0-9.-]{3,100}$/i.test(host)) return json({ error: 'bad host' }, 400, h);
-      const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
-      const lots = await catalog.list(host, kind === 'drip' || kind === 'beans' ? kind : null, (url.searchParams.get('q') ?? '').slice(0, 60));
-      return json({ lots }, 200, { ...h, 'Cache-Control': 'max-age=600' });
-    }
-
-    const lot = url.pathname.match(/^\/catalog\/([a-f0-9]{16})$/);
-    if (req.method === 'GET' && lot) {
-      const found = await env.CATALOG.get(env.CATALOG.idFromName('all')).lot(lot[1]);
-      return found ? json(publicFound(found), 200, { ...h, 'Cache-Control': 'max-age=600' }) : json({ error: 'not found' }, 404, h);
-    }
-
     if (req.method === 'POST' && url.pathname === '/admin') {
       let body: { initData?: string; action?: string; host?: string; roaster?: string };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }

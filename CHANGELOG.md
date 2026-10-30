@@ -5,6 +5,9 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Removed
+- The in-app catalog picker ("Выбрать из каталога обжарщиков") and the `/roasters`, `/catalog/list`, `/catalog/<id>` endpoints: the catalog is a server-side cache for scans, users do not browse it. Stock status is not shown anywhere in the app.
+
 ## v1.2.0 — Roaster catalog (2026-10-30)
 
 ### Added

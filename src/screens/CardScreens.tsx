@@ -21,7 +21,8 @@ export function useMyCard(): { card: CardData; unlocked: UnlockedTheme[]; verifi
   const { profile, gear } = useStore();
   const badges = useBadges();
   const { stats, verified, diamondNo, grants } = useStats();
-  const unlocked = useMemo(() => unlockedThemes(stats), [stats]);
+  const tester = grants.includes('tester');
+  const unlocked = useMemo(() => unlockedThemes(stats, tester), [stats, tester]);
   return { card: buildCard(profile, badges.featured, gear, stats, diamondNo, grants), unlocked, verified, grants };
 }
 

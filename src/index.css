@@ -1028,6 +1028,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 
 /* ---------- Owner: roaster sites ---------- */
 .row .tag { margin-left: 8px; }
+.grant-row { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line, rgba(0,0,0,0.06)); }
 .site-actions { display: flex; gap: 8px; padding: 0 16px 12px; flex-wrap: wrap; }
 .site-actions .btn { flex: 1; min-width: 120px; }
 

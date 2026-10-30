@@ -270,32 +270,46 @@ function OwnerTools() {
   return <><RoasterSites sites={data.sites} onChange={setData} /><DevGrants grants={data.grants} onChange={setData} /></>;
 }
 
-/** Give or take away the developers' background by Telegram id */
+const GRANTS = [
+  { id: 'dev', label: 'Фон разработчика', hint: 'особый фон «Разработчик»' },
+  { id: 'tester', label: 'Все фоны (тест)', hint: 'любой фон любого уровня; бриллиант с № 0, настоящие номера не занимает' },
+] as const;
+
+/** Give or take away special grants by Telegram id, each separately */
 function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: { sites: SiteInfo[]; grants: GrantInfo[] }): void }) {
   const [tg, setTg] = useState('');
   const [busy, setBusy] = useState(false);
-  const devs = grants.filter((g) => g.grants.includes('dev'));
-  const act = async (action: 'grant' | 'revoke', id: string) => {
-    if (action === 'revoke' && !(await platform.confirm(`Забрать фон разработчика у ${id}?`))) return;
+  const me = myTelegramId();
+  const act = async (action: 'grant' | 'revoke', id: string, what: string) => {
+    const label = GRANTS.find((g) => g.id === what)!.label.toLowerCase();
+    if (action === 'revoke' && !(await platform.confirm(`Забрать «${label}» у ${id}?`))) return;
     setBusy(true);
-    const next = await adminCall({ action, tg: id, what: 'dev' });
+    const next = await adminCall({ action, tg: id, what });
     setBusy(false);
-    if (next) { onChange(next); setTg(''); platform.haptic('success'); toast(action === 'grant' ? 'Фон выдан — появится у человека в карточке' : 'Фон забран'); }
+    if (next) { onChange(next); if (action === 'grant') setTg(''); platform.haptic('success'); toast(action === 'grant' ? 'Выдано — появится у человека в карточке' : 'Забрано'); }
     else toast('Не получилось — проверьте ID');
   };
   return (
-    <Section title="Фон разработчика">
-      <p className="muted pad small-note">Особый фон карточки, который можете выдать только вы. Telegram ID человек видит у себя: Профиль → «О приложении».</p>
-      {devs.map((g) => (
-        <Row key={g.account} label={g.tg ? `Telegram ${g.tg}` : `Аккаунт ${g.account}`} hint={g.tg === myTelegramId() ? 'это вы' : undefined}
-          value={<button type="button" className="link-btn" disabled={busy} onClick={() => act('revoke', g.tg ?? '')}>Забрать</button>} />
+    <Section title="Разработчики и тестировщики">
+      <p className="muted pad small-note">Выдаётся по Telegram ID, каждое право отдельно. ID человек видит у себя: Профиль → «О приложении». У вас как у владельца оба права есть всегда.</p>
+      {grants.filter((g) => g.tg !== me).map((g) => (
+        <div key={g.account} className="grant-row">
+          <span className="row-label">Telegram {g.tg ?? '—'}</span>
+          <div className="chips">
+            {GRANTS.map((x) => {
+              const on = g.grants.includes(x.id);
+              return <button type="button" key={x.id} className={'chip' + (on ? ' on' : '')} aria-pressed={on} disabled={busy || !g.tg}
+                onClick={() => act(on ? 'revoke' : 'grant', g.tg!, x.id)}>{x.label}</button>;
+            })}
+          </div>
+        </div>
       ))}
       <Field label="Telegram ID" id="dev-grant-id" inputMode="numeric" placeholder="например, 123456789" value={tg}
         onChange={(e) => setTg(e.target.value.replace(/\D/g, '').slice(0, 20))} />
       <div className="site-actions">
-        <Button icon="plus" disabled={busy || tg.length < 4} onClick={() => act('grant', tg)}>Выдать фон</Button>
-        {myTelegramId() && !devs.some((g) => g.tg === myTelegramId()) && <Button kind="secondary" disabled={busy} onClick={() => act('grant', myTelegramId()!)}>Себе</Button>}
+        {GRANTS.map((x) => <Button key={x.id} kind={x.id === 'dev' ? 'primary' : 'secondary'} icon="plus" disabled={busy || tg.length < 4} onClick={() => act('grant', tg, x.id)}>{x.label}</Button>)}
       </div>
+      <p className="muted pad small-note">{GRANTS.map((x) => `${x.label}: ${x.hint}`).join('. ')}.</p>
     </Section>
   );
 }

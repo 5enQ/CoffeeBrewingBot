@@ -10,8 +10,8 @@ import { platform } from '../platform';
 import { achievementBadge } from './achievements';
 import { sortBadges, type BadgeLite } from './badges';
 import { catById, GEAR_CATS, type Gear, type GearCat } from './gear';
-import { earnedLevels, givesBackground, TIER_ORDER, type Level, type Stats, type Tier } from './levels';
-import { methodById } from './methods';
+import { earnedLevels, givesBackground, LITER_LEVELS, METHOD_LEVELS, TIER_ORDER, type Level, type Stats, type Tier } from './levels';
+import { allMethods, methodById } from './methods';
 import type { Profile } from './store';
 
 export const BASE_THEMES = [
@@ -41,7 +41,7 @@ export interface CardData {
   ach: string[];
   setup: { cat: GearCat; name: string }[];
   /** a base color, the achievement whose metal background is shown, or a special background */
-  theme: { base: BaseTheme } | { ach: string } | { special: SpecialTheme };
+  theme: { base: BaseTheme } | { ach: string; tier?: Tier } | { special: SpecialTheme };
   /** levels of the achievements above (filled in by the server on a shared card) */
   earned?: Record<string, Level>;
   /** diamond only: the holder's place among everyone who reached 1000 liters (given by the server) */
@@ -60,13 +60,24 @@ export const achievementIcon = (key: string) => (key.startsWith('method:') ? met
 
 export interface UnlockedTheme { key: string; ach: string; tier: Tier; icon: string; label: string }
 
-/** Metal backgrounds the numbers allow, best tier first. key 'ach:<achievement key>' is stored in the profile. */
-export function unlockedThemes(stats: Stats): UnlockedTheme[] {
-  return Object.entries(earnedLevels(stats))
-    .filter(([k, l]) => givesBackground(k, l.tier))
-    .map(([k, l]) => ({ key: `ach:${k}`, ach: k, tier: l.tier, icon: achievementIcon(k), label: achievementBadge(k, l.tier, l.at).title }))
-    .sort((x, y) => TIER_ORDER.indexOf(y.tier) - TIER_ORDER.indexOf(x.tier));
+/**
+ * Metal backgrounds the numbers allow, best tier first. key 'ach:<achievement key>' is stored in the profile.
+ * A tester (granted by the owner) gets every level of every method and the diamond: keys 'ach:<key>@<tier>'.
+ */
+export function unlockedThemes(stats: Stats, tester = false): UnlockedTheme[] {
+  const list: UnlockedTheme[] = tester
+    ? [
+      ...allMethods().filter((m) => !m.custom).flatMap((m) => METHOD_LEVELS.map((l) => ({ key: `ach:method:${m.id}@${l.tier}`, ach: `method:${m.id}`, tier: l.tier, icon: m.icon as string, label: achievementBadge(`method:${m.id}`, l.tier, l.at).title }))),
+      ...LITER_LEVELS.filter((l) => l.tier === 'diamond').map((l) => ({ key: `ach:liters@${l.tier}`, ach: 'liters', tier: l.tier, icon: 'drop', label: achievementBadge('liters', l.tier, l.at).title })),
+    ]
+    : Object.entries(earnedLevels(stats))
+      .filter(([k, l]) => givesBackground(k, l.tier))
+      .map(([k, l]) => ({ key: `ach:${k}`, ach: k, tier: l.tier, icon: achievementIcon(k), label: achievementBadge(k, l.tier, l.at).title }));
+  return list.sort((x, y) => TIER_ORDER.indexOf(y.tier) - TIER_ORDER.indexOf(x.tier));
 }
+
+/** Level a tester's chosen tier stands for */
+const testLevel = (key: string, tier: Tier): Level | undefined => (key.startsWith('method:') ? METHOD_LEVELS : LITER_LEVELS).find((l) => l.tier === tier);
 
 /** The card as it looks: theme and the full list of badges */
 export function cardView(c: CardData): { theme: CardTheme; badges: BadgeLite[] } {
@@ -100,12 +111,15 @@ export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite 
   const levels = earnedLevels(stats);
   const ach = featured.filter((f) => f.key.startsWith('ach:')).map((f) => f.key.slice(4)).filter((k) => levels[k]);
   const own = featured.filter((f) => !f.key.startsWith('ach:')).map((f) => { const { id: _id, ...b } = f.badge as BadgeLite & { id?: string }; return b; });
-  const chosen = p.cardTheme?.startsWith('ach:') ? p.cardTheme.slice(4) : null;
+  const [chosen, chosenTier] = p.cardTheme?.startsWith('ach:') ? p.cardTheme.slice(4).split('@') as [string, Tier | undefined] : [null, undefined];
   const special = p.cardTheme?.startsWith('special:') ? SPECIAL_THEMES.find((x) => `special:${x.id}` === p.cardTheme && grants.includes(x.id)) : undefined;
+  const test = chosen && chosenTier && grants.includes('tester') ? testLevel(chosen, chosenTier) : undefined;
+  const themeLevel = test ?? (chosen ? levels[chosen] : undefined);
   const theme: CardData['theme'] = special ? { special: special.id }
-    : chosen && levels[chosen] && givesBackground(chosen, levels[chosen].tier) ? { ach: chosen }
+    : chosen && themeLevel && givesBackground(chosen, themeLevel.tier) ? (test ? { ach: chosen, tier: test.tier } : { ach: chosen })
     : { base: (BASE_THEMES.find((t) => t.id === p.cardTheme)?.id ?? 'paper') as BaseTheme };
-  const earned = Object.fromEntries([...ach, ...('ach' in theme ? [theme.ach] : [])].map((k) => [k, levels[k]]));
+  const earned: Record<string, Level> = Object.fromEntries(ach.map((k) => [k, levels[k]]));
+  if ('ach' in theme && themeLevel) earned[theme.ach] = themeLevel;
   return {
     v: 2,
     name: p.name.trim() || (tg ? '@' + tg : 'Без имени'),
@@ -148,10 +162,10 @@ export function cleanCard(raw: unknown): CardData | null {
   const setup = Array.isArray(r.setup) ? r.setup.slice(0, MAX_SETUP).map((g: Record<string, unknown>) => ({ cat: catById(g?.cat as GearCat).id, name: str(g?.name, 60) })).filter((g) => g.name) : [];
   const username = str(r.username, 32).replace(/[^A-Za-z0-9_]/g, '');
   const photo = str(r.photo, 300);
-  const no = Number(r.no);
+  const no = r.no === undefined || r.no === null ? NaN : Number(r.no);
   return {
     v: 2, name, username: username || undefined, about: str(r.about, 200) || undefined, photo: /^https:\/\//.test(photo) ? photo : undefined,
-    badges, ach, setup, theme, earned, no: Number.isInteger(no) && no > 0 ? no : undefined,
+    badges, ach, setup, theme, earned, no: Number.isInteger(no) && no >= 0 ? no : undefined,
     granted: Array.isArray(r.granted) ? r.granted.filter((g): g is string => SPECIAL_THEMES.some((x) => x.id === g)) : [],
   };
 }

@@ -199,7 +199,7 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
       {tier && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
       {volume && <VolumeIcon icon={icon as IconKey} x={t.x} y={t.y} />}
       {'special' in view.theme && view.theme.special === 'dev' && <DevLayer />}
-      {tier === 'diamond' && card.no && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}
+      {tier === 'diamond' && card.no !== undefined && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}
       {icon && !volume && (
         <div className="pcard-corner" aria-hidden="true">
           {icon === 'star' ? <Icon name="star" size={64} filled /> : <MethodIcon icon={icon as IconKey} size={72} />}

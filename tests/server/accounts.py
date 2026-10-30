@@ -34,7 +34,10 @@ big = [{'id': f'b{i}', 'm': 'batch', 'w': 3000, 't': T0 + (i // 2) * DAY + i} fo
 sb = post('/brews', {'initData': B, 'brews': big}); ok(sb['liters'] >= 1000 and sb.get('diamondNo') == 1, f'1000 liters → diamond № {sb.get("diamondNo")} ({sb["liters"]} L)')
 c2 = get(f'/cards/{cid2}')['card']; ok(c2['theme'] == {'ach': 'liters'} and c2.get('no') == 1 and c2['earned']['liters']['tier'] == 'diamond', 'diamond card with the server number')
 sa = post('/brews', {'initData': A, 'brews': [{'id': f'a{i}', 'm': 'batch', 'w': 3000, 't': T0 + (i // 2) * DAY + i} for i in range(400)]})
-ok(sa.get('diamondNo') == 2, f'second person → № {sa.get("diamondNo")}')
+ok(sa.get('diamondNo') == 0 and {'dev', 'tester'} <= set(sa['grants']), f'the owner is a tester automatically: diamond № {sa.get("diamondNo")}, grants {sa.get("grants")}')
+E = sign(555)
+se = post('/brews', {'initData': E, 'brews': [{'id': f'e{i}', 'm': 'batch', 'w': 3000, 't': T0 + (i // 2) * DAY + i} for i in range(400)]})
+ok(se.get('diamondNo') == 2, f'the next real person → № {se.get("diamondNo")} (the owner did not take a number)')
 ok(post('/brews', {'initData': B, 'brews': []}).get('diamondNo') == 1, 'the number never changes')
 ok(post('/me', {'initData': 'forged'}).get('status') == 401, 'forged Telegram data is rejected')
 
@@ -47,9 +50,21 @@ g = post('/admin', {'initData': A, 'action': 'grant', 'tg': '333', 'what': 'dev'
 ok(any(x['tg'] == '333' and 'dev' in x['grants'] for x in g.get('grants', [])), 'the owner gives it by Telegram id')
 c3 = get(f'/cards/{cid3}')['card']; ok(c3['theme'] == {'special': 'dev'} and c3['granted'] == ['dev'], 'then the card shows it')
 ok('dev' in post('/me', {'initData': C})['grants'], 'the person sees it in their numbers')
+ok('tester' not in post('/me', {'initData': C})['grants'], 'grants are separate: dev does not give tester')
+tc = post('/cards', {'initData': C, 'card': {'name': 'Т', 'theme': {'ach': 'method:v60', 'tier': 'volume'}, 'ach': []}})['id']
+ok(get(f'/cards/{tc}')['card']['theme'] == {'base': 'paper'}, 'without tester a chosen level is ignored')
+post('/admin', {'initData': A, 'action': 'grant', 'tg': '333', 'what': 'tester'})
+t1 = get(f'/cards/{tc}')['card']
+ok(t1['theme'] == {'ach': 'method:v60'} and t1['earned']['method:v60'] == {'tier': 'volume', 'at': 1000}, f'a tester shows any level: {t1["earned"]}')
+oc = post('/cards', {'initData': A, 'card': {'name': 'Владелец', 'theme': {'ach': 'liters', 'tier': 'diamond'}, 'ach': []}})['id']
+o1 = get(f'/cards/{oc}')['card']; ok(o1.get('no') == 0 and o1['earned']['liters']['tier'] == 'diamond', 'owner test diamond shows № 0')
 ok(post('/admin', {'initData': A, 'action': 'grant', 'tg': '333', 'what': 'gold-forever'}).get('status') == 400, 'unknown special backgrounds are refused')
+# one card per person: put the developers card back, then take the grant away
+post('/cards', {'initData': C, 'card': {'name': 'Разраб', 'theme': {'special': 'dev'}, 'ach': []}})
+ok(get(f'/cards/{cid3}')['card']['theme'] == {'special': 'dev'}, 'the same link shows the updated card')
 post('/admin', {'initData': A, 'action': 'revoke', 'tg': '333', 'what': 'dev'})
 ok(get(f'/cards/{cid3}')['card']['theme'] == {'base': 'paper'}, 'taken away → the card falls back to the default')
+ok('tester' in post('/me', {'initData': C})['grants'], 'taking dev away keeps the separate tester grant')
 
 print('\n' + (f'{len(FAILS)} check(s) failed' if FAILS else 'all checks passed'))
 sys.exit(1 if FAILS else 0)

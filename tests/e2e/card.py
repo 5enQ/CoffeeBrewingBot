@@ -12,6 +12,7 @@ CARDS = {
     'silver1': card({'ach': 'method:aeropress'}, {'method:aeropress': {'tier': 'silver', 'at': 100}}),
     'gold1': card({'ach': 'method:espresso'}, {'method:espresso': {'tier': 'gold', 'at': 500}}),
     'diamond1': card({'ach': 'liters'}, {'liters': {'tier': 'diamond', 'at': 1000}}, no=7),
+    'diamond0': card({'ach': 'liters'}, {'liters': {'tier': 'diamond', 'at': 1000}}, no=0),
     'volume1': card({'ach': 'method:aeropress'}, {'method:aeropress': {'tier': 'volume', 'at': 1000}}),
     'espresso1': card({'base': 'espresso'}),
     'dev1': {**card({'special': 'dev'}), 'granted': ['dev']},
@@ -96,6 +97,27 @@ async def main():
             await V('.pcard').first.screenshot(path=str(OUT / f'card-{t}.png'))
         check(not errors, f'no page errors: {errors[:3]}')
 
+        # a tester sees every background at every level
+        SERVER['grants'] = ['tester', 'dev']
+        pt, et = await page(b, db=DB, init=TG)
+        await mock(pt, [], [])
+        await pt.reload(); await pt.wait_for_timeout(3500)
+        await pt.click('.tabbar >> text=Профиль'); await pt.wait_for_timeout(400)
+        await pt.locator('button:visible:has-text("Настроить и поделиться")').click(); await pt.wait_for_timeout(400)
+        tiles = [s.split('\n')[0] for s in await pt.locator('.theme-pick:visible').all_inner_texts()]
+        check(all(t in tiles for t in ('Разработчик', 'Бронза', 'Серебро', 'Золото', 'Объёмный', 'Бриллиант')), f'tester: all backgrounds ({tiles})')
+        await pt.locator('.theme-pick:visible:has-text("Объёмный")').click(); await pt.wait_for_timeout(300)
+        n_icons = await pt.locator('.icon-pick:visible').count()
+        check(n_icons >= 10, f'tester: every method icon inside a tier ({n_icons})')
+        await pt.locator('.icon-pick:visible[aria-label*="Аэропресс"]').click(); await pt.wait_for_timeout(300)
+        check(await pt.locator('.pcard.tier-volume .pcard-volume').count() >= 1, 'tester: «Объёмный» Аэропресс on the card')
+        await pt.locator('.theme-pick:visible:has-text("Бриллиант")').click(); await pt.wait_for_timeout(300)
+        SERVER['diamondNo'] = 0
+        check(await pt.locator('.pcard.tier-diamond').count() >= 1, 'tester: diamond card')
+        await pt.evaluate('window.scrollTo(0, 0)'); await pt.locator('.theme-picks').screenshot(path=str(OUT / 'tester-themes.png'))
+        check(not et, f'no page errors (tester): {et[:3]}')
+        SERVER.pop('grants'); SERVER.pop('diamondNo', None)
+
         # shared cards: silver, gold, diamond (light and dark), espresso
         for dark in (False, True):
             for k in CARDS:
@@ -104,7 +126,9 @@ async def main():
                 await mock(pv, [])
                 await pv.reload(); await pv.wait_for_timeout(900)
                 check(await pv.locator('.pcard:visible').count() == 1, f'shared card {k} opens{" (dark)" if dark else ""}')
-                if k == 'devfake':
+                if k == 'diamond0':
+                    check((await pv.locator('.pcard-no').inner_text()).replace('\n', '') == '№0', 'test diamond shows № 0')
+                elif k == 'devfake':
                     check(await pv.locator('.pcard.special-dev').count() == 0, 'developers background without the server grant is not shown')
                 elif k == 'dev1':
                     check(await pv.locator('.pcard.special-dev .pcard-dev-mark').count() == 1, 'developers background with its mark')

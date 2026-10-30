@@ -43,7 +43,12 @@ export class Accounts extends DurableObject<Env> {
     sql.exec(`CREATE TABLE IF NOT EXISTS identity (provider TEXT NOT NULL, subject TEXT NOT NULL, account TEXT NOT NULL, PRIMARY KEY (provider, subject))`);
     sql.exec(`CREATE TABLE IF NOT EXISTS brew (account TEXT NOT NULL, bid TEXT NOT NULL, m TEXT NOT NULL, w INTEGER NOT NULL, t INTEGER NOT NULL, r INTEGER NOT NULL, PRIMARY KEY (account, bid))`);
     sql.exec(`CREATE TABLE IF NOT EXISTS card (id TEXT PRIMARY KEY, account TEXT NOT NULL UNIQUE, data TEXT NOT NULL, ts INTEGER NOT NULL)`);
-    try { sql.exec("ALTER TABLE account ADD COLUMN grants TEXT NOT NULL DEFAULT '[]'"); } catch { /* already there */ }
+    // one-time migrations, gated by the schema version (the object wakes up often; see CoffeeCatalog)
+    sql.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    if (!sql.exec("SELECT 1 FROM meta WHERE key = 'schema'").toArray().length) {
+      try { sql.exec("ALTER TABLE account ADD COLUMN grants TEXT NOT NULL DEFAULT '[]'"); } catch { /* already there */ }
+      sql.exec("INSERT INTO meta (key, value) VALUES ('schema', '1')");
+    }
   }
 
   private grantsOf(account: string): string[] {
@@ -109,9 +114,18 @@ export class Accounts extends DurableObject<Env> {
     return out;
   }
 
+  /**
+   * Called on every app start: answer from the stored count (the brew log is read only when brews arrive —
+   * the free tier limits rows read per day). Ratings and grants are cheap and always fresh.
+   */
   async me(provider: string, subject: string): Promise<AccountStats> {
     const acc = this.resolve(provider, subject);
-    return this.recount(acc, await this.ratings(acc.id));
+    const ratings = await this.ratings(acc.id);
+    const row = this.sql.exec<{ stats: string | null }>('SELECT stats FROM account WHERE id = ?', acc.id).one();
+    if (!row.stats) return this.recount(acc, ratings);
+    const cached = JSON.parse(row.stats) as AccountStats;
+    const tester = this.grantsOf(acc.id).includes('tester');
+    return { ...cached, ratings, at: Date.now(), grants: this.grantsOf(acc.id), diamondNo: tester ? TEST_NO : cached.diamondNo === TEST_NO ? undefined : cached.diamondNo };
   }
 
   /** Brews changed on a device (the first call imports the whole history) and brews deleted there */

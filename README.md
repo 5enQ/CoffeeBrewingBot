@@ -106,6 +106,14 @@ Camera permission for the scanner: Android — `<uses-permission android:name="a
 
 Setup: Cloudflare account → Account ID and an API token (template "Edit Cloudflare Workers") → GitHub **Settings → Secrets and variables → Actions**: secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `BOT_TOKEN`, `OWNER_TELEGRAM_ID` (your numeric Telegram id, shown in the app under Profile → "О приложении" → "Ваш Telegram ID"; several ids can be comma-separated); variable `RATINGS_ENABLED` = `true`. The server address is `RATINGS_API` in `src/config.ts`.
 
+## Free-tier limits (important)
+
+Durable Objects on the free plan have a daily limit of rows read (about 5 million) and written (about 100 thousand), shared by the whole account; when it is used up, every server feature fails until 00:00 UTC. Rules for server code:
+
+- Frequent paths (every crawler step, every app start, every scan) must use indexed lookups only — check new queries with `EXPLAIN QUERY PLAN`.
+- One-time migrations are gated by the schema version in the `meta` table, never run unconditionally in a constructor: an object wakes up many times a day.
+- Recount from logs only on writes; answer reads from stored results.
+
 ## Accounts and verified achievements
 
 Achievements, card backgrounds and diamond numbers are decided on the server, so they cannot be faked by editing the app's data.
@@ -133,7 +141,7 @@ A shared catalog of coffee lots on the server — the basis for a future global 
 
 - The server fetches pages **only from approved domains**. A scan from an unknown site is queued as "pending", the owner gets a Telegram message from the bot and approves or rejects the site in the app (Profile → "Сайты обжарщиков", visible only to `OWNER_TELEGRAM_ID`).
 - Approved from the start (`SEED_SITES` in `worker/src/crawl.ts`, with per-site URL rules): kojocoffee.ru, sbmrne.ru, hq-coffee.com, theweldercatherine.ru, shop.tastycoffee.ru. A newly approved site uses all sitemap URLs; a page becomes a lot only if it has at least two coffee facts (or a name and a country).
-- The crawler is a Durable Object alarm: one request per step, a step every 15 s, at least 30 s between requests to the same site; robots.txt is respected. Each site's sitemaps are re-read every 3 days; a page is re-fetched when its `lastmod` changes or every 14 days. Pages that leave the sitemap or return 404 turn their lots `gone`. A cron trigger every 6 hours only makes sure the loop is running.
+- The crawler is a Durable Object alarm: one request per step, a step every minute, at least 2 minutes between requests to the same site; robots.txt is respected. Each site's sitemaps are re-read every 3 days; a page is re-fetched when its `lastmod` changes or every 14 days. Pages that leave the sitemap or return 404 turn their lots `gone`. A cron trigger every 6 hours only makes sure the loop is running.
 - Users never browse the catalog: it is a server-side cache, so a scan of a known pack is filled instantly without fetching the roaster page. The lot state is kept for the future global rating and is not shown in the app.
 - Local test of the crawler: run a fixture server and set `CRAWL_PROXY="http://127.0.0.1:8800/"` and `CRAWL_STEP_MS="300"` in `worker/.dev.vars` (requests to `https://host/path` go to `http://127.0.0.1:8800/host/path`).
 

@@ -5,6 +5,8 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.3.0 — Profile Update (2026-10-30)
+
 ### Added
 - Profile card: avatar, name, optional Telegram link, featured badges, setup (chosen gear, up to 6) and a color theme. Shared by a link that never changes: friends always see the latest card.
 - Card backgrounds from achievements. Every brew method: bronze (50 brews), silver (100), gold (500) and «Объёмный» (1000) — an obsidian card with the method icon extruded in 3D. Diamond for 1000 liters: faceted, iridescent, turns in 3D with the device, and carries the holder's number in the bottom-left corner (№ 1 for the first person to reach it, given by the server). Metals of one tier are one tile with a choice of the corner icon. Metals catch the light: a bright band travels across them with the tilt and small glints flash.
@@ -15,6 +17,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - Achievements, card backgrounds, achievement badges on cards and diamond numbers are decided by the server's count: a shared card shows only what the server confirms.
 
 ### Fixed
+- Server outage since v1.2.0: the catalog crawler read whole tables on every step and used up the free-tier daily limit of rows read in Durable Objects, after which every server feature failed (`Exceeded allowed rows read`). One-time migrations now run once (schema version in a `meta` table), seeded sites are written only when their rules change, the crawler picks the next page through an index and steps once a minute (~40k rows a day instead of millions); `/me` answers from the stored count.
 - Achievements of retired methods (Kalita Wave) and deleted custom methods are no longer lost.
 
 ### Changed

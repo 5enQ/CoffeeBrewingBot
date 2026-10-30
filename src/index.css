@@ -1074,12 +1074,18 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .pcard.tier { --pc-line: rgba(255,255,255,0.25); }
 .pcard.tier::before { content: ''; position: absolute; inset: 0; z-index: 0; opacity: 0.5;
   background: repeating-linear-gradient(100deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 3px); }
-.pcard.tier-bronze { --pc-fg: #fff4ea; --pc-muted: #f3cfae; background: linear-gradient(calc(120deg + var(--tx) * 25deg), #4e2c14, #9b5f33 30%, #e3a877 50%, #a0643a 68%, #5a3218); }
-.pcard.tier-silver { --pc-fg: #18202a; --pc-muted: #4b5866; --pc-line: rgba(0,0,0,0.14); background: linear-gradient(calc(120deg + var(--tx) * 25deg), #7d8893, #c9d1d9 30%, #f6f8fa 50%, #b8c1ca 68%, #7a858f); }
-.pcard.tier-gold { --pc-fg: #2b1c02; --pc-muted: #6e5212; --pc-line: rgba(60,40,0,0.18); background: linear-gradient(calc(120deg + var(--tx) * 25deg), #7a5310, #cfa034 28%, #fff0b3 50%, #d6a43a 70%, #7a5310); }
-.pcard-sheen { position: absolute; z-index: 1; inset: -60% -60%; pointer-events: none; mix-blend-mode: soft-light;
-  background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,0.75) 50%, transparent 58%);
-  transform: translate(calc(var(--tx) * 30%), calc(var(--ty) * 18%)); }
+/* the metal gradient is larger than the card and slides with the tilt, so the bright band travels across it */
+.pcard.tier-bronze, .pcard.tier-silver, .pcard.tier-gold {
+  background-size: 260% 260%; background-position: calc(50% - var(--tx) * 45%) calc(50% - var(--ty) * 35%);
+}
+.pcard.tier-bronze { --pc-fg: #fff4ea; --pc-muted: #f3cfae; background-image: linear-gradient(120deg, #4e2c14, #7a4825 20%, #b97a47 38%, #f2c193 50%, #b97a47 62%, #7a4825 80%, #4e2c14); }
+.pcard.tier-silver { --pc-fg: #18202a; --pc-muted: #4b5866; --pc-line: rgba(0,0,0,0.14); background-image: linear-gradient(120deg, #6f7a85, #9aa5b0 20%, #cfd6dd 38%, #ffffff 50%, #cfd6dd 62%, #9aa5b0 80%, #6f7a85); }
+.pcard.tier-gold { --pc-fg: #2b1c02; --pc-muted: #6e5212; --pc-line: rgba(60,40,0,0.18); background-image: linear-gradient(120deg, #6e4a0c, #a87b1c 20%, #dcb04a 38%, #fff3c4 50%, #dcb04a 62%, #a87b1c 80%, #6e4a0c); }
+.pcard-sheen { position: absolute; z-index: 1; inset: -60% -60%; pointer-events: none; mix-blend-mode: overlay;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.0) 44%, rgba(255,255,255,0.85) 49%, rgba(255,255,255,0.35) 51%, transparent 56%),
+    linear-gradient(105deg, transparent 60%, rgba(255,255,255,0.45) 63%, transparent 66%);
+  transform: translate(calc(var(--tx) * 42%), calc(var(--ty) * 22%)); }
+.pcard-glints { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; mix-blend-mode: screen; }
 
 /* diamond: facets that light up with the tilt, a rainbow layer, a thick glassy edge, content floating above */
 .pcard.tier-diamond {
@@ -1118,3 +1124,13 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .theme-pick.tier-silver { --pc-fg: #18202a; background: linear-gradient(120deg, #7d8893, #f6f8fa 50%, #7a858f); }
 .theme-pick.tier-gold { --pc-fg: #2b1c02; background: linear-gradient(120deg, #7a5310, #fff0b3 50%, #7a5310); }
 .theme-pick.tier-diamond { --pc-fg: #101a33; background: linear-gradient(135deg, #bfe3ff, #fff 30%, #ffd6f0 50%, #d6fff1 70%, #d9ccff); }
+
+.icon-picks { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.icon-pick-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.icon-pick { width: 52px; height: 52px; border: 0; border-radius: 14px; display: grid; place-items: center; color: var(--pc-fg, var(--fg));
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.06); }
+.icon-pick.on { box-shadow: 0 0 0 2.5px var(--accent); }
+.icon-pick.tier-bronze { --pc-fg: #fff4ea; background: linear-gradient(120deg, #4e2c14, #e3a877 50%, #5a3218); }
+.icon-pick.tier-silver { --pc-fg: #18202a; background: linear-gradient(120deg, #7d8893, #f6f8fa 50%, #7a858f); }
+.icon-pick.tier-gold { --pc-fg: #2b1c02; background: linear-gradient(120deg, #7a5310, #fff0b3 50%, #7a5310); }
+.icon-pick.tier-diamond { --pc-fg: #101a33; background: linear-gradient(135deg, #bfe3ff, #fff 30%, #ffd6f0 50%, #d6fff1 70%, #d9ccff); }

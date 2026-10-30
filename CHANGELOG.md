@@ -7,7 +7,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ### Added
 - Profile card: avatar, name, optional Telegram link, featured badges, setup (chosen gear, up to 6) and a color theme. Shared by a link that never changes: friends always see the latest card.
-- Metal card themes unlock with achievements: bronze, silver, gold, diamond, each with the achievement's icon in the corner (the method icon for "N brews with a method"). Metals have a sheen that follows the tilt; diamond is faceted, iridescent and turns in 3D with the device (Telegram DeviceOrientation, the browser sensor, or the mouse).
+- Metal card themes unlock with achievements: bronze, silver, gold, diamond, each with the achievement's icon in the corner (the method icon for "N brews with a method"). Metals of one tier are one tile with a choice of the corner icon (which achievement to show). Metals catch the light: a bright band travels across them with the tilt and small glints flash; diamond is faceted, iridescent and turns in 3D with the device (Telegram DeviceOrientation, the browser sensor, or the mouse).
 
 ### Fixed
 - Achievements of retired methods (Kalita Wave) and deleted custom methods are no longer lost.

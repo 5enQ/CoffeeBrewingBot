@@ -3,12 +3,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { BASE_THEMES, buildCard, cardText, MAX_SETUP, resolveTheme, storeCard, unlockedThemes, type CardData, type CardTheme } from '../data/card';
 import { useBadges } from '../data/featured';
 import { GEAR_CATS } from '../data/gear';
-import { TIER_LABEL } from '../data/achievements';
+import { TIER_LABEL, type Tier } from '../data/achievements';
+import type { IconKey } from '../data/methods';
 import { prepareShare } from '../data/ratings';
 import { useStore } from '../data/store';
 import { cardLinkFor } from '../data/share';
 import { platform } from '../platform';
-import { Icon } from '../ui/icons';
+import { Icon, MethodIcon } from '../ui/icons';
 import { Button, Screen, Section } from '../ui/kit';
 import { ProfileCard } from '../ui/ProfileCard';
 import { copyText, toast } from '../ui/toast';
@@ -24,6 +25,12 @@ export function useMyCard(): { card: CardData; unlocked: ReturnType<typeof unloc
   return { card: buildCard(profile, shown, gear, theme), unlocked };
 }
 
+const TIERS: Tier[] = ['bronze', 'silver', 'gold', 'diamond'];
+const plural = (n: number, f: [string, string, string]) => {
+  const a = n % 10, b = n % 100;
+  return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2];
+};
+
 const swatchClass = (t: CardTheme) => ('tier' in t ? `tier tier-${t.tier}` : `base-${t.base}`);
 
 export function CardEditScreen() {
@@ -38,6 +45,10 @@ export function CardEditScreen() {
   const myGear = gear.filter((g) => offered.has(g.cat));
   const chosenIds = profile.cardGear ?? GEAR_CATS.map((c) => myGear.find((g) => g.cat === c.id)?.id).filter(Boolean) as string[];
   const current = profile.cardTheme ?? 'paper';
+  // metal themes grouped by tier: bronze, silver, gold, diamond
+  const tiers = TIERS.map((tier) => [tier, unlocked.filter((u) => (u.theme as { tier?: Tier }).tier === tier)] as const).filter(([, l]) => l.length);
+  const currentTier = unlocked.find((u) => u.key === current) ? (unlocked.find((u) => u.key === current)!.theme as { tier: Tier }).tier : null;
+  const chosenGroup = currentTier ? tiers.find(([t]) => t === currentTier)?.[1] : null;
 
   // the link is prepared in advance, so sending happens right on tap (Telegram needs the message ready)
   useEffect(() => {
@@ -96,14 +107,32 @@ export function CardEditScreen() {
               <span>{t.label}</span>
             </button>
           ))}
-          {/* metal themes appear only once earned — like achievements, they are a surprise */}
-          {unlocked.map((u) => (
-            <button type="button" key={u.key} className={'theme-pick ' + swatchClass(u.theme) + (current === u.key ? ' on' : '')} aria-pressed={current === u.key}
-              onClick={() => { platform.haptic('select'); saveProfile({ ...profile, cardTheme: u.key }); }}>
-              <span>{TIER_LABEL[(u.theme as { tier: keyof typeof TIER_LABEL }).tier]}</span><small>{u.label}</small>
+          {/* metal themes appear only once earned — like achievements, they are a surprise; one tile per tier */}
+          {tiers.map(([tier, list]) => (
+            <button type="button" key={tier} className={'theme-pick ' + swatchClass(list[0].theme) + (currentTier === tier ? ' on' : '')} aria-pressed={currentTier === tier}
+              onClick={() => { platform.haptic('select'); if (currentTier !== tier) saveProfile({ ...profile, cardTheme: list[0].key }); }}>
+              <span>{TIER_LABEL[tier]}</span><small>{list.length > 1 ? `${list.length} ${plural(list.length, ['значок', 'значка', 'значков'])}` : list[0].label}</small>
             </button>
           ))}
         </div>
+        {chosenGroup && chosenGroup.length > 1 && (
+          <div className="icon-picks" role="radiogroup" aria-label="Иконка в углу">
+            <p className="muted small-note">Иконка в углу — какое достижение показать:</p>
+            <div className="icon-pick-row">
+              {chosenGroup.map((u) => {
+                const icon = (u.theme as { icon: string }).icon;
+                return (
+                  <button type="button" key={u.key} role="radio" aria-checked={current === u.key} aria-label={u.label} title={u.label}
+                    className={'icon-pick ' + swatchClass(u.theme) + (current === u.key ? ' on' : '')}
+                    onClick={() => { platform.haptic('select'); saveProfile({ ...profile, cardTheme: u.key }); }}>
+                    {icon === 'star' ? <Icon name="star" size={26} filled /> : <MethodIcon icon={icon as IconKey} size={30} />}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="muted small-note">{chosenGroup.find((u) => u.key === current)?.label}</p>
+          </div>
+        )}
       </Section>
 
       <div className="group">

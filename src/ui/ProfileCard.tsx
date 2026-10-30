@@ -105,6 +105,31 @@ function Facets({ x, y }: { x: number; y: number }) {
   );
 }
 
+/* ---------- metal glints ---------- */
+
+/** Fixed spots on the metal that flash when the tilt brings them into the light */
+const GLINTS = [[14, 18, 1.1], [78, 12, 0.9], [62, 40, 1.3], [30, 52, 0.8], [88, 50, 1], [46, 8, 0.7], [8, 40, 0.9]] as const;
+
+function Glints({ x, y }: { x: number; y: number }) {
+  return (
+    <svg className="pcard-glints" viewBox="0 0 100 64" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      {GLINTS.map(([gx, gy, s], i) => {
+        // each spot has its own "angle"; it shines only in a narrow tilt window
+        const phase = (gx / 100) * 2 - 1 + (gy / 64 - 0.5) * 0.8;
+        const a = Math.max(0, 1 - Math.abs(x * 0.9 + y * 0.5 - phase) * 3.2) ** 2;
+        if (a < 0.02) return null;
+        const r = 2.6 * s * (0.6 + a * 0.6);
+        return (
+          <g key={i} transform={`translate(${gx} ${gy}) rotate(${(x * 30).toFixed(1)})`} opacity={a.toFixed(3)}>
+            <path d={`M0 ${-r}Q${r * 0.12} ${-r * 0.12} ${r} 0Q${r * 0.12} ${r * 0.12} 0 ${r}Q${-r * 0.12} ${r * 0.12} ${-r} 0Q${-r * 0.12} ${-r * 0.12} 0 ${-r}Z`} fill="#fff" />
+            <circle r={r * 0.35} fill="#fff" opacity="0.8" />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 /* ---------- card ---------- */
 
 export function ProfileCard({ card, live = true }: { card: CardData; live?: boolean }) {
@@ -124,6 +149,7 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
       onClick={tier === 'diamond' ? () => requestTiltPermission() : undefined}>
       {tier === 'diamond' && <><Facets x={t.x} y={t.y} /><div className="pcard-iris" aria-hidden="true" /></>}
       {tier && <div className="pcard-sheen" aria-hidden="true" />}
+      {tier && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
       {icon && (
         <div className="pcard-corner" aria-hidden="true">
           {icon === 'star' ? <Icon name="star" size={64} filled /> : <MethodIcon icon={icon as IconKey} size={72} />}

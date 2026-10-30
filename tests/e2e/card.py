@@ -61,12 +61,17 @@ async def main():
         check(await V('.pcard').count() == 1, 'profile shows the card')
         await V('button:has-text("Настроить и поделиться")').click(); await pg.wait_for_timeout(500)
         sw = await V('.theme-pick').all_inner_texts()
-        check(any('Бронза' in s and 'V60' in s for s in sw), f'bronze V60 theme unlocked ({[s for s in sw if "Бронза" in s]})')
-        check(any('Kalita' in s for s in sw), 'achievement of the retired Kalita method is kept')
+        bronze = [s for s in sw if 'Бронза' in s]
+        check(len(bronze) == 1 and '3' in bronze[0], f'bronze themes grouped into one tile ({bronze})')
         check(not any('Серебро' in s for s in sw), 'silver is not offered without the achievement')
+        await V('.theme-pick:has-text("Бронза")').click(); await pg.wait_for_timeout(300)
+        icons = await V('.icon-pick').evaluate_all('els => els.map(e => e.getAttribute("aria-label"))')
+        check(len(icons) == 3 and any('Kalita' in i for i in icons) and any('V60' in i for i in icons), f'icon choice inside bronze, Kalita kept ({icons})')
         chips = await V('.chips .chip').all_inner_texts()
         check('Cafec Abaca' not in chips, 'retired filter gear is not offered for the card')
-        await V('.theme-pick:has-text("V60")').click(); await pg.wait_for_timeout(300)
+        await V('.icon-pick[aria-label*="V60"]').click(); await pg.wait_for_timeout(300)
+        check(await V('.icon-pick.on[aria-label*="V60"]').count() == 1, 'V60 icon selected')
+        await V('.icon-picks').screenshot(path=str(OUT / 'card-icon-picks.png'))
         check(await V('.pcard.tier-bronze .pcard-corner').count() == 1, 'bronze card with the method icon in the corner')
         await V('.chips .chip:has-text("Fellow Stagg EKG")').click(); await pg.wait_for_timeout(1500)
         check(posted and posted[-1]['theme'].get('tier') == 'bronze' and [g['name'] for g in posted[-1]['setup']] == ['Comandante C40', 'Hario V60 02'], f'card stored with theme and chosen setup ({posted[-1]["setup"] if posted else None})')
@@ -91,7 +96,16 @@ async def main():
                 await mock(pv, [])
                 await pv.reload(); await pv.wait_for_timeout(900)
                 check(await pv.locator('.pcard:visible').count() == 1, f'shared card {k} opens{" (dark)" if dark else ""}')
-                if k == 'diamond1':
+                if k in ('silver1', 'gold1'):
+                    pos = []
+                    for i, (be, ga) in enumerate([(0, 0), (0, -22), (0, 22)]):
+                        await tilt(pv, 0, 0); await pv.wait_for_timeout(50)
+                        await tilt(pv, be, ga); await pv.wait_for_timeout(700)
+                        pos.append(await pv.locator('.pcard:visible').evaluate('e => getComputedStyle(e).backgroundPosition'))
+                        await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-{k}-{i}.png'))
+                    check(len(set(pos[1:])) == 2, f'{k}: the light band moves with the tilt ({pos})')
+                    check(await pv.locator('.pcard-glints g').count() > 0, f'{k}: glints flash at some tilt')
+                elif k == 'diamond1':
                     for i, (be, ga) in enumerate([(0, 0), (8, -18), (-10, 20)]):
                         await tilt(pv, 0, 0); await pv.wait_for_timeout(50)
                         await tilt(pv, be, ga); await pv.wait_for_timeout(700)

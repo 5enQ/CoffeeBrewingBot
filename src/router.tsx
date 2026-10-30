@@ -5,6 +5,7 @@ import type { Gear } from './data/gear';
 import type { Badge } from './data/badges';
 import type { CustomMethod, CustomRecipe } from './data/recipes';
 import type { SharedRecipe } from './data/share';
+import type { CardData } from './data/card';
 
 export type Tab = 'brew' | 'journal' | 'beans' | 'profile';
 
@@ -22,7 +23,9 @@ export type Route =
   | { name: 'methodEdit'; method: CustomMethod; isNew: boolean }
   | { name: 'badgeEdit'; badge: Badge; isNew: boolean }
   | { name: 'share'; id: string }
-  | { name: 'shared'; recipe: SharedRecipe };
+  | { name: 'shared'; recipe: SharedRecipe }
+  | { name: 'cardEdit' }
+  | { name: 'card'; card: CardData };
 
 interface RouterApi {
   tab: Tab;

@@ -5,6 +5,17 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Added
+- Profile card: avatar, name, optional Telegram link, featured badges, setup (chosen gear, up to 6) and a color theme. Shared by a link that never changes: friends always see the latest card.
+- Metal card themes unlock with achievements: bronze, silver, gold, diamond, each with the achievement's icon in the corner (the method icon for "N brews with a method"). Metals have a sheen that follows the tilt; diamond is faceted, iridescent and turns in 3D with the device (Telegram DeviceOrientation, the browser sensor, or the mouse).
+
+### Fixed
+- Achievements of retired methods (Kalita Wave) and deleted custom methods are no longer lost.
+
+### Changed
+- Filters are no longer offered as gear (rarely relevant — a note on the brew covers it). Old brews keep the filter they were brewed with.
+- Profile: the "about" placeholder is just "Пара слов о себе".
+
 ### Removed
 - The in-app catalog picker ("Выбрать из каталога обжарщиков") and the `/roasters`, `/catalog/list`, `/catalog/<id>` endpoints: the catalog is a server-side cache for scans, users do not browse it. Stock status is not shown anywhere in the app.
 

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { fetchStats, myTelegramId, ratingsEnabled } from '../data/ratings';
 import { allMethods, fmtNum, methodById } from '../data/methods';
 import { recipeFromStandard } from '../data/recipes';
-import { GEAR_CATS, type Gear } from '../data/gear';
+import { GEAR_CATS, catById, type Gear } from '../data/gear';
 import { BADGE_KINDS, CHAMPIONSHIPS, PLACES, Q_TYPES, SCA_EXTRA, SCA_LEVELS, SCA_MODULES, type Badge } from '../data/badges';
 import { BadgeChip, BadgeRow } from '../ui/Badges';
 import { useBadges, MAX_FEATURED } from '../data/featured';
@@ -17,6 +17,8 @@ import { Button, Chips, Field, Row, SampleTag, Screen, Section, Segmented } from
 import { DESKTOP_MIN, useLayoutMode } from '../layout';
 import { adminSites, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
+import { ProfileCard } from '../ui/ProfileCard';
+import { useMyCard } from './CardScreens';
 
 export function Profile() {
   const store = useStore();
@@ -51,6 +53,7 @@ export function Profile() {
   };
 
   const badges = useBadges();
+  const { card: myCard } = useMyCard();
   const [pinMsg, setPinMsg] = useState('');
   const toggleFeatured = (key: string) => {
     const cur = badges.featuredKeys;
@@ -85,11 +88,18 @@ export function Profile() {
               onChange={(e) => store.saveProfile({ ...profile, telegram: e.target.value.replace(/^@/, '').replace(/[^A-Za-z0-9_]/g, '') })} />
           </label>
           {badges.featured.length > 0 && <div className="profile-badges"><BadgeRow badges={badges.featured.map((f) => f.badge)} max={3} /></div>}
-          <textarea id="profile-about" className="profile-about" rows={2} placeholder="Пара слов о себе: как любите кофе"
+          <textarea id="profile-about" className="profile-about" rows={2} placeholder="Пара слов о себе"
             value={profile.about} onChange={(e) => store.saveProfile({ ...profile, about: e.target.value })} />
         </div>
       </div>
       <p className="muted pad">Имя и значки увидят друзья в рецептах, которыми вы поделитесь. Ссылку на Telegram можно не добавлять — это выбирается при отправке.</p>
+
+      <Section title="Карточка профиля" plain>
+        <button type="button" className="pcard-open" onClick={() => push({ name: 'cardEdit' })} aria-label="Настроить карточку и поделиться">
+          <ProfileCard card={myCard} />
+        </button>
+        <Button kind="secondary" icon="share" wide onClick={() => push({ name: 'cardEdit' })}>Настроить и поделиться</Button>
+      </Section>
 
       <Section title="Значки" aside={
         <button type="button" className="icon-btn" onClick={() => addBadge()} aria-label="Добавить значок"><Icon name="plus" /></button>
@@ -350,7 +360,7 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
   const [g, setG] = useState<Gear>(initial);
   const dirty = JSON.stringify(g) !== JSON.stringify(initial);
   useBackGuard(dirty, 'Выйти без сохранения?');
-  const cat = GEAR_CATS.find((c) => c.id === g.cat)!;
+  const cat = catById(g.cat);
 
   // a popular hand grinder was picked — set the type automatically (if not chosen yet)
   const setName = (name: string) => setG((x) => ({ ...x, name, grindType: x.cat === 'grinder' && !x.grindType ? guessGrindType(name) : x.grindType }));

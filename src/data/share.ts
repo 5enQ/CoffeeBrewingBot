@@ -103,6 +103,12 @@ export async function encodeRecipe(r: SharedRecipe): Promise<string> {
   return 'rj' + b64url(bytes);
 }
 
+/** Profile card link: the card lives on the server, the link carries its id ("p…" launch parameter) */
+export function cardLinkFor(id: string) {
+  if (TELEGRAM_BOT) return `${TELEGRAM_APP ? `https://t.me/${TELEGRAM_BOT}/${TELEGRAM_APP}` : `https://t.me/${TELEGRAM_BOT}`}?startapp=p${id}`;
+  return `${WEB_URL}#r=p${id}`;
+}
+
 /** Launch parameter → recipe: "s…" — short link (recipe on the server), "r…" — recipe inside the link */
 export async function resolveStartParam(param: string): Promise<SharedRecipe | null> {
   if (param.startsWith('s')) {

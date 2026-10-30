@@ -16,7 +16,8 @@ export interface Gear {
 /** Gear snapshot inside a brew: stays even if the item is deleted later */
 export interface GearRef { id: string; cat: GearCat; name: string; details?: string }
 
-export const GEAR_CATS: { id: GearCat; label: string; one: string; hint: string; suggestions: string[] }[] = [
+/** Every category, including retired ones: old brews keep their gear snapshots and still need the labels */
+export const ALL_GEAR_CATS: { id: GearCat; label: string; one: string; hint: string; suggestions: string[] }[] = [
   { id: 'grinder', label: 'Кофемолки', one: 'Кофемолка', hint: 'Ручные и электрические', suggestions: ['Comandante C40', '1Zpresso K-Ultra', '1Zpresso ZP6 Special', '1Zpresso J-Ultra', 'Timemore C3', 'Timemore Sculptor 078', 'Kinu M47', 'Niche Zero', 'DF64', 'Fellow Ode Gen 2', 'Mahlkönig EK43', 'Baratza Encore ESP'] },
   { id: 'machine', label: 'Кофемашины', one: 'Кофемашина', hint: 'Эспрессо-машины и батч-брюеры', suggestions: ['Gaggia Classic Pro', 'Rancilio Silvia', 'Breville Bambino Plus', 'Lelit Bianca', 'Lelit Mara X', 'La Marzocco Linea Micra', 'Decent DE1', 'Flair 58', 'De’Longhi Dedica', 'Moccamaster KBGV Select', 'Fetco CBS-2152', 'Bunn ICB', 'Wilfa Classic+'] },
   { id: 'dripper', label: 'Воронки', one: 'Воронка', hint: 'Пуроверы и фильтр-кофе', suggestions: ['Hario V60 02', 'Hario V60 01', 'Kalita Wave 185', 'Origami Dripper M', 'Chemex 6 чашек', 'April Brewer', 'Orea V4', 'Hario Switch', 'Clever Dripper'] },
@@ -28,19 +29,22 @@ export const GEAR_CATS: { id: GearCat; label: string; one: string; hint: string;
   { id: 'other', label: 'Другое', one: 'Другое', hint: 'Дистрибьюторы, WDT, вода', suggestions: ['WDT-инструмент', 'Дистрибьютор', 'Third Wave Water', 'Рефрактометр'] },
 ];
 
-export const catById = (c: GearCat) => GEAR_CATS.find((x) => x.id === c) ?? GEAR_CATS[GEAR_CATS.length - 1];
+/** Filters are retired: rarely relevant, and a note on the brew covers it. Offered categories: */
+const RETIRED: GearCat[] = ['filter'];
+export const GEAR_CATS = ALL_GEAR_CATS.filter((c) => !RETIRED.includes(c.id));
+
+export const catById = (c: GearCat) => ALL_GEAR_CATS.find((x) => x.id === c) ?? ALL_GEAR_CATS[ALL_GEAR_CATS.length - 1];
 
 /** Which gear makes sense to ask for a method */
 export function catsForMethod(methodId: string): GearCat[] {
   const base: GearCat[] = ['grinder'];
   switch (methodId) {
-    case 'v60': case 'kalita': case 'chemex': return [...base, 'dripper', 'filter', 'kettle', 'scale'];
-    case 'clever': return [...base, 'dripper', 'filter', 'kettle', 'scale'];
+    case 'v60': case 'kalita': case 'chemex': case 'clever': return [...base, 'dripper', 'kettle', 'scale'];
     case 'aeropress': case 'french': return [...base, 'press', 'kettle', 'scale'];
     case 'espresso': return [...base, 'machine', 'scale', 'other'];
     case 'moka': case 'cezve': return [...base, 'stovetop', 'scale'];
     case 'drip': return ['kettle', 'scale'];
-    case 'batch': return [...base, 'machine', 'filter', 'scale'];
+    case 'batch': return [...base, 'machine', 'scale'];
     case 'cupping': return [...base, 'kettle', 'scale'];
     default: return [...base, 'kettle', 'scale'];
   }

@@ -1028,3 +1028,93 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .row .tag { margin-left: 8px; }
 .site-actions { display: flex; gap: 8px; padding: 0 16px 12px; flex-wrap: wrap; }
 .site-actions .btn { flex: 1; min-width: 120px; }
+
+/* ---------- Profile card ---------- */
+.pcard-stage { padding: 6px 2px 14px; perspective: 900px; }
+.pcard-open { display: block; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; margin-bottom: 10px; }
+.pcard {
+  --pc-fg: var(--fg); --pc-muted: var(--hint); --pc-line: rgba(0,0,0,0.08);
+  position: relative; isolation: isolate; overflow: hidden; border-radius: 22px; padding: 18px 18px 14px; min-height: 196px;
+  color: var(--pc-fg); background: var(--card); box-shadow: 0 10px 30px -12px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.08);
+  transition: transform 0.05s linear; transform-style: preserve-3d; will-change: transform;
+}
+.pcard-body { position: relative; z-index: 3; display: flex; flex-direction: column; gap: 10px; }
+.pcard-head { display: flex; align-items: center; gap: 12px; padding-right: 64px; }
+.pcard-avatar {
+  width: 56px; height: 56px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; object-fit: cover;
+  font-weight: 700; font-size: 20px; background: rgba(255,255,255,0.22); color: var(--pc-fg);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.45), 0 4px 10px rgba(0,0,0,0.15);
+}
+.pcard-name { display: flex; flex-direction: column; min-width: 0; }
+.pcard-name b { font-size: 20px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcard-name a { color: var(--pc-fg); opacity: 0.75; font-size: 14px; text-decoration: none; }
+.pcard-tier { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.8; }
+.pcard-about { margin: 0; font-size: 14px; line-height: 1.4; opacity: 0.9; }
+.pcard .badge-row { margin: 0; }
+.pcard .badge { background: var(--pc-chip, rgba(255,255,255,0.55)); color: var(--pc-fg); box-shadow: 0 0 0 1px var(--pc-line); }
+.pcard .badge small { color: var(--pc-muted); }
+.pcard.base-espresso, .pcard.base-matcha, .pcard.base-berry, .pcard.base-ocean, .pcard.base-graphite, .pcard.tier-bronze { --pc-chip: rgba(255,255,255,0.13); }
+.pcard-setup { list-style: none; margin: 0; padding: 10px 0 0; border-top: 1px solid var(--pc-line); display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+.pcard-setup li { display: flex; flex-direction: column; min-width: 0; }
+.pcard-setup span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--pc-muted); }
+.pcard-setup b { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcard-brand { align-self: flex-end; font-size: 10px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.45; }
+.pcard-corner { position: absolute; z-index: 2; top: 10px; right: 10px; color: var(--pc-fg); opacity: 0.55; filter: drop-shadow(0 1px 0 rgba(255,255,255,0.35)) drop-shadow(0 -1px 0 rgba(0,0,0,0.25)); }
+
+/* base themes */
+.pcard.base-paper { background: radial-gradient(120% 90% at 0% 0%, var(--accent-soft), transparent 60%), var(--card); }
+.pcard.base-latte { --pc-fg: #3b2a1e; --pc-muted: #7b6250; --pc-line: rgba(59,42,30,0.15); background: linear-gradient(140deg, #f1e4d1, #d8bf9e); }
+.pcard.base-espresso { --pc-fg: #f5e9de; --pc-muted: #c4a994; --pc-line: rgba(255,255,255,0.14); background: radial-gradient(90% 70% at 100% 0%, #6b4836, transparent 60%), linear-gradient(150deg, #2a1d17, #46302a); }
+.pcard.base-matcha { --pc-fg: #f3f8ec; --pc-muted: #cfdfbd; --pc-line: rgba(255,255,255,0.18); background: linear-gradient(145deg, #4d6942, #86a26a); }
+.pcard.base-berry { --pc-fg: #fff0f5; --pc-muted: #f1bfd0; --pc-line: rgba(255,255,255,0.18); background: linear-gradient(145deg, #5e1b39, #a83c62); }
+.pcard.base-ocean { --pc-fg: #eef7fb; --pc-muted: #b4d6e6; --pc-line: rgba(255,255,255,0.18); background: linear-gradient(150deg, #10334a, #2d7495); }
+.pcard.base-graphite { --pc-fg: #eceff2; --pc-muted: #a5adb5; --pc-line: rgba(255,255,255,0.14); background: linear-gradient(150deg, #1c1f23, #3b4148); }
+
+/* metals: a brushed gradient whose bright band follows the tilt */
+.pcard.tier { --pc-line: rgba(255,255,255,0.25); }
+.pcard.tier::before { content: ''; position: absolute; inset: 0; z-index: 0; opacity: 0.5;
+  background: repeating-linear-gradient(100deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 3px); }
+.pcard.tier-bronze { --pc-fg: #fff4ea; --pc-muted: #f3cfae; background: linear-gradient(calc(120deg + var(--tx) * 25deg), #4e2c14, #9b5f33 30%, #e3a877 50%, #a0643a 68%, #5a3218); }
+.pcard.tier-silver { --pc-fg: #18202a; --pc-muted: #4b5866; --pc-line: rgba(0,0,0,0.14); background: linear-gradient(calc(120deg + var(--tx) * 25deg), #7d8893, #c9d1d9 30%, #f6f8fa 50%, #b8c1ca 68%, #7a858f); }
+.pcard.tier-gold { --pc-fg: #2b1c02; --pc-muted: #6e5212; --pc-line: rgba(60,40,0,0.18); background: linear-gradient(calc(120deg + var(--tx) * 25deg), #7a5310, #cfa034 28%, #fff0b3 50%, #d6a43a 70%, #7a5310); }
+.pcard-sheen { position: absolute; z-index: 1; inset: -60% -60%; pointer-events: none; mix-blend-mode: soft-light;
+  background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,0.75) 50%, transparent 58%);
+  transform: translate(calc(var(--tx) * 30%), calc(var(--ty) * 18%)); }
+
+/* diamond: facets that light up with the tilt, a rainbow layer, a thick glassy edge, content floating above */
+.pcard.tier-diamond {
+  --pc-fg: #0c1630; --pc-muted: #3c4a6e; --pc-line: rgba(12,22,48,0.16);
+  background: linear-gradient(calc(135deg + var(--tx) * 40deg), #9fc4f2, #dcd2ff 30%, #a9eadb 55%, #c9b8ff 80%, #9fc4f2);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.9) inset, 0 0 0 1px rgba(120,150,220,0.45),
+    calc(var(--tx) * -14px) calc(18px + var(--ty) * 10px) 36px -14px rgba(60,80,160,0.55), 0 2px 6px rgba(0,0,0,0.1);
+}
+.pcard.tier-diamond::before { opacity: 0; }
+.pcard.tier-diamond .pcard-body { transform: translateZ(36px); }
+.pcard.tier-diamond .pcard-corner { transform: translateZ(50px); opacity: 0.7; color: #2c4a9a; }
+.pcard-facets { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+.pcard.tier-diamond .pcard-body { text-shadow: 0 1px 0 rgba(255,255,255,0.6); }
+.pcard.tier-diamond .pcard-body::before { content: ''; position: absolute; inset: -6px -8px; z-index: -1; border-radius: 16px;
+  background: rgba(255,255,255,0.38); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+.pcard-iris { position: absolute; inset: -40%; z-index: 1; pointer-events: none; mix-blend-mode: soft-light; opacity: 0.4;
+  background: conic-gradient(from calc(var(--tx) * 180deg + var(--ty) * 90deg), #ff6b9a, #ffd36b, #8bff9a, #6bd6ff, #b18bff, #ff6b9a);
+  transform: translate(calc(var(--tx) * 12%), calc(var(--ty) * 12%)); filter: blur(18px); }
+@media (prefers-reduced-motion: reduce) { .pcard { transition: none; } }
+
+/* theme picker */
+.theme-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.theme-pick { position: relative; overflow: hidden; min-height: 58px; border: 0; border-radius: 14px; padding: 8px 10px; text-align: left; display: flex; flex-direction: column; justify-content: flex-end;
+  color: var(--pc-fg, var(--fg)); box-shadow: 0 0 0 1px rgba(0,0,0,0.06); }
+.theme-pick span { position: relative; font-size: 13px; font-weight: 700; }
+.theme-pick small { position: relative; font-size: 10px; opacity: 0.8; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.theme-pick.on { box-shadow: 0 0 0 2.5px var(--accent); }
+.theme-pick.base-paper { background: radial-gradient(120% 90% at 0% 0%, var(--accent-soft), transparent 60%), var(--card); }
+.theme-pick.base-latte { --pc-fg: #3b2a1e; background: linear-gradient(140deg, #f1e4d1, #d8bf9e); }
+.theme-pick.base-espresso { --pc-fg: #f5e9de; background: linear-gradient(150deg, #2a1d17, #5a3d31); }
+.theme-pick.base-matcha { --pc-fg: #f3f8ec; background: linear-gradient(145deg, #4d6942, #86a26a); }
+.theme-pick.base-berry { --pc-fg: #fff0f5; background: linear-gradient(145deg, #5e1b39, #a83c62); }
+.theme-pick.base-ocean { --pc-fg: #eef7fb; background: linear-gradient(150deg, #10334a, #2d7495); }
+.theme-pick.base-graphite { --pc-fg: #eceff2; background: linear-gradient(150deg, #1c1f23, #3b4148); }
+.theme-pick.tier-bronze { --pc-fg: #fff4ea; background: linear-gradient(120deg, #4e2c14, #e3a877 50%, #5a3218); }
+.theme-pick.tier-silver { --pc-fg: #18202a; background: linear-gradient(120deg, #7d8893, #f6f8fa 50%, #7a858f); }
+.theme-pick.tier-gold { --pc-fg: #2b1c02; background: linear-gradient(120deg, #7a5310, #fff0b3 50%, #7a5310); }
+.theme-pick.tier-diamond { --pc-fg: #101a33; background: linear-gradient(135deg, #bfe3ff, #fff 30%, #ffd6f0 50%, #d6fff1 70%, #d9ccff); }

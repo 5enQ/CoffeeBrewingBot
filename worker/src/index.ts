@@ -97,6 +97,7 @@ export class AuthorRatings extends DurableObject<Env> {
 export class RecipeStore extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS cards (id TEXT PRIMARY KEY, user TEXT NOT NULL UNIQUE, data TEXT NOT NULL, ts INTEGER NOT NULL)`);
     ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS recipes (
       id TEXT PRIMARY KEY, code TEXT NOT NULL, author TEXT NOT NULL, ts INTEGER NOT NULL)`);
   }
@@ -119,6 +120,20 @@ export class RecipeStore extends DurableObject<Env> {
 
   get(id: string) {
     return this.ctx.storage.sql.exec<{ code: string }>('SELECT code FROM recipes WHERE id = ?', id).toArray()[0]?.code ?? null;
+  }
+
+  /** Profile cards: one per user, the id never changes, so a shared link always shows the latest card */
+  putCard(user: string, data: string) {
+    const cur = this.ctx.storage.sql.exec<{ id: string }>('SELECT id FROM cards WHERE user = ?', user).toArray()[0];
+    if (cur) { this.ctx.storage.sql.exec('UPDATE cards SET data = ?, ts = ? WHERE id = ?', data, Date.now(), cur.id); return cur.id; }
+    const abc = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const id = Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => abc[b % abc.length]).join('');
+    this.ctx.storage.sql.exec('INSERT INTO cards (id, user, data, ts) VALUES (?, ?, ?, ?)', id, user, data, Date.now());
+    return id;
+  }
+
+  getCard(id: string) {
+    return this.ctx.storage.sql.exec<{ data: string }>('SELECT data FROM cards WHERE id = ?', id).toArray()[0]?.data ?? null;
   }
 }
 
@@ -235,6 +250,23 @@ export default {
       if (!Object.keys(coffee).length) return json({ error: 'empty' }, 400, h);
       const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
       return json(publicFound(await catalog.contribute(keys, coffee, user.id)), 200, h);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/cards') {
+      let body: { initData?: string; card?: unknown };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      const data = JSON.stringify(body.card ?? null);
+      if (!body.card || typeof body.card !== 'object' || data.length > 6000) return json({ error: 'bad card' }, 400, h);
+      const store = env.RECIPES.get(env.RECIPES.idFromName('all'));
+      return json({ id: await store.putCard(user.id, data) }, 200, h);
+    }
+
+    const card = url.pathname.match(/^\/cards\/([A-Za-z0-9]{6,16})$/);
+    if (req.method === 'GET' && card) {
+      const data = await env.RECIPES.get(env.RECIPES.idFromName('all')).getCard(card[1]);
+      return data ? json({ card: JSON.parse(data) }, 200, { ...h, 'Cache-Control': 'max-age=60' }) : json({ error: 'not found' }, 404, h);
     }
 
     if (req.method === 'POST' && url.pathname === '/admin') {

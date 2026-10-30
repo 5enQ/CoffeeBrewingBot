@@ -149,6 +149,10 @@ export interface Profile {
   featured?: string[];
   /** ratings of my recipes from the server (cache) */
   ratingStats?: RatingStats;
+  /** profile card theme: a base theme id or 'ach:<achievement id>' for an unlocked metal theme */
+  cardTheme?: string;
+  /** gear ids shown on the profile card; undefined — one item per category */
+  cardGear?: string[];
 }
 
 export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[]; recipeId?: string;

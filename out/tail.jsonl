@@ -1,17 +1,17 @@
 {
-    "wallTime": 1,
+    "wallTime": 0,
     "cpuTime": 0,
     "truncated": false,
     "executionModel": "stateless",
     "outcome": "ok",
     "scriptVersion": {
-        "id": "b6050ce1-9f78-4e4c-833a-d69e9a3c5952"
+        "id": "0c6b1456-e609-48f2-9d5a-d6dd2c3d0c7f"
     },
     "scriptName": "brewbook-ratings",
     "diagnosticsChannelEvents": [],
     "exceptions": [],
     "logs": [],
-    "eventTimestamp": 1793366646683,
+    "eventTimestamp": 1793369937463,
     "event": {
         "request": {
             "url": "https://brewbook-ratings.brewbook.workers.dev/version",
@@ -19,15 +19,15 @@
             "headers": {
                 "accept": "*/*",
                 "accept-encoding": "gzip, br",
-                "cf-connecting-ip": "172.202.55.16",
+                "cf-connecting-ip": "130.131.215.213",
                 "cf-ipcountry": "US",
-                "cf-ray": "a52abd059a9e3be4",
+                "cf-ray": "a52b0d5d0caf95c3",
                 "cf-visitor": "{\"scheme\":\"https\"}",
                 "connection": "Keep-Alive",
                 "host": "brewbook-ratings.brewbook.workers.dev",
                 "user-agent": "curl/8.5.0",
                 "x-forwarded-proto": "https",
-                "x-real-ip": "172.202.55.16"
+                "x-real-ip": "130.131.215.213"
             },
             "cf": {
                 "httpProtocol": "HTTP/2",
@@ -41,7 +41,7 @@
                     "user-agent",
                     "accept"
                 ],
-                "clientTcpRtt": 26,
+                "clientTcpRtt": 28,
                 "clientQuicRtt": 0,
                 "colo": "MEM",
                 "asn": 8075,
@@ -59,15 +59,15 @@
                 "metroCode": "679",
                 "tlsVersion": "TLSv1.3",
                 "tlsCipher": "AEAD-AES256-GCM-SHA384",
-                "tlsClientRandom": "SPeF5m1AsX/4pU0iUVsbYcxI7cU4MZ2bbmHeg+wozuU=",
+                "tlsClientRandom": "rpMdtRVmi9jTHoiQ8/uFhPH7oCEMlBVeG0jHE+A6WXc=",
                 "tlsClientCiphersSha1": "GXSPDLP4G3X+prK73a4wBuOaHRc=",
                 "tlsClientExtensionsSha1": "tlH5gnoC5Z1HF45J5OgHEi338V0=",
                 "tlsClientExtensionsSha1Le": "mRCkyUCRFDTLCNHGQsZNFhkU1/4=",
                 "tlsExportedAuthenticator": {
-                    "clientHandshake": "84a80f8a0f2282ca12dd0a7f4823466471bae42567632502e22a27ade817fab49606780aabe8ebcc13f7b51463f06cfc",
-                    "serverHandshake": "7f9bc137aa333f2da518109aee31c32c5e57d90d996264507265b66eec5ebd4a9289e26a65fc01813d803ce2fe8971a5",
-                    "clientFinished": "8922acb9ee76504b75e27218aa8c274d7269ac1efcd298f50ab8e05ebf0deb2774a5d2b76174f90c9322034df27ef347",
-                    "serverFinished": "f3701d72d25d99ccf1104a201cd3a02d064cc7cdbef430613f674b9c61d1fe7da586de002f0d0c64caf49313084b3694"
+                    "clientHandshake": "b2bc8b851d85892c2566a2a80c3338a649752e11387fb1a8b8b6eb4bc20aa9489059dbacc2c4c54042bc114ebca193c2",
+                    "serverHandshake": "07d3341f6cacdd3b4b606e31716acdf249958bc8fde04ef62225b7dada09ae8bce0e115fb8ba05a66e8037ebaf05be57",
+                    "clientFinished": "1f54209f6c0f750f0e3e3254de90e59f1b6934aadf93622992d6d00907583232e7dcb68908956556ced8e2046a58b3c3",
+                    "serverFinished": "35029e77259f0bba23dab3723920e7a99db3811483974e94592634065f4a6ef1ed47574d03ae9d0a3b9a5d65504718db"
                 },
                 "tlsClientHelloLength": "508",
                 "tlsClientAuth": {
@@ -95,7 +95,7 @@
                 },
                 "verifiedBotCategory": "",
                 "edgeL4": {
-                    "deliveryRate": 175164
+                    "deliveryRate": 173399
                 }
             }
         },
@@ -105,13 +105,67 @@
     }
 }
 {
-    "wallTime": 199,
+    "wallTime": 3,
+    "cpuTime": 1,
+    "truncated": false,
+    "executionModel": "durableObject",
+    "outcome": "exception",
+    "durableObjectId": "18fd4badd55bc071cae9fe4897ff214a8e5953385808dc00c4d552e4c31be550",
+    "scriptVersion": {
+        "id": "0c6b1456-e609-48f2-9d5a-d6dd2c3d0c7f"
+    },
+    "entrypoint": "CoffeeCatalog",
+    "scriptName": "brewbook-ratings",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [
+        {
+            "stack": "    at new CoffeeCatalog (src/catalog.ts:131:9)",
+            "name": "Error",
+            "message": "Exceeded allowed rows read in Durable Objects free tier.",
+            "timestamp": 1793369937778
+        }
+    ],
+    "logs": [],
+    "eventTimestamp": 1793369937777,
+    "event": {
+        "rpcMethod": ""
+    }
+}
+{
+    "wallTime": 78,
     "cpuTime": 0,
+    "truncated": false,
+    "executionModel": "durableObject",
+    "outcome": "exception",
+    "durableObjectId": "18fd4badd55bc071cae9fe4897ff214a8e5953385808dc00c4d552e4c31be550",
+    "scriptVersion": {
+        "id": "0c6b1456-e609-48f2-9d5a-d6dd2c3d0c7f"
+    },
+    "entrypoint": "CoffeeCatalog",
+    "scriptName": "brewbook-ratings",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [
+        {
+            "stack": "    at new CoffeeCatalog (src/catalog.ts:131:9)",
+            "name": "Error",
+            "message": "Exceeded allowed rows read in Durable Objects free tier.",
+            "timestamp": 1793369938024
+        }
+    ],
+    "logs": [],
+    "eventTimestamp": 1793369937948,
+    "event": {
+        "rpcMethod": ""
+    }
+}
+{
+    "wallTime": 265,
+    "cpuTime": 1,
     "truncated": false,
     "executionModel": "stateless",
     "outcome": "exception",
     "scriptVersion": {
-        "id": "b6050ce1-9f78-4e4c-833a-d69e9a3c5952"
+        "id": "0c6b1456-e609-48f2-9d5a-d6dd2c3d0c7f"
     },
     "scriptName": "brewbook-ratings",
     "diagnosticsChannelEvents": [],
@@ -120,11 +174,11 @@
             "stack": "    at async Object.fetch (src/index.ts:203:21)",
             "name": "Error",
             "message": "Exceeded allowed rows read in Durable Objects free tier.",
-            "timestamp": 1793366646990
+            "timestamp": 1793369937812
         }
     ],
     "logs": [],
-    "eventTimestamp": 1793366646792,
+    "eventTimestamp": 1793369937548,
     "event": {
         "request": {
             "url": "https://brewbook-ratings.brewbook.workers.dev/lookup?url=https://shop.tastycoffee.ru/coffee/braziliya-sul-de-minas",
@@ -132,15 +186,15 @@
             "headers": {
                 "accept": "*/*",
                 "accept-encoding": "gzip, br",
-                "cf-connecting-ip": "172.202.55.16",
+                "cf-connecting-ip": "130.131.215.213",
                 "cf-ipcountry": "US",
-                "cf-ray": "a52abd065c8a3bde",
+                "cf-ray": "a52b0d5d9ab7afad",
                 "cf-visitor": "{\"scheme\":\"https\"}",
                 "connection": "Keep-Alive",
                 "host": "brewbook-ratings.brewbook.workers.dev",
                 "user-agent": "curl/8.5.0",
                 "x-forwarded-proto": "https",
-                "x-real-ip": "172.202.55.16"
+                "x-real-ip": "130.131.215.213"
             },
             "cf": {
                 "httpProtocol": "HTTP/2",
@@ -154,9 +208,9 @@
                     "user-agent",
                     "accept"
                 ],
-                "clientTcpRtt": 28,
+                "clientTcpRtt": 16,
                 "clientQuicRtt": 0,
-                "colo": "MEM",
+                "colo": "STL",
                 "asn": 8075,
                 "asOrganization": "Microsoft Limited",
                 "country": "US",
@@ -172,15 +226,15 @@
                 "metroCode": "679",
                 "tlsVersion": "TLSv1.3",
                 "tlsCipher": "AEAD-AES256-GCM-SHA384",
-                "tlsClientRandom": "fr/Y6ydK50/7uNWDXD3kcehJoGjD6IbM4Yb5SiEtCRw=",
+                "tlsClientRandom": "He1xbh9LnVUlno2DKZzFix1vmvw7jRsXv1Y9OXg67oY=",
                 "tlsClientCiphersSha1": "GXSPDLP4G3X+prK73a4wBuOaHRc=",
                 "tlsClientExtensionsSha1": "tlH5gnoC5Z1HF45J5OgHEi338V0=",
                 "tlsClientExtensionsSha1Le": "mRCkyUCRFDTLCNHGQsZNFhkU1/4=",
                 "tlsExportedAuthenticator": {
-                    "clientHandshake": "8937d07bd9f0afce71b4c5292e2f3afa6aa792fe0bb8b37a9546cd821766f34b83d02e557ca00279907c13532d1c3bf8",
-                    "serverHandshake": "147fe1c6a892da32125f6126d7398e24e54ea772688030f96364ecd93dde11c83ea8a6a6e3087473ebfe80b2ec0d2f10",
-                    "clientFinished": "d49c0c9f6fd479e6b31815758d5489535cd12df7585480d87efc33f0f758b14edcaee6ed2afbd4dd891b4ce283c2a791",
-                    "serverFinished": "3eb135339465b1781f93e46fe225b738020b162663509057a5a620f9020f0f2bf3fa234d554e2a98b6e948168bea3c36"
+                    "clientHandshake": "cd6fc646d8e2930b01e3ee0fcd595ae9200218c143d1343bbbf8231d02c5b3ea444b4634df1a7a7b0ee8e70abc107b3f",
+                    "serverHandshake": "a2ae48be6547f0c6a926fccbf3f5b8b028ddea8ae5e85c71d6937fe8edb36dcc1e63207bb9c7f73a7e570728091ca805",
+                    "clientFinished": "4bbd3f6658af8d8da7e2f7e6aa61b83afaadd305b74bb727b769f62ec3674e4eb6f9fa187f9fcb221614bb5a04736d00",
+                    "serverFinished": "537907134e567e7ef798e0989bbcd5c65b6c432ad0648a22debe4d76e5bad6ac5943c540314559ebc0ca6598f8cda492"
                 },
                 "tlsClientHelloLength": "508",
                 "tlsClientAuth": {
@@ -208,7 +262,7 @@
                 },
                 "verifiedBotCategory": "",
                 "edgeL4": {
-                    "deliveryRate": 172755
+                    "deliveryRate": 261299
                 }
             }
         },
@@ -218,40 +272,40 @@
     }
 }
 {
-    "wallTime": 1,
+    "wallTime": 19,
     "cpuTime": 0,
     "truncated": false,
     "executionModel": "durableObject",
     "outcome": "exception",
-    "durableObjectId": "18fd4badd55bc071cae9fe4897ff214a8e5953385808dc00c4d552e4c31be550",
+    "durableObjectId": "cecfbc95711e89ec20554063e1cf64006bb75f86c834e482b15c2e6fbeca7fec",
     "scriptVersion": {
-        "id": "b6050ce1-9f78-4e4c-833a-d69e9a3c5952"
+        "id": "0c6b1456-e609-48f2-9d5a-d6dd2c3d0c7f"
     },
-    "entrypoint": "CoffeeCatalog",
+    "entrypoint": "AuthorRatings",
     "scriptName": "brewbook-ratings",
     "diagnosticsChannelEvents": [],
     "exceptions": [
         {
-            "stack": "    at new CoffeeCatalog (src/catalog.ts:128:9)",
+            "stack": "    at new AuthorRatings (src/index.ts:70:21)",
             "name": "Error",
             "message": "Exceeded allowed rows read in Durable Objects free tier.",
-            "timestamp": 1793366646962
+            "timestamp": 1793369938269
         }
     ],
     "logs": [],
-    "eventTimestamp": 1793366646962,
+    "eventTimestamp": 1793369938251,
     "event": {
         "rpcMethod": ""
     }
 }
 {
-    "wallTime": 152,
+    "wallTime": 161,
     "cpuTime": 0,
     "truncated": false,
     "executionModel": "stateless",
     "outcome": "exception",
     "scriptVersion": {
-        "id": "b6050ce1-9f78-4e4c-833a-d69e9a3c5952"
+        "id": "0c6b1456-e609-48f2-9d5a-d6dd2c3d0c7f"
     },
     "scriptName": "brewbook-ratings",
     "diagnosticsChannelEvents": [],
@@ -260,11 +314,11 @@
             "stack": "    at async Object.fetch (src/index.ts:203:21)",
             "name": "Error",
             "message": "Exceeded allowed rows read in Durable Objects free tier.",
-            "timestamp": 1793366647255
+            "timestamp": 1793369938055
         }
     ],
     "logs": [],
-    "eventTimestamp": 1793366647103,
+    "eventTimestamp": 1793369937894,
     "event": {
         "request": {
             "url": "https://brewbook-ratings.brewbook.workers.dev/lookup?code=4600000000017",
@@ -272,15 +326,15 @@
             "headers": {
                 "accept": "*/*",
                 "accept-encoding": "gzip, br",
-                "cf-connecting-ip": "172.202.55.16",
+                "cf-connecting-ip": "130.131.215.213",
                 "cf-ipcountry": "US",
-                "cf-ray": "a52abd084e280deb",
+                "cf-ray": "a52b0d5fcdf37c0f",
                 "cf-visitor": "{\"scheme\":\"https\"}",
                 "connection": "Keep-Alive",
                 "host": "brewbook-ratings.brewbook.workers.dev",
                 "user-agent": "curl/8.5.0",
                 "x-forwarded-proto": "https",
-                "x-real-ip": "172.202.55.16"
+                "x-real-ip": "130.131.215.213"
             },
             "cf": {
                 "httpProtocol": "HTTP/2",
@@ -294,9 +348,9 @@
                     "user-agent",
                     "accept"
                 ],
-                "clientTcpRtt": 28,
+                "clientTcpRtt": 17,
                 "clientQuicRtt": 0,
-                "colo": "MEM",
+                "colo": "STL",
                 "asn": 8075,
                 "asOrganization": "Microsoft Limited",
                 "country": "US",
@@ -312,15 +366,15 @@
                 "metroCode": "679",
                 "tlsVersion": "TLSv1.3",
                 "tlsCipher": "AEAD-AES256-GCM-SHA384",
-                "tlsClientRandom": "hpRlGraeELOfTNQQfnyAk21BDkykGAA7G08SBtxlQWU=",
+                "tlsClientRandom": "MCxC+eRCRlZmkEIn4c8+M4MOGGs5spCZVFSXgL9J6tA=",
                 "tlsClientCiphersSha1": "GXSPDLP4G3X+prK73a4wBuOaHRc=",
                 "tlsClientExtensionsSha1": "tlH5gnoC5Z1HF45J5OgHEi338V0=",
                 "tlsClientExtensionsSha1Le": "mRCkyUCRFDTLCNHGQsZNFhkU1/4=",
                 "tlsExportedAuthenticator": {
-                    "clientHandshake": "e16a5fee663e8a92509ca42fa1c6cd90d3ab187d0b0ba2bd50c966fbe731ef9c9855039cf59c69aba99ee86636444158",
-                    "serverHandshake": "26f7162c15492db7bd99dbb4d5cd53c58d2171d87cef33d2ce5bc4d4ae7ddeb85f705ca7d876d152688b9bb1d4434e06",
-                    "clientFinished": "98830484c1161ec22a8e5528bd1d79d762e51db8c03161c856426cd80f3c9377071fac0871541e7cb13f207ce2b3049d",
-                    "serverFinished": "b3130618d3dc8edee7d0766ba7c1f2071f3ed57a261ddb53e47275fe2ca252bea9f6f103634eeef179e1e9d3335b07e6"
+                    "clientHandshake": "017a8f7419caa057b11f147edd4beb6d264a33a3aaa9deccd81c4d2b8c3119b615ee321a6d86fa0354e37b335affe7be",
+                    "serverHandshake": "5acb5098966a69e492cf111bcafac1aa4f50f26f0df97e73604bb48c62a0b2bcb0c2b8855a360424512d7ab060aefe61",
+                    "clientFinished": "6107070fe73042ac879e5f987fc0cd85884de58bb13ebe376d3ea40fbaa18a0ec6e0855f61dbf6e2df20e3b619b68689",
+                    "serverFinished": "d71223681e7a27d9f976211d9717357c27730758a808a62162fd88b52320908e3e39da957a8dfe98d4b36e5ef8340fa1"
                 },
                 "tlsClientHelloLength": "508",
                 "tlsClientAuth": {
@@ -348,7 +402,7 @@
                 },
                 "verifiedBotCategory": "",
                 "edgeL4": {
-                    "deliveryRate": 171017
+                    "deliveryRate": 259526
                 }
             }
         },
@@ -358,40 +412,13 @@
     }
 }
 {
-    "wallTime": 98,
-    "cpuTime": 0,
-    "truncated": false,
-    "executionModel": "durableObject",
-    "outcome": "exception",
-    "durableObjectId": "18fd4badd55bc071cae9fe4897ff214a8e5953385808dc00c4d552e4c31be550",
-    "scriptVersion": {
-        "id": "b6050ce1-9f78-4e4c-833a-d69e9a3c5952"
-    },
-    "entrypoint": "CoffeeCatalog",
-    "scriptName": "brewbook-ratings",
-    "diagnosticsChannelEvents": [],
-    "exceptions": [
-        {
-            "stack": "    at new CoffeeCatalog (src/catalog.ts:128:9)",
-            "name": "Error",
-            "message": "Exceeded allowed rows read in Durable Objects free tier.",
-            "timestamp": 1793366647229
-        }
-    ],
-    "logs": [],
-    "eventTimestamp": 1793366647131,
-    "event": {
-        "rpcMethod": ""
-    }
-}
-{
-    "wallTime": 136,
+    "wallTime": 127,
     "cpuTime": 0,
     "truncated": false,
     "executionModel": "stateless",
     "outcome": "exception",
     "scriptVersion": {
-        "id": "b6050ce1-9f78-4e4c-833a-d69e9a3c5952"
+        "id": "0c6b1456-e609-48f2-9d5a-d6dd2c3d0c7f"
     },
     "scriptName": "brewbook-ratings",
     "diagnosticsChannelEvents": [],
@@ -400,11 +427,11 @@
             "stack": "    at async Object.fetch (src/index.ts:161:19)",
             "name": "Error",
             "message": "Exceeded allowed rows read in Durable Objects free tier.",
-            "timestamp": 1793366647491
+            "timestamp": 1793369938286
         }
     ],
     "logs": [],
-    "eventTimestamp": 1793366647354,
+    "eventTimestamp": 1793369938160,
     "event": {
         "request": {
             "url": "https://brewbook-ratings.brewbook.workers.dev/stats?author=1",
@@ -412,15 +439,15 @@
             "headers": {
                 "accept": "*/*",
                 "accept-encoding": "gzip, br",
-                "cf-connecting-ip": "172.202.55.16",
+                "cf-connecting-ip": "130.131.215.213",
                 "cf-ipcountry": "US",
-                "cf-ray": "a52abd09fe1b0dee",
+                "cf-ray": "a52b0d616c6c0dea",
                 "cf-visitor": "{\"scheme\":\"https\"}",
                 "connection": "Keep-Alive",
                 "host": "brewbook-ratings.brewbook.workers.dev",
                 "user-agent": "curl/8.5.0",
                 "x-forwarded-proto": "https",
-                "x-real-ip": "172.202.55.16"
+                "x-real-ip": "130.131.215.213"
             },
             "cf": {
                 "httpProtocol": "HTTP/2",
@@ -452,15 +479,15 @@
                 "metroCode": "679",
                 "tlsVersion": "TLSv1.3",
                 "tlsCipher": "AEAD-AES256-GCM-SHA384",
-                "tlsClientRandom": "h5wN24ySBp/ISMeQvnuHfQyM+FiAPJIsAk3WfkhG48Y=",
+                "tlsClientRandom": "fPvFVlnmilmU8yDnAcksA9oH979dPYmR/D0TwfN+j6s=",
                 "tlsClientCiphersSha1": "GXSPDLP4G3X+prK73a4wBuOaHRc=",
                 "tlsClientExtensionsSha1": "tlH5gnoC5Z1HF45J5OgHEi338V0=",
                 "tlsClientExtensionsSha1Le": "mRCkyUCRFDTLCNHGQsZNFhkU1/4=",
                 "tlsExportedAuthenticator": {
-                    "clientHandshake": "b6c165709ee8e426a7184925258fe23e31601bbb5bb57d92379965c72afa5ce8a3f797cc1a88f65f24ea498ed3359506",
-                    "serverHandshake": "603855530fe9424cc83f49c52aa06972d9ffaabe6c43da4547eab4000dd4c0757e9e10a86975dd3f599e419210f3206a",
-                    "clientFinished": "4f1d755877c7433987a34a8fa661ac92aedbe72031d6902c8eaf9342a718900fc8236f3715ea8a58315be90a9a4bb275",
-                    "serverFinished": "9872c3f25a4e636b784e56a5b19e95e5d6cc835eb1ea5463097e290b22a9dc3c30345019b4586b60ba5c826912447cc5"
+                    "clientHandshake": "e8c0866b1a29f3cce1fdcad6c3933ad122cbc867efbe391df5c2c4e3225d6699b4553f049a1bf99cf4c987ea46e89c2d",
+                    "serverHandshake": "4118d5ae94e2e8537eea917f75f5c58ff36e019faeb52da4b36f9e85fb1c64b95fa04c6128f8e66de978762e9762650e",
+                    "clientFinished": "0ef16c6ebbf2aaeb1983b2307379c31bef5af9d2dbcd8592ad3a87ae175c8d6e541bfb2c38136615ef927bf8ee137284",
+                    "serverFinished": "64498f21385f5346523d4e4323944b4fefeede0dc8d67d215f1e8f351726aeb2ee9cf5eb0ac0001cfdad75a64b3cca72"
                 },
                 "tlsClientHelloLength": "508",
                 "tlsClientAuth": {
@@ -488,39 +515,12 @@
                 },
                 "verifiedBotCategory": "",
                 "edgeL4": {
-                    "deliveryRate": 171744
+                    "deliveryRate": 176492
                 }
             }
         },
         "response": {
             "status": 500
         }
-    }
-}
-{
-    "wallTime": 3,
-    "cpuTime": 0,
-    "truncated": false,
-    "executionModel": "durableObject",
-    "outcome": "exception",
-    "durableObjectId": "cecfbc95711e89ec20554063e1cf64006bb75f86c834e482b15c2e6fbeca7fec",
-    "scriptVersion": {
-        "id": "b6050ce1-9f78-4e4c-833a-d69e9a3c5952"
-    },
-    "entrypoint": "AuthorRatings",
-    "scriptName": "brewbook-ratings",
-    "diagnosticsChannelEvents": [],
-    "exceptions": [
-        {
-            "stack": "    at new AuthorRatings (src/index.ts:70:21)",
-            "name": "Error",
-            "message": "Exceeded allowed rows read in Durable Objects free tier.",
-            "timestamp": 1793366647472
-        }
-    ],
-    "logs": [],
-    "eventTimestamp": 1793366647471,
-    "event": {
-        "rpcMethod": ""
     }
 }

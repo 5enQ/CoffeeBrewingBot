@@ -94,8 +94,9 @@ Camera permission for the scanner: Android — `<uses-permission android:name="a
 | Endpoint | Purpose |
 |---|---|
 | `GET /version` | running server version and build time |
-| `POST /cards`, `GET /cards/:id` | profile cards: one per Telegram user, the id stays the same; the diamond number is always filled in by the server |
-| `POST /diamond { initData }` | a user reached 1000 liters: returns their diamond number (1, 2, 3… in order, the same every time) |
+| `POST /me { initData }` | the account of this Telegram user (created on first call) with its counted numbers |
+| `POST /brews { initData, brews, removed }` | brew log: `[{ id, m (method), w (water, ml), t (date) }]`, the first call imports the history; returns counted numbers and the diamond number |
+| `POST /cards`, `GET /cards/:id` | profile card: one per account, the link never changes; levels, achievement badges and the diamond number are filled in by the server |
 | `POST /rate`, `GET /stats` | friends' ratings of shared recipes (one rating per user, own recipes can't be rated) |
 | `POST /recipes`, `GET /recipes/:id` | short share links |
 | `POST /share` | prepared Telegram message for `shareMessage` |
@@ -104,6 +105,17 @@ Camera permission for the scanner: Android — `<uses-permission android:name="a
 | `POST /admin { initData, action, host, roaster }` | owner only: list / approve / reject / recrawl roaster sites |
 
 Setup: Cloudflare account → Account ID and an API token (template "Edit Cloudflare Workers") → GitHub **Settings → Secrets and variables → Actions**: secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `BOT_TOKEN`, `OWNER_TELEGRAM_ID` (your numeric Telegram id, shown in the app under Profile → "О приложении" → "Ваш Telegram ID"; several ids can be comma-separated); variable `RATINGS_ENABLED` = `true`. The server address is `RATINGS_API` in `src/config.ts`.
+
+## Accounts and verified achievements
+
+Achievements, card backgrounds and diamond numbers are decided on the server, so they cannot be faked by editing the app's data.
+
+- **Account.** One account per person (`worker/src/accounts.ts`), with linked sign-in identities: `tg:<telegram id>` now, verified through the `initData` signature. A standalone app can link the same account later (for example "Sign in with Telegram", or another provider added as an identity).
+- **Brew log.** The app sends only method, water and date of each own brew (no notes, beans, recipes or gear) — the whole history once, then only changes and deletions (`src/data/stats.ts`). Samples and recipes saved from friends are not sent.
+- **Counting rules** (`src/data/levels.ts`, shared by the app and the server): at most 5 brews of one method per day; water up to 3 L per brew and 6 L per day; history imported on the first day of an account counts as is, after that a brew must arrive within 14 days of its date (no backdating). So 1000 brews of a method or 1000 liters take months, not an evening of tapping.
+- **Levels.** Methods: bronze 50, silver 100, gold 500, «Объёмный» 1000. Liters: 10 / 100 / 500, diamond 1000 (numbered 1, 2, 3… in the order people reach it). Ratings of the user's recipes: badges only. Backgrounds come from method levels and the liters diamond.
+- **Cards** name achievements by key (`method:v60`, `liters`) and never carry a level. When a card is opened, the server fills in levels from its own count and drops what is not earned. Self-declared badges (SCA certificates, championships) are shown as entered.
+- Outside Telegram (no account) the app shows its own estimate with the same rules; such a card cannot be shared.
 
 ## Coffee catalog
 

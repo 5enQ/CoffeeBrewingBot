@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { earnedAchievements, type Achievement } from '../data/achievements';
+import { useStats } from '../data/stats';
 import { useStore } from '../data/store';
 import { platform } from '../platform';
 import { BadgeChip } from './Badges';
 
 /** New achievement notification. Achievements are hidden until earned — you learn about them when you get them. */
 export function AchievementToast() {
-  const { ready, brews, profile, seenAch, markSeen } = useStore();
+  const { ready, seenAch, markSeen } = useStore();
   const [queue, setQueue] = useState<Achievement[]>([]);
-  const ach = useMemo(() => earnedAchievements(brews, profile.ratingStats?.count ?? 0), [brews, profile.ratingStats]);
+  const { stats } = useStats();
+  const ach = useMemo(() => earnedAchievements(stats), [stats]);
 
   useEffect(() => {
     if (!ready) return;

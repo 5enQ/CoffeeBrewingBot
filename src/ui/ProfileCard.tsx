@@ -3,7 +3,7 @@
  * diamond is a faceted, iridescent 3D card that turns with the device (or the mouse on a computer).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CardData } from '../data/card';
+import { cardView, type CardData } from '../data/card';
 import { catById } from '../data/gear';
 import type { IconKey } from '../data/methods';
 import { platform } from '../platform';
@@ -155,10 +155,11 @@ function VolumeIcon({ icon, x, y }: { icon: IconKey; x: number; y: number }) {
 
 export function ProfileCard({ card, live = true }: { card: CardData; live?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
-  const tier = 'tier' in card.theme ? card.theme.tier : null;
+  const view = cardView(card);
+  const tier = 'tier' in view.theme ? view.theme.tier : null;
   const t = useTilt(live && !!tier, ref);
   const [photoOk, setPhotoOk] = useState(true);
-  const icon = tier ? (card.theme as { icon: string }).icon : null;
+  const icon = 'tier' in view.theme ? view.theme.icon : null;
 
   // diamond and volume cards turn in 3D; diamond the most
   const turn = tier === 'diamond' ? [18, 15] : tier === 'volume' ? [10, 8] : null;
@@ -169,7 +170,7 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
   const volume = tier === 'volume' && icon && icon !== 'star';
 
   return (
-    <div ref={ref} className={`pcard ${tier ? `tier tier-${tier}` : `base-${(card.theme as { base: string }).base}`}`} style={style}
+    <div ref={ref} className={`pcard ${'tier' in view.theme ? `tier tier-${view.theme.tier}` : `base-${view.theme.base}`}`} style={style}
       onClick={turn ? () => requestTiltPermission() : undefined}>
       {tier === 'diamond' && <><Facets x={t.x} y={t.y} /><div className="pcard-iris" aria-hidden="true" /><div className="pcard-film" aria-hidden="true" /><div className="pcard-edge" aria-hidden="true" /></>}
       {tier && <div className="pcard-sheen" aria-hidden="true" />}
@@ -192,9 +193,9 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); platform.openLink(`https://t.me/${card.username}`); }}>@{card.username}</a>}
           </div>
         </div>
-        {tier && <div className="pcard-tier">{(card.theme as { title: string }).title}</div>}
+        {'tier' in view.theme && <div className="pcard-tier">{view.theme.title}</div>}
         {card.about && <p className="pcard-about">{card.about}</p>}
-        {card.badges.length > 0 && <BadgeRow badges={card.badges} max={3} />}
+        {view.badges.length > 0 && <BadgeRow badges={view.badges} max={3} />}
         {card.setup.length > 0 && (
           <ul className="pcard-setup">
             {card.setup.map((g, i) => <li key={i}><span>{catById(g.cat).one}</span><b>{g.name}</b></li>)}

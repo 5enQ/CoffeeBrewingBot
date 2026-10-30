@@ -18,6 +18,11 @@ class_name = "RecipeStore"
 name = "CATALOG"
 class_name = "CoffeeCatalog"
 
+# Accounts: linked sign-in identities, verified brew counts, diamond numbers, profile cards
+[[durable_objects.bindings]]
+name = "ACCOUNTS"
+class_name = "Accounts"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["AuthorRatings"]
@@ -29,6 +34,10 @@ new_sqlite_classes = ["RecipeStore"]
 [[migrations]]
 tag = "v3"
 new_sqlite_classes = ["CoffeeCatalog"]
+
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["Accounts"]
 
 [vars]
 # Allowed request origin (the Mini App site)

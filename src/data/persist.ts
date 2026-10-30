@@ -221,7 +221,8 @@ export function toBuckets(db: DB): Record<string, string> {
 
   const metaKeys = Object.keys(mod).filter((k) => !k.startsWith('b:') && !k.startsWith('k:'));
   const now = Date.now();
-  const { ratingStats: _r, layout: _l, ...profile } = db.profile;
+  const { ratingStats: _r, serverStats: _s, layout: _l, ...profile } = db.profile;
+  void _s;
   void _r; void _l;
   const meta: Meta = {
     f: FORMAT,
@@ -346,7 +347,7 @@ export function merge(local: DB, remote: Remote): DB {
     const filled = (p: Partial<DB['profile']>) => (p.name ? 1 : 0) + (p.about ? 1 : 0) + (p.telegram ? 1 : 0) + (p.badges?.length ?? 0) + (p.featured ? 1 : 0);
     const unstamped = !mod.p && !rmod.p;
     if (newer('p') || (unstamped && filled(m.profile) > filled(local.profile))) {
-      next.profile = { ...EMPTY.profile, ...m.profile, layout: local.profile.layout, ratingStats: local.profile.ratingStats };
+      next.profile = { ...EMPTY.profile, ...m.profile, layout: local.profile.layout, ratingStats: local.profile.ratingStats, serverStats: local.profile.serverStats };
       if (rmod.p) mod.p = rmod.p;
     }
     if (m.tiles && (newer('h') || (!local.tiles && !mod.h))) { next.tiles = m.tiles; mod.h = Math.max(mod.h ?? 0, rmod.h ?? 0); }

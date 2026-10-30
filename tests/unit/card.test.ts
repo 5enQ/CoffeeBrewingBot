@@ -1,34 +1,54 @@
 import { describe, expect, it } from 'vitest';
-import { cardSetup, cleanCard, resolveTheme, unlockedThemes } from '../../src/data/card';
+import { buildCard, cardSetup, cardView, cleanCard, unlockedThemes } from '../../src/data/card';
 import type { Gear } from '../../src/data/gear';
-import type { Brew } from '../../src/data/store';
+import { EMPTY } from '../../src/data/store';
+import type { Stats } from '../../src/data/levels';
 
-const brews = (methodId: string, n: number) => Array.from({ length: n }, (_, i) => ({ id: `${methodId}${i}`, methodId, water: 250, date: i } as unknown as Brew));
+const stats = (methods: Record<string, number>, liters = 0, ratings = 0): Stats => ({ methods, liters, ratings });
 
-describe('profile card', () => {
+describe('card backgrounds', () => {
   it('method tiers: bronze 50, silver 100, gold 500, volume 1000', () => {
-    const tierOf = (n: number) => unlockedThemes(brews('v60', n), 0).find((x) => x.key === 'ach:method:v60')?.theme;
+    const tierOf = (n: number) => unlockedThemes(stats({ v60: n })).find((x) => x.key === 'ach:method:v60');
     expect(tierOf(49)).toBeUndefined();
     expect(tierOf(50)).toMatchObject({ tier: 'bronze', icon: 'v60' });
-    expect(tierOf(100)).toMatchObject({ tier: 'silver' });
-    expect(tierOf(500)).toMatchObject({ tier: 'gold' });
+    expect(tierOf(100)?.tier).toBe('silver');
+    expect(tierOf(500)?.tier).toBe('gold');
     expect(tierOf(1000)).toMatchObject({ tier: 'volume', icon: 'v60' });
   });
 
   it('diamond only for 1000 liters; lower liters tiers and ratings give no background', () => {
-    const big = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `x${i}`, methodId: `cm${i % 300}`, water: 1000, date: i } as unknown as Brew));
-    expect(unlockedThemes(big(999), 50000).some((x) => x.key === 'ach:liters' || x.key === 'ach:ratings')).toBe(false);
-    expect(unlockedThemes(big(1000), 0).find((x) => x.key === 'ach:liters')?.theme).toMatchObject({ tier: 'diamond', icon: 'drop' });
+    expect(unlockedThemes(stats({}, 999, 50000)).length).toBe(0);
+    expect(unlockedThemes(stats({}, 1000))[0]).toMatchObject({ key: 'ach:liters', tier: 'diamond', icon: 'drop' });
   });
 
   it('keeps the achievement of a retired method', () => {
-    expect(unlockedThemes(brews('kalita', 100), 0).map((x) => x.key)).toContain('ach:method:kalita');
+    expect(unlockedThemes(stats({ kalita: 100 })).map((x) => x.key)).toContain('ach:method:kalita');
+  });
+});
+
+describe('card data', () => {
+  const profile = { ...EMPTY.profile, name: 'Аня', telegram: 'anya', cardTheme: 'ach:method:v60' };
+  const featured = [{ key: 'ach:method:v60', badge: { kind: 'achieve' as const, title: 'x', detail: '', year: '' } }, { key: 'b1', badge: { kind: 'sca' as const, title: 'SCA Brewing', detail: '', year: '' } }];
+
+  it('names achievements by key and fills levels from the numbers', () => {
+    const c = buildCard(profile, featured, [], stats({ v60: 120 }));
+    expect(c.theme).toEqual({ ach: 'method:v60' });
+    expect(c.ach).toEqual(['method:v60']);
+    expect(c.badges.map((b) => b.title)).toEqual(['SCA Brewing']);
+    const v = cardView(c);
+    expect(v.theme).toMatchObject({ tier: 'silver', icon: 'v60' });
+    expect(v.badges.map((b) => b.detail)).toContain('Серебро');
   });
 
-  it('falls back to the default theme when an achievement is gone', () => {
-    expect(resolveTheme('ach:method:v60', [])).toEqual({ base: 'paper' });
-    expect(resolveTheme('ocean', [])).toEqual({ base: 'ocean' });
-    expect(resolveTheme('nonsense', [])).toEqual({ base: 'paper' });
+  it('a background that is not earned falls back to the default', () => {
+    expect(buildCard(profile, featured, [], stats({ v60: 10 })).theme).toEqual({ base: 'paper' });
+  });
+
+  it('without levels from the server a shared card shows no metal and no achievement badges', () => {
+    const shared = cleanCard({ name: 'B', theme: { ach: 'method:v60' }, ach: ['method:v60'], badges: [{ kind: 'achieve', title: 'Fake' }, { kind: 'sca', title: 'Real' }] })!;
+    expect(cardView(shared)).toEqual({ theme: { base: 'paper' }, badges: [{ kind: 'sca', title: 'Real', detail: '', year: '' }] });
+    const withLevels = cleanCard({ ...shared, earned: { 'method:v60': { tier: 'gold', at: 500 } } })!;
+    expect(cardView(withLevels).theme).toMatchObject({ tier: 'gold' });
   });
 
   it('setup: one item per category by default, no retired filters, chosen order kept', () => {
@@ -40,15 +60,9 @@ describe('profile card', () => {
   });
 
   it('cleans a card from the network', () => {
-    const c = cleanCard({ name: ' Аня ', username: 'anya<script>', photo: 'http://x', theme: { tier: 'diamond', icon: 'drop', title: '10 000 литров' },
-      badges: [{ title: 'A' }, { title: '' }], setup: [{ cat: 'nope', name: 'X' }], extra: 1 });
-    expect(c).toMatchObject({ name: 'Аня', username: 'anyascript', theme: { tier: 'diamond' }, setup: [{ cat: 'other', name: 'X' }] });
+    const c = cleanCard({ name: ' Аня ', username: 'anya<script>', photo: 'http://x', theme: { ach: 'evil' }, setup: [{ cat: 'nope', name: 'X' }], no: 3 });
+    expect(c).toMatchObject({ name: 'Аня', username: 'anyascript', theme: { base: 'paper' }, setup: [{ cat: 'other', name: 'X' }], no: 3 });
     expect(c?.photo).toBeUndefined();
-    expect(c?.badges).toHaveLength(1);
     expect(cleanCard({ name: '' })).toBeNull();
-    expect(cleanCard({ name: 'B', theme: { tier: 'platinum' } })?.theme).toEqual({ base: 'paper' });
-    expect(cleanCard({ name: 'B', theme: { tier: 'diamond', icon: 'drop' }, no: 3 })?.no).toBe(3);
-    expect(cleanCard({ name: 'B', theme: { tier: 'gold', icon: 'v60' }, no: 3 })?.no).toBeUndefined();
-    expect(cleanCard({ name: 'B', theme: { tier: 'volume', icon: 'v60' } })?.theme).toMatchObject({ tier: 'volume' });
   });
 });

@@ -128,7 +128,8 @@ export function toMarkdown(db: DB): string {
   const record = (title: string, obj: Record<string, unknown>) => { out.push(`### ${title}`); writeObject(out, '', obj, names); out.push(''); };
 
   section('Профиль');
-  const { ratingStats: _r, ...profile } = db.profile;
+  const { ratingStats: _r, serverStats: _s, ...profile } = db.profile;
+  void _s;
   void _r;
   writeObject(out, '', profile as Record<string, unknown>, names);
   out.push('');

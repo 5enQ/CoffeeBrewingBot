@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "build:single": "tsc -b && vite build --mode single",
     "test": "vitest run",
-    "test:e2e": "bash tests/run-e2e.sh"
+    "test:e2e": "bash tests/run-e2e.sh",
+    "test:server": "bash tests/server/run.sh"
   },
   "dependencies": {
     "@zxing/browser": "^0.2.1",

@@ -14,16 +14,18 @@
  * so a rating "on someone else's behalf" cannot be forged, and a repeated rating replaces the previous one.
  */
 import { DurableObject } from 'cloudflare:workers';
+import { Accounts } from './accounts';
 import { CoffeeCatalog, cleanCoffee, keysFor, type Found, type SiteStatus } from './catalog';
 import { fetchPage } from './fetch';
 import { PARSER_VERSION, parsePage } from './parse';
 
-export { CoffeeCatalog };
+export { Accounts, CoffeeCatalog };
 
 export interface Env {
   AUTHORS: DurableObjectNamespace<AuthorRatings>;
   RECIPES: DurableObjectNamespace<RecipeStore>;
   CATALOG: DurableObjectNamespace<CoffeeCatalog>;
+  ACCOUNTS: DurableObjectNamespace<Accounts>;
   BOT_TOKEN: string;
   ALLOWED_ORIGIN: string;
   /** server version "X.Y.Z" and build time — set on deploy (GitHub Actions) */
@@ -97,9 +99,6 @@ export class AuthorRatings extends DurableObject<Env> {
 export class RecipeStore extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS cards (id TEXT PRIMARY KEY, user TEXT NOT NULL UNIQUE, data TEXT NOT NULL, ts INTEGER NOT NULL)`);
-    // diamond card holders in the order they reached 1000 liters: no 1, 2, 3…
-    ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS diamonds (user TEXT PRIMARY KEY, no INTEGER NOT NULL UNIQUE, ts INTEGER NOT NULL)`);
     ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS recipes (
       id TEXT PRIMARY KEY, code TEXT NOT NULL, author TEXT NOT NULL, ts INTEGER NOT NULL)`);
   }
@@ -124,38 +123,6 @@ export class RecipeStore extends DurableObject<Env> {
     return this.ctx.storage.sql.exec<{ code: string }>('SELECT code FROM recipes WHERE id = ?', id).toArray()[0]?.code ?? null;
   }
 
-  /** Profile cards: one per user, the id never changes, so a shared link always shows the latest card */
-  putCard(user: string, data: string) {
-    const cur = this.ctx.storage.sql.exec<{ id: string }>('SELECT id FROM cards WHERE user = ?', user).toArray()[0];
-    if (cur) { this.ctx.storage.sql.exec('UPDATE cards SET data = ?, ts = ? WHERE id = ?', data, Date.now(), cur.id); return cur.id; }
-    const abc = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const id = Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => abc[b % abc.length]).join('');
-    this.ctx.storage.sql.exec('INSERT INTO cards (id, user, data, ts) VALUES (?, ?, ?, ?)', id, user, data, Date.now());
-    return id;
-  }
-
-  /** A shared card. The diamond number always comes from here, never from what the client sent;
-   *  a diamond card of someone without a number is shown with the default background. */
-  getCard(id: string) {
-    const row = this.ctx.storage.sql.exec<{ data: string; user: string }>('SELECT data, user FROM cards WHERE id = ?', id).toArray()[0];
-    if (!row) return null;
-    const card = JSON.parse(row.data) as { theme?: { tier?: string }; no?: number };
-    delete card.no;
-    if (card.theme?.tier === 'diamond') {
-      const no = this.ctx.storage.sql.exec<{ no: number }>('SELECT no FROM diamonds WHERE user = ?', row.user).toArray()[0]?.no;
-      if (no) card.no = no; else card.theme = { base: 'paper' } as never;
-    }
-    return card;
-  }
-
-  /** Next free number for a new diamond holder; the same user always gets the same number */
-  claimDiamond(user: string) {
-    const cur = this.ctx.storage.sql.exec<{ no: number }>('SELECT no FROM diamonds WHERE user = ?', user).toArray()[0];
-    if (cur) return cur.no;
-    const next = (this.ctx.storage.sql.exec<{ m: number | null }>('SELECT MAX(no) AS m FROM diamonds').one().m ?? 0) + 1;
-    this.ctx.storage.sql.exec('INSERT INTO diamonds (user, no, ts) VALUES (?, ?, ?)', user, next, Date.now());
-    return next;
-  }
 }
 
 function cors(env: Env, req: Request) {
@@ -273,29 +240,30 @@ export default {
       return json(publicFound(await catalog.contribute(keys, coffee, user.id)), 200, h);
     }
 
-    if (req.method === 'POST' && url.pathname === '/cards') {
-      let body: { initData?: string; card?: unknown };
+    // ---- accounts: verified brew counts, achievements, profile cards ----
+    const accounts = () => env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all'));
+    if (req.method === 'POST' && (url.pathname === '/me' || url.pathname === '/brews' || url.pathname === '/cards')) {
+      let body: { initData?: string; brews?: unknown; removed?: unknown; card?: unknown };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
+      if (url.pathname === '/me') return json(await accounts().me('tg', user.id), 200, h);
+      if (url.pathname === '/brews') {
+        const list = Array.isArray(body.brews) ? body.brews.slice(0, 500) : [];
+        const brews = list.map((b: Record<string, unknown>) => ({ id: String(b?.id ?? '').slice(0, 40), m: String(b?.m ?? '').slice(0, 40), w: Number(b?.w) || 0, t: Number(b?.t) || 0 }))
+          .filter((b) => /^[A-Za-z0-9_-]{1,40}$/.test(b.id) && /^[a-z0-9_-]{1,40}$/i.test(b.m) && Number.isFinite(b.t));
+        const removed = (Array.isArray(body.removed) ? body.removed.slice(0, 500) : []).map(String).filter((x) => /^[A-Za-z0-9_-]{1,40}$/.test(x));
+        return json(await accounts().addBrews('tg', user.id, brews, removed), 200, h);
+      }
       const data = JSON.stringify(body.card ?? null);
       if (!body.card || typeof body.card !== 'object' || data.length > 6000) return json({ error: 'bad card' }, 400, h);
-      const store = env.RECIPES.get(env.RECIPES.idFromName('all'));
-      return json({ id: await store.putCard(user.id, data) }, 200, h);
+      return json({ id: await accounts().putCard('tg', user.id, data) }, 200, h);
     }
 
     const card = url.pathname.match(/^\/cards\/([A-Za-z0-9]{6,16})$/);
     if (req.method === 'GET' && card) {
-      const data = await env.RECIPES.get(env.RECIPES.idFromName('all')).getCard(card[1]);
+      const data = await accounts().getCard(card[1]);
       return data ? json({ card: data }, 200, { ...h, 'Cache-Control': 'max-age=60' }) : json({ error: 'not found' }, 404, h);
-    }
-
-    if (req.method === 'POST' && url.pathname === '/diamond') {
-      let body: { initData?: string };
-      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
-      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
-      if (!user) return json({ error: 'unauthorized' }, 401, h);
-      return json({ no: await env.RECIPES.get(env.RECIPES.idFromName('all')).claimDiamond(user.id) }, 200, h);
     }
 
     if (req.method === 'POST' && url.pathname === '/admin') {

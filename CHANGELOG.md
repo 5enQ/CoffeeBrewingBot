@@ -9,6 +9,9 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - Profile card: avatar, name, optional Telegram link, featured badges, setup (chosen gear, up to 6) and a color theme. Shared by a link that never changes: friends always see the latest card.
 - Card backgrounds from achievements. Every brew method: bronze (50 brews), silver (100), gold (500) and «Объёмный» (1000) — an obsidian card with the method icon extruded in 3D. Diamond for 1000 liters: faceted, iridescent, turns in 3D with the device, and carries the holder's number in the bottom-left corner (№ 1 for the first person to reach it, given by the server). Metals of one tier are one tile with a choice of the corner icon. Metals catch the light: a bright band travels across them with the tilt and small glints flash.
 
+- Accounts on the server, linked to Telegram (ready for other sign-in methods in a standalone app). The app sends a short brew log (method, water, date) — the whole history once, then changes — and the server counts it with limits: 5 brews of a method per day, 3 L per brew, 6 L per day, no backdating after the first day.
+- Achievements, card backgrounds, achievement badges on cards and diamond numbers are decided by the server's count: a shared card shows only what the server confirms.
+
 ### Fixed
 - Achievements of retired methods (Kalita Wave) and deleted custom methods are no longer lost.
 

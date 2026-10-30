@@ -1,6 +1,7 @@
 /** Profile card: set it up and share it (own), or view a card a friend sent */
 import { useEffect, useMemo, useState } from 'react';
-import { BASE_THEMES, buildCard, cardText, claimDiamond, MAX_SETUP, resolveTheme, storeCard, unlockedThemes, type CardData, type CardTheme } from '../data/card';
+import { BASE_THEMES, buildCard, cardText, MAX_SETUP, storeCard, unlockedThemes, type CardData, type UnlockedTheme } from '../data/card';
+import { useStats } from '../data/stats';
 import { useBadges } from '../data/featured';
 import { GEAR_CATS } from '../data/gear';
 import { TIER_LABEL, type Tier } from '../data/achievements';
@@ -15,27 +16,13 @@ import { ProfileCard } from '../ui/ProfileCard';
 import { copyText, toast } from '../ui/toast';
 import { Toggle } from './Share';
 
-/** The card as it would be sent now */
-export function useMyCard(): { card: CardData; unlocked: ReturnType<typeof unlockedThemes> } {
-  const { profile, gear, brews } = useStore();
+/** The card as it would be sent now (levels from the server's numbers when known) */
+export function useMyCard(): { card: CardData; unlocked: UnlockedTheme[]; verified: boolean } {
+  const { profile, gear } = useStore();
   const badges = useBadges();
-  const unlocked = useMemo(() => unlockedThemes(brews, profile.ratingStats?.count ?? 0), [brews, profile.ratingStats]);
-  const theme = resolveTheme(profile.cardTheme, unlocked);
-  const shown = profile.shareBadges ? badges.featured.map((f) => { const { id: _id, ...b } = f.badge as typeof f.badge & { id?: string }; return b; }) : [];
-  return { card: buildCard(profile, shown, gear, theme), unlocked };
-}
-
-/** Reached 1000 liters: get the diamond number from the server once and keep it in the profile */
-export function useDiamondNumber() {
-  const { profile, saveProfile } = useStore();
-  const { unlocked } = useMyCard();
-  const has = unlocked.some((u) => 'tier' in u.theme && u.theme.tier === 'diamond');
-  useEffect(() => {
-    if (!has || profile.diamondNo) return;
-    let alive = true;
-    claimDiamond().then((no) => { if (alive && no) saveProfile({ ...profile, diamondNo: no }); });
-    return () => { alive = false; };
-  }, [has, profile.diamondNo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { stats, verified, diamondNo } = useStats();
+  const unlocked = useMemo(() => unlockedThemes(stats), [stats]);
+  return { card: buildCard(profile, badges.featured, gear, stats, diamondNo), unlocked, verified };
 }
 
 const TIERS: Tier[] = ['bronze', 'silver', 'gold', 'volume', 'diamond'];
@@ -44,12 +31,11 @@ const plural = (n: number, f: [string, string, string]) => {
   return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2];
 };
 
-const swatchClass = (t: CardTheme) => ('tier' in t ? `tier tier-${t.tier}` : `base-${t.base}`);
+const swatchClass = (t: { tier: Tier } | { base: string }) => ('tier' in t ? `tier tier-${t.tier}` : `base-${t.base}`);
 
 export function CardEditScreen() {
-  useDiamondNumber();
   const { profile, gear, saveProfile } = useStore();
-  const { card, unlocked } = useMyCard();
+  const { card, unlocked, verified } = useMyCard();
   const [link, setLink] = useState('');
   const [prepared, setPrepared] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -60,8 +46,8 @@ export function CardEditScreen() {
   const chosenIds = profile.cardGear ?? GEAR_CATS.map((c) => myGear.find((g) => g.cat === c.id)?.id).filter(Boolean) as string[];
   const current = profile.cardTheme ?? 'paper';
   // metal themes grouped by tier: bronze, silver, gold, diamond
-  const tiers = TIERS.map((tier) => [tier, unlocked.filter((u) => (u.theme as { tier?: Tier }).tier === tier)] as const).filter(([, l]) => l.length);
-  const currentTier = unlocked.find((u) => u.key === current) ? (unlocked.find((u) => u.key === current)!.theme as { tier: Tier }).tier : null;
+  const tiers = TIERS.map((tier) => [tier, unlocked.filter((u) => u.tier === tier)] as const).filter(([, l]) => l.length);
+  const currentTier = unlocked.find((u) => u.key === current)?.tier ?? null;
   const chosenGroup = currentTier ? tiers.find(([t]) => t === currentTier)?.[1] : null;
 
   // the link is prepared in advance, so sending happens right on tap (Telegram needs the message ready)
@@ -113,6 +99,7 @@ export function CardEditScreen() {
       </div>}>
       <div className="pcard-stage"><ProfileCard card={card} /></div>
 
+      {!verified && platform.initData() && <p className="muted pad small-note">Сверяю заварки с сервером — фоны и значки на карточке подтверждает сервер.</p>}
       <Section title="Цвет" plain>
         <div className="theme-picks">
           {BASE_THEMES.map((t) => (
@@ -123,7 +110,7 @@ export function CardEditScreen() {
           ))}
           {/* metal themes appear only once earned — like achievements, they are a surprise; one tile per tier */}
           {tiers.map(([tier, list]) => (
-            <button type="button" key={tier} className={'theme-pick ' + swatchClass(list[0].theme) + (currentTier === tier ? ' on' : '')} aria-pressed={currentTier === tier}
+            <button type="button" key={tier} className={'theme-pick ' + swatchClass(list[0]) + (currentTier === tier ? ' on' : '')} aria-pressed={currentTier === tier}
               onClick={() => { platform.haptic('select'); if (currentTier !== tier) saveProfile({ ...profile, cardTheme: list[0].key }); }}>
               <span>{TIER_LABEL[tier]}</span><small>{list.length > 1 ? `${list.length} ${plural(list.length, ['значок', 'значка', 'значков'])}` : list[0].label}</small>
             </button>
@@ -134,10 +121,10 @@ export function CardEditScreen() {
             <p className="muted small-note">Иконка в углу — какое достижение показать:</p>
             <div className="icon-pick-row">
               {chosenGroup.map((u) => {
-                const icon = (u.theme as { icon: string }).icon;
+                const icon = u.icon;
                 return (
                   <button type="button" key={u.key} role="radio" aria-checked={current === u.key} aria-label={u.label} title={u.label}
-                    className={'icon-pick ' + swatchClass(u.theme) + (current === u.key ? ' on' : '')}
+                    className={'icon-pick ' + swatchClass(u) + (current === u.key ? ' on' : '')}
                     onClick={() => { platform.haptic('select'); saveProfile({ ...profile, cardTheme: u.key }); }}>
                     {icon === 'star' ? <Icon name="star" size={26} filled /> : <MethodIcon icon={icon as IconKey} size={30} />}
                   </button>

@@ -1,15 +1,18 @@
 /**
- * Profile card: a small shareable card with avatar, name, optional Telegram link, featured badges, setup and a theme.
- * Base themes are always available. Metal themes (bronze, silver, gold, diamond) unlock with achievements of that tier
- * and carry the achievement's icon in the corner (the method icon for "N brews with a method").
+ * Profile card: a small shareable card with avatar, name, optional Telegram link, badges, setup and a theme.
+ *
+ * The card names achievements by key ('method:v60', 'liters') and never says which level they are:
+ * levels come from the numbers — on a shared card the server fills them in from its own count,
+ * so a background or an achievement badge cannot be faked by editing the card.
  */
 import { RATINGS_API } from '../config';
 import { platform } from '../platform';
-import { earnedAchievements, TIER_ORDER, type Achievement, type Tier } from './achievements';
-import type { BadgeLite } from './badges';
+import { achievementBadge } from './achievements';
+import { sortBadges, type BadgeLite } from './badges';
 import { catById, GEAR_CATS, type Gear, type GearCat } from './gear';
+import { earnedLevels, givesBackground, TIER_ORDER, type Level, type Stats, type Tier } from './levels';
 import { methodById } from './methods';
-import type { Brew, Profile } from './store';
+import type { Profile } from './store';
 
 export const BASE_THEMES = [
   { id: 'paper', label: 'Фильтр' },
@@ -22,50 +25,54 @@ export const BASE_THEMES = [
 ] as const;
 export type BaseTheme = typeof BASE_THEMES[number]['id'];
 
-/** What the card is painted with. Metal themes keep the icon so a friend sees the same card. */
-export type CardTheme = { base: BaseTheme } | { tier: Tier; icon: string; title: string };
-
-/** Card backgrounds: every method tier (bronze → volume), and diamond for 1000 liters. Other achievements are badges only. */
-const givesBackground = (a: Achievement, tier: Tier) => a.id.startsWith('method:') || (a.id === 'liters' && tier === 'diamond');
-
 export interface CardData {
-  v: 1;
+  v: 2;
   name: string;
   username?: string;
   about?: string;
   photo?: string;
+  /** the user's own badges (certificates, championships) */
   badges: BadgeLite[];
+  /** featured achievements by key, up to 3 together with badges */
+  ach: string[];
   setup: { cat: GearCat; name: string }[];
-  theme: CardTheme;
+  /** a base color, or the achievement whose metal background is shown */
+  theme: { base: BaseTheme } | { ach: string };
+  /** levels of the achievements above (filled in by the server on a shared card) */
+  earned?: Record<string, Level>;
   /** diamond only: the holder's place among everyone who reached 1000 liters (given by the server) */
   no?: number;
 }
 
+/** What is painted: a base color, or a metal tier with the achievement's icon */
+export type CardTheme = { base: BaseTheme } | { tier: Tier; icon: string; title: string };
+
 export const MAX_SETUP = 6;
 
-/** Icon for an achievement: the method's icon, a drop for liters, a star for ratings */
-function achievementIcon(a: Achievement) {
-  if (a.id.startsWith('method:')) return methodById(a.id.slice(7)).icon;
-  return a.id === 'ratings' ? 'star' : 'drop';
+/** Icon of an achievement: the method's icon, a drop for liters, a star for ratings */
+export const achievementIcon = (key: string) => (key.startsWith('method:') ? methodById(key.slice(7)).icon : key === 'ratings' ? 'star' : 'drop');
+
+export interface UnlockedTheme { key: string; ach: string; tier: Tier; icon: string; label: string }
+
+/** Metal backgrounds the numbers allow, best tier first. key 'ach:<achievement key>' is stored in the profile. */
+export function unlockedThemes(stats: Stats): UnlockedTheme[] {
+  return Object.entries(earnedLevels(stats))
+    .filter(([k, l]) => givesBackground(k, l.tier))
+    .map(([k, l]) => ({ key: `ach:${k}`, ach: k, tier: l.tier, icon: achievementIcon(k), label: achievementBadge(k, l.tier, l.at).title }))
+    .sort((x, y) => TIER_ORDER.indexOf(y.tier) - TIER_ORDER.indexOf(x.tier));
 }
 
-export interface UnlockedTheme { key: string; theme: CardTheme; label: string }
-
-/** Metal themes the user has earned, best tier first. Key 'ach:<achievement id>' is stored in the profile. */
-export function unlockedThemes(brews: Brew[], ratingsCount: number): UnlockedTheme[] {
-  return earnedAchievements(brews, ratingsCount)
-    .filter((a) => givesBackground(a, a.unlock.split(':').pop() as Tier))
-    .map((a) => {
-      const tier = a.unlock.split(':').pop() as Tier;
-      return { key: `ach:${a.id}`, theme: { tier, icon: achievementIcon(a), title: a.badge.title } as CardTheme, label: a.badge.title };
-    })
-    .sort((x, y) => TIER_ORDER.indexOf((y.theme as { tier: Tier }).tier) - TIER_ORDER.indexOf((x.theme as { tier: Tier }).tier));
-}
-
-/** The theme chosen in the profile; a metal theme whose achievement is gone falls back to the default */
-export function resolveTheme(key: string | undefined, unlocked: UnlockedTheme[]): CardTheme {
-  if (key?.startsWith('ach:')) return unlocked.find((u) => u.key === key)?.theme ?? { base: 'paper' };
-  return { base: (BASE_THEMES.find((t) => t.id === key)?.id ?? 'paper') as BaseTheme };
+/** The card as it looks: theme and the full list of badges */
+export function cardView(c: CardData): { theme: CardTheme; badges: BadgeLite[] } {
+  const earned = c.earned ?? {};
+  let theme: CardTheme = { base: 'paper' };
+  if ('base' in c.theme) theme = { base: c.theme.base };
+  else {
+    const l = earned[c.theme.ach];
+    if (l && givesBackground(c.theme.ach, l.tier)) theme = { tier: l.tier, icon: achievementIcon(c.theme.ach), title: achievementBadge(c.theme.ach, l.tier, l.at).title };
+  }
+  const ach = c.ach.filter((k) => earned[k]).map((k) => achievementBadge(k, earned[k].tier, earned[k].at));
+  return { theme, badges: sortBadges([...ach, ...c.badges]).slice(0, 3) };
 }
 
 /** Gear shown on the card: the user's choice, otherwise one item per category (offered categories only) */
@@ -77,67 +84,74 @@ export function cardSetup(gear: Gear[], chosen?: string[]) {
   return list.slice(0, MAX_SETUP).map((g) => ({ cat: g.cat, name: g.name }));
 }
 
-export function buildCard(p: Profile, badges: BadgeLite[], gear: Gear[], theme: CardTheme): CardData {
+/** featured: showcase keys — 'ach:<key>' for achievements, an own badge id otherwise */
+export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite }[], gear: Gear[], stats: Stats, diamondNo?: number): CardData {
   const tg = p.telegram.trim();
   const photo = platform.user()?.photo;
+  const levels = earnedLevels(stats);
+  const ach = featured.filter((f) => f.key.startsWith('ach:')).map((f) => f.key.slice(4)).filter((k) => levels[k]);
+  const own = featured.filter((f) => !f.key.startsWith('ach:')).map((f) => { const { id: _id, ...b } = f.badge as BadgeLite & { id?: string }; return b; });
+  const chosen = p.cardTheme?.startsWith('ach:') ? p.cardTheme.slice(4) : null;
+  const theme: CardData['theme'] = chosen && levels[chosen] && givesBackground(chosen, levels[chosen].tier)
+    ? { ach: chosen } : { base: (BASE_THEMES.find((t) => t.id === p.cardTheme)?.id ?? 'paper') as BaseTheme };
+  const earned = Object.fromEntries([...ach, ...('ach' in theme ? [theme.ach] : [])].map((k) => [k, levels[k]]));
   return {
-    v: 1,
+    v: 2,
     name: p.name.trim() || (tg ? '@' + tg : 'Без имени'),
     username: p.shareTelegram && tg ? tg : undefined,
     about: p.about.trim() || undefined,
     photo: photo && /^https:\/\//.test(photo) ? photo : undefined,
-    badges: badges.slice(0, 3),
+    badges: p.shareBadges ? own : [],
+    ach: p.shareBadges ? ach : [],
     setup: cardSetup(gear, p.cardGear),
     theme,
-    no: 'tier' in theme && theme.tier === 'diamond' ? p.diamondNo : undefined,
+    earned,
+    no: 'ach' in theme && theme.ach === 'liters' ? diamondNo : undefined,
   };
 }
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const KEY = /^(method:[a-z0-9_-]{1,40}|liters|ratings)$/i;
 
-/** A card that came from the network: keep only known fields of sane size */
+/** A card from the network: known fields of sane size only. Levels are trusted only when given (by the server). */
 export function cleanCard(raw: unknown): CardData | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
+  const name = str(r.name, 60);
+  if (!name) return null;
   const t = (r.theme ?? {}) as Record<string, unknown>;
-  const theme: CardTheme = TIER_ORDER.includes(t.tier as Tier)
-    ? { tier: t.tier as Tier, icon: str(t.icon, 20) || 'drop', title: str(t.title, 80) }
+  const theme: CardData['theme'] = typeof t.ach === 'string' && KEY.test(t.ach) ? { ach: t.ach }
     : { base: (BASE_THEMES.find((x) => x.id === t.base)?.id ?? 'paper') as BaseTheme };
   const badges = Array.isArray(r.badges) ? r.badges.slice(0, 3).map((b: Record<string, unknown>) => ({
     kind: str(b?.kind, 20) as BadgeLite['kind'], title: str(b?.title, 80), detail: str(b?.detail, 60), year: str(b?.year, 10),
-  })).filter((b) => b.title) : [];
+  })).filter((b) => b.title && b.kind !== 'achieve') : [];
+  const ach = Array.isArray(r.ach) ? r.ach.filter((k): k is string => typeof k === 'string' && KEY.test(k)).slice(0, 3) : [];
+  const earned: Record<string, Level> = {};
+  if (r.earned && typeof r.earned === 'object') {
+    for (const [k, v] of Object.entries(r.earned as Record<string, { tier?: string; at?: number }>)) {
+      if (KEY.test(k) && TIER_ORDER.includes(v?.tier as Tier) && Number.isFinite(v?.at)) earned[k] = { tier: v.tier as Tier, at: Number(v.at) };
+    }
+  }
   const setup = Array.isArray(r.setup) ? r.setup.slice(0, MAX_SETUP).map((g: Record<string, unknown>) => ({ cat: catById(g?.cat as GearCat).id, name: str(g?.name, 60) })).filter((g) => g.name) : [];
-  const name = str(r.name, 60);
-  if (!name) return null;
   const username = str(r.username, 32).replace(/[^A-Za-z0-9_]/g, '');
   const photo = str(r.photo, 300);
   const no = Number(r.no);
-  return { v: 1, name, username: username || undefined, about: str(r.about, 200) || undefined, photo: /^https:\/\//.test(photo) ? photo : undefined, badges, setup, theme,
-    no: 'tier' in theme && theme.tier === 'diamond' && Number.isInteger(no) && no > 0 ? no : undefined };
-}
-
-/* ---------- diamond numbers ---------- */
-
-/** Reached 1000 liters: ask the server for the next free number (the same one every time for this user). null — failed. */
-export async function claimDiamond(): Promise<number | null> {
-  const initData = platform.initData();
-  if (!RATINGS_API || !initData) return null;
-  try {
-    const r = await fetch(`${RATINGS_API}/diamond`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData }) });
-    if (!r.ok) return null;
-    const { no } = await r.json();
-    return Number.isInteger(no) && no > 0 ? no : null;
-  } catch { return null; }
+  return {
+    v: 2, name, username: username || undefined, about: str(r.about, 200) || undefined, photo: /^https:\/\//.test(photo) ? photo : undefined,
+    badges, ach, setup, theme, earned, no: Number.isInteger(no) && no > 0 ? no : undefined,
+  };
 }
 
 /* ---------- sharing ---------- */
 
-/** Store the card on the server: one card per user, the link stays the same. null — failed (needs Telegram). */
+/** Store the card on the server: one card per account, the link stays the same. null — failed (needs Telegram). */
 export async function storeCard(card: CardData): Promise<string | null> {
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return null;
+  const { earned: _e, no: _n, ...body } = card; // the server decides both
+  void _e; void _n;
   try {
-    const r = await fetch(`${RATINGS_API}/cards`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, card }) });
+    const r = await fetch(`${RATINGS_API}/cards`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, card: body }) });
     if (!r.ok) return null;
     const { id } = await r.json();
     return typeof id === 'string' ? id : null;
@@ -154,10 +168,11 @@ export async function loadCard(id: string): Promise<CardData | null> {
 
 /** Text that goes to the chat with the link */
 export function cardText(c: CardData) {
+  const v = cardView(c);
   const lines = [`☕ ${c.name}${c.username ? ` (@${c.username})` : ''} — профиль в Brewbook`];
   if (c.about) lines.push(c.about);
-  if ('tier' in c.theme) lines.push(`🏅 ${c.theme.title}`);
-  if (c.badges.length) lines.push(c.badges.map((b) => b.title).join(' · '));
+  if ('tier' in v.theme) lines.push(`🏅 ${v.theme.title}`);
+  if (v.badges.length) lines.push(v.badges.map((b) => b.title).join(' · '));
   if (c.setup.length) lines.push('', 'Сетап:', ...c.setup.map((g) => `• ${g.name}`));
   return lines.join('\n');
 }

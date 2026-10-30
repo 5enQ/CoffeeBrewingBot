@@ -4,6 +4,7 @@
 |---|---|
 | `npm test` | unit tests (Vitest): i18n dictionaries, methods, roaster scales, grind units, SCA CVA score, page parser, crawler rules (robots.txt, sitemaps, site filters), cloud format, Markdown backup |
 | `npm run test:e2e` | builds `dist-single/` and runs the browser tests (Python Playwright) |
+| `npm run test:server` | starts the worker locally and checks the accounts API: counting rules, deletions, cards, forgery attempts, diamond numbers |
 
 Browser tests (`tests/e2e/`):
 

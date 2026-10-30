@@ -1,6 +1,7 @@
 import { TabPages, useTabPill } from './ui/motion';
 import { CuppingSetup } from './screens/CuppingSetup';
 import { StoreProvider, useStore } from './data/store';
+import { useStatsSync } from './data/stats';
 import { DepthCtx, RouterProvider, useRouter, type Route, type Tab } from './router';
 import { DialogHost } from './ui/kit';
 import { AchievementToast } from './ui/AchievementToast';
@@ -166,9 +167,13 @@ function Placeholder({ tab }: { tab: Tab }) {
   );
 }
 
+/** Keeps the server's brew log (for verified achievements) up to date */
+function StatsSync() { useStatsSync(); return null; }
+
 export default function App() {
   return (
     <StoreProvider>
+      <StatsSync />
       <RouterProvider>
         <Shell />
       </RouterProvider>

@@ -2,19 +2,23 @@
 import asyncio, json, time
 from common import OUT, async_playwright, check, done, local, page
 
-def card(theme, **kw):
-    return {'v': 1, 'name': 'Аня Кофеман', 'username': 'anya_brews', 'about': 'Пуроверы по утрам, эспрессо по выходным',
-            'badges': [{'kind': 'sca', 'title': 'SCA Brewing', 'detail': 'Professional', 'year': '2025'}, {'kind': 'achieve', 'title': 'V60 · 100 заварок', 'detail': 'Бронза', 'year': ''}],
+def card(theme, earned=None, **kw):
+    return {'v': 2, 'ach': ['method:v60'], 'earned': {'method:v60': {'tier': 'bronze', 'at': 50}, **(earned or {})}, 'name': 'Аня Кофеман', 'username': 'anya_brews', 'about': 'Пуроверы по утрам, эспрессо по выходным',
+            'badges': [{'kind': 'sca', 'title': 'SCA Brewing', 'detail': 'Professional', 'year': '2025'}],
             'setup': [{'cat': 'grinder', 'name': 'Comandante C40'}, {'cat': 'dripper', 'name': 'Hario V60 02'}, {'cat': 'kettle', 'name': 'Fellow Stagg EKG'}, {'cat': 'scale', 'name': 'Acaia Pearl'}],
             'theme': theme, **kw}
 
 CARDS = {
-    'silver1': card({'tier': 'silver', 'icon': 'aeropress', 'title': 'Аэропресс · 1 000 заварок'}),
-    'gold1': card({'tier': 'gold', 'icon': 'espresso', 'title': 'Эспрессо · 10 000 заварок'}),
-    'diamond1': card({'tier': 'diamond', 'icon': 'drop', 'title': '1 000 литров кофе'}, no=7),
-    'volume1': card({'tier': 'volume', 'icon': 'aeropress', 'title': 'Аэропресс · 1 000 заварок'}),
+    'silver1': card({'ach': 'method:aeropress'}, {'method:aeropress': {'tier': 'silver', 'at': 100}}),
+    'gold1': card({'ach': 'method:espresso'}, {'method:espresso': {'tier': 'gold', 'at': 500}}),
+    'diamond1': card({'ach': 'liters'}, {'liters': {'tier': 'diamond', 'at': 1000}}, no=7),
+    'volume1': card({'ach': 'method:aeropress'}, {'method:aeropress': {'tier': 'volume', 'at': 1000}}),
     'espresso1': card({'base': 'espresso'}),
+    # a card whose owner faked a background: no levels from the server → plain card
+    'fake1': {**card({'ach': 'method:espresso'}), 'earned': {}},
 }
+# what the server counted (it differs from the device on purpose: the app must show the server's numbers)
+SERVER = {'account': 'acc1', 'methods': {'v60': 60, 'kalita': 100}, 'liters': 40, 'ratings': 0, 'at': 1}
 TG = """window.__shared = [];
 window.Telegram = { WebApp: {
   initData: 'query_id=x&user=%7B%22id%22%3A111%7D&auth_date=1&hash=abc', initDataUnsafe: { user: { id: 111, first_name: 'Аня', username: 'anya_brews' } },
@@ -25,7 +29,7 @@ window.Telegram = { WebApp: {
 
 def brews(method, n):
     now = 1792900000000
-    return [{'id': f'{method}{i}', 'date': now - i * 3600000, 'methodId': method, 'beanId': None, 'dose': 15, 'water': 250, 'temp': 93,
+    return [{'id': f'{method}{i}', 'date': now - i * 86400000, 'methodId': method, 'beanId': None, 'dose': 15, 'water': 250, 'temp': 93,
              'grind': '', 'time': 180, 'rating': 4, 'taste': {'acidity': 3, 'sweetness': 3, 'bitterness': 2, 'body': 3}, 'descriptors': [], 'notes': '', 'cupping': None} for i in range(n)]
 
 DB = {'v': 1, 'beans': [], 'recipes': {}, 'seeded': True, 'gearSeeded': True, 'brews': brews('v60', 100) + brews('kalita', 100),
@@ -33,9 +37,12 @@ DB = {'v': 1, 'beans': [], 'recipes': {}, 'seeded': True, 'gearSeeded': True, 'b
                {'id': 'g3', 'cat': 'kettle', 'name': 'Fellow Stagg EKG', 'details': ''}, {'id': 'g4', 'cat': 'filter', 'name': 'Cafec Abaca', 'details': ''}],
       'profile': {'name': 'Аня Кофеман', 'about': 'Пуроверы по утрам', 'telegram': 'anya_brews', 'badges': [], 'shareTelegram': True, 'shareBadges': True}}
 
-async def mock(pg, posted):
+async def mock(pg, posted, sent=None):
     async def handle(route):
         u = route.request.url
+        if route.request.method == 'POST' and (u.endswith('/me') or u.endswith('/brews')):
+            if sent is not None and u.endswith('/brews'): sent.extend(json.loads(route.request.post_data)['brews'])
+            return await route.fulfill(status=200, content_type='application/json', body=json.dumps(SERVER))
         if route.request.method == 'POST' and u.endswith('/cards'):
             posted.append(json.loads(route.request.post_data)['card'])
             return await route.fulfill(status=200, content_type='application/json', body=json.dumps({'id': 'abcDEF2345'}))
@@ -53,30 +60,28 @@ async def main():
     OUT.mkdir(exist_ok=True)
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        posted = []
+        posted, sent = [], []
         pg, errors = await page(b, db=DB, init=TG)
-        await mock(pg, posted)
+        await mock(pg, posted, sent)
+        await pg.reload(); await pg.wait_for_timeout(3500)
+        check(len(sent) == 200, f'the whole brew history is sent once to the server ({len(sent)})')
+        check(set(sent[0]) == {'id', 'm', 'w', 't'}, f'only method, water and date leave the device ({sorted(sent[0])})')
         V = lambda s: pg.locator(s + ':visible')
         await pg.click('.tabbar >> text=Профиль'); await pg.wait_for_timeout(500)
         check(await pg.get_attribute('#profile-about', 'placeholder') == 'Пара слов о себе', 'about placeholder')
         check(await V('.pcard').count() == 1, 'profile shows the card')
         await V('button:has-text("Настроить и поделиться")').click(); await pg.wait_for_timeout(500)
         sw = await V('.theme-pick').all_inner_texts()
-        silver = [s for s in sw if 'Серебро' in s]
-        check(len(silver) == 1 and '2' in silver[0], f'100 brews of a method give silver; grouped into one tile ({silver})')
-        check(not any('Бронза' in s for s in sw), 'liters and ratings below diamond give badges only, no background')
-        await V('.theme-pick:has-text("Серебро")').click(); await pg.wait_for_timeout(300)
-        icons = await V('.icon-pick').evaluate_all('els => els.map(e => e.getAttribute("aria-label"))')
-        check(len(icons) == 2 and any('Kalita' in i for i in icons) and any('V60' in i for i in icons), f'icon choice inside silver, Kalita kept ({icons})')
+        tiles = [s.split('\n')[0] for s in sw if '\n' in s or s in ('Бронза', 'Серебро')]
+        check('Бронза' in tiles and 'Серебро' in tiles, f'levels follow the server count: V60 60 → bronze, Kalita 100 → silver ({tiles})')
+        await V('.theme-pick:has-text("Бронза")').click(); await pg.wait_for_timeout(300)
         chips = await V('.chips .chip').all_inner_texts()
         check('Cafec Abaca' not in chips, 'retired filter gear is not offered for the card')
-        await V('.icon-pick[aria-label*="V60"]').click(); await pg.wait_for_timeout(300)
-        check(await V('.icon-pick.on[aria-label*="V60"]').count() == 1, 'V60 icon selected')
-        await V('.icon-picks').screenshot(path=str(OUT / 'card-icon-picks.png'))
-        check(await V('.pcard.tier-silver .pcard-corner').count() == 1, 'silver card with the method icon in the corner')
+
+        check(await V('.pcard.tier-bronze .pcard-corner').count() == 1, 'bronze V60 card with the method icon in the corner')
         await V('.chips .chip:has-text("Fellow Stagg EKG")').click(); await pg.wait_for_timeout(1500)
-        check(posted and posted[-1]['theme'].get('tier') == 'silver' and [g['name'] for g in posted[-1]['setup']] == ['Comandante C40', 'Hario V60 02'], f'card stored with theme and chosen setup ({posted[-1]["setup"] if posted else None})')
-        await pg.screenshot(path=str(OUT / 'card-edit-silver.png'))
+        check(posted and posted[-1]['theme'] == {'ach': 'method:v60'} and 'earned' not in posted[-1] and 'no' not in posted[-1] and [g['name'] for g in posted[-1]['setup']] == ['Comandante C40', 'Hario V60 02'], f'card stored with theme and chosen setup ({posted[-1]["setup"] if posted else None})')
+        await pg.screenshot(path=str(OUT / 'card-edit.png'))
         await V('.theme-picks').scroll_into_view_if_needed(); await V('.theme-picks').screenshot(path=str(OUT / 'card-themes.png'))
         btn = V('.footer button:has-text("Поделиться профилем")')
         check(await btn.is_enabled(), 'share button ready')
@@ -97,7 +102,9 @@ async def main():
                 await mock(pv, [])
                 await pv.reload(); await pv.wait_for_timeout(900)
                 check(await pv.locator('.pcard:visible').count() == 1, f'shared card {k} opens{" (dark)" if dark else ""}')
-                if k in ('silver1', 'gold1'):
+                if k == 'fake1':
+                    check(await pv.locator('.pcard.base-paper').count() == 1 and await pv.locator('.pcard .pcard-tier').count() == 0, 'a faked background without server levels is not shown')
+                elif k in ('silver1', 'gold1'):
                     pos = []
                     for i, (be, ga) in enumerate([(0, 0), (0, -22), (0, 22)]):
                         await tilt(pv, 0, 0); await pv.wait_for_timeout(50)

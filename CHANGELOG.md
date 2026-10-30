@@ -6,6 +6,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Changed
+- Profile opens with the card itself, with two buttons: «Поделиться» and «Настроить». Settings hold everything shown on the card — name, Telegram username, about, badges (up to 3), background, setup; the share screen only asks whether to include the Telegram link. Edits update the shared card on the server, so the same link shows the new version.
 - Roaster sites are crawled once, when a site is approved — no periodic re-crawl. New lots of known roasters enter the catalog when someone scans them; the owner can start a new pass by hand («Обойти заново»). A pass whose sitemaps cannot be read is retried after 1, 2, 4, 8 and 16 hours, then left for the owner. When there is nothing to crawl the crawler sets no alarm at all.
 
 ## v1.3.0 — Profile Update (2026-10-30)

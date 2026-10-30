@@ -105,7 +105,8 @@ export function cardSetup(gear: Gear[], chosen?: string[]) {
 }
 
 /** featured: showcase keys — 'ach:<key>' for achievements, an own badge id otherwise */
-export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite }[], gear: Gear[], stats: Stats, diamondNo?: number, grants: string[] = []): CardData {
+/** telegram — show the @username link (always on the own profile; on a shared card only if the user allows it) */
+export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite }[], gear: Gear[], stats: Stats, diamondNo?: number, grants: string[] = [], telegram = p.shareTelegram): CardData {
   const tg = p.telegram.trim();
   const photo = platform.user()?.photo;
   const levels = earnedLevels(stats);
@@ -123,11 +124,12 @@ export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite 
   return {
     v: 2,
     name: p.name.trim() || (tg ? '@' + tg : 'Без имени'),
-    username: p.shareTelegram && tg ? tg : undefined,
+    username: telegram && tg ? tg : undefined,
     about: p.about.trim() || undefined,
     photo: photo && /^https:\/\//.test(photo) ? photo : undefined,
-    badges: p.shareBadges ? own : [],
-    ach: p.shareBadges ? ach : [],
+    // the badges chosen in the profile are the card's badges (up to 3)
+    badges: own,
+    ach,
     setup: cardSetup(gear, p.cardGear),
     theme,
     earned,

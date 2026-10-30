@@ -28,7 +28,7 @@ window.Telegram = { WebApp: {
   version: '6.0', platform: 'ios', colorScheme: 'light', themeParams: {}, isVersionAtLeast: (v) => parseFloat(v) <= 6.0,
   ready() {}, expand() {}, onEvent() {}, offEvent() {}, setHeaderColor() {}, setBackgroundColor() {}, setBottomBarColor() {},
   enableClosingConfirmation() {}, disableClosingConfirmation() {}, disableVerticalSwipes() {}, openTelegramLink(u) { window.__shared.push(u); }, openLink(u) { window.__shared.push(u); },
-  BackButton: { show() {}, hide() {}, onClick() {}, offClick() {} }, HapticFeedback: { impactOccurred() {}, notificationOccurred() {}, selectionChanged() {} } } };"""
+  BackButton: { show() {}, hide() {}, onClick(cb) { window.__tgBack = cb; }, offClick() {} }, HapticFeedback: { impactOccurred() {}, notificationOccurred() {}, selectionChanged() {} } } };"""
 
 def brews(method, n):
     now = 1792900000000
@@ -71,9 +71,17 @@ async def main():
         check(set(sent[0]) == {'id', 'm', 'w', 't'}, f'only method, water and date leave the device ({sorted(sent[0])})')
         V = lambda s: pg.locator(s + ':visible')
         await pg.click('.tabbar >> text=Профиль'); await pg.wait_for_timeout(500)
+        check(await V('.pcard').count() == 1 and await V('.my-card-actions button').all_inner_texts() == ['Поделиться', 'Настроить'], 'Profile opens with the card and two buttons')
+        check('@anya_brews' in await V('.pcard').inner_text(), 'own card shows the Telegram username')
+        await pg.screenshot(path=str(OUT / 'profile-card.png'))
+        await V('.my-card-actions button:has-text("Настроить")').click(); await pg.wait_for_timeout(500)
+        check(await V('.topbar h1').inner_text() == 'Настроить профиль', 'settings screen')
         check(await pg.get_attribute('#profile-about', 'placeholder') == 'Пара слов о себе', 'about placeholder')
-        check(await V('.pcard').count() == 1, 'profile shows the card')
-        await V('button:has-text("Настроить и поделиться")').click(); await pg.wait_for_timeout(500)
+        await pg.fill('#profile-name', 'Аня К.'); await pg.wait_for_timeout(200)
+        check('Аня К.' in await V('.pcard').inner_text(), 'the card updates while editing')
+        sections = await V('.section h2').all_inner_texts()
+        check(all(x in [t.lower() for t in sections] for x in ('о себе', 'значки', 'фон', 'сетап')), f'settings cover everything on the card ({sections})')
+        check(await V('#card-tg').count() == 0, 'the Telegram link choice is not in settings')
         sw = await V('.theme-pick').all_inner_texts()
         tiles = [s.split('\n')[0] for s in sw if '\n' in s or s in ('Бронза', 'Серебро')]
         check('Бронза' in tiles and 'Серебро' in tiles, f'levels follow the server count: V60 60 → bronze, Kalita 100 → silver ({tiles})')
@@ -82,15 +90,27 @@ async def main():
         check('Cafec Abaca' not in chips, 'retired filter gear is not offered for the card')
 
         check(await V('.pcard.tier-bronze .pcard-corner').count() == 1, 'bronze V60 card with the method icon in the corner')
-        await V('.chips .chip:has-text("Fellow Stagg EKG")').click(); await pg.wait_for_timeout(1500)
-        check(posted and posted[-1]['theme'] == {'ach': 'method:v60'} and 'earned' not in posted[-1] and 'no' not in posted[-1] and [g['name'] for g in posted[-1]['setup']] == ['Comandante C40', 'Hario V60 02'], f'card stored with theme and chosen setup ({posted[-1]["setup"] if posted else None})')
+        await V('.chips .chip:has-text("Fellow Stagg EKG")').click(); await pg.wait_for_timeout(2500)
+        check(posted and posted[-1]['theme'] == {'ach': 'method:v60'} and posted[-1]['name'] == 'Аня К.' and 'earned' not in posted[-1] and 'no' not in posted[-1] and [g['name'] for g in posted[-1]['setup']] == ['Comandante C40', 'Hario V60 02'], f'edits in settings update the stored card (name, theme, setup) ({posted[-1]["setup"] if posted else None})')
         await pg.screenshot(path=str(OUT / 'card-edit.png'))
         await V('.theme-picks').scroll_into_view_if_needed(); await V('.theme-picks').screenshot(path=str(OUT / 'card-themes.png'))
-        btn = V('.footer button:has-text("Поделиться профилем")')
+        await pg.evaluate('window.__tgBack()'); await pg.wait_for_timeout(400)
+        await V('.my-card-actions button:has-text("Поделиться")').click(); await pg.wait_for_timeout(1200)
+        check(await V('.topbar h1').inner_text() == 'Поделиться профилем', 'share screen')
+        check(await V('.toggle-row').count() == 1 and await V('#card-tg').count() == 1, 'share screen has only the Telegram link choice')
+        await pg.locator('label[for="card-tg"]').click(); await pg.wait_for_timeout(300)
+        check('@anya_brews' not in await V('.pcard').inner_text(), 'without the link the shared card hides the username')
+        await pg.wait_for_timeout(800)
+        check(posted and 'username' not in posted[-1], 'stored card follows the choice')
+        await pg.locator('label[for="card-tg"]').click(); await pg.wait_for_timeout(1200)
+        await pg.screenshot(path=str(OUT / 'card-share.png'))
+        btn = V('.footer button:has-text("Отправить в Telegram")')
         check(await btn.is_enabled(), 'share button ready')
         await btn.click(); await pg.wait_for_timeout(400)
         shared = await pg.evaluate('window.__shared')
         check(any('startapp%3Dp' in s or 'startapp=p' in s or '%23r%3Dp' in s for s in shared), f'share opens Telegram with the card link ({shared[:1]})')
+        await pg.evaluate('window.__tgBack()'); await pg.wait_for_timeout(300)
+        await V('.my-card-actions button:has-text("Настроить")').click(); await pg.wait_for_timeout(500)
         for t in ('espresso', 'latte', 'ocean'):
             await V(f'.theme-pick:has-text("{ {"espresso": "Эспрессо", "latte": "Латте", "ocean": "Океан"}[t] }")').click(); await pg.wait_for_timeout(200)
             await pg.evaluate('window.scrollTo(0, 0)'); await pg.wait_for_timeout(150)
@@ -103,7 +123,7 @@ async def main():
         await mock(pt, [], [])
         await pt.reload(); await pt.wait_for_timeout(3500)
         await pt.click('.tabbar >> text=Профиль'); await pt.wait_for_timeout(400)
-        await pt.locator('button:visible:has-text("Настроить и поделиться")').click(); await pt.wait_for_timeout(400)
+        await pt.locator('.my-card-actions button:visible:has-text("Настроить")').click(); await pt.wait_for_timeout(400)
         tiles = [s.split('\n')[0] for s in await pt.locator('.theme-pick:visible').all_inner_texts()]
         check(all(t in tiles for t in ('Разработчик', 'Бронза', 'Серебро', 'Золото', 'Объёмный', 'Бриллиант')), f'tester: all backgrounds ({tiles})')
         await pt.locator('.theme-pick:visible:has-text("Объёмный")').click(); await pt.wait_for_timeout(300)

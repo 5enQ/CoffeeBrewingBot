@@ -7,8 +7,7 @@ import { allMethods, fmtNum, methodById } from '../data/methods';
 import { recipeFromStandard } from '../data/recipes';
 import { GEAR_CATS, catById, type Gear } from '../data/gear';
 import { BADGE_KINDS, CHAMPIONSHIPS, PLACES, Q_TYPES, SCA_EXTRA, SCA_LEVELS, SCA_MODULES, type Badge } from '../data/badges';
-import { BadgeChip, BadgeRow } from '../ui/Badges';
-import { useBadges, MAX_FEATURED } from '../data/featured';
+import { BadgeChip } from '../ui/Badges';
 import { useStore, uid } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter, useSelected } from '../router';
@@ -17,8 +16,7 @@ import { Button, Chips, Field, Row, SampleTag, Screen, Section, Segmented } from
 import { DESKTOP_MIN, useLayoutMode } from '../layout';
 import { adminCall, type GrantInfo, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
-import { ProfileCard } from '../ui/ProfileCard';
-import { useMyCard } from './CardScreens';
+import { MyCardBlock } from './CardScreens';
 
 export function Profile() {
   const store = useStore();
@@ -26,9 +24,7 @@ export function Profile() {
   const [msg, setMsg] = useState('');
   const [paste, setPaste] = useState('');
   const { profile, gear } = store;
-  const initials = (profile.name || profile.telegram || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
-  const addBadge = (kind: Badge['kind'] = 'sca') => push({ name: 'badgeEdit', badge: { id: uid(), kind, title: '', detail: '', year: '' }, isNew: true });
   const addGear = (cat: Gear['cat']) => push({ name: 'gearEdit', gear: { id: uid(), cat, name: '', details: '' }, isNew: true });
 
   const copy = async () => {
@@ -52,17 +48,6 @@ export function Profile() {
     catch (e) { setMsg((e as Error).message || 'Не получилось прочитать копию.'); platform.haptic('error'); }
   };
 
-  const badges = useBadges();
-  const { card: myCard } = useMyCard();
-  const [pinMsg, setPinMsg] = useState('');
-  const toggleFeatured = (key: string) => {
-    const cur = badges.featuredKeys;
-    if (cur.includes(key)) { setPinMsg(''); store.saveProfile({ ...profile, featured: cur.filter((k) => k !== key) }); platform.haptic('select'); return; }
-    if (cur.length >= MAX_FEATURED) { platform.haptic('error'); setPinMsg(`В профиле максимум ${MAX_FEATURED} значка — сначала уберите один.`); return; }
-    setPinMsg('');
-    platform.haptic('select');
-    store.saveProfile({ ...profile, featured: [...cur, key] });
-  };
   const { setRatingStats } = store;
   useEffect(() => {
     const id = myTelegramId();
@@ -77,59 +62,7 @@ export function Profile() {
 
   return (
     <Screen title="Профиль" root>
-      <div className="profile-card">
-        <div className="avatar" aria-hidden="true">{initials}</div>
-        <div className="profile-fields">
-          <input id="profile-name" className="profile-name" placeholder="Ваше имя" value={profile.name}
-            onChange={(e) => store.saveProfile({ ...profile, name: e.target.value })} aria-label="Имя автора" />
-          <label className="profile-handle" htmlFor="profile-tg">
-            <span>@</span>
-            <input id="profile-tg" placeholder="username в Telegram" value={profile.telegram} autoCapitalize="off" autoCorrect="off" spellCheck={false}
-              onChange={(e) => store.saveProfile({ ...profile, telegram: e.target.value.replace(/^@/, '').replace(/[^A-Za-z0-9_]/g, '') })} />
-          </label>
-          {badges.featured.length > 0 && <div className="profile-badges"><BadgeRow badges={badges.featured.map((f) => f.badge)} max={3} /></div>}
-          <textarea id="profile-about" className="profile-about" rows={2} placeholder="Пара слов о себе"
-            value={profile.about} onChange={(e) => store.saveProfile({ ...profile, about: e.target.value })} />
-        </div>
-      </div>
-      <p className="muted pad">Имя и значки увидят друзья в рецептах, которыми вы поделитесь. Ссылку на Telegram можно не добавлять — это выбирается при отправке.</p>
-
-      <Section title="Карточка профиля" plain>
-        <button type="button" className="pcard-open" onClick={() => push({ name: 'cardEdit' })} aria-label="Настроить карточку и поделиться">
-          <ProfileCard card={myCard} />
-        </button>
-        <Button kind="secondary" icon="share" wide onClick={() => push({ name: 'cardEdit' })}>Настроить и поделиться</Button>
-      </Section>
-
-      <Section title="Значки" aside={
-        <button type="button" className="icon-btn" onClick={() => addBadge()} aria-label="Добавить значок"><Icon name="plus" /></button>
-      } plain>
-        {badges.all.length > 0 ? (
-          <>
-            <p className="muted pad">Отметьте до трёх — они видны в профиле и в рецептах, которыми вы делитесь. {badges.featured.length}/{MAX_FEATURED}</p>
-            <div className="badge-pick-list">
-              {badges.all.map((it) => {
-                const on = badges.featuredKeys.includes(it.key);
-                return (
-                  <div key={it.key} className={'badge-pick' + (on ? ' on' : '')}>
-                    <BadgeChip b={it.badge} onClick={it.own ? () => push({ name: 'badgeEdit', badge: it.own!, isNew: false }) : undefined} />
-                    <button type="button" className="pin" aria-pressed={on} aria-label={on ? 'Убрать из профиля' : 'Показывать в профиле'}
-                      onClick={() => toggleFeatured(it.key)}>
-                      <Icon name="star" size={20} filled={on} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            {pinMsg && <p className="status warn pad">{pinMsg}</p>}
-          </>
-        ) : (
-          <button type="button" className="badge-empty" onClick={() => addBadge()}>
-            <Icon name="medal" size={28} />
-            <span><b>Добавьте сертификат или награду</b><small>SCA, Q Grader, места на чемпионатах. А за заварки значки появятся сами</small></span>
-          </button>
-        )}
-      </Section>
+      <MyCardBlock />
 
       <div className="stats">
         <div><b>{store.brews.length}</b><span>заварок</span></div>

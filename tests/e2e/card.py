@@ -79,6 +79,7 @@ async def main():
         check(any('startapp%3Dp' in s or 'startapp=p' in s or '%23r%3Dp' in s for s in shared), f'share opens Telegram with the card link ({shared[:1]})')
         for t in ('espresso', 'latte', 'ocean'):
             await V(f'.theme-pick:has-text("{ {"espresso": "Эспрессо", "latte": "Латте", "ocean": "Океан"}[t] }")').click(); await pg.wait_for_timeout(200)
+            await pg.evaluate('window.scrollTo(0, 0)'); await pg.wait_for_timeout(150)
             await V('.pcard').first.screenshot(path=str(OUT / f'card-{t}.png'))
         check(not errors, f'no page errors: {errors[:3]}')
 

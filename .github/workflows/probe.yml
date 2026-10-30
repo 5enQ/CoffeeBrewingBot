@@ -9,14 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dry crawl
         run: |
-          rm -rf out; mkdir -p out/p
-          UA="Mozilla/5.0 (compatible; BrewbookBot/1.0; +https://5enq.github.io/CoffeeBrewingBot/)"
-          get() { curl -sSL -m 30 -A "$UA" -w "%{http_code} %{size_download} %{url_effective}\n" "$2" -o "out/$1" >> out/_status.txt 2>&1 || echo "ERR $2" >> out/_status.txt; }
-          get kojo-part1.xml https://kojocoffee.ru/sitemap-store-part1.xml
-          get kojo-parts.xml https://kojocoffee.ru/sitemap-store-parts.xml
-          i=0; while read u; do i=$((i+1)); get "p/$i.html" "$u"; echo "$i $u" >> out/p/index.txt; done < urls.list
+          rm -rf out; mkdir -p out
+          cd code && mkdir -p out && node --experimental-strip-types --no-warnings dry.mts > out/dry.log 2>&1; cd ..; mv code/out/* out/
       - name: Commit
         run: |
           git config user.name probe; git config user.email probe@example.com

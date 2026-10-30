@@ -153,6 +153,8 @@ export interface Profile {
   cardTheme?: string;
   /** gear ids shown on the profile card; undefined — one item per category */
   cardGear?: string[];
+  /** place among everyone who reached 1000 liters (diamond card), given by the server once */
+  diamondNo?: number;
 }
 
 export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[]; recipeId?: string;

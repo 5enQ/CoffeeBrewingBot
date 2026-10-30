@@ -1,6 +1,6 @@
 /** Profile card: set it up and share it (own), or view a card a friend sent */
 import { useEffect, useMemo, useState } from 'react';
-import { BASE_THEMES, buildCard, cardText, MAX_SETUP, resolveTheme, storeCard, unlockedThemes, type CardData, type CardTheme } from '../data/card';
+import { BASE_THEMES, buildCard, cardText, claimDiamond, MAX_SETUP, resolveTheme, storeCard, unlockedThemes, type CardData, type CardTheme } from '../data/card';
 import { useBadges } from '../data/featured';
 import { GEAR_CATS } from '../data/gear';
 import { TIER_LABEL, type Tier } from '../data/achievements';
@@ -25,7 +25,20 @@ export function useMyCard(): { card: CardData; unlocked: ReturnType<typeof unloc
   return { card: buildCard(profile, shown, gear, theme), unlocked };
 }
 
-const TIERS: Tier[] = ['bronze', 'silver', 'gold', 'diamond'];
+/** Reached 1000 liters: get the diamond number from the server once and keep it in the profile */
+export function useDiamondNumber() {
+  const { profile, saveProfile } = useStore();
+  const { unlocked } = useMyCard();
+  const has = unlocked.some((u) => 'tier' in u.theme && u.theme.tier === 'diamond');
+  useEffect(() => {
+    if (!has || profile.diamondNo) return;
+    let alive = true;
+    claimDiamond().then((no) => { if (alive && no) saveProfile({ ...profile, diamondNo: no }); });
+    return () => { alive = false; };
+  }, [has, profile.diamondNo]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+const TIERS: Tier[] = ['bronze', 'silver', 'gold', 'volume', 'diamond'];
 const plural = (n: number, f: [string, string, string]) => {
   const a = n % 10, b = n % 100;
   return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2];
@@ -34,6 +47,7 @@ const plural = (n: number, f: [string, string, string]) => {
 const swatchClass = (t: CardTheme) => ('tier' in t ? `tier tier-${t.tier}` : `base-${t.base}`);
 
 export function CardEditScreen() {
+  useDiamondNumber();
   const { profile, gear, saveProfile } = useStore();
   const { card, unlocked } = useMyCard();
   const [link, setLink] = useState('');

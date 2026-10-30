@@ -16,7 +16,7 @@ The user interface is in Russian; code, comments and documentation are in Englis
 - **Journal** with stars (half stars), quick taste scales, flavor-wheel descriptors and notes.
 - **Sharing** a brew to friends via short links; friends can rate recipes (stored on the server).
 - **Achievements** (hidden until earned) and a showcase of up to 3 badges in the profile.
-- **Profile card** to share: avatar, name, optional Telegram link, badges, setup and a theme. Bronze / silver / gold / diamond themes unlock with achievements; the diamond card is faceted and turns with the device tilt.
+- **Profile card** to share: avatar, name, optional Telegram link, badges, setup and a theme. Backgrounds unlock with achievements: per method bronze 50, silver 100, gold 500, «Объёмный» 1000 brews (3D method icon); diamond for 1000 liters, numbered in the order people reach it.
 - **Desktop layout** (window wider than 860 px): sidebar, list and detail panes.
 - **Sync between devices** via Telegram CloudStorage (see below).
 - **Backup** as a Markdown file that can be edited in any text editor and restored (old JSON backups are accepted too).
@@ -94,7 +94,8 @@ Camera permission for the scanner: Android — `<uses-permission android:name="a
 | Endpoint | Purpose |
 |---|---|
 | `GET /version` | running server version and build time |
-| `POST /cards`, `GET /cards/:id` | profile cards: one per Telegram user, the id stays the same |
+| `POST /cards`, `GET /cards/:id` | profile cards: one per Telegram user, the id stays the same; the diamond number is always filled in by the server |
+| `POST /diamond { initData }` | a user reached 1000 liters: returns their diamond number (1, 2, 3… in order, the same every time) |
 | `POST /rate`, `GET /stats` | friends' ratings of shared recipes (one rating per user, own recipes can't be rated) |
 | `POST /recipes`, `GET /recipes/:id` | short share links |
 | `POST /share` | prepared Telegram message for `shareMessage` |

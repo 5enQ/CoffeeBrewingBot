@@ -18,7 +18,7 @@ import { DESKTOP_MIN, useLayoutMode } from '../layout';
 import { adminSites, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
 import { ProfileCard } from '../ui/ProfileCard';
-import { useMyCard } from './CardScreens';
+import { useDiamondNumber, useMyCard } from './CardScreens';
 
 export function Profile() {
   const store = useStore();
@@ -54,6 +54,7 @@ export function Profile() {
 
   const badges = useBadges();
   const { card: myCard } = useMyCard();
+  useDiamondNumber();
   const [pinMsg, setPinMsg] = useState('');
   const toggleFeatured = (key: string) => {
     const cur = badges.featuredKeys;

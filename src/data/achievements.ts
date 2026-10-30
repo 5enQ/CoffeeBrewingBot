@@ -2,14 +2,18 @@ import type { BadgeLite } from './badges';
 import { methodById } from './methods';
 import type { Brew } from './store';
 
-export type Tier = 'bronze' | 'silver' | 'gold' | 'diamond';
-export const TIER_LABEL: Record<Tier, string> = { bronze: 'Бронза', silver: 'Серебро', gold: 'Золото', diamond: 'Бриллиант' };
+/** volume — the top method tier: a 3D icon of the method; diamond — for liters */
+export type Tier = 'bronze' | 'silver' | 'gold' | 'volume' | 'diamond';
+export const TIER_LABEL: Record<Tier, string> = { bronze: 'Бронза', silver: 'Серебро', gold: 'Золото', volume: 'Объёмный', diamond: 'Бриллиант' };
+export const TIER_ORDER: Tier[] = ['bronze', 'silver', 'gold', 'volume', 'diamond'];
 
 interface Level { tier: Tier; at: number }
 
-const LITERS: Level[] = [{ tier: 'bronze', at: 10 }, { tier: 'silver', at: 100 }, { tier: 'gold', at: 1000 }, { tier: 'diamond', at: 10000 }];
+/** brewed volume; the diamond card is given for 1000 liters */
+const LITERS: Level[] = [{ tier: 'bronze', at: 10 }, { tier: 'silver', at: 100 }, { tier: 'gold', at: 500 }, { tier: 'diamond', at: 1000 }];
 const RATINGS: Level[] = [{ tier: 'bronze', at: 10 }, { tier: 'silver', at: 100 }, { tier: 'gold', at: 1000 }, { tier: 'diamond', at: 10000 }];
-const METHOD_COUNT: Level[] = [{ tier: 'bronze', at: 100 }, { tier: 'silver', at: 1000 }, { tier: 'gold', at: 10000 }];
+/** brews with one method: each tier gives a badge and a card background with the method icon */
+const METHOD_COUNT: Level[] = [{ tier: 'bronze', at: 50 }, { tier: 'silver', at: 100 }, { tier: 'gold', at: 500 }, { tier: 'volume', at: 1000 }];
 
 const fmt = (n: number) => n.toLocaleString('ru-RU');
 

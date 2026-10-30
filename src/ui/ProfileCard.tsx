@@ -130,6 +130,27 @@ function Glints({ x, y }: { x: number; y: number }) {
   );
 }
 
+/* ---------- volume tier: an extruded method icon ---------- */
+
+/** The method icon stacked in depth: back layers dark, the front one bright, so turning the card shows its thickness */
+function VolumeIcon({ icon, x, y }: { icon: IconKey; x: number; y: number }) {
+  const depth = 12;
+  // a resting three-quarter turn, so the depth is visible even when the phone is level
+  const ry = x * 32 - 24, rx = -y * 24 + 12;
+  return (
+    <div className="pcard-volume" aria-hidden="true">
+      <div className="pcard-volume-rot" style={{ transform: `rotateY(${ry.toFixed(2)}deg) rotateX(${rx.toFixed(2)}deg)` }}>
+        {Array.from({ length: depth }, (_, i) => (
+          <span key={i} className="pcard-volume-layer" style={{ transform: `translateZ(${((i - depth) * 1.7).toFixed(1)}px)`, color: `hsl(222 14% ${20 + (i / depth) * 22}%)` }}>
+            <MethodIcon icon={icon} size={104} />
+          </span>
+        ))}
+        <span className="pcard-volume-layer front"><MethodIcon icon={icon} size={104} /></span>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- card ---------- */
 
 export function ProfileCard({ card, live = true }: { card: CardData; live?: boolean }) {
@@ -139,18 +160,23 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
   const [photoOk, setPhotoOk] = useState(true);
   const icon = tier ? (card.theme as { icon: string }).icon : null;
 
+  // diamond and volume cards turn in 3D; diamond the most
+  const turn = tier === 'diamond' ? [18, 15] : tier === 'volume' ? [10, 8] : null;
   const style = {
     '--tx': t.x.toFixed(3), '--ty': t.y.toFixed(3),
-    ...(tier === 'diamond' ? { transform: `perspective(900px) rotateY(${(t.x * 14).toFixed(2)}deg) rotateX(${(-t.y * 12).toFixed(2)}deg)` } : {}),
+    ...(turn ? { transform: `perspective(800px) rotateY(${(t.x * turn[0]).toFixed(2)}deg) rotateX(${(-t.y * turn[1]).toFixed(2)}deg)` } : {}),
   } as React.CSSProperties;
+  const volume = tier === 'volume' && icon && icon !== 'star';
 
   return (
     <div ref={ref} className={`pcard ${tier ? `tier tier-${tier}` : `base-${(card.theme as { base: string }).base}`}`} style={style}
-      onClick={tier === 'diamond' ? () => requestTiltPermission() : undefined}>
-      {tier === 'diamond' && <><Facets x={t.x} y={t.y} /><div className="pcard-iris" aria-hidden="true" /></>}
+      onClick={turn ? () => requestTiltPermission() : undefined}>
+      {tier === 'diamond' && <><Facets x={t.x} y={t.y} /><div className="pcard-iris" aria-hidden="true" /><div className="pcard-film" aria-hidden="true" /><div className="pcard-edge" aria-hidden="true" /></>}
       {tier && <div className="pcard-sheen" aria-hidden="true" />}
       {tier && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
-      {icon && (
+      {volume && <VolumeIcon icon={icon as IconKey} x={t.x} y={t.y} />}
+      {tier === 'diamond' && card.no && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}
+      {icon && !volume && (
         <div className="pcard-corner" aria-hidden="true">
           {icon === 'star' ? <Icon name="star" size={64} filled /> : <MethodIcon icon={icon as IconKey} size={72} />}
         </div>

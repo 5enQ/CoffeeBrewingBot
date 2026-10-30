@@ -7,12 +7,14 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ### Added
 - Profile card: avatar, name, optional Telegram link, featured badges, setup (chosen gear, up to 6) and a color theme. Shared by a link that never changes: friends always see the latest card.
-- Metal card themes unlock with achievements: bronze, silver, gold, diamond, each with the achievement's icon in the corner (the method icon for "N brews with a method"). Metals of one tier are one tile with a choice of the corner icon (which achievement to show). Metals catch the light: a bright band travels across them with the tilt and small glints flash; diamond is faceted, iridescent and turns in 3D with the device (Telegram DeviceOrientation, the browser sensor, or the mouse).
+- Card backgrounds from achievements. Every brew method: bronze (50 brews), silver (100), gold (500) and «Объёмный» (1000) — an obsidian card with the method icon extruded in 3D. Diamond for 1000 liters: faceted, iridescent, turns in 3D with the device, and carries the holder's number in the bottom-left corner (№ 1 for the first person to reach it, given by the server). Metals of one tier are one tile with a choice of the corner icon. Metals catch the light: a bright band travels across them with the tilt and small glints flash.
 
 ### Fixed
 - Achievements of retired methods (Kalita Wave) and deleted custom methods are no longer lost.
 
 ### Changed
+- Achievement levels: method brews 50 / 100 / 500 / 1000 (bronze / silver / gold / «Объёмный»); liters 10 / 100 / 500 / 1000 (diamond). Liters below diamond and recipe ratings give badges only, no card background.
+- New AeroPress icon: plunger, chamber with a flange, rubber seal, level marks, filter cap.
 - Filters are no longer offered as gear (rarely relevant — a note on the brew covers it). Old brews keep the filter they were brewed with.
 - Profile: the "about" placeholder is just "Пара слов о себе".
 

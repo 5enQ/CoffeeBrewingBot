@@ -5,7 +5,7 @@
  */
 import { RATINGS_API } from '../config';
 import { platform } from '../platform';
-import { earnedAchievements, type Achievement, type Tier } from './achievements';
+import { earnedAchievements, TIER_ORDER, type Achievement, type Tier } from './achievements';
 import type { BadgeLite } from './badges';
 import { catById, GEAR_CATS, type Gear, type GearCat } from './gear';
 import { methodById } from './methods';
@@ -25,6 +25,9 @@ export type BaseTheme = typeof BASE_THEMES[number]['id'];
 /** What the card is painted with. Metal themes keep the icon so a friend sees the same card. */
 export type CardTheme = { base: BaseTheme } | { tier: Tier; icon: string; title: string };
 
+/** Card backgrounds: every method tier (bronze → volume), and diamond for 1000 liters. Other achievements are badges only. */
+const givesBackground = (a: Achievement, tier: Tier) => a.id.startsWith('method:') || (a.id === 'liters' && tier === 'diamond');
+
 export interface CardData {
   v: 1;
   name: string;
@@ -34,10 +37,11 @@ export interface CardData {
   badges: BadgeLite[];
   setup: { cat: GearCat; name: string }[];
   theme: CardTheme;
+  /** diamond only: the holder's place among everyone who reached 1000 liters (given by the server) */
+  no?: number;
 }
 
 export const MAX_SETUP = 6;
-const TIER_ORDER: Tier[] = ['bronze', 'silver', 'gold', 'diamond'];
 
 /** Icon for an achievement: the method's icon, a drop for liters, a star for ratings */
 function achievementIcon(a: Achievement) {
@@ -50,6 +54,7 @@ export interface UnlockedTheme { key: string; theme: CardTheme; label: string }
 /** Metal themes the user has earned, best tier first. Key 'ach:<achievement id>' is stored in the profile. */
 export function unlockedThemes(brews: Brew[], ratingsCount: number): UnlockedTheme[] {
   return earnedAchievements(brews, ratingsCount)
+    .filter((a) => givesBackground(a, a.unlock.split(':').pop() as Tier))
     .map((a) => {
       const tier = a.unlock.split(':').pop() as Tier;
       return { key: `ach:${a.id}`, theme: { tier, icon: achievementIcon(a), title: a.badge.title } as CardTheme, label: a.badge.title };
@@ -84,6 +89,7 @@ export function buildCard(p: Profile, badges: BadgeLite[], gear: Gear[], theme: 
     badges: badges.slice(0, 3),
     setup: cardSetup(gear, p.cardGear),
     theme,
+    no: 'tier' in theme && theme.tier === 'diamond' ? p.diamondNo : undefined,
   };
 }
 
@@ -105,7 +111,23 @@ export function cleanCard(raw: unknown): CardData | null {
   if (!name) return null;
   const username = str(r.username, 32).replace(/[^A-Za-z0-9_]/g, '');
   const photo = str(r.photo, 300);
-  return { v: 1, name, username: username || undefined, about: str(r.about, 200) || undefined, photo: /^https:\/\//.test(photo) ? photo : undefined, badges, setup, theme };
+  const no = Number(r.no);
+  return { v: 1, name, username: username || undefined, about: str(r.about, 200) || undefined, photo: /^https:\/\//.test(photo) ? photo : undefined, badges, setup, theme,
+    no: 'tier' in theme && theme.tier === 'diamond' && Number.isInteger(no) && no > 0 ? no : undefined };
+}
+
+/* ---------- diamond numbers ---------- */
+
+/** Reached 1000 liters: ask the server for the next free number (the same one every time for this user). null — failed. */
+export async function claimDiamond(): Promise<number | null> {
+  const initData = platform.initData();
+  if (!RATINGS_API || !initData) return null;
+  try {
+    const r = await fetch(`${RATINGS_API}/diamond`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData }) });
+    if (!r.ok) return null;
+    const { no } = await r.json();
+    return Number.isInteger(no) && no > 0 ? no : null;
+  } catch { return null; }
 }
 
 /* ---------- sharing ---------- */

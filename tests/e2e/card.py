@@ -11,7 +11,8 @@ def card(theme, **kw):
 CARDS = {
     'silver1': card({'tier': 'silver', 'icon': 'aeropress', 'title': 'Аэропресс · 1 000 заварок'}),
     'gold1': card({'tier': 'gold', 'icon': 'espresso', 'title': 'Эспрессо · 10 000 заварок'}),
-    'diamond1': card({'tier': 'diamond', 'icon': 'drop', 'title': '10 000 литров кофе'}),
+    'diamond1': card({'tier': 'diamond', 'icon': 'drop', 'title': '1 000 литров кофе'}, no=7),
+    'volume1': card({'tier': 'volume', 'icon': 'aeropress', 'title': 'Аэропресс · 1 000 заварок'}),
     'espresso1': card({'base': 'espresso'}),
 }
 TG = """window.__shared = [];
@@ -61,21 +62,21 @@ async def main():
         check(await V('.pcard').count() == 1, 'profile shows the card')
         await V('button:has-text("Настроить и поделиться")').click(); await pg.wait_for_timeout(500)
         sw = await V('.theme-pick').all_inner_texts()
-        bronze = [s for s in sw if 'Бронза' in s]
-        check(len(bronze) == 1 and '3' in bronze[0], f'bronze themes grouped into one tile ({bronze})')
-        check(not any('Серебро' in s for s in sw), 'silver is not offered without the achievement')
-        await V('.theme-pick:has-text("Бронза")').click(); await pg.wait_for_timeout(300)
+        silver = [s for s in sw if 'Серебро' in s]
+        check(len(silver) == 1 and '2' in silver[0], f'100 brews of a method give silver; grouped into one tile ({silver})')
+        check(not any('Бронза' in s for s in sw), 'liters and ratings below diamond give badges only, no background')
+        await V('.theme-pick:has-text("Серебро")').click(); await pg.wait_for_timeout(300)
         icons = await V('.icon-pick').evaluate_all('els => els.map(e => e.getAttribute("aria-label"))')
-        check(len(icons) == 3 and any('Kalita' in i for i in icons) and any('V60' in i for i in icons), f'icon choice inside bronze, Kalita kept ({icons})')
+        check(len(icons) == 2 and any('Kalita' in i for i in icons) and any('V60' in i for i in icons), f'icon choice inside silver, Kalita kept ({icons})')
         chips = await V('.chips .chip').all_inner_texts()
         check('Cafec Abaca' not in chips, 'retired filter gear is not offered for the card')
         await V('.icon-pick[aria-label*="V60"]').click(); await pg.wait_for_timeout(300)
         check(await V('.icon-pick.on[aria-label*="V60"]').count() == 1, 'V60 icon selected')
         await V('.icon-picks').screenshot(path=str(OUT / 'card-icon-picks.png'))
-        check(await V('.pcard.tier-bronze .pcard-corner').count() == 1, 'bronze card with the method icon in the corner')
+        check(await V('.pcard.tier-silver .pcard-corner').count() == 1, 'silver card with the method icon in the corner')
         await V('.chips .chip:has-text("Fellow Stagg EKG")').click(); await pg.wait_for_timeout(1500)
-        check(posted and posted[-1]['theme'].get('tier') == 'bronze' and [g['name'] for g in posted[-1]['setup']] == ['Comandante C40', 'Hario V60 02'], f'card stored with theme and chosen setup ({posted[-1]["setup"] if posted else None})')
-        await pg.screenshot(path=str(OUT / 'card-edit-bronze.png'))
+        check(posted and posted[-1]['theme'].get('tier') == 'silver' and [g['name'] for g in posted[-1]['setup']] == ['Comandante C40', 'Hario V60 02'], f'card stored with theme and chosen setup ({posted[-1]["setup"] if posted else None})')
+        await pg.screenshot(path=str(OUT / 'card-edit-silver.png'))
         await V('.theme-picks').scroll_into_view_if_needed(); await V('.theme-picks').screenshot(path=str(OUT / 'card-themes.png'))
         btn = V('.footer button:has-text("Поделиться профилем")')
         check(await btn.is_enabled(), 'share button ready')
@@ -105,7 +106,14 @@ async def main():
                         await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-{k}-{i}.png'))
                     check(len(set(pos[1:])) == 2, f'{k}: the light band moves with the tilt ({pos})')
                     check(await pv.locator('.pcard-glints g').count() > 0, f'{k}: glints flash at some tilt')
+                elif k == 'volume1':
+                    for i, (be, ga) in enumerate([(0, 0), (6, -22), (-6, 22)]):
+                        await tilt(pv, 0, 0); await pv.wait_for_timeout(50)
+                        await tilt(pv, be, ga); await pv.wait_for_timeout(700)
+                        await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-volume-{i}.png'))
+                    check(await pv.locator('.pcard-volume-layer').count() > 10, 'volume card: the method icon is extruded')
                 elif k == 'diamond1':
+                    check((await pv.locator('.pcard-no').inner_text()).replace('\n', '') == '№7', 'diamond shows the holder number')
                     for i, (be, ga) in enumerate([(0, 0), (8, -18), (-10, 20)]):
                         await tilt(pv, 0, 0); await pv.wait_for_timeout(50)
                         await tilt(pv, be, ga); await pv.wait_for_timeout(700)

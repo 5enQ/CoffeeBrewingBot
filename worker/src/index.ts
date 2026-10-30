@@ -98,6 +98,8 @@ export class RecipeStore extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS cards (id TEXT PRIMARY KEY, user TEXT NOT NULL UNIQUE, data TEXT NOT NULL, ts INTEGER NOT NULL)`);
+    // diamond card holders in the order they reached 1000 liters: no 1, 2, 3…
+    ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS diamonds (user TEXT PRIMARY KEY, no INTEGER NOT NULL UNIQUE, ts INTEGER NOT NULL)`);
     ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS recipes (
       id TEXT PRIMARY KEY, code TEXT NOT NULL, author TEXT NOT NULL, ts INTEGER NOT NULL)`);
   }
@@ -132,8 +134,27 @@ export class RecipeStore extends DurableObject<Env> {
     return id;
   }
 
+  /** A shared card. The diamond number always comes from here, never from what the client sent;
+   *  a diamond card of someone without a number is shown with the default background. */
   getCard(id: string) {
-    return this.ctx.storage.sql.exec<{ data: string }>('SELECT data FROM cards WHERE id = ?', id).toArray()[0]?.data ?? null;
+    const row = this.ctx.storage.sql.exec<{ data: string; user: string }>('SELECT data, user FROM cards WHERE id = ?', id).toArray()[0];
+    if (!row) return null;
+    const card = JSON.parse(row.data) as { theme?: { tier?: string }; no?: number };
+    delete card.no;
+    if (card.theme?.tier === 'diamond') {
+      const no = this.ctx.storage.sql.exec<{ no: number }>('SELECT no FROM diamonds WHERE user = ?', row.user).toArray()[0]?.no;
+      if (no) card.no = no; else card.theme = { base: 'paper' } as never;
+    }
+    return card;
+  }
+
+  /** Next free number for a new diamond holder; the same user always gets the same number */
+  claimDiamond(user: string) {
+    const cur = this.ctx.storage.sql.exec<{ no: number }>('SELECT no FROM diamonds WHERE user = ?', user).toArray()[0];
+    if (cur) return cur.no;
+    const next = (this.ctx.storage.sql.exec<{ m: number | null }>('SELECT MAX(no) AS m FROM diamonds').one().m ?? 0) + 1;
+    this.ctx.storage.sql.exec('INSERT INTO diamonds (user, no, ts) VALUES (?, ?, ?)', user, next, Date.now());
+    return next;
   }
 }
 
@@ -266,7 +287,15 @@ export default {
     const card = url.pathname.match(/^\/cards\/([A-Za-z0-9]{6,16})$/);
     if (req.method === 'GET' && card) {
       const data = await env.RECIPES.get(env.RECIPES.idFromName('all')).getCard(card[1]);
-      return data ? json({ card: JSON.parse(data) }, 200, { ...h, 'Cache-Control': 'max-age=60' }) : json({ error: 'not found' }, 404, h);
+      return data ? json({ card: data }, 200, { ...h, 'Cache-Control': 'max-age=60' }) : json({ error: 'not found' }, 404, h);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/diamond') {
+      let body: { initData?: string };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      return json({ no: await env.RECIPES.get(env.RECIPES.idFromName('all')).claimDiamond(user.id) }, 200, h);
     }
 
     if (req.method === 'POST' && url.pathname === '/admin') {

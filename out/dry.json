@@ -1,0 +1,581 @@
+{
+ "kojocoffee.ru": {
+  "sitemaps": 6,
+  "entries": 211,
+  "wanted": 90,
+  "archive": 35,
+  "pages": [
+   {
+    "u": "https://kojocoffee.ru/catalog/espresso/tproduct/2180284081-468963947301-kofe-bez-kofeinaespresso",
+    "status": 200,
+    "ms": 685,
+    "useful": 3,
+    "p": {
+     "process": "Декафеинизация методом L&B",
+     "altitude": "1700–2000 м",
+     "packNotes": "Изюм, карамель, чернослив, шоколад",
+     "scales": {
+      "sweetness": 3,
+      "acidity": 5,
+      "bitterness": 3
+     },
+     "name": "без кофеина,Эспрессо",
+     "roaster": "Kojo"
+    }
+   },
+   {
+    "u": "https://kojocoffee.ru/catalog/archiv/tproduct/2080574081-201511662272-kofe-kolumbiya-la-territa-filtr",
+    "status": 200,
+    "ms": 505,
+    "useful": 5,
+    "p": {
+     "process": "Натуральная анаэробная",
+     "variety": "Розовый бурбон",
+     "region": "Киндио",
+     "altitude": "1750 метров над уровнем моря м",
+     "name": "Колумбия Ла Террита, Фильтр",
+     "country": "Колумбия",
+     "roaster": "Kojo"
+    }
+   },
+   {
+    "u": "https://kojocoffee.ru/catalog/archiv/tproduct/2080574081-461013860372-kofe-keniya-aberder-drip",
+    "status": 200,
+    "ms": 359,
+    "useful": 5,
+    "p": {
+     "process": "Мытая",
+     "variety": "SL28, SL34",
+     "country": "Кения",
+     "altitude": "1600 м",
+     "packNotes": "Малина, маракуйя, гибискус, молочный шоколад, цедра грейпфрута, розовый перец",
+     "scales": {
+      "sweetness": 5,
+      "acidity": 5,
+      "bitterness": 1
+     },
+     "name": "Кения Абердэр",
+     "roaster": "Kojo",
+     "kind": "drip",
+     "dripCount": 6
+    }
+   },
+   {
+    "u": "https://kojocoffee.ru/catalog/drips/tproduct/2080571661-426369877852-kofe-ruanda-muremure-drip",
+    "status": 200,
+    "ms": 273,
+    "useful": 6,
+    "p": {
+     "process": "Мытая",
+     "variety": "Красный бурбон",
+     "country": "Руанда",
+     "region": "Ньямашеке, Западная провинция",
+     "altitude": "1930–2200 м",
+     "packNotes": "Темный виноград, зеленое яблоко, черная смородина, жасмин, зеленый чай, карамель",
+     "scales": {
+      "sweetness": 3,
+      "acidity": 5,
+      "bitterness": 1
+     },
+     "name": "Руанда Муремуре",
+     "roaster": "Kojo",
+     "kind": "drip",
+     "dripCount": 6
+    }
+   },
+   {
+    "u": "https://kojocoffee.ru/catalog/filter/tproduct/2080569371-268107913163-kofe-keniya-gitura-filtr",
+    "status": 200,
+    "ms": 332,
+    "useful": 6,
+    "p": {
+     "process": "Мытая",
+     "variety": "SL28, SL34, Батиан, Руиру 11",
+     "country": "Кения",
+     "region": "Муранга",
+     "altitude": "1600–1800 м",
+     "packNotes": "Красное яблоко, гранат, малина, красный чай, лист черной смородины",
+     "scales": {
+      "sweetness": 5,
+      "acidity": 5,
+      "bitterness": 1
+     },
+     "name": "Кения Гитура, Фильтр",
+     "roaster": "Kojo"
+    }
+   },
+   {
+    "u": "https://kojocoffee.ru/catalog/filter/tproduct/2080569371-858674623863-kofe-kosta-rika-alberto-gardia-filtr",
+    "status": 200,
+    "ms": 304,
+    "useful": 6,
+    "p": {
+     "process": "Натуральная",
+     "variety": "Катурра",
+     "country": "Коста-Рика",
+     "region": "Центральная долина",
+     "altitude": "1300 м",
+     "packNotes": "Красное яблоко, грейпфрут, молочный шоколад, миндаль, вишня",
+     "scales": {
+      "sweetness": 5,
+      "acidity": 5,
+      "bitterness": 3
+     },
+     "name": "Коста-Рика Альберто Гардиа, Фильтр",
+     "roaster": "Kojo"
+    }
+   }
+  ]
+ },
+ "sbmrne.ru": {
+  "sitemaps": 6,
+  "entries": 705,
+  "wanted": 354,
+  "archive": 0,
+  "pages": [
+   {
+    "u": "https://sbmrne.ru/katalog/kofe/espresso/sempl-boks-espresso/",
+    "status": 200,
+    "ms": 538,
+    "useful": 0,
+    "p": {
+     "roaster": "Submarine",
+     "name": "Сэмпл-Бокс Espresso"
+    }
+   },
+   {
+    "u": "https://sbmrne.ru/katalog/kofe/espresso/braz-per-alta-villa-espr/",
+    "status": 200,
+    "ms": 722,
+    "useful": 6,
+    "p": {
+     "process": "Эксперимент",
+     "variety": "catuai, topazio",
+     "roastLevel": "Средняя",
+     "country": "Бразилия",
+     "roaster": "Submarine",
+     "region": "Минас Жерайс",
+     "altitude": "1100 м",
+     "scales": {
+      "acidity": 3,
+      "body": 4,
+      "ferment": 3
+     },
+     "name": "Бразилия Перископ Альта Вилла",
+     "packNotes": "дыня, апельсиновый джем, темный шоколад"
+    }
+   },
+   {
+    "u": "https://sbmrne.ru/katalog/kofe/filtr/indon-per-bot-filter/",
+    "status": 200,
+    "ms": 835,
+    "useful": 6,
+    "p": {
+     "process": "Эксперимент",
+     "variety": "USDA, kartika, lini S795, typica",
+     "roastLevel": "Светлая",
+     "country": "Индонезия",
+     "roaster": "Submarine",
+     "region": "остров Ява",
+     "altitude": "1260–1650 м",
+     "scales": {
+      "acidity": 4,
+      "body": 3,
+      "ferment": 3
+     },
+     "name": "Индонезия Перископ Ботолингго",
+     "packNotes": "папайя, консервированный ананас, белое вино"
+    }
+   },
+   {
+    "u": "https://sbmrne.ru/katalog/kofe/filtr/col-per-sidra-filter/",
+    "status": 200,
+    "ms": 827,
+    "useful": 6,
+    "p": {
+     "process": "Эксперимент",
+     "variety": "sidra",
+     "roastLevel": "Светлая",
+     "country": "Колумбия",
+     "region": "Фресно, Толима",
+     "altitude": "1450 м",
+     "scales": {
+      "acidity": 4,
+      "body": 3,
+      "ferment": 3
+     },
+     "name": "Колумбия Перископ сидра",
+     "packNotes": "клубничный ликер, консервированный ананас, мусковадо",
+     "roaster": "Submarine"
+    }
+   },
+   {
+    "u": "https://sbmrne.ru/katalog/kofe/smolotyy/",
+    "status": 200,
+    "ms": 813,
+    "useful": 0,
+    "p": {
+     "scales": {
+      "acidity": 3,
+      "body": 3,
+      "ferment": 1
+     },
+     "name": "Молотый порционный кофе",
+     "roaster": "Submarine"
+    }
+   },
+   {
+    "u": "https://sbmrne.ru/katalog/drip-pakety/mega-eth-chel-6-sht/",
+    "status": 200,
+    "ms": 813,
+    "useful": 5,
+    "p": {
+     "process": "Мытая",
+     "country": "Эфиопия",
+     "roaster": "Submarine",
+     "region": "Гедео, Гедеб",
+     "altitude": "2100 м",
+     "scales": {
+      "acidity": 3,
+      "body": 3
+     },
+     "name": "MEGA Эфиопия Челбеса",
+     "packNotes": "персик, бергамот, тростниковый сахар",
+     "kind": "drip",
+     "dripCount": 6
+    }
+   }
+  ]
+ },
+ "hq-coffee.com": {
+  "sitemaps": 1,
+  "entries": 110,
+  "wanted": 97,
+  "archive": 0,
+  "pages": [
+   {
+    "u": "https://hq-coffee.com/colombia-jairo-arcila-cardamon/",
+    "status": 200,
+    "ms": 1854,
+    "useful": 5,
+    "p": {
+     "packNotes": "Кардамон, эвкалипт, лакричные леденцы",
+     "variety": "Типика",
+     "process": "Washed + Cardamon",
+     "region": "Quindio",
+     "name": "Colombia Jairo Arcila Cardamon",
+     "country": "Колумбия",
+     "roaster": "HQ! coffee",
+     "inStock": false
+    }
+   },
+   {
+    "u": "https://hq-coffee.com/kenya-karagoto-aa/",
+    "status": 200,
+    "ms": 1641,
+    "useful": 5,
+    "p": {
+     "packNotes": "Сухофрукты, шиповник, чёрный чай",
+     "variety": "СЛ-28, СЛ-34",
+     "process": "Мытая",
+     "region": "Ньери",
+     "name": "Кения Карагото АА",
+     "country": "Кения",
+     "roaster": "HQ! coffee",
+     "inStock": false
+    }
+   },
+   {
+    "u": "https://hq-coffee.com/kenya-aa-plus/",
+    "status": 200,
+    "ms": 1721,
+    "useful": 2,
+    "p": {
+     "variety": "Руиру 11, СЛ-28, СЛ-34",
+     "name": "Kenya AA Plus",
+     "country": "Кения",
+     "roaster": "HQ! coffee",
+     "inStock": false
+    }
+   },
+   {
+    "u": "https://hq-coffee.com/hq-x-studio-21-drip-bags-peachh/",
+    "status": 200,
+    "ms": 1587,
+    "useful": 0,
+    "p": {
+     "name": "HQ! x STUDIO 21 Drip Bags 2.0",
+     "roaster": "HQ! coffee",
+     "kind": "drip",
+     "inStock": false
+    }
+   },
+   {
+    "u": "https://hq-coffee.com/hq-keyholder/",
+    "status": 200,
+    "ms": 1224,
+    "useful": 0,
+    "p": {
+     "name": "HQ! кейхолдер",
+     "roaster": "HQ! coffee",
+     "inStock": true
+    }
+   },
+   {
+    "u": "https://hq-coffee.com/kenya-karinga-pb/",
+    "status": 200,
+    "ms": 1403,
+    "useful": 1,
+    "p": {
+     "name": "Kenya Karinga PB",
+     "country": "Кения",
+     "roaster": "HQ! coffee",
+     "inStock": false
+    }
+   }
+  ]
+ },
+ "theweldercatherine.ru": {
+  "sitemaps": 3,
+  "entries": 1036,
+  "wanted": 861,
+  "archive": 726,
+  "pages": [
+   {
+    "u": "https://theweldercatherine.ru/catalog/dlya_espresso/efiopiya_gigesa/",
+    "status": 200,
+    "ms": 557,
+    "useful": 5,
+    "p": {
+     "variety": "Местные разновидности типики",
+     "region": "Гуджи",
+     "process": "Натуральная",
+     "packNotes": "вишня, персик, чёрный чай, бергамот",
+     "roastLevel": "Средняя",
+     "scales": {
+      "body": 3
+     },
+     "name": "Эфиопия Гигеса",
+     "country": "Эфиопия",
+     "roaster": "Сварщица Екатерина",
+     "inStock": true
+    }
+   },
+   {
+    "u": "https://theweldercatherine.ru/catalog/arkhiv_kofe/noski_s_risunkom_sova/",
+    "status": 200,
+    "ms": 560,
+    "useful": 0,
+    "p": {
+     "name": "Носки с рисунком \"Сова\"",
+     "roaster": "Сварщица Екатерина",
+     "inStock": true
+    }
+   },
+   {
+    "u": "https://theweldercatherine.ru/catalog/arkhiv_kofe/keniya_starlayt_c/",
+    "status": 200,
+    "ms": 581,
+    "useful": 5,
+    "p": {
+     "variety": "Sl-28, SL-34, Руиру 11, Батиан",
+     "region": "Ньери",
+     "process": "Мытая",
+     "packNotes": "красная смородина, брусника, лимон, карамель",
+     "scales": {
+      "body": 3
+     },
+     "name": "Кения Старлайт C",
+     "country": "Кения",
+     "roaster": "Сварщица Екатерина",
+     "inStock": true
+    }
+   },
+   {
+    "u": "https://theweldercatherine.ru/catalog/arkhiv_kofe/burundi_kibingo/",
+    "status": 200,
+    "ms": 609,
+    "useful": 5,
+    "p": {
+     "variety": "красный бурбон",
+     "region": "Каянза",
+     "process": "Мытая",
+     "packNotes": "вишня, лемонграсс, какао",
+     "scales": {
+      "body": 3
+     },
+     "name": "Бурунди Кибинго",
+     "country": "Бурунди",
+     "roaster": "Сварщица Екатерина",
+     "inStock": true
+    }
+   },
+   {
+    "u": "https://theweldercatherine.ru/catalog/arkhiv_kofe/1_filtr_paket_braziliya_santa_lyusiya/",
+    "status": 200,
+    "ms": 564,
+    "useful": 4,
+    "p": {
+     "variety": "желтый катуаи",
+     "region": "Минас Жерайс",
+     "process": "Натуральная",
+     "name": "1 фильтр-пакет Бразилия Санта Люсия",
+     "country": "Бразилия",
+     "roaster": "Сварщица Екатерина",
+     "kind": "drip",
+     "inStock": true
+    }
+   },
+   {
+    "u": "https://theweldercatherine.ru/catalog/arkhiv_kofe/kapsuly_boliviya_koko_yava_iz_bochki_50_sht/",
+    "status": 200,
+    "ms": 537,
+    "useful": 4,
+    "p": {
+     "variety": "катурра",
+     "region": "Каранави",
+     "process": "Натуральная",
+     "name": "Капсулы Боливия Коко Ява из бочки",
+     "country": "Боливия",
+     "roaster": "Сварщица Екатерина",
+     "unsupported": true,
+     "inStock": true
+    }
+   }
+  ]
+ },
+ "shop.tastycoffee.ru": {
+  "sitemaps": 1,
+  "entries": 3733,
+  "wanted": 1844,
+  "archive": 0,
+  "pages": [
+   {
+    "u": "https://shop.tastycoffee.ru/coffee/breakfast-blend",
+    "status": 200,
+    "ms": 710,
+    "useful": 1,
+    "p": {
+     "roastLevel": "Средняя",
+     "packNotes": "Аромат лайма и жасмина. Кремовое тело с выраженными нотами груши в горьком шоколаде и специй с лимонной кислинкой. Послевкусие продолжительное со сливочными оттенками",
+     "scales": {
+      "bitterness": 2,
+      "acidity": 5
+     },
+     "name": "Брейкфаст Бленд",
+     "roaster": "Tasty Coffee",
+     "inStock": false
+    }
+   },
+   {
+    "u": "https://shop.tastycoffee.ru/coffee/ethiopia-anasora",
+    "status": 200,
+    "ms": 743,
+    "useful": 5,
+    "p": {
+     "roastLevel": "Светлая",
+     "region": "Гуджи",
+     "altitude": "2300 м",
+     "variety": "местные разновидности",
+     "scales": {
+      "body": 2,
+      "acidity": 4
+     },
+     "name": "Эфиопия Анасора Анаэробная",
+     "country": "Эфиопия",
+     "packNotes": "винограда, красного вермута, черники, лимона",
+     "roaster": "Tasty Coffee",
+     "inStock": false
+    }
+   },
+   {
+    "u": "https://shop.tastycoffee.ru/coffee/guatemala-la-nueva-era",
+    "status": 200,
+    "ms": 716,
+    "useful": 6,
+    "p": {
+     "roastLevel": "Светлая",
+     "region": "Фрайжанес",
+     "process": "Натуральная",
+     "altitude": "1300–1800 м",
+     "variety": "бурбон",
+     "scales": {
+      "body": 3,
+      "acidity": 4
+     },
+     "name": "Гватемала Ла Нуэва Эра",
+     "country": "Гватемала",
+     "packNotes": "персика, зелёного винограда, сливочной карамели",
+     "roaster": "Tasty Coffee",
+     "inStock": false
+    }
+   },
+   {
+    "u": "https://shop.tastycoffee.ru/coffee/peru-keni-yahahuanka",
+    "status": 200,
+    "ms": 719,
+    "useful": 6,
+    "p": {
+     "roastLevel": "Светлая",
+     "region": "Сан-Игнасио",
+     "process": "Мытая",
+     "altitude": "1750 м",
+     "variety": "катуаи, бурбон",
+     "scales": {
+      "body": 3,
+      "acidity": 4
+     },
+     "name": "Перу Кени Яхахуанка",
+     "country": "Перу",
+     "packNotes": "зелёного яблока, красной, смородины, кешью",
+     "roaster": "Tasty Coffee",
+     "inStock": false
+    }
+   },
+   {
+    "u": "https://shop.tastycoffee.ru/coffee/colombia-marageisha-encanto",
+    "status": 200,
+    "ms": 732,
+    "useful": 6,
+    "p": {
+     "roastLevel": "Светлая",
+     "region": "Киндио",
+     "process": "Натуральный фанки",
+     "altitude": "1700 м",
+     "variety": "марагейша",
+     "scales": {
+      "body": 2,
+      "acidity": 4
+     },
+     "name": "Колумбия Марагейша Энканто",
+     "country": "Колумбия",
+     "packNotes": "личи, нектарина, зелёного чая, розового перца",
+     "roaster": "Tasty Coffee",
+     "inStock": false
+    }
+   },
+   {
+    "u": "https://shop.tastycoffee.ru/coffee/costa-rica-elmudo-2026",
+    "status": 200,
+    "ms": 732,
+    "useful": 6,
+    "p": {
+     "roastLevel": "Светлая",
+     "region": "Тарразу",
+     "process": "Натуральная",
+     "altitude": "1700–1800 м",
+     "variety": "катурра",
+     "scales": {
+      "body": 4,
+      "acidity": 4
+     },
+     "name": "Коста-Рика Эль Мудо",
+     "country": "Коста-Рика",
+     "packNotes": "грейпфрута, ананаса, тёмного винограда, ликёрной конфеты",
+     "roaster": "Tasty Coffee",
+     "inStock": false
+    }
+   }
+  ]
+ }
+}

@@ -35,3 +35,7 @@ new_sqlite_classes = ["CoffeeCatalog"]
 ALLOWED_ORIGIN = "https://5enq.github.io"
 
 # The BOT_TOKEN secret is set via `wrangler secret put BOT_TOKEN` (or GitHub Actions)
+
+# Heartbeat for the catalog crawler (it schedules its own steps; this only makes sure it keeps running)
+[triggers]
+crons = ["23 */6 * * *"]

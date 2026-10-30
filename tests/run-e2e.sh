@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 npm run build:single >/dev/null
 cd tests/e2e
 status=0
-for t in smoke.py drip.py sync.py; do
+for t in smoke.py drip.py catalog.py sync.py; do
   echo "== $t"
   python3 "$t" || status=1
 done

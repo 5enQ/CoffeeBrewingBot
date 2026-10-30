@@ -20,6 +20,8 @@ jobs:
           node-version: 22
       - run: npm install
         working-directory: worker
+      - run: npx tsc -p .
+        working-directory: worker
       # Readable server version: release version and title, visible in the Cloudflare dashboard
       # (Workers → brewbook-ratings → Deployments) and at /version
       - id: v
@@ -27,12 +29,16 @@ jobs:
           echo "version=$(node scripts/release-info.mjs version)" >> "$GITHUB_OUTPUT"
           echo "title=$(node scripts/release-info.mjs title)" >> "$GITHUB_OUTPUT"
           echo "built=$(date -u +%s)000" >> "$GITHUB_OUTPUT"
+          # the owner's Telegram id (Profile → "Ваш Telegram ID"): they approve roaster sites
+          if [ -n "$OWNER" ]; then echo "owner=--var OWNER_IDS:$OWNER" >> "$GITHUB_OUTPUT"; fi
+        env:
+          OWNER: ${{ secrets.OWNER_TELEGRAM_ID }}
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
-          command: deploy --tag "v${{ steps.v.outputs.version }}" --message "${{ steps.v.outputs.title }}" --var VERSION:${{ steps.v.outputs.version }} --var BUILT_AT:${{ steps.v.outputs.built }}
+          command: deploy --tag "v${{ steps.v.outputs.version }}" --message "${{ steps.v.outputs.title }}" --var VERSION:${{ steps.v.outputs.version }} --var BUILT_AT:${{ steps.v.outputs.built }} ${{ steps.v.outputs.owner }}
           secrets: |
             BOT_TOKEN
         env:

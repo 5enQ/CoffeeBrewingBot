@@ -5,6 +5,21 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.2.0 — Roaster catalog (2026-10-30)
+
+### Added
+- Pick coffee from a roaster's catalog: pack editor → "Выбрать из каталога обжарщиков" → roaster → lot. Beans and drip boxes; lots on sale first, past lots one tap away and always in search; the drip box size comes from the lot.
+- The server crawls approved roaster sites in the background (robots.txt → sitemaps → product pages), so lots are in the catalog before anyone scans them. Lots that leave a site are kept and marked "снят с продажи".
+- Tasty Coffee (shop.tastycoffee.ru) joins Kojo, Submarine, HQ! coffee and Сварщица Екатерина. Pages with a "pack / drips" switch are offered both as beans and as drips.
+- Site approval: the server fetches pages only from approved domains. A scan from an unknown site is queued, the owner gets a bot message and approves or rejects the site in Profile → "Сайты обжарщиков" (owner only). Profile shows "Ваш Telegram ID" for this setup.
+
+### Changed
+- Parser: English country names in titles (HQ! coffee), roast levels mapped to Светлая / Омни / Средняя / Тёмная, processes to Мытая / Натуральная / Хани / Анаэробная, stock status from the product markup, capsules skipped, "…, Фильтр" removed from names.
+
+### Internal
+- Worker type-checks in CI; crawler rules and parser are covered by unit tests; a browser test for the picker and the owner tools.
+
+
 ## v1.1.0 — Bug fixes (2026-10-30)
 
 ### Fixed

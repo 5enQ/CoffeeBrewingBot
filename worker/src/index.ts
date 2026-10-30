@@ -14,8 +14,9 @@
  * so a rating "on someone else's behalf" cannot be forged, and a repeated rating replaces the previous one.
  */
 import { DurableObject } from 'cloudflare:workers';
-import { CoffeeCatalog, cleanCoffee, keysFor } from './catalog';
-import { parsePage } from './parse';
+import { CoffeeCatalog, cleanCoffee, keysFor, type Found, type SiteStatus } from './catalog';
+import { fetchPage } from './fetch';
+import { PARSER_VERSION, parsePage } from './parse';
 
 export { CoffeeCatalog };
 
@@ -28,6 +29,11 @@ export interface Env {
   /** server version "X.Y.Z" and build time — set on deploy (GitHub Actions) */
   VERSION?: string;
   BUILT_AT?: string;
+  /** Telegram ids of the bot owner(s), comma-separated: they approve roaster sites */
+  OWNER_IDS?: string;
+  /** local tests only: route crawler requests through a fixture server */
+  CRAWL_PROXY?: string;
+  CRAWL_STEP_MS?: string;
 }
 
 const enc = new TextEncoder();
@@ -131,7 +137,12 @@ const json = (data: unknown, status: number, headers: Record<string, string>) =>
   new Response(JSON.stringify(data), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  /** Cron heartbeat: keeps the background crawler of the catalog running */
+  async scheduled(_c: ScheduledController, env: Env) {
+    await env.CATALOG.get(env.CATALOG.idFromName('all')).kick();
+  },
+
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const h = cors(env, req);
     if (req.method === 'OPTIONS') return new Response(null, { headers: h });
     const url = new URL(req.url);
@@ -190,11 +201,16 @@ export default {
       const stale = found && found.source === 'page' && found.confirms === 0 && (found.pv ?? 0) < PARSER_VERSION && pageUrl;
       if (found && !stale) return json(publicFound(found), 200, h);
       if (!pageUrl) return json({ source: 'none' }, 200, h);
-      // not in the catalog — open the roaster page
+      // not in the catalog — open the roaster page, but only on approved sites
+      const gate = await catalog.siteGate(pageUrl);
+      if (gate === 'new') ctx.waitUntil(notifyOwners(env, pageUrl));
+      if (gate !== 'approved') return json(found ? publicFound(found) : { source: 'none', pending: gate === 'new' || gate === 'pending' }, 200, h);
       const page = await fetchPage(pageUrl);
       if (!page) return json({ source: 'none' }, 200, h);
       keys = [...new Set([...keys, ...keysFor(page.url, null)])];
-      const coffee = cleanCoffee(parsePage(page.html, page.url));
+      const { inStock: _s, unsupported: _u, ...parsed } = parsePage(page.html, page.url);
+      void _s; void _u;
+      const coffee = cleanCoffee(parsed);
       if (found) {
         // lot parsed by an old parser version and not confirmed by anyone — refresh it
         const fresh = await catalog.refreshPage(found.id, coffee, PARSER_VERSION);
@@ -204,7 +220,7 @@ export default {
       if (again) return json(publicFound(again), 200, h);
       const useful = ['country', 'region', 'variety', 'process', 'altitude', 'packNotes', 'farm'].filter((k) => (coffee as Record<string, unknown>)[k]).length;
       if (useful < 2) return json({ source: 'none', coffee }, 200, h);
-      const saved = await catalog.savePage(keys, coffee, PARSER_VERSION);
+      const saved = await catalog.savePage(keys, coffee, PARSER_VERSION, page.url);
       return json({ ...publicFound(saved), source: 'page' }, 200, h);
     }
 
@@ -219,6 +235,42 @@ export default {
       if (!Object.keys(coffee).length) return json({ error: 'empty' }, 400, h);
       const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
       return json(publicFound(await catalog.contribute(keys, coffee, user.id)), 200, h);
+    }
+
+    if (req.method === 'GET' && url.pathname === '/roasters') {
+      const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
+      return json({ roasters: await catalog.roasters() }, 200, { ...h, 'Cache-Control': 'max-age=600' });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/catalog/list') {
+      const host = url.searchParams.get('host') ?? '';
+      const kind = url.searchParams.get('kind');
+      if (!/^[a-z0-9.-]{3,100}$/i.test(host)) return json({ error: 'bad host' }, 400, h);
+      const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
+      const lots = await catalog.list(host, kind === 'drip' || kind === 'beans' ? kind : null, (url.searchParams.get('q') ?? '').slice(0, 60));
+      return json({ lots }, 200, { ...h, 'Cache-Control': 'max-age=600' });
+    }
+
+    const lot = url.pathname.match(/^\/catalog\/([a-f0-9]{16})$/);
+    if (req.method === 'GET' && lot) {
+      const found = await env.CATALOG.get(env.CATALOG.idFromName('all')).lot(lot[1]);
+      return found ? json(publicFound(found), 200, { ...h, 'Cache-Control': 'max-age=600' }) : json({ error: 'not found' }, 404, h);
+    }
+
+    if (req.method === 'POST' && url.pathname === '/admin') {
+      let body: { initData?: string; action?: string; host?: string; roaster?: string };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      if (!owners(env).includes(user.id)) return json({ error: 'forbidden' }, 403, h);
+      const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
+      const host = body.host ?? '';
+      const set: Record<string, SiteStatus> = { approve: 'approved', reject: 'rejected' };
+      if (body.action && set[body.action]) {
+        if (!(await catalog.setSite(host, set[body.action], body.roaster))) return json({ error: 'bad host' }, 400, h);
+      } else if (body.action === 'recrawl') await catalog.recrawl(host);
+      else if (body.action !== 'list') return json({ error: 'bad action' }, 400, h);
+      return json({ sites: await catalog.sites() }, 200, h);
     }
 
     if (req.method === 'POST' && url.pathname === '/share') {
@@ -262,46 +314,16 @@ async function prepareMessage(token: string, userId: string, title: string, text
   return j.ok ? j.result!.id : null;
 }
 
-/** Page parser version: bump when the parser learns something new — unconfirmed lots refresh on the next scan */
-const PARSER_VERSION = 2;
+const publicFound = (f: Found) => ({ source: 'catalog', id: f.id, coffee: f.coffee, confirms: f.confirms, state: f.state, link: f.url });
 
-const publicFound = (f: { id: string; coffee: unknown; confirms: number }) => ({ source: 'catalog', id: f.id, coffee: f.coffee, confirms: f.confirms });
+const owners = (env: Env) => (env.OWNER_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 
-/** Fetch a roaster page: https/http only, at most 3 MB and 8 seconds */
-async function fetchPage(raw: string): Promise<{ html: string; url: string } | null> {
-  let u: URL;
-  try { u = new URL(raw); } catch { return null; }
-  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
-  if (u.port && u.port !== '80' && u.port !== '443') return null;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 8000);
-  try {
-    const r = await fetch(u.toString(), {
-      signal: ctrl.signal, redirect: 'follow',
-      headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36 BrewbookBot', 'Accept-Language': 'ru,en;q=0.8', Accept: 'text/html' },
-    });
-    if (!r.ok || !(r.headers.get('content-type') ?? '').includes('html')) return null;
-    const reader = r.body?.getReader();
-    if (!reader) return null;
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.length;
-      if (size > 3_000_000) { reader.cancel(); break; }
-      chunks.push(value);
-    }
-    const buf = new Uint8Array(size > 3_000_000 ? 3_000_000 : size);
-    let off = 0;
-    for (const c of chunks) { if (off + c.length > buf.length) break; buf.set(c, off); off += c.length; }
-    const charset = (r.headers.get('content-type') ?? '').match(/charset=([\w-]+)/i)?.[1] ?? 'utf-8';
-    let html: string;
-    try { html = new TextDecoder(charset).decode(buf.subarray(0, off)); } catch { html = new TextDecoder().decode(buf.subarray(0, off)); }
-    return { html, url: r.url || u.toString() };
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(t);
-  }
+/** Tell the owner that a scan hit a site that is not connected yet */
+async function notifyOwners(env: Env, url: string) {
+  const host = new URL(url).hostname;
+  const text = `Новый сайт обжарщика: ${host}\n${url}\n\nОдобрить или отклонить: Профиль → Сайты обжарщиков.`;
+  await Promise.all(owners(env).map((id) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: Number(id), text, link_preview_options: { is_disabled: true } }),
+  }).catch(() => null)));
 }

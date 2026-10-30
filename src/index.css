@@ -1023,3 +1023,13 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .stock-card .stock-icons { gap: 5px; }
 .stock-card .stock-ico, .stock-card .stock-ico svg { width: 24px; height: 24px; }
 .stock.empty .stock-icons { opacity: 0.6; }
+
+/* ---------- Catalog picker ---------- */
+.sheet { position: fixed; inset: 0; z-index: 45; background: var(--bg); overflow-y: auto; overscroll-behavior: contain; padding-bottom: var(--inset-bottom); }
+.sheet .topbar { position: sticky; top: 0; }
+.search-field { display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: 13px; padding: 0 12px; margin: 12px 0 4px; color: var(--hint); }
+.search-field input { flex: 1; min-width: 0; border: 0; background: none; color: var(--fg); font: inherit; font-size: 16px; padding: 12px 0; outline: none; }
+.catalog-open { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
+.row .tag { margin-left: 8px; }
+.site-actions { display: flex; gap: 8px; padding: 0 16px 12px; flex-wrap: wrap; }
+.site-actions .btn { flex: 1; min-width: 120px; }

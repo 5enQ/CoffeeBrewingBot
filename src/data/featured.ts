@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { earnedAchievements } from './achievements';
 import { sortBadges, type Badge, type BadgeLite } from './badges';
+import { useStats } from './stats';
 import { useStore } from './store';
 
 export const MAX_FEATURED = 3;
@@ -15,9 +16,10 @@ export interface BadgeItem {
 
 /** All user badges: own + earned achievements, and the showcase (up to 3) */
 export function useBadges() {
-  const { profile, brews } = useStore();
+  const { profile } = useStore();
+  const { stats } = useStats();
   return useMemo(() => {
-    const ach = earnedAchievements(brews, profile.ratingStats?.count ?? 0);
+    const ach = earnedAchievements(stats);
     const all: BadgeItem[] = [
       ...ach.map((a) => ({ key: `ach:${a.id}`, badge: a.badge })),
       ...profile.badges.map((b) => ({ key: b.id, badge: b, own: b })),
@@ -27,7 +29,7 @@ export function useBadges() {
       ? profile.featured.map((k) => all.find((x) => x.key === k)).filter(Boolean).slice(0, MAX_FEATURED) as BadgeItem[]
       : sorted.slice(0, MAX_FEATURED);
     return { all: sorted, featured, featuredKeys: featured.map((f) => f.key) };
-  }, [profile.badges, profile.featured, profile.ratingStats, brews]);
+  }, [profile.badges, profile.featured, stats]);
 }
 
 function sortBadgeItems(items: BadgeItem[]) {

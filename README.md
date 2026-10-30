@@ -16,6 +16,7 @@ The user interface is in Russian; code, comments and documentation are in Englis
 - **Journal** with stars (half stars), quick taste scales, flavor-wheel descriptors and notes.
 - **Sharing** a brew to friends via short links; friends can rate recipes (stored on the server).
 - **Achievements** (hidden until earned) and a showcase of up to 3 badges in the profile.
+- **Profile card** to share: avatar, name, optional Telegram link, badges, setup and a theme. Backgrounds unlock with achievements: per method bronze 50, silver 100, gold 500, «Объёмный» 1000 brews (3D method icon); diamond for 1000 liters, numbered in the order people reach it.
 - **Desktop layout** (window wider than 860 px): sidebar, list and detail panes.
 - **Sync between devices** via Telegram CloudStorage (see below).
 - **Backup** as a Markdown file that can be edited in any text editor and restored (old JSON backups are accepted too).
@@ -93,17 +94,37 @@ Camera permission for the scanner: Android — `<uses-permission android:name="a
 | Endpoint | Purpose |
 |---|---|
 | `GET /version` | running server version and build time |
+| `POST /me { initData }` | the account of this Telegram user (created on first call) with its counted numbers |
+| `POST /brews { initData, brews, removed }` | brew log: `[{ id, m (method), w (water, ml), t (date) }]`, the first call imports the history; returns counted numbers and the diamond number |
+| `POST /cards`, `GET /cards/:id` | profile card: one per account, the link never changes; levels, achievement badges and the diamond number are filled in by the server |
 | `POST /rate`, `GET /stats` | friends' ratings of shared recipes (one rating per user, own recipes can't be rated) |
 | `POST /recipes`, `GET /recipes/:id` | short share links |
 | `POST /share` | prepared Telegram message for `shareMessage` |
 | `GET /lookup?url=…&code=…` | coffee by QR link or barcode (catalog first, then the roaster page if the site is approved) |
 | `POST /catalog` | a user saved a pack: fill in or confirm the catalog entry |
-| `GET /roasters` | approved roasters with lot counts |
-| `GET /catalog/list?host=…&kind=beans\|drip` | lots of one roaster for the in-app picker |
-| `GET /catalog/<id>` | one lot |
 | `POST /admin { initData, action, host, roaster }` | owner only: list / approve / reject / recrawl roaster sites |
 
 Setup: Cloudflare account → Account ID and an API token (template "Edit Cloudflare Workers") → GitHub **Settings → Secrets and variables → Actions**: secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `BOT_TOKEN`, `OWNER_TELEGRAM_ID` (your numeric Telegram id, shown in the app under Profile → "О приложении" → "Ваш Telegram ID"; several ids can be comma-separated); variable `RATINGS_ENABLED` = `true`. The server address is `RATINGS_API` in `src/config.ts`.
+
+## Free-tier limits (important)
+
+Durable Objects on the free plan have a daily limit of rows read (about 5 million) and written (about 100 thousand), shared by the whole account; when it is used up, every server feature fails until 00:00 UTC. Rules for server code:
+
+- Frequent paths (every crawler step, every app start, every scan) must use indexed lookups only — check new queries with `EXPLAIN QUERY PLAN`.
+- One-time migrations are gated by the schema version in the `meta` table, never run unconditionally in a constructor: an object wakes up many times a day.
+- Recount from logs only on writes; answer reads from stored results.
+
+## Accounts and verified achievements
+
+Achievements, card backgrounds and diamond numbers are decided on the server, so they cannot be faked by editing the app's data.
+
+- **Account.** One account per person (`worker/src/accounts.ts`), with linked sign-in identities: `tg:<telegram id>` now, verified through the `initData` signature. A standalone app can link the same account later (for example "Sign in with Telegram", or another provider added as an identity).
+- **Brew log.** The app sends only method, water and date of each own brew (no notes, beans, recipes or gear) — the whole history once, then only changes and deletions (`src/data/stats.ts`). Samples and recipes saved from friends are not sent.
+- **Counting rules** (`src/data/levels.ts`, shared by the app and the server): at most 5 brews of one method per day; water up to 3 L per brew and 6 L per day; history imported on the first day of an account counts as is, after that a brew must arrive within 14 days of its date (no backdating). So 1000 brews of a method or 1000 liters take months, not an evening of tapping.
+- **Levels.** Methods: bronze 50, silver 100, gold 500, «Объёмный» 1000. Liters: 10 / 100 / 500, diamond 1000 (numbered 1, 2, 3… in the order people reach it). Ratings of the user's recipes: badges only. Backgrounds come from method levels and the liters diamond.
+- **Cards** name achievements by key (`method:v60`, `liters`) and never carry a level. When a card is opened, the server fills in levels from its own count and drops what is not earned. Self-declared badges (SCA certificates, championships) are shown as entered.
+- **Grants** are given by hand, each separately: `dev` — the developers' background «Разработчик»; `tester` — every background at every level for testing (diamond shows № 0, real numbers are not taken). The owner gives or takes them away by Telegram ID in Profile → «Разработчики и тестировщики» (`POST /admin` actions `grant` / `revoke` with `what`). Accounts whose Telegram ID is in `OWNER_TELEGRAM_ID` have both automatically. A shared card shows a grant-only background only if the account has the grant.
+- Outside Telegram (no account) the app shows its own estimate with the same rules; such a card cannot be shared.
 
 ## Coffee catalog
 
@@ -114,14 +135,14 @@ A shared catalog of coffee lots on the server — the basis for a future global 
 - When `parse.ts` learns something new, bump `PARSER_VERSION` in `worker/src/index.ts`: unconfirmed lots are re-parsed on the next scan.
 - Saving a pack sends only the coffee description (no roast date, stock, notes or brews). While a lot has at most one confirmation, user edits replace parsed values; after that edits only fill empty fields. Each Telegram user counts once.
 - Missing fields are simply not stored.
-- Lot state: `active` (on sale), `out` (out of stock), `archived` (the roaster's archive section), `gone` (removed from the site). Lots are never deleted: an old pack in hand can still be found.
+- Lot state: `active` (on sale), `out` (out of stock), `archived` (the roaster's archive section), `gone` (removed from the site). Lots are never deleted: an old pack in hand is still recognized.
 
 ### Roaster sites and the crawler
 
 - The server fetches pages **only from approved domains**. A scan from an unknown site is queued as "pending", the owner gets a Telegram message from the bot and approves or rejects the site in the app (Profile → "Сайты обжарщиков", visible only to `OWNER_TELEGRAM_ID`).
 - Approved from the start (`SEED_SITES` in `worker/src/crawl.ts`, with per-site URL rules): kojocoffee.ru, sbmrne.ru, hq-coffee.com, theweldercatherine.ru, shop.tastycoffee.ru. A newly approved site uses all sitemap URLs; a page becomes a lot only if it has at least two coffee facts (or a name and a country).
-- The crawler is a Durable Object alarm: one request per step, a step every 15 s, at least 30 s between requests to the same site; robots.txt is respected. Each site's sitemaps are re-read every 3 days; a page is re-fetched when its `lastmod` changes or every 14 days. Pages that leave the sitemap or return 404 turn their lots `gone`. A cron trigger every 6 hours only makes sure the loop is running.
-- The in-app picker (pack editor → "Выбрать из каталога обжарщиков") shows a roaster's lots on sale first; past lots are one tap away and always included in search.
+- The crawler is a Durable Object alarm: one request per step, a step every minute, at least 2 minutes between requests to the same site; robots.txt is respected. Each site's sitemaps are re-read every 3 days; a page is re-fetched when its `lastmod` changes or every 14 days. Pages that leave the sitemap or return 404 turn their lots `gone`. A cron trigger every 6 hours only makes sure the loop is running.
+- Users never browse the catalog: it is a server-side cache, so a scan of a known pack is filled instantly without fetching the roaster page. The lot state is kept for the future global rating and is not shown in the app.
 - Local test of the crawler: run a fixture server and set `CRAWL_PROXY="http://127.0.0.1:8800/"` and `CRAWL_STEP_MS="300"` in `worker/.dev.vars` (requests to `https://host/path` go to `http://127.0.0.1:8800/host/path`).
 
 ## Sync between devices

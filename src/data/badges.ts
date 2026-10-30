@@ -37,7 +37,7 @@ export const CHAMPIONSHIPS = [
 export const PLACES = ['1 место', '2 место', '3 место', 'Финалист', 'Полуфиналист', 'Участник'];
 
 /** Badge tone: gold / silver / bronze for podium places, own color per type */
-const ACHIEVE_TONES: Record<string, string> = { 'Бронза': 'bronze', 'Серебро': 'silver', 'Золото': 'gold', 'Бриллиант': 'diamond' };
+const ACHIEVE_TONES: Record<string, string> = { 'Бронза': 'bronze', 'Серебро': 'silver', 'Золото': 'gold', 'Объёмный': 'volume', 'Бриллиант': 'diamond' };
 
 export function badgeTone(b: Pick<Badge, 'kind' | 'detail'>): string {
   if (b.kind === 'achieve') return ACHIEVE_TONES[b.detail] ?? 'bronze';
@@ -55,7 +55,7 @@ export const badgeText = (b: BadgeLite) => [b.title, b.detail, b.year].filter(Bo
 /** Display order: podium places, Q, SCA, the rest */
 export function sortBadges<T extends BadgeLite>(list: T[]): T[] {
   const rank = (b: BadgeLite) => {
-    const base = ({ diamond: 0, gold: 1, silver: 2, bronze: 3, q: 4, champ: 5, sca: 6, custom: 7 } as Record<string, number>)[badgeTone(b)] ?? 9;
+    const base = ({ diamond: 0, volume: 0.6, gold: 1, silver: 2, bronze: 3, q: 4, champ: 5, sca: 6, custom: 7 } as Record<string, number>)[badgeTone(b)] ?? 9;
     return base + (b.kind === 'achieve' ? 0.5 : 0); // championship awards above achievements of the same color
   };
   return [...list].sort((a, z) => rank(a) - rank(z) || Number(z.year || 0) - Number(a.year || 0));

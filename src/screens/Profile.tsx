@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { fetchStats, myTelegramId, ratingsEnabled } from '../data/ratings';
 import { allMethods, fmtNum, methodById } from '../data/methods';
 import { recipeFromStandard } from '../data/recipes';
-import { GEAR_CATS, type Gear } from '../data/gear';
+import { GEAR_CATS, catById, type Gear } from '../data/gear';
 import { BADGE_KINDS, CHAMPIONSHIPS, PLACES, Q_TYPES, SCA_EXTRA, SCA_LEVELS, SCA_MODULES, type Badge } from '../data/badges';
 import { BadgeChip, BadgeRow } from '../ui/Badges';
 import { useBadges, MAX_FEATURED } from '../data/featured';
@@ -15,8 +15,10 @@ import { useBackGuard, useRouter, useSelected } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { Button, Chips, Field, Row, SampleTag, Screen, Section, Segmented } from '../ui/kit';
 import { DESKTOP_MIN, useLayoutMode } from '../layout';
-import { adminSites, type SiteInfo } from '../data/lookup';
+import { adminCall, type GrantInfo, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
+import { ProfileCard } from '../ui/ProfileCard';
+import { useMyCard } from './CardScreens';
 
 export function Profile() {
   const store = useStore();
@@ -51,6 +53,7 @@ export function Profile() {
   };
 
   const badges = useBadges();
+  const { card: myCard } = useMyCard();
   const [pinMsg, setPinMsg] = useState('');
   const toggleFeatured = (key: string) => {
     const cur = badges.featuredKeys;
@@ -85,11 +88,18 @@ export function Profile() {
               onChange={(e) => store.saveProfile({ ...profile, telegram: e.target.value.replace(/^@/, '').replace(/[^A-Za-z0-9_]/g, '') })} />
           </label>
           {badges.featured.length > 0 && <div className="profile-badges"><BadgeRow badges={badges.featured.map((f) => f.badge)} max={3} /></div>}
-          <textarea id="profile-about" className="profile-about" rows={2} placeholder="Пара слов о себе: как любите кофе"
+          <textarea id="profile-about" className="profile-about" rows={2} placeholder="Пара слов о себе"
             value={profile.about} onChange={(e) => store.saveProfile({ ...profile, about: e.target.value })} />
         </div>
       </div>
       <p className="muted pad">Имя и значки увидят друзья в рецептах, которыми вы поделитесь. Ссылку на Telegram можно не добавлять — это выбирается при отправке.</p>
+
+      <Section title="Карточка профиля" plain>
+        <button type="button" className="pcard-open" onClick={() => push({ name: 'cardEdit' })} aria-label="Настроить карточку и поделиться">
+          <ProfileCard card={myCard} />
+        </button>
+        <Button kind="secondary" icon="share" wide onClick={() => push({ name: 'cardEdit' })}>Настроить и поделиться</Button>
+      </Section>
 
       <Section title="Значки" aside={
         <button type="button" className="icon-btn" onClick={() => addBadge()} aria-label="Добавить значок"><Icon name="plus" /></button>
@@ -237,7 +247,7 @@ export function Profile() {
         )}
       </Section>
 
-      <RoasterSites />
+      <OwnerTools />
     </Screen>
   );
 }
@@ -252,20 +262,69 @@ const appVersion = () => [import.meta.env.VITE_APP_VERSION || 'разработ�
 const SITE_STATUS: Record<SiteInfo['status'], string> = { approved: 'подключён', pending: 'ждёт решения', rejected: 'отклонён' };
 
 /** Owner only: roaster sites for the shared catalog. Invisible to everyone else (the server answers 403). */
-function RoasterSites() {
-  const [sites, setSites] = useState<SiteInfo[] | null>(null);
+/** Owner only (the server answers 403 to everyone else): roaster sites and the developers' background */
+function OwnerTools() {
+  const [data, setData] = useState<{ sites: SiteInfo[]; grants: GrantInfo[] } | null>(null);
+  useEffect(() => { if (myTelegramId()) adminCall().then(setData); }, []);
+  if (!data) return null;
+  return <><RoasterSites sites={data.sites} onChange={setData} /><DevGrants grants={data.grants} onChange={setData} /></>;
+}
+
+const GRANTS = [
+  { id: 'dev', label: 'Фон разработчика', hint: 'особый фон «Разработчик»' },
+  { id: 'tester', label: 'Все фоны (тест)', hint: 'любой фон любого уровня; бриллиант с № 0, настоящие номера не занимает' },
+] as const;
+
+/** Give or take away special grants by Telegram id, each separately */
+function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: { sites: SiteInfo[]; grants: GrantInfo[] }): void }) {
+  const [tg, setTg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const me = myTelegramId();
+  const act = async (action: 'grant' | 'revoke', id: string, what: string) => {
+    const label = GRANTS.find((g) => g.id === what)!.label.toLowerCase();
+    if (action === 'revoke' && !(await platform.confirm(`Забрать «${label}» у ${id}?`))) return;
+    setBusy(true);
+    const next = await adminCall({ action, tg: id, what });
+    setBusy(false);
+    if (next) { onChange(next); if (action === 'grant') setTg(''); platform.haptic('success'); toast(action === 'grant' ? 'Выдано — появится у человека в карточке' : 'Забрано'); }
+    else toast('Не получилось — проверьте ID');
+  };
+  return (
+    <Section title="Разработчики и тестировщики">
+      <p className="muted pad small-note">Выдаётся по Telegram ID, каждое право отдельно. ID человек видит у себя: Профиль → «О приложении». У вас как у владельца оба права есть всегда.</p>
+      {grants.filter((g) => g.tg !== me).map((g) => (
+        <div key={g.account} className="grant-row">
+          <span className="row-label">Telegram {g.tg ?? '—'}</span>
+          <div className="chips">
+            {GRANTS.map((x) => {
+              const on = g.grants.includes(x.id);
+              return <button type="button" key={x.id} className={'chip' + (on ? ' on' : '')} aria-pressed={on} disabled={busy || !g.tg}
+                onClick={() => act(on ? 'revoke' : 'grant', g.tg!, x.id)}>{x.label}</button>;
+            })}
+          </div>
+        </div>
+      ))}
+      <Field label="Telegram ID" id="dev-grant-id" inputMode="numeric" placeholder="например, 123456789" value={tg}
+        onChange={(e) => setTg(e.target.value.replace(/\D/g, '').slice(0, 20))} />
+      <div className="site-actions">
+        {GRANTS.map((x) => <Button key={x.id} kind={x.id === 'dev' ? 'primary' : 'secondary'} icon="plus" disabled={busy || tg.length < 4} onClick={() => act('grant', tg, x.id)}>{x.label}</Button>)}
+      </div>
+      <p className="muted pad small-note">{GRANTS.map((x) => `${x.label}: ${x.hint}`).join('. ')}.</p>
+    </Section>
+  );
+}
+
+function RoasterSites({ sites, onChange }: { sites: SiteInfo[]; onChange(d: { sites: SiteInfo[]; grants: GrantInfo[] }): void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [names, setNames] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (myTelegramId()) adminSites().then(setSites); }, []);
-  if (!sites) return null;
 
   const act = async (action: 'approve' | 'reject' | 'recrawl', s: SiteInfo) => {
     if (action === 'reject' && !(await platform.confirm(`Отклонить ${s.host}? Сервер не будет открывать страницы этого сайта.`))) return;
     setBusy(true);
-    const next = await adminSites(action, s.host, names[s.host]?.trim() || undefined);
+    const next = await adminCall({ action, host: s.host, roaster: names[s.host]?.trim() || undefined });
     setBusy(false);
-    if (next) { setSites(next); platform.haptic('success'); toast(action === 'approve' ? 'Сайт подключён — каталог начнёт заполняться' : action === 'recrawl' ? 'Сайт будет обойден заново' : 'Сайт отклонён'); }
+    if (next) { onChange(next); platform.haptic('success'); toast(action === 'approve' ? 'Сайт подключён — каталог начнёт заполняться' : action === 'recrawl' ? 'Сайт будет обойден заново' : 'Сайт отклонён'); }
     else toast('Не получилось — нет связи с сервером');
   };
   const sum = (o: Record<string, number>, ...keys: string[]) => keys.reduce((a, k) => a + (o[k] ?? 0), 0);
@@ -350,7 +409,7 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
   const [g, setG] = useState<Gear>(initial);
   const dirty = JSON.stringify(g) !== JSON.stringify(initial);
   useBackGuard(dirty, 'Выйти без сохранения?');
-  const cat = GEAR_CATS.find((c) => c.id === g.cat)!;
+  const cat = catById(g.cat);
 
   // a popular hand grinder was picked — set the type automatically (if not chosen yet)
   const setName = (name: string) => setG((x) => ({ ...x, name, grindType: x.cat === 'grinder' && !x.grindType ? guessGrindType(name) : x.grindType }));

@@ -1,7 +1,7 @@
 {
   "name": "coffee-brewing-bot",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "build:single": "tsc -b && vite build --mode single",
     "test": "vitest run",
-    "test:e2e": "bash tests/run-e2e.sh"
+    "test:e2e": "bash tests/run-e2e.sh",
+    "test:server": "bash tests/server/run.sh"
   },
   "dependencies": {
     "@zxing/browser": "^0.2.1",

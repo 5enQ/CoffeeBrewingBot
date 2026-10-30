@@ -107,14 +107,15 @@ export interface SiteRow {
 /** How often a site's sitemaps are re-read, and how often a known page is re-fetched */
 const RECRAWL = 3 * 86_400_000;
 const REFRESH = 14 * 86_400_000;
-/** Pause between crawler steps; each step makes at most one request to one site (CRAWL_STEP_MS shortens it in local tests) */
-let STEP = 15_000;
+/**
+ * Pause between crawler steps; each step makes at most one request to one site (CRAWL_STEP_MS shortens it in local tests).
+ * Every step costs a few rows read and written; at one step a minute that is ~1500 steps a day, far below the free tier.
+ */
+let STEP = 60_000;
 /** Minimum pause between two requests to the same site */
-let PER_SITE = 30_000;
+let PER_SITE = 120_000;
 /** Sitemap entries handled per step (the rest wait in the sitemap row) */
 const CHUNK = 250;
-
-const STATE_ORDER: Record<LotState, number> = { active: 0, out: 1, archived: 2, gone: 3 };
 
 export class CoffeeCatalog extends DurableObject<Env> {
   private sql: SqlStorage;
@@ -130,14 +131,20 @@ export class CoffeeCatalog extends DurableObject<Env> {
     sql.exec(`CREATE TABLE IF NOT EXISTS coffee_key (key TEXT PRIMARY KEY, coffee TEXT NOT NULL)`);
     sql.exec(`CREATE TABLE IF NOT EXISTS contrib (
       coffee TEXT NOT NULL, user TEXT NOT NULL, ts INTEGER NOT NULL, PRIMARY KEY (coffee, user))`);
-    // v1.2: lots know their site, page and availability
-    for (const col of ['host TEXT', "state TEXT NOT NULL DEFAULT 'active'", 'url TEXT']) {
-      try { sql.exec(`ALTER TABLE coffee ADD COLUMN ${col}`); } catch { /* already there */ }
+    // One-time migrations, gated by the schema version: the object wakes up for every crawler step,
+    // and anything that scans a table here is paid on each wake-up (the free tier limits rows read per day).
+    sql.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    const version = Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0);
+    if (version < 2) {
+      // v1.2: lots know their site, page and availability
+      for (const col of ['host TEXT', "state TEXT NOT NULL DEFAULT 'active'", 'url TEXT']) {
+        try { sql.exec(`ALTER TABLE coffee ADD COLUMN ${col}`); } catch { /* already there */ }
+      }
+      sql.exec(`UPDATE coffee SET host = (
+          SELECT substr(key, 5, instr(substr(key, 5) || '/', '/') - 1) FROM coffee_key WHERE coffee = coffee.id AND key LIKE 'url:%' LIMIT 1)
+        WHERE host IS NULL`);
+      sql.exec('CREATE INDEX IF NOT EXISTS coffee_host ON coffee (host)');
     }
-    sql.exec(`UPDATE coffee SET host = (
-        SELECT substr(key, 5, instr(substr(key, 5) || '/', '/') - 1) FROM coffee_key WHERE coffee = coffee.id AND key LIKE 'url:%' LIMIT 1)
-      WHERE host IS NULL`);
-    sql.exec('CREATE INDEX IF NOT EXISTS coffee_host ON coffee (host)');
     sql.exec(`CREATE TABLE IF NOT EXISTS site (
       host TEXT PRIMARY KEY, roaster TEXT NOT NULL DEFAULT '', status TEXT NOT NULL, rules TEXT NOT NULL DEFAULT '{}', robots TEXT,
       added INTEGER NOT NULL, requests INTEGER NOT NULL DEFAULT 0, sample TEXT, crawl_start INTEGER, crawled INTEGER, last_fetch INTEGER NOT NULL DEFAULT 0)`);
@@ -146,12 +153,17 @@ export class CoffeeCatalog extends DurableObject<Env> {
       url TEXT PRIMARY KEY, host TEXT NOT NULL, lastmod TEXT, seen INTEGER NOT NULL, fetched INTEGER,
       attempts INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL, coffee TEXT)`);
     sql.exec('CREATE INDEX IF NOT EXISTS page_queue ON page (status, host)');
-    // seeded sites: rules always come from the code, the owner's decision is kept
-    const now = Date.now();
-    for (const { host, roaster, ...rules } of SEED_SITES) {
-      sql.exec(`INSERT INTO site (host, roaster, status, rules, added) VALUES (?, ?, 'approved', ?, ?)
-        ON CONFLICT(host) DO UPDATE SET rules = excluded.rules, roaster = CASE WHEN site.roaster = '' THEN excluded.roaster ELSE site.roaster END`,
-      host, roaster, JSON.stringify(rules), now);
+    if (version < 2) sql.exec("INSERT INTO meta (key, value) VALUES ('schema', '2') ON CONFLICT(key) DO UPDATE SET value = '2'");
+    // seeded sites: rules always come from the code, the owner's decision is kept; written only when the rules change
+    const seed = JSON.stringify(SEED_SITES);
+    if (sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'seed'").toArray()[0]?.value !== seed) {
+      const now = Date.now();
+      for (const { host, roaster, ...rules } of SEED_SITES) {
+        sql.exec(`INSERT INTO site (host, roaster, status, rules, added) VALUES (?, ?, 'approved', ?, ?)
+          ON CONFLICT(host) DO UPDATE SET rules = excluded.rules, roaster = CASE WHEN site.roaster = '' THEN excluded.roaster ELSE site.roaster END`,
+        host, roaster, JSON.stringify(rules), now);
+      }
+      sql.exec("INSERT INTO meta (key, value) VALUES ('seed', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", seed);
     }
     ctx.blockConcurrencyWhile(async () => { if (!(await ctx.storage.getAlarm())) await ctx.storage.setAlarm(Date.now() + 5000); });
   }
@@ -174,8 +186,6 @@ export class CoffeeCatalog extends DurableObject<Env> {
     const { pv, ...coffee } = JSON.parse(row.data) as Coffee & { pv?: number };
     return { id, coffee, source: row.source as Found['source'], confirms: row.confirms, pv, state: (row.state as LotState) || 'active', url: row.url ?? undefined };
   }
-
-  lot(id: string) { return this.get(id); }
 
   /** The parser improved — update a lot nobody has confirmed yet */
   refreshPage(id: string, coffee: Coffee, pv: number): Found | null {
@@ -257,35 +267,6 @@ export class CoffeeCatalog extends DurableObject<Env> {
     }
     this.sql.exec('UPDATE coffee SET data = ?, updated = ?, state = ?, host = ?, url = ? WHERE id = ?', JSON.stringify(data), Date.now(), state, host, url, found.id);
     return found.id;
-  }
-
-  /* ---------- catalog browsing ---------- */
-
-  /** Approved roasters with lot counts (only sites that have lots) */
-  roasters() {
-    const counts = this.sql.exec<{ host: string; n: number; drips: number; live: number }>(
-      `SELECT host, COUNT(*) AS n,
-         SUM(CASE WHEN data LIKE '%"kind":"drip"%' OR data LIKE '%"dripOptions"%' THEN 1 ELSE 0 END) AS drips,
-         SUM(CASE WHEN state = 'active' THEN 1 ELSE 0 END) AS live
-       FROM coffee WHERE host IS NOT NULL GROUP BY host`).toArray();
-    const by = new Map(counts.map((c) => [c.host, c]));
-    return this.sql.exec<{ host: string; roaster: string }>("SELECT host, roaster FROM site WHERE status = 'approved' ORDER BY roaster").toArray()
-      .map((s) => ({ host: s.host, roaster: s.roaster || s.host, lots: by.get(s.host)?.n ?? 0, drips: by.get(s.host)?.drips ?? 0, onSale: by.get(s.host)?.live ?? 0 }))
-      .filter((s) => s.lots > 0);
-  }
-
-  /** Lots of one roaster: on sale first, then by name. kind: 'beans' | 'drip'; q — search in name, country, process, notes. */
-  list(host: string, kind: string | null, q: string, limit = 300) {
-    const rows = this.sql.exec<{ id: string; data: string; state: string; url: string | null }>(
-      'SELECT id, data, state, url FROM coffee WHERE host = ?', normHost(host)).toArray();
-    const needle = q.trim().toLowerCase();
-    return rows
-      .map((r) => { const { pv: _pv, ...coffee } = JSON.parse(r.data) as Coffee & { pv?: number }; void _pv; return { id: r.id, coffee, state: (r.state || 'active') as LotState, url: r.url ?? undefined }; })
-      .filter((r) => !r.coffee.isBlend || r.coffee.name)
-      .filter((r) => kind === 'drip' ? r.coffee.kind === 'drip' || !!r.coffee.dripOptions?.length : kind === 'beans' ? r.coffee.kind !== 'drip' : true)
-      .filter((r) => !needle || [r.coffee.name, r.coffee.country, r.coffee.region, r.coffee.process, r.coffee.variety, r.coffee.packNotes].some((v) => v?.toLowerCase().includes(needle)))
-      .sort((a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state] || (a.coffee.name ?? '').localeCompare(b.coffee.name ?? '', 'ru'))
-      .slice(0, limit);
   }
 
   /* ---------- sites ---------- */
@@ -377,12 +358,14 @@ export class CoffeeCatalog extends DurableObject<Env> {
     // 3. start a sitemap pass for a site that is due
     const due = this.sql.exec<{ host: string }>("SELECT host FROM site WHERE status = 'approved' AND (crawled IS NULL OR crawled < ?) ORDER BY COALESCE(crawled, 0) LIMIT 1", now - RECRAWL).toArray()[0];
     if (due) { await this.startPass(due.host); return true; }
-    // 4. fetch one queued page, from the site that waited longest
-    const pick = this.sql.exec<{ url: string; host: string }>(
-      `SELECT p.url, p.host FROM page p JOIN site s ON s.host = p.host
-       WHERE p.status = 'queued' AND s.status = 'approved' AND s.last_fetch < ?
-       ORDER BY s.last_fetch, p.fetched IS NOT NULL, p.url LIMIT 1`, now - PER_SITE).toArray()[0];
-    if (pick) { await this.pageStep(pick.url, pick.host); return true; }
+    // 4. fetch one queued page, from the site that waited longest.
+    // Sites first (a handful of rows), then one queued page of that site through the (status, host) index:
+    // never a scan of the whole page table.
+    const ready = this.sql.exec<{ host: string }>("SELECT host FROM site WHERE status = 'approved' AND last_fetch < ? ORDER BY last_fetch", now - PER_SITE).toArray();
+    for (const { host } of ready) {
+      const pick = this.sql.exec<{ url: string }>("SELECT url FROM page WHERE status = 'queued' AND host = ? LIMIT 1", host).toArray()[0];
+      if (pick) { await this.pageStep(pick.url, host); return true; }
+    }
     return !!this.sql.exec("SELECT 1 FROM page WHERE status = 'queued' LIMIT 1").toArray().length;
   }
 

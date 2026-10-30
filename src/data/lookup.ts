@@ -211,27 +211,6 @@ export async function lookupCode(raw: string, beans: Bean[], drip = false): Prom
   return { code, kind: 'text', existing, patch: { barcode: code } };
 }
 
-/* ---------- Browsing the catalog by roaster ---------- */
-
-export interface Roaster { host: string; roaster: string; lots: number; drips: number; onSale: number }
-export interface Lot { id: string; coffee: Coffee; state: LotState; url?: string }
-
-async function getJson<T>(path: string): Promise<T | null> {
-  if (!RATINGS_API) return null;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 12000);
-  try {
-    const r = await fetch(`${RATINGS_API}${path}`, { signal: ctrl.signal });
-    return r.ok ? await r.json() : null;
-  } catch { return null; } finally { clearTimeout(t); }
-}
-
-export const fetchRoasters = async () => (await getJson<{ roasters: Roaster[] }>('/roasters'))?.roasters ?? null;
-export const fetchLots = async (host: string, kind: 'beans' | 'drip') =>
-  (await getJson<{ lots: Lot[] }>(`/catalog/list?${new URLSearchParams({ host, kind })}`))?.lots ?? null;
-
-export const STATE_LABEL: Record<LotState, string> = { active: '', out: 'нет в наличии', archived: 'архив', gone: 'снят с продажи' };
-
 /* ---------- Owner tools: roaster sites ---------- */
 
 export interface SiteInfo {
@@ -239,14 +218,18 @@ export interface SiteInfo {
   crawled: number | null; crawling: boolean; pages: Record<string, number>; lots: Record<string, number>;
 }
 
-/** Owner-only: list or change roaster sites. null — not the owner or no connection. */
-export async function adminSites(action: 'list' | 'approve' | 'reject' | 'recrawl' = 'list', host?: string, roaster?: string): Promise<SiteInfo[] | null> {
+export interface GrantInfo { account: string; tg: string | null; grants: string[] }
+export interface AdminData { sites: SiteInfo[]; grants: GrantInfo[] }
+
+/** Owner-only tools: roaster sites and special backgrounds. null — not the owner or no connection. */
+export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 'recrawl' | 'grant' | 'revoke'; host?: string; roaster?: string; tg?: string; what?: string } = { action: 'list' }): Promise<AdminData | null> {
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return null;
   try {
-    const r = await fetch(`${RATINGS_API}/admin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, action, host, roaster }) });
+    const r = await fetch(`${RATINGS_API}/admin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, ...body }) });
     if (!r.ok) return null;
-    return (await r.json()).sites ?? null;
+    const j = await r.json();
+    return { sites: j.sites ?? [], grants: j.grants ?? [] };
   } catch { return null; }
 }
 

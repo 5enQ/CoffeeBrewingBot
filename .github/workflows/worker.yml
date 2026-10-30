@@ -1,11 +1,11 @@
 name: Deploy ratings worker
 
 # Releases only (push to `main`), and only when the server code changed.
-# parse.ts imports src/data/scales.ts, so that file counts as server code too.
+# parse.ts and accounts.ts import src/data/scales.ts and src/data/levels.ts, so those count as server code too.
 on:
   push:
     branches: [main]
-    paths: ['worker/**', 'src/data/scales.ts', '.github/workflows/worker.yml', 'CHANGELOG.md']
+    paths: ['worker/**', 'src/data/scales.ts', 'src/data/levels.ts', '.github/workflows/worker.yml', 'CHANGELOG.md']
   workflow_dispatch:
 
 jobs:

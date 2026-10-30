@@ -268,7 +268,7 @@ export function SharedRecipeScreen({ recipe: r }: { recipe: SharedRecipe }) {
   );
 }
 
-function Toggle({ id, label, hint, checked, disabled, onChange }: {
+export function Toggle({ id, label, hint, checked, disabled, onChange }: {
   id: string; label: string; hint?: string; checked: boolean; disabled?: boolean; onChange(v: boolean): void;
 }) {
   return (

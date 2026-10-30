@@ -14,16 +14,18 @@
  * so a rating "on someone else's behalf" cannot be forged, and a repeated rating replaces the previous one.
  */
 import { DurableObject } from 'cloudflare:workers';
+import { Accounts } from './accounts';
 import { CoffeeCatalog, cleanCoffee, keysFor, type Found, type SiteStatus } from './catalog';
 import { fetchPage } from './fetch';
 import { PARSER_VERSION, parsePage } from './parse';
 
-export { CoffeeCatalog };
+export { Accounts, CoffeeCatalog };
 
 export interface Env {
   AUTHORS: DurableObjectNamespace<AuthorRatings>;
   RECIPES: DurableObjectNamespace<RecipeStore>;
   CATALOG: DurableObjectNamespace<CoffeeCatalog>;
+  ACCOUNTS: DurableObjectNamespace<Accounts>;
   BOT_TOKEN: string;
   ALLOWED_ORIGIN: string;
   /** server version "X.Y.Z" and build time — set on deploy (GitHub Actions) */
@@ -120,6 +122,7 @@ export class RecipeStore extends DurableObject<Env> {
   get(id: string) {
     return this.ctx.storage.sql.exec<{ code: string }>('SELECT code FROM recipes WHERE id = ?', id).toArray()[0]?.code ?? null;
   }
+
 }
 
 function cors(env: Env, req: Request) {
@@ -237,28 +240,34 @@ export default {
       return json(publicFound(await catalog.contribute(keys, coffee, user.id)), 200, h);
     }
 
-    if (req.method === 'GET' && url.pathname === '/roasters') {
-      const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
-      return json({ roasters: await catalog.roasters() }, 200, { ...h, 'Cache-Control': 'max-age=600' });
+    // ---- accounts: verified brew counts, achievements, profile cards ----
+    const accounts = () => env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all'));
+    if (req.method === 'POST' && (url.pathname === '/me' || url.pathname === '/brews' || url.pathname === '/cards')) {
+      let body: { initData?: string; brews?: unknown; removed?: unknown; card?: unknown };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      if (url.pathname === '/me') return json(await accounts().me('tg', user.id), 200, h);
+      if (url.pathname === '/brews') {
+        const list = Array.isArray(body.brews) ? body.brews.slice(0, 500) : [];
+        const brews = list.map((b: Record<string, unknown>) => ({ id: String(b?.id ?? '').slice(0, 40), m: String(b?.m ?? '').slice(0, 40), w: Number(b?.w) || 0, t: Number(b?.t) || 0 }))
+          .filter((b) => /^[A-Za-z0-9_-]{1,40}$/.test(b.id) && /^[a-z0-9_-]{1,40}$/i.test(b.m) && Number.isFinite(b.t));
+        const removed = (Array.isArray(body.removed) ? body.removed.slice(0, 500) : []).map(String).filter((x) => /^[A-Za-z0-9_-]{1,40}$/.test(x));
+        return json(await accounts().addBrews('tg', user.id, brews, removed), 200, h);
+      }
+      const data = JSON.stringify(body.card ?? null);
+      if (!body.card || typeof body.card !== 'object' || data.length > 6000) return json({ error: 'bad card' }, 400, h);
+      return json({ id: await accounts().putCard('tg', user.id, data) }, 200, h);
     }
 
-    if (req.method === 'GET' && url.pathname === '/catalog/list') {
-      const host = url.searchParams.get('host') ?? '';
-      const kind = url.searchParams.get('kind');
-      if (!/^[a-z0-9.-]{3,100}$/i.test(host)) return json({ error: 'bad host' }, 400, h);
-      const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
-      const lots = await catalog.list(host, kind === 'drip' || kind === 'beans' ? kind : null, (url.searchParams.get('q') ?? '').slice(0, 60));
-      return json({ lots }, 200, { ...h, 'Cache-Control': 'max-age=600' });
-    }
-
-    const lot = url.pathname.match(/^\/catalog\/([a-f0-9]{16})$/);
-    if (req.method === 'GET' && lot) {
-      const found = await env.CATALOG.get(env.CATALOG.idFromName('all')).lot(lot[1]);
-      return found ? json(publicFound(found), 200, { ...h, 'Cache-Control': 'max-age=600' }) : json({ error: 'not found' }, 404, h);
+    const card = url.pathname.match(/^\/cards\/([A-Za-z0-9]{6,16})$/);
+    if (req.method === 'GET' && card) {
+      const data = await accounts().getCard(card[1]);
+      return data ? json({ card: data }, 200, { ...h, 'Cache-Control': 'max-age=60' }) : json({ error: 'not found' }, 404, h);
     }
 
     if (req.method === 'POST' && url.pathname === '/admin') {
-      let body: { initData?: string; action?: string; host?: string; roaster?: string };
+      let body: { initData?: string; action?: string; host?: string; roaster?: string; tg?: string; what?: string };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
@@ -269,8 +278,10 @@ export default {
       if (body.action && set[body.action]) {
         if (!(await catalog.setSite(host, set[body.action], body.roaster))) return json({ error: 'bad host' }, 400, h);
       } else if (body.action === 'recrawl') await catalog.recrawl(host);
-      else if (body.action !== 'list') return json({ error: 'bad action' }, 400, h);
-      return json({ sites: await catalog.sites() }, 200, h);
+      else if (body.action === 'grant' || body.action === 'revoke') {
+        if (!(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grant(String(body.tg ?? ''), String(body.what ?? ''), body.action === 'grant'))) return json({ error: 'bad grant' }, 400, h);
+      } else if (body.action !== 'list') return json({ error: 'bad action' }, 400, h);
+      return json({ sites: await catalog.sites(), grants: await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grantList() }, 200, h);
     }
 
     if (req.method === 'POST' && url.pathname === '/share') {

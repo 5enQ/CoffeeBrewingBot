@@ -14,6 +14,8 @@ export interface PlatformUser {
   id?: string;
   name?: string;
   username?: string;
+  /** profile photo URL (Telegram gives it to Mini Apps in many cases) */
+  photo?: string;
   /** IETF language tag from the platform (Telegram language_code), used to pick the UI locale */
   languageCode?: string;
 }
@@ -46,6 +48,9 @@ export interface Platform {
 
   confirm(message: string): Promise<boolean>;
   alert(message: string): Promise<void>;
+
+  /** Device tilt in degrees: beta — front/back, gamma — left/right. Returns an unsubscribe function. */
+  onTilt(cb: (beta: number, gamma: number) => void): () => void;
 
   /** Keep the screen on (during the timer) */
   keepAwake(on: boolean): Promise<void>;

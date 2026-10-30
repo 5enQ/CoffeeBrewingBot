@@ -5,6 +5,30 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.3.0 — Profile Update (2026-10-30)
+
+### Added
+- Profile card: avatar, name, optional Telegram link, featured badges, setup (chosen gear, up to 6) and a color theme. Shared by a link that never changes: friends always see the latest card.
+- Card backgrounds from achievements. Every brew method: bronze (50 brews), silver (100), gold (500) and «Объёмный» (1000) — an obsidian card with the method icon extruded in 3D. Diamond for 1000 liters: faceted, iridescent, turns in 3D with the device, and carries the holder's number in the bottom-left corner (№ 1 for the first person to reach it, given by the server). Metals of one tier are one tile with a choice of the corner icon. Metals catch the light: a bright band travels across them with the tilt and small glints flash.
+
+- Accounts on the server, linked to Telegram (ready for other sign-in methods in a standalone app). The app sends a short brew log (method, water, date) — the whole history once, then changes — and the server counts it with limits: 5 brews of a method per day, 3 L per brew, 6 L per day, no backdating after the first day.
+- Developers' card background («Разработчик»: terminal black, scrolling code, a glowing "</>" mark).
+- Owner tools (Profile → «Разработчики и тестировщики»): two grants given separately by Telegram ID — «Фон разработчика» and «Все фоны (тест)» (every background at every level; test accounts show diamond № 0 and never take a real number). Owners from `OWNER_TELEGRAM_ID` have both automatically. The server checks grants on every shared card.
+- Achievements, card backgrounds, achievement badges on cards and diamond numbers are decided by the server's count: a shared card shows only what the server confirms.
+
+### Fixed
+- Server outage since v1.2.0: the catalog crawler read whole tables on every step and used up the free-tier daily limit of rows read in Durable Objects, after which every server feature failed (`Exceeded allowed rows read`). One-time migrations now run once (schema version in a `meta` table), seeded sites are written only when their rules change, the crawler picks the next page through an index and steps once a minute (~40k rows a day instead of millions); `/me` answers from the stored count.
+- Achievements of retired methods (Kalita Wave) and deleted custom methods are no longer lost.
+
+### Changed
+- Achievement levels: method brews 50 / 100 / 500 / 1000 (bronze / silver / gold / «Объёмный»); liters 10 / 100 / 500 / 1000 (diamond). Liters below diamond and recipe ratings give badges only, no card background.
+- New AeroPress icon: plunger, chamber with a flange, rubber seal, level marks, filter cap.
+- Filters are no longer offered as gear (rarely relevant — a note on the brew covers it). Old brews keep the filter they were brewed with.
+- Profile: the "about" placeholder is just "Пара слов о себе".
+
+### Removed
+- The in-app catalog picker ("Выбрать из каталога обжарщиков") and the `/roasters`, `/catalog/list`, `/catalog/<id>` endpoints: the catalog is a server-side cache for scans, users do not browse it. Stock status is not shown anywhere in the app.
+
 ## v1.2.0 — Roaster catalog (2026-10-30)
 
 ### Added

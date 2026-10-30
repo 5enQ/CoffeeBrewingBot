@@ -70,7 +70,7 @@ export function createTelegramPlatform(): Platform {
 
     user() {
       const u = tg().initDataUnsafe?.user;
-      return u ? { id: String(u.id), name: [u.first_name, u.last_name].filter(Boolean).join(' '), username: u.username, languageCode: u.language_code } : null;
+      return u ? { id: String(u.id), name: [u.first_name, u.last_name].filter(Boolean).join(' '), username: u.username, photo: u.photo_url, languageCode: u.language_code } : null;
     },
     colorScheme: () => tg().colorScheme,
     onThemeChange(cb) {
@@ -130,6 +130,16 @@ export function createTelegramPlatform(): Platform {
       return new Promise((res) => tg().showAlert(message, () => res()));
     },
 
+    // DeviceOrientation (Bot API 8.0) gives angles in radians; older clients fall back to the browser event
+    onTilt(cb) {
+      const d = tg().DeviceOrientation;
+      if (!d || !can('8.0')) return web.onTilt(cb);
+      const deg = 180 / Math.PI;
+      const on = () => { if (d.beta !== null && d.gamma !== null) cb(d.beta * deg, d.gamma * deg); };
+      tg().onEvent('deviceOrientationChanged', on);
+      try { d.start({ refresh_rate: 50 }); } catch { /* not supported on this device */ }
+      return () => { tg().offEvent('deviceOrientationChanged', on); try { d.stop(); } catch { /* already stopped */ } };
+    },
     keepAwake: requestWakeLock,
     setClosingConfirmation(on) {
       if (!can('6.2')) return;

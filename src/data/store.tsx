@@ -149,6 +149,12 @@ export interface Profile {
   featured?: string[];
   /** ratings of my recipes from the server (cache) */
   ratingStats?: RatingStats;
+  /** profile card theme: a base theme id or 'ach:<achievement id>' for an unlocked metal theme */
+  cardTheme?: string;
+  /** gear ids shown on the profile card; undefined — one item per category */
+  cardGear?: string[];
+  /** verified numbers from the server (cache, per device, not synced): brews per method, liters, diamond number */
+  serverStats?: import('./stats').ServerStats;
 }
 
 export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[]; recipeId?: string;
@@ -321,6 +327,9 @@ interface StoreApi {
   rated: Record<string, number>;
   saveRated(rid: string, stars: number): void;
   setRatingStats(st: RatingStats): void;
+  setServerStats(s: import('./stats').ServerStats): void;
+  /** edit and deletion stamps (for the server's brew log) */
+  stamps: { mod?: Record<string, number>; del?: Record<string, number> };
   custom: CustomRecipe[];
   customMethods: CustomMethod[];
   saveMethod(m: CustomMethod): void;
@@ -482,12 +491,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }), []);
   const deleteCustom = useCallback((id: string) => setDb((d) => ({ ...d, custom: (d.custom ?? []).filter((x) => x.id !== id), ...stamp(d, [], ['c:' + id]) })), []);
   const setRatingStats = useCallback((ratingStats: RatingStats) => setDb((d) => ({ ...d, profile: { ...d.profile, ratingStats } })), []);
+  const setServerStats = useCallback((serverStats: import('./stats').ServerStats) => setDb((d) => ({ ...d, profile: { ...d.profile, serverStats } })), []);
   const saveRated = useCallback((rid: string, stars: number) => setDb((d) => ({ ...d, rated: { ...(d.rated ?? {}), [rid]: stars } })), []);
 
   const api = useMemo<StoreApi>(() => ({
     ready, beans: db.beans, brews: db.brews, recipes: db.recipes, gear: db.gear, profile: db.profile,
     saveBean, patchBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile,
-    rated: db.rated ?? {}, saveRated, setRatingStats,
+    rated: db.rated ?? {}, saveRated, setRatingStats, setServerStats, stamps: { mod: db.mod, del: db.del },
     custom: db.custom ?? [], saveCustom, deleteCustom,
     customMethods: db.customMethods ?? [], saveMethod,
     seenAch: db.seenAch ?? null, markSeen, pinned: db.pinned ?? [], togglePin, tiles: db.tiles ?? { order: [], size: {} }, saveTiles,
@@ -513,7 +523,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ...next, ...stamp(d, fresh, keys(d).filter((k) => !fresh.includes(k))) };
       });
     },
-  }), [db, ready, saveBean, patchBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen, saveMethod, togglePin, saveTiles, sync, runSync]);
+  }), [db, ready, saveBean, patchBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, setServerStats, saveCustom, deleteCustom, markSeen, saveMethod, togglePin, saveTiles, sync, runSync]);
 
   // Custom methods must be known to methodById() before screens render
   setCustomMethods((db.customMethods ?? []).map(toMethod));

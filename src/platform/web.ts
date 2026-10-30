@@ -34,6 +34,19 @@ export async function webShare(text: string, url: string): Promise<ShareResult> 
   try { await navigator.clipboard.writeText(`${text}\n\n${url}`); return 'copied'; } catch { return 'failed'; }
 }
 
+/** Device tilt from the browser's deviceorientation event (iOS asks for permission on the first tap: see requestTiltPermission) */
+export function webTilt(cb: (beta: number, gamma: number) => void) {
+  const on = (e: DeviceOrientationEvent) => { if (e.beta !== null && e.gamma !== null) cb(e.beta, e.gamma); };
+  window.addEventListener('deviceorientation', on);
+  return () => window.removeEventListener('deviceorientation', on);
+}
+
+/** iOS Safari / WKWebView: motion sensors need a permission asked from a user gesture */
+export async function requestTiltPermission() {
+  const D = (window as unknown as { DeviceOrientationEvent?: { requestPermission?: () => Promise<string> } }).DeviceOrientationEvent;
+  if (D?.requestPermission) { try { await D.requestPermission(); } catch { /* denied or not in a gesture */ } }
+}
+
 export function createWebPlatform(): Platform {
   const mq = typeof matchMedia !== 'undefined' ? matchMedia('(prefers-color-scheme: dark)') : null;
   return {
@@ -58,6 +71,7 @@ export function createWebPlatform(): Platform {
     setBackHandler() { /* on the web the "back" button is drawn in the header */ },
     confirm: (m) => dialog.confirm(m),
     alert: (m) => dialog.alert(m),
+    onTilt: webTilt,
     keepAwake: requestWakeLock,
     setClosingConfirmation(on) {
       window.onbeforeunload = on ? (e) => { e.preventDefault(); return ''; } : null;

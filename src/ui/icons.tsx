@@ -6,7 +6,8 @@ const METHOD_PATHS: Record<IconKey, React.ReactNode> = {
   v60: <><path d="M5 8h22l-8.5 12h-5z" /><path d="M8 8l2-2h12l2 2" /><path d="M11 26h10M13.5 20v6M18.5 20v6" /><path d="M27 10c2 0 2.5 3 0 4" /></>,
   kalita: <><path d="M6 9h20l-4 11H10z" /><path d="M11 9l2 11M16 9v11M21 9l-2 11" /><path d="M8 25h16" /></>,
   chemex: <><path d="M9 4h14l-5.5 11L23 28H9l5.5-13z" /><path d="M12 13h8" strokeWidth={3} /><path d="M20 4l3-1" /></>,
-  aeropress: <><rect x="10" y="10" width="12" height="16" rx="1.5" /><path d="M12 10V5h8v5" /><path d="M9 26h14" /><path d="M13 16h6M13 20h6" /></>,
+  // plunger cap and stem, the chamber with its flared rim, the rubber seal inside, level marks, the filter cap
+  aeropress: <><rect x="9" y="3" width="14" height="2.6" rx="1" /><path d="M11.2 5.6v4.6M20.8 5.6v4.6" /><rect x="7.5" y="10.2" width="17" height="2.2" rx="1.1" /><path d="M10 12.4V25h12V12.4" /><path d="M10.7 15.6h10.6" strokeWidth={2.6} /><path d="M12.6 18.6h2.2M12.6 21.6h2.2" /><rect x="9" y="25" width="14" height="2.8" rx="1" /></>,
   french: <><rect x="8" y="9" width="13" height="18" rx="2" /><path d="M14.5 9V3M11 3h7" /><path d="M8 15h13" /><path d="M21 12h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3" /></>,
   clever: <><path d="M5 8h20l-4 13H9z" /><path d="M9 21v3h12v-3" /><path d="M25 10c3 0 3 5 0 5" /></>,
   espresso: <><path d="M8 12h14v6a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6z" /><path d="M22 14h2a2.5 2.5 0 0 1 0 5h-2.5" /><path d="M5 27h21" /><path d="M13 5c-1 2 1 3 0 5M17 5c-1 2 1 3 0 5" /></>,

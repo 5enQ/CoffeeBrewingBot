@@ -68,7 +68,9 @@ export function GearPicker({ methodId, value, onChange }: { methodId: string; va
 /** Default gear: from the last brew with this method, otherwise the first item of each needed category */
 export function defaultGear(methodId: string, gear: { id: string; cat: GearCat; name: string; details: string }[], remembered?: string[]): GearRef[] {
   const cats = catsForMethod(methodId);
-  const pick = (ids: string[]) => ids.map((id) => gear.find((g) => g.id === id)).filter(Boolean) as typeof gear;
+  // retired categories (filters) are not carried into new brews
+  const offered = new Set(GEAR_CATS.map((c) => c.id));
+  const pick = (ids: string[]) => ids.map((id) => gear.find((g) => g.id === id && offered.has(g.cat))).filter(Boolean) as typeof gear;
   const chosen = remembered ? pick(remembered) : cats.map((c) => gear.find((g) => g.cat === c)).filter(Boolean) as typeof gear;
   return chosen.map((g) => ({ id: g.id, cat: g.cat, name: g.name, details: g.details || undefined }));
 }

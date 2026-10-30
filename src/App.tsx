@@ -1,6 +1,7 @@
 import { TabPages, useTabPill } from './ui/motion';
 import { CuppingSetup } from './screens/CuppingSetup';
 import { StoreProvider, useStore } from './data/store';
+import { useStatsSync } from './data/stats';
 import { DepthCtx, RouterProvider, useRouter, type Route, type Tab } from './router';
 import { DialogHost } from './ui/kit';
 import { AchievementToast } from './ui/AchievementToast';
@@ -21,6 +22,8 @@ import { LayoutCtx, useLayoutMode } from './layout';
 import { MethodIcon } from './ui/icons';
 import { platform } from './platform';
 import { resolveStartParam } from './data/share';
+import { loadCard } from './data/card';
+import { CardEditScreen, CardViewScreen } from './screens/CardScreens';
 import { t } from './i18n';
 
 function renderRoute(r: Route) {
@@ -40,6 +43,8 @@ function renderRoute(r: Route) {
     case 'gearEdit': return <GearEdit gear={r.gear} isNew={r.isNew} />;
     case 'share': return <ShareScreen id={r.id} />;
     case 'shared': return <SharedRecipeScreen recipe={r.recipe} />;
+    case 'cardEdit': return <CardEditScreen />;
+    case 'card': return <CardViewScreen card={r.card} />;
   }
 }
 
@@ -65,6 +70,15 @@ function Shell() {
     if (!ready) return;
     const param = platform.startParam();
     if (!param) return;
+    // "p…" — a profile card
+    if (param.startsWith('p')) {
+      loadCard(param.slice(1)).then((card) => {
+        if (card) push({ name: 'card', card });
+        else platform.alert('Не получилось открыть профиль по ссылке. Проверьте интернет и попробуйте ещё раз.');
+        if (location.hash.includes('r=')) history.replaceState(null, '', location.pathname + location.search);
+      });
+      return;
+    }
     resolveStartParam(param).then((recipe) => {
       if (recipe) push({ name: 'shared', recipe });
       else platform.alert('Не получилось открыть рецепт по ссылке. Проверьте интернет и попробуйте ещё раз.');
@@ -153,9 +167,13 @@ function Placeholder({ tab }: { tab: Tab }) {
   );
 }
 
+/** Keeps the server's brew log (for verified achievements) up to date */
+function StatsSync() { useStatsSync(); return null; }
+
 export default function App() {
   return (
     <StoreProvider>
+      <StatsSync />
       <RouterProvider>
         <Shell />
       </RouterProvider>

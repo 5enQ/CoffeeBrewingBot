@@ -1187,3 +1187,9 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .icon-pick.tier-silver { --pc-fg: #18202a; background: linear-gradient(120deg, #7d8893, #f6f8fa 50%, #7a858f); }
 .icon-pick.tier-gold { --pc-fg: #2b1c02; background: linear-gradient(120deg, #7a5310, #fff0b3 50%, #7a5310); }
 .icon-pick.tier-diamond { --pc-fg: #101a33; background: linear-gradient(135deg, #bfe3ff, #fff 30%, #ffd6f0 50%, #d6fff1 70%, #d9ccff); }
+
+/* ---------- Profile: the own card ---------- */
+.my-card { margin-bottom: 8px; }
+.my-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.profile-about.field-area { display: block; box-sizing: border-box; padding: 12px 16px; color: var(--fg); font: inherit; font-size: 16px; min-height: 64px; }
+.profile-about.field-area::placeholder { color: var(--hint); }

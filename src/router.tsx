@@ -25,6 +25,7 @@ export type Route =
   | { name: 'share'; id: string }
   | { name: 'shared'; recipe: SharedRecipe }
   | { name: 'cardEdit' }
+  | { name: 'cardShare' }
   | { name: 'card'; card: CardData };
 
 interface RouterApi {

@@ -23,7 +23,7 @@ import { MethodIcon } from './ui/icons';
 import { platform } from './platform';
 import { resolveStartParam } from './data/share';
 import { loadCard } from './data/card';
-import { CardEditScreen, CardViewScreen } from './screens/CardScreens';
+import { CardEditScreen, CardShareScreen, CardViewScreen } from './screens/CardScreens';
 import { t } from './i18n';
 
 function renderRoute(r: Route) {
@@ -44,6 +44,7 @@ function renderRoute(r: Route) {
     case 'share': return <ShareScreen id={r.id} />;
     case 'shared': return <SharedRecipeScreen recipe={r.recipe} />;
     case 'cardEdit': return <CardEditScreen />;
+    case 'cardShare': return <CardShareScreen />;
     case 'card': return <CardViewScreen card={r.card} />;
   }
 }

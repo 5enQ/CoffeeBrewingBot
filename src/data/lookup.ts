@@ -9,6 +9,8 @@ export interface LookupResult {
   existing?: Bean;
   patch: Partial<Bean>;
   source?: string;
+  /** the roaster's site is not connected to the catalog yet (the owner was asked to approve it) */
+  pending?: boolean;
 }
 
 /* ---------- Shared coffee catalog on the server ---------- */
@@ -16,12 +18,17 @@ export interface LookupResult {
 /** What the catalog stores: the lot description without personal data (roast date, stock, notes stay with you) */
 const COFFEE_TEXT = ['name', 'roaster', 'country', 'region', 'farm', 'producer', 'variety', 'process', 'altitude', 'roastLevel', 'packNotes'] as const;
 
-type Coffee = Partial<Pick<Bean, typeof COFFEE_TEXT[number] | 'kind' | 'dripCount' | 'assorted' | 'isBlend' | 'scales'>> & {
+export type Coffee = Partial<Pick<Bean, typeof COFFEE_TEXT[number] | 'kind' | 'dripCount' | 'assorted' | 'isBlend' | 'scales'>> & {
   parts?: Partial<NonNullable<Bean['parts']>[number]>[];
   drips?: Partial<NonNullable<Bean['drips']>[number]>[];
+  /** also sold as drip boxes of these sizes */
+  dripOptions?: number[];
 };
 
-interface Remote { source: 'catalog' | 'page' | 'none'; id?: string; coffee?: Coffee; confirms?: number }
+/** on sale · out of stock · in the roaster's archive · removed from the site */
+export type LotState = 'active' | 'out' | 'archived' | 'gone';
+
+interface Remote { source: 'catalog' | 'page' | 'none'; id?: string; coffee?: Coffee; confirms?: number; state?: LotState; link?: string; pending?: boolean }
 
 async function remoteLookup(q: { url?: string; code?: string }): Promise<Remote | null> {
   if (!RATINGS_API) return null;
@@ -34,11 +41,13 @@ async function remoteLookup(q: { url?: string; code?: string }): Promise<Remote 
   } catch { return null; } finally { clearTimeout(t); }
 }
 
-function coffeeToPatch(c: Coffee, id?: string): Partial<Bean> {
+/** Catalog lot → pack fields. drip — the user is adding a drip box: a lot sold in both forms gives its smallest box size. */
+export function coffeeToPatch(c: Coffee, id?: string, drip = false): Partial<Bean> {
   const out: Partial<Bean> = {};
   for (const k of COFFEE_TEXT) if (c[k]) out[k] = c[k];
   if (c.kind === 'drip') out.kind = 'drip';
   if (c.dripCount) out.dripCount = c.dripCount;
+  else if (drip && c.dripOptions?.length) out.dripCount = Math.min(...c.dripOptions);
   // the site gives no count — assume a single drip
   else if (c.kind === 'drip' && !c.assorted) out.dripCount = 1;
   if (c.assorted) out.assorted = true;
@@ -177,7 +186,7 @@ async function openFoodFacts(code: string): Promise<Partial<Bean> | null> {
   }
 }
 
-export async function lookupCode(raw: string, beans: Bean[]): Promise<LookupResult> {
+export async function lookupCode(raw: string, beans: Bean[], drip = false): Promise<LookupResult> {
   const code = raw.trim();
   const existing = beans.find((b) => b.barcode && b.barcode === code);
 
@@ -185,7 +194,7 @@ export async function lookupCode(raw: string, beans: Bean[]): Promise<LookupResu
     if (existing) return { code, kind: 'ean', existing, patch: {} };
     const remote = await remoteLookup({ code });
     if (remote?.coffee && remote.source !== 'none') {
-      return { code, kind: 'ean', patch: { barcode: code, ...coffeeToPatch(remote.coffee, remote.id) }, source: sourceText(remote) };
+      return { code, kind: 'ean', patch: { barcode: code, ...coffeeToPatch(remote.coffee, remote.id, drip) }, source: sourceText(remote) };
     }
     const off = await openFoodFacts(code);
     return { code, kind: 'ean', patch: { barcode: code, ...(off ?? {}) }, source: off ? 'Open Food Facts' : undefined };
@@ -194,12 +203,51 @@ export async function lookupCode(raw: string, beans: Bean[]): Promise<LookupResu
     if (existing) return { code, kind: 'url', existing, patch: {} };
     const remote = await remoteLookup({ url: code });
     const patch: Partial<Bean> = { barcode: code.slice(0, 300), link: code };
-    if (remote?.coffee && remote.source !== 'none') return { code, kind: 'url', patch: { ...patch, ...coffeeToPatch(remote.coffee, remote.id) }, source: sourceText(remote) };
-    return { code, kind: 'url', patch };
+    if (remote?.coffee && remote.source !== 'none') return { code, kind: 'url', patch: { ...patch, ...coffeeToPatch(remote.coffee, remote.id, drip) }, source: sourceText(remote) };
+    return { code, kind: 'url', patch, pending: remote?.pending };
   }
   const parsed = parseQrText(code);
   if (Object.keys(parsed).length) return { code, kind: 'qr-data', existing, patch: { barcode: code.slice(0, 64), ...parsed }, source: 'QR-код на пачке' };
   return { code, kind: 'text', existing, patch: { barcode: code } };
+}
+
+/* ---------- Browsing the catalog by roaster ---------- */
+
+export interface Roaster { host: string; roaster: string; lots: number; drips: number; onSale: number }
+export interface Lot { id: string; coffee: Coffee; state: LotState; url?: string }
+
+async function getJson<T>(path: string): Promise<T | null> {
+  if (!RATINGS_API) return null;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const r = await fetch(`${RATINGS_API}${path}`, { signal: ctrl.signal });
+    return r.ok ? await r.json() : null;
+  } catch { return null; } finally { clearTimeout(t); }
+}
+
+export const fetchRoasters = async () => (await getJson<{ roasters: Roaster[] }>('/roasters'))?.roasters ?? null;
+export const fetchLots = async (host: string, kind: 'beans' | 'drip') =>
+  (await getJson<{ lots: Lot[] }>(`/catalog/list?${new URLSearchParams({ host, kind })}`))?.lots ?? null;
+
+export const STATE_LABEL: Record<LotState, string> = { active: '', out: 'нет в наличии', archived: 'архив', gone: 'снят с продажи' };
+
+/* ---------- Owner tools: roaster sites ---------- */
+
+export interface SiteInfo {
+  host: string; roaster: string; status: 'approved' | 'pending' | 'rejected'; added: number; requests: number; sample: string | null;
+  crawled: number | null; crawling: boolean; pages: Record<string, number>; lots: Record<string, number>;
+}
+
+/** Owner-only: list or change roaster sites. null — not the owner or no connection. */
+export async function adminSites(action: 'list' | 'approve' | 'reject' | 'recrawl' = 'list', host?: string, roaster?: string): Promise<SiteInfo[] | null> {
+  const initData = platform.initData();
+  if (!RATINGS_API || !initData) return null;
+  try {
+    const r = await fetch(`${RATINGS_API}/admin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, action, host, roaster }) });
+    if (!r.ok) return null;
+    return (await r.json()).sites ?? null;
+  } catch { return null; }
 }
 
 function sourceText(r: Remote) {

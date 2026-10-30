@@ -12,6 +12,9 @@
  */
 import { scaleKeyOf, scaleValueOf, type Scales } from '../../src/data/scales.ts';
 
+/** Page parser version: bump when the parser learns something new — unconfirmed lots refresh on the next scan or crawl */
+export const PARSER_VERSION = 3;
+
 export interface Parsed {
   name?: string;
   roaster?: string;
@@ -23,6 +26,12 @@ export interface Parsed {
   process?: string;
   altitude?: string;
   roastLevel?: string;
+  /** also sold as drip bags in these box sizes (a page with a "pack / drips" switch) */
+  dripOptions?: number[];
+  /** false — out of stock (schema.org availability); undefined — unknown */
+  inStock?: boolean;
+  /** capsules and other forms the app cannot brew — the crawler skips them */
+  unsupported?: boolean;
   packNotes?: string;
   kind?: 'drip';
   dripCount?: number;
@@ -30,7 +39,7 @@ export interface Parsed {
   image?: string;
 }
 
-type Field = Exclude<keyof Parsed, 'kind' | 'dripCount' | 'scales' | 'image' | 'name'>;
+type Field = Exclude<keyof Parsed, 'kind' | 'dripCount' | 'scales' | 'image' | 'name' | 'dripOptions' | 'inStock' | 'unsupported'>;
 
 /** Site labels → pack field (lowercase, no colon) */
 const LABELS: Record<string, Field> = {};
@@ -57,7 +66,41 @@ const ROASTERS: Record<string, string> = {
   'sbmrne.ru': 'Submarine',
   'hq-coffee.com': 'HQ! coffee',
   'theweldercatherine.ru': 'Сварщица Екатерина',
+  'shop.tastycoffee.ru': 'Tasty Coffee',
 };
+
+/** English country names in titles (HQ! coffee and others) → Russian */
+const COUNTRIES_EN: Record<string, string> = {
+  ethiopia: 'Эфиопия', kenya: 'Кения', rwanda: 'Руанда', burundi: 'Бурунди', tanzania: 'Танзания', uganda: 'Уганда', congo: 'Конго',
+  malawi: 'Малави', zambia: 'Замбия', cameroon: 'Камерун', colombia: 'Колумбия', brazil: 'Бразилия', peru: 'Перу', ecuador: 'Эквадор',
+  bolivia: 'Боливия', 'costa rica': 'Коста-Рика', panama: 'Панама', guatemala: 'Гватемала', honduras: 'Гондурас', 'el salvador': 'Сальвадор',
+  salvador: 'Сальвадор', nicaragua: 'Никарагуа', mexico: 'Мексика', yemen: 'Йемен', indonesia: 'Индонезия', india: 'Индия',
+  vietnam: 'Вьетнам', china: 'Китай', thailand: 'Таиланд', laos: 'Лаос', myanmar: 'Мьянма', 'papua new guinea': 'Папуа — Новая Гвинея',
+  jamaica: 'Ямайка', haiti: 'Гаити', 'dominican republic': 'Доминикана', cuba: 'Куба', timor: 'Тимор', philippines: 'Филиппины',
+};
+
+/** Process wording on sites → the app's names (Мытая, Натуральная, Хани, Анаэробная, …), each comma part separately */
+const PROCESS_WORDS: [RegExp, string][] = [
+  [/^(мыт\S*|washed|fully washed)$/i, 'мытая'], [/^(натурал\S*|natural|сухая)$/i, 'натуральная'], [/^(хани|honey)$/i, 'хани'],
+  [/^(анаэроб\S*|anaerobic)$/i, 'анаэробная'], [/^(вет-?халл|wet[- ]?hulled)$/i, 'Wet-hulled'],
+];
+export function normalizeProcess(v: string) {
+  const parts = v.split(/\s*,\s*/).map((p) => {
+    const hit = PROCESS_WORDS.find(([re]) => re.test(p.trim()));
+    return hit ? hit[1] : p;
+  });
+  return cap(parts.join(', '));
+}
+
+/** Roast level wording on sites → the app's levels (Светлая / Омни / Средняя / Тёмная); unknown wording is kept */
+export function normalizeRoast(v: string) {
+  const s = v.toLowerCase();
+  if (/омни|omni/.test(s) || (/фильтр|filter|светл/.test(s) && /эспрессо|espresso|средн/.test(s))) return 'Омни';
+  if (/т[её]мн|dark/.test(s)) return 'Тёмная';
+  if (/средн|эспрессо|espresso|medium/.test(s)) return 'Средняя';
+  if (/светл|фильтр|filter|light/.test(s)) return 'Светлая';
+  return cap(v);
+}
 
 /* ---------- text ---------- */
 
@@ -120,6 +163,29 @@ function wooPairs(html: string): [string, string][] {
   return out;
 }
 
+/** Label / value blocks of Vue-built stores (Tasty Coffee): <p class="… offset-text">Label</p> … <p class="… font-din-medium …">Value</p> */
+function offsetTextPairs(html: string): [string, string][] {
+  const out: [string, string][] = [];
+  const starts = [...html.matchAll(/offset-text">([^<]{1,60})<\/p>/g)];
+  starts.forEach((m, i) => {
+    const end = starts[i + 1]?.index ?? Math.min(html.length, m.index! + 8000);
+    const v = html.slice(m.index!, end).match(/font-din-medium[^"]*"[^>]*>([^<]{1,200})<\/p>/);
+    if (v) out.push([decode(m[1]), decode(v[1])]);
+  });
+  return out;
+}
+
+/** Progress-bar scales: a label followed by <object class="tc-progress__object" width="60%"> → 1–5 */
+function barScales(html: string): Scales {
+  const out: Scales = {};
+  for (const m of html.matchAll(/>([А-Яа-яЁё]{4,20})<\/div>[\s\S]{0,600}?tc-progress__object" width="(\d{1,3})%/g)) {
+    const key = scaleKeyOf(m[1]);
+    const v = Math.max(1, Math.min(5, Math.round(Number(m[2]) / 20)));
+    if (key && !out[key]) out[key] = v;
+  }
+  return out;
+}
+
 /** "Label: value" lines in the description (known labels only) */
 function linePairs(html: string): [string, string][] {
   const body = html
@@ -149,7 +215,7 @@ function dotScales(html: string): Scales {
 /* ---------- assembly ---------- */
 
 function cleanValue(field: Field, v: string) {
-  let s = v.replace(/\s+/g, ' ').trim().replace(/[.;,]$/, '');
+  let s = v.replace(/\s+/g, ' ').replace(/\s+,/g, ',').trim().replace(/[.;,]$/, '');
   if (!s || s === '-' || s === '—' || /^не указан/i.test(s)) return '';
   if (field === 'altitude') {
     s = s.replace(/\s*[—–-]+\s*/g, '–').replace(/\s*(м|m|метр\w*)\.?$/i, '').trim();
@@ -166,6 +232,7 @@ function cleanName(h1: string) {
     .replace(/,?\s*(дрип|drip)\s*$/i, '')
     .replace(/\s*\(?\d+\s*(шт|штук|пакет\w*)\.?\)?\s*$/i, '')
     .replace(/\s+в\s+дрип-пакетах.*$/i, '')
+    .replace(/,\s*(для\s+)?(фильтра?|эспрессо|омни)\s*$/i, '')
     .replace(/\s+/g, ' ')
     .replace(/[\s,;:–—-]+$/, '')
     .trim();
@@ -195,9 +262,9 @@ export function parsePage(html: string, pageUrl: string): Parsed {
   const url = new URL(pageUrl);
   const host = url.hostname.replace(/^www\./, '');
   const out: Parsed = {};
-  const scales: Scales = { ...dotScales(html) };
+  const scales: Scales = { ...barScales(html), ...dotScales(html) };
 
-  const pairs = [...tildaPairs(html, pageUrl), ...bitrixPairs(html), ...wooPairs(html), ...linePairs(html)];
+  const pairs = [...tildaPairs(html, pageUrl), ...bitrixPairs(html), ...wooPairs(html), ...offsetTextPairs(html), ...linePairs(html)];
   for (const [label, value] of pairs) {
     const l = norm(label);
     const field = LABELS[l];
@@ -225,6 +292,11 @@ export function parsePage(html: string, pageUrl: string): Parsed {
     const hay = `${h1} ${meta(html, 'og:title')}`;
     const c = COUNTRIES.find((x) => new RegExp(`(^|[^А-Яа-яЁё])${x}([^А-Яа-яЁё]|$)`).test(hay));
     if (c) out.country = c.replace('Папуа-Новая Гвинея', 'Папуа — Новая Гвинея');
+    else {
+      const low = hay.toLowerCase();
+      const en = Object.keys(COUNTRIES_EN).sort((a, b) => b.length - a.length).find((x) => new RegExp(`(^|[^a-z])${x}([^a-z]|$)`).test(low));
+      if (en) out.country = COUNTRIES_EN[en];
+    }
   }
 
   // descriptors in the short description: "…во вкусе абрикос, ежевика, сладкие специи"
@@ -233,6 +305,13 @@ export function parsePage(html: string, pageUrl: string): Parsed {
     const m = decode(d).match(/во вкусе\s*[—:-]?\s*([^.!?]+)/i);
     if (m) out.packNotes = m[1].trim();
   }
+  // descriptor badges (Tasty Coffee): «Сладкий кофе с нотами <span class='descriptor-badge'>арахиса</span>, …»
+  if (!out.packNotes) {
+    const badges = [...html.matchAll(/class='descriptor-badge'[^>]*>([^<]{1,60})</g)].map((m) => decode(m[1]).replace(/\s+/g, ' ').trim());
+    if (badges.length) out.packNotes = [...new Set(badges)].slice(0, 8).join(', ');
+  }
+  if (out.roastLevel) out.roastLevel = normalizeRoast(out.roastLevel);
+  if (out.process) out.process = normalizeProcess(out.process);
 
   // roaster
   if (!out.roaster) out.roaster = ROASTERS[host] || meta(html, 'og:site_name') || undefined;
@@ -247,6 +326,17 @@ export function parsePage(html: string, pageUrl: string): Parsed {
     const n = titles.match(/(\d{1,3})\s*(?:шт|штук|пакет|дрип)/i);
     if (n) out.dripCount = Number(n[1]);
   }
+
+  // a "pack / drips" switch: the lot is sold both as beans and as drip boxes
+  const options = [...html.matchAll(/<span class="text-primary[^"]*">([^<]{1,30})<\/span>/g)].map((m) => decode(m[1]).trim());
+  if (out.kind !== 'drip' && options.includes('Пачка')) {
+    const counts = options.map((o) => o.match(/^Дрипы\s+(\d{1,3})\s*шт/i)?.[1]).filter(Boolean).map(Number);
+    if (counts.length) out.dripOptions = counts;
+  }
+  if (/капсул/i.test(`${h1} ${ld.description} ${url.pathname.includes('capsules') ? 'капсулы' : ''}`)) out.unsupported = true;
+  // several offers (pack sizes, drips): in stock if any of them is
+  const avail = [...html.matchAll(/"availability"\s*:\s*"(?:https?:\/\/schema\.org\/)?(\w+)"/gi)].map((m) => m[1]);
+  if (avail.length) out.inStock = avail.some((a) => /^(InStock|PreOrder|LimitedAvailability|OnlineOnly)$/i.test(a));
 
   const img = meta(html, 'og:image');
   if (img) out.image = img;

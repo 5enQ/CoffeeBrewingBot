@@ -15,6 +15,8 @@ import { useBackGuard, useRouter, useSelected } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { Button, Chips, Field, Row, SampleTag, Screen, Section, Segmented } from '../ui/kit';
 import { DESKTOP_MIN, useLayoutMode } from '../layout';
+import { adminSites, type SiteInfo } from '../data/lookup';
+import { copyText, toast } from '../ui/toast';
 
 export function Profile() {
   const store = useStore();
@@ -229,7 +231,13 @@ export function Profile() {
         <Row label="Хранилище" value={store.sync.state !== 'off' ? 'Устройство + облако Telegram' : platform.kind === 'telegram' ? 'Telegram на устройстве' : platform.kind === 'native' ? 'Память приложения' : 'Браузер'} />
         <Row label="Версия приложения" value={appVersion()} chevron={false} />
         <ServerVersionRow />
+        {myTelegramId() && (
+          <Row label="Ваш Telegram ID" value={myTelegramId()} hint="Нажмите, чтобы скопировать"
+            onClick={async () => { if (await copyText(myTelegramId()!)) toast('Скопировано'); }} chevron={false} />
+        )}
       </Section>
+
+      <RoasterSites />
     </Screen>
   );
 }
@@ -240,6 +248,58 @@ const fmtWhen = (iso?: string | null) => {
   return isNaN(+d) ? '' : d.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
 const appVersion = () => [import.meta.env.VITE_APP_VERSION || 'разработка', fmtWhen(import.meta.env.VITE_APP_BUILT)].filter(Boolean).join(' · ');
+
+const SITE_STATUS: Record<SiteInfo['status'], string> = { approved: 'подключён', pending: 'ждёт решения', rejected: 'отклонён' };
+
+/** Owner only: roaster sites for the shared catalog. Invisible to everyone else (the server answers 403). */
+function RoasterSites() {
+  const [sites, setSites] = useState<SiteInfo[] | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [names, setNames] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (myTelegramId()) adminSites().then(setSites); }, []);
+  if (!sites) return null;
+
+  const act = async (action: 'approve' | 'reject' | 'recrawl', s: SiteInfo) => {
+    if (action === 'reject' && !(await platform.confirm(`Отклонить ${s.host}? Сервер не будет открывать страницы этого сайта.`))) return;
+    setBusy(true);
+    const next = await adminSites(action, s.host, names[s.host]?.trim() || undefined);
+    setBusy(false);
+    if (next) { setSites(next); platform.haptic('success'); toast(action === 'approve' ? 'Сайт подключён — каталог начнёт заполняться' : action === 'recrawl' ? 'Сайт будет обойден заново' : 'Сайт отклонён'); }
+    else toast('Не получилось — нет связи с сервером');
+  };
+  const sum = (o: Record<string, number>, ...keys: string[]) => keys.reduce((a, k) => a + (o[k] ?? 0), 0);
+  const pending = sites.filter((s) => s.status === 'pending');
+
+  return (
+    <Section title="Сайты обжарщиков" aside={pending.length ? <span className="tag">{pending.length} новых</span> : undefined}>
+      <p className="muted pad small-note">Видно только вам как владельцу бота. Сервер открывает страницы только подключённых сайтов и обходит их в фоне раз в 3 дня.</p>
+      {sites.map((s) => (
+        <div key={s.host}>
+          <Row label={s.roaster || s.host} active={open === s.host} onClick={() => setOpen(open === s.host ? null : s.host)}
+            hint={s.status === 'approved'
+              ? `${s.host} · лотов: ${sum(s.lots, 'active')} в продаже, ${sum(s.lots, 'out', 'archived', 'gone')} прошлых · ${s.crawling ? 'идёт обход' : s.crawled ? `обход ${new Date(s.crawled).toLocaleDateString('ru-RU')}` : 'ждёт обхода'}${s.pages.queued ? ` · в очереди ${s.pages.queued}` : ''}`
+              : `${s.host} · ${SITE_STATUS[s.status]} · сканов: ${s.requests}`}
+            value={s.status === 'approved' ? undefined : <span className="tag">{SITE_STATUS[s.status]}</span>} />
+          {open === s.host && (
+            <>
+              {s.sample && <p className="muted pad small-note">Пример ссылки: <a href={s.sample} target="_blank" rel="noreferrer">{s.sample}</a></p>}
+              {s.status !== 'approved' && (
+                <Field label="Название обжарщика" id={`site-name-${s.host}`} placeholder="Как показывать в каталоге" value={names[s.host] ?? s.roaster}
+                  onChange={(e) => setNames((n) => ({ ...n, [s.host]: e.target.value }))} />
+              )}
+              <div className="site-actions">
+                {s.status !== 'approved' && <Button icon="check" disabled={busy} onClick={() => act('approve', s)}>Подключить</Button>}
+                {s.status === 'approved' && <Button kind="secondary" icon="reset" disabled={busy || s.crawling} onClick={() => act('recrawl', s)}>Обойти заново</Button>}
+                {s.status !== 'rejected' && <Button kind="secondary" disabled={busy} onClick={() => act('reject', s)}>Отклонить</Button>}
+              </div>
+            </>
+          )}
+        </div>
+      ))}
+    </Section>
+  );
+}
 
 /** Server version — to know which deployment is running */
 function ServerVersionRow() {

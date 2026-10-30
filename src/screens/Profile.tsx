@@ -14,7 +14,7 @@ import { useBackGuard, useRouter, useSelected } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { Button, Chips, Field, Row, SampleTag, Screen, Section, Segmented } from '../ui/kit';
 import { DESKTOP_MIN, useLayoutMode } from '../layout';
-import { adminCall, type GrantInfo, type SiteInfo } from '../data/lookup';
+import { adminCall, type AdminData, type CrawlUsage, type GrantInfo, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
 import { MyCardBlock } from './CardScreens';
 
@@ -207,7 +207,7 @@ function OwnerTools() {
   const [data, setData] = useState<{ sites: SiteInfo[]; grants: GrantInfo[] } | null>(null);
   useEffect(() => { if (myTelegramId()) adminCall().then(setData); }, []);
   if (!data) return null;
-  return <><RoasterSites sites={data.sites} onChange={setData} /><DevGrants grants={data.grants} onChange={setData} /></>;
+  return <><RoasterSites sites={data.sites} crawl={data.crawl} onChange={setData} /><DevGrants grants={data.grants} onChange={setData} /></>;
 }
 
 const GRANTS = [
@@ -254,7 +254,9 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: { si
   );
 }
 
-function RoasterSites({ sites, onChange }: { sites: SiteInfo[]; onChange(d: { sites: SiteInfo[]; grants: GrantInfo[] }): void }) {
+const fmtCount = (n: number) => n >= 1e6 ? `${(n / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} млн` : n >= 1e3 ? `${(n / 1e3).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} тыс.` : String(n);
+
+function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: CrawlUsage; onChange(d: AdminData): void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [names, setNames] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -273,6 +275,12 @@ function RoasterSites({ sites, onChange }: { sites: SiteInfo[]; onChange(d: { si
   return (
     <Section title="Сайты обжарщиков" aside={pending.length ? <span className="tag">{pending.length} новых</span> : undefined}>
       <p className="muted pad small-note">Видно только вам как владельцу бота. Сервер открывает страницы только подключённых сайтов. Каждый сайт обходится один раз при подключении, дальше новые лоты попадают в каталог, когда их сканируют. «Обойти заново» — повторный обход вручную.</p>
+      {crawl && (
+        <p className={'muted pad small-note crawl-usage' + (crawl.paused ? ' warn' : '')}>
+          Обход сегодня: {fmtCount(crawl.reads)} из {fmtCount(crawl.maxReads)} чтений · {fmtCount(crawl.writes)} из {fmtCount(crawl.maxWrites)} записей (70% бесплатного лимита Cloudflare).
+          {crawl.paused ? ' Лимит обхода на сегодня исчерпан — продолжит после 3:00 по Москве.' : ''}
+        </p>
+      )}
       {sites.map((s) => (
         <div key={s.host}>
           <Row label={s.roaster || s.host} active={open === s.host} onClick={() => setOpen(open === s.host ? null : s.host)}

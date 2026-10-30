@@ -36,6 +36,8 @@ export interface Env {
   /** local tests only: route crawler requests through a fixture server */
   CRAWL_PROXY?: string;
   CRAWL_STEP_MS?: string;
+  /** local tests only: crawler daily budget "reads,writes" instead of 70% of the free tier */
+  CRAWL_BUDGET?: string;
 }
 
 const enc = new TextEncoder();
@@ -296,7 +298,7 @@ export default {
       else if (body.action === 'grant' || body.action === 'revoke') {
         if (!(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grant(String(body.tg ?? ''), String(body.what ?? ''), body.action === 'grant'))) return json({ error: 'bad grant' }, 400, h);
       } else if (body.action !== 'list') return json({ error: 'bad action' }, 400, h);
-      return json({ sites: await catalog.sites(), grants: await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grantList() }, 200, h);
+      return json({ sites: await catalog.sites(), crawl: await catalog.usage(), grants: await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grantList() }, 200, h);
     }
 
     if (req.method === 'POST' && url.pathname === '/share') {

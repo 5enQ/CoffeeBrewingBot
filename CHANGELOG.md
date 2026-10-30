@@ -5,6 +5,9 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Changed
+- Roaster sites are crawled once, when a site is approved — no periodic re-crawl. New lots of known roasters enter the catalog when someone scans them; the owner can start a new pass by hand («Обойти заново»). A pass whose sitemaps cannot be read is retried after 1, 2, 4, 8 and 16 hours, then left for the owner. When there is nothing to crawl the crawler sets no alarm at all.
+
 ## v1.3.0 — Profile Update (2026-10-30)
 
 ### Added

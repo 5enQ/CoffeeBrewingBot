@@ -332,7 +332,7 @@ function RoasterSites({ sites, onChange }: { sites: SiteInfo[]; onChange(d: { si
 
   return (
     <Section title="Сайты обжарщиков" aside={pending.length ? <span className="tag">{pending.length} новых</span> : undefined}>
-      <p className="muted pad small-note">Видно только вам как владельцу бота. Сервер открывает страницы только подключённых сайтов и обходит их в фоне раз в 3 дня.</p>
+      <p className="muted pad small-note">Видно только вам как владельцу бота. Сервер открывает страницы только подключённых сайтов. Каждый сайт обходится один раз при подключении, дальше новые лоты попадают в каталог, когда их сканируют. «Обойти заново» — повторный обход вручную.</p>
       {sites.map((s) => (
         <div key={s.host}>
           <Row label={s.roaster || s.host} active={open === s.host} onClick={() => setOpen(open === s.host ? null : s.host)}

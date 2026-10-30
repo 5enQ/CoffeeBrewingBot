@@ -6,8 +6,10 @@
  * About users only the Telegram id of whoever confirmed or edited a lot is stored (protection against abuse).
  *
  * Roaster sites: only approved domains are fetched. Unknown domains from scans wait in a queue for the owner.
- * Approved sites are crawled in the background (a Durable Object alarm, one request per step):
- * robots.txt → sitemaps → product pages → lots. Lots that leave the sitemap are kept and marked "gone".
+ * Each approved site is crawled once, when it is approved (a Durable Object alarm, one request per step):
+ * robots.txt → sitemaps → product pages → lots. There is no periodic re-crawl: new lots of known roasters enter the
+ * catalog when someone scans them; the owner can start a new pass by hand ("Обойти заново").
+ * Lots that leave the sitemap during such a pass are kept and marked "gone".
  */
 import { DurableObject } from 'cloudflare:workers';
 import { SEED_SITES, canonicalUrl, hostOf, isArchive, normHost, parseRobots, parseSitemap, robotsAllows, usefulCount, wanted, type Robots, type SiteRules } from './crawl';
@@ -104,9 +106,10 @@ export interface SiteRow {
   added: number; requests: number; sample: string | null; crawlStart: number | null; crawled: number | null; lastFetch: number;
 }
 
-/** How often a site's sitemaps are re-read, and how often a known page is re-fetched */
-const RECRAWL = 3 * 86_400_000;
+/** During a manual re-crawl, a known page is fetched again if its lastmod changed or it is older than this */
 const REFRESH = 14 * 86_400_000;
+/** A pass whose sitemaps could not be read is retried after 1, 2, 4, 8, 16 hours, then left for the owner */
+const MAX_FAILS = 5;
 /**
  * Pause between crawler steps; each step makes at most one request to one site (CRAWL_STEP_MS shortens it in local tests).
  * Every step costs a few rows read and written; at one step a minute that is ~1500 steps a day, far below the free tier.
@@ -153,7 +156,13 @@ export class CoffeeCatalog extends DurableObject<Env> {
       url TEXT PRIMARY KEY, host TEXT NOT NULL, lastmod TEXT, seen INTEGER NOT NULL, fetched INTEGER,
       attempts INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL, coffee TEXT)`);
     sql.exec('CREATE INDEX IF NOT EXISTS page_queue ON page (status, host)');
-    if (version < 2) sql.exec("INSERT INTO meta (key, value) VALUES ('schema', '2') ON CONFLICT(key) DO UPDATE SET value = '2'");
+    if (version < 3) {
+      // v1.3.1: one pass per site, retries after failures
+      for (const col of ['retry_at INTEGER', 'fails INTEGER NOT NULL DEFAULT 0']) {
+        try { sql.exec(`ALTER TABLE site ADD COLUMN ${col}`); } catch { /* already there */ }
+      }
+      sql.exec("INSERT INTO meta (key, value) VALUES ('schema', '3') ON CONFLICT(key) DO UPDATE SET value = '3'");
+    }
     // seeded sites: rules always come from the code, the owner's decision is kept; written only when the rules change
     const seed = JSON.stringify(SEED_SITES);
     if (sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'seed'").toArray()[0]?.value !== seed) {
@@ -320,7 +329,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
 
   /** Re-read the site's sitemaps on the next steps */
   recrawl(host: string) {
-    this.sql.exec('UPDATE site SET crawled = NULL, crawl_start = NULL WHERE host = ?', normHost(host));
+    this.sql.exec('UPDATE site SET crawled = NULL, crawl_start = NULL, retry_at = NULL, fails = 0 WHERE host = ?', normHost(host));
     this.sql.exec('DELETE FROM sitemap WHERE host = ?', normHost(host));
     return this.kick();
   }
@@ -338,12 +347,14 @@ export class CoffeeCatalog extends DurableObject<Env> {
     let busy = false;
     try { busy = await this.step(); } catch (e) { console.log('crawl step failed', e); busy = true; }
     const next = busy ? Date.now() + STEP : this.nextDue();
-    await this.ctx.storage.setAlarm(next);
+    // nothing left to crawl: no alarm at all (approving a site or "Обойти заново" wakes the crawler again)
+    if (next) await this.ctx.storage.setAlarm(next);
   }
 
-  private nextDue() {
-    const due = this.sql.exec<{ t: number | null }>("SELECT MIN(COALESCE(crawled, 0)) AS t FROM site WHERE status = 'approved'").one().t ?? Date.now();
-    return Math.min(Math.max(due + RECRAWL, Date.now() + STEP), Date.now() + 6 * 3_600_000);
+  /** When a site waiting for a retry is due; null — every site has been crawled */
+  private nextDue(): number | null {
+    const t = this.sql.exec<{ t: number | null }>("SELECT MIN(COALESCE(retry_at, 0)) AS t FROM site WHERE status = 'approved' AND crawled IS NULL").one().t;
+    return t === null ? null : Math.max(t, Date.now() + STEP);
   }
 
   /** One unit of work. Returns false when there is nothing to do right now. */
@@ -355,8 +366,8 @@ export class CoffeeCatalog extends DurableObject<Env> {
     // 2. a site whose sitemap pass just ended: pages that left the sitemap are gone
     const ended = this.sql.exec<{ host: string; crawl_start: number }>("SELECT host, crawl_start FROM site WHERE status = 'approved' AND crawl_start IS NOT NULL LIMIT 1").toArray()[0];
     if (ended) { this.finishPass(ended.host, ended.crawl_start); return true; }
-    // 3. start a sitemap pass for a site that is due
-    const due = this.sql.exec<{ host: string }>("SELECT host FROM site WHERE status = 'approved' AND (crawled IS NULL OR crawled < ?) ORDER BY COALESCE(crawled, 0) LIMIT 1", now - RECRAWL).toArray()[0];
+    // 3. start the pass of a site that was never crawled (new, or "Обойти заново"), unless it waits for a retry
+    const due = this.sql.exec<{ host: string }>("SELECT host FROM site WHERE status = 'approved' AND crawled IS NULL AND COALESCE(retry_at, 0) <= ? LIMIT 1", now).toArray()[0];
     if (due) { await this.startPass(due.host); return true; }
     // 4. fetch one queued page, from the site that waited longest.
     // Sites first (a handful of rows), then one queued page of that site through the (status, host) index:
@@ -433,14 +444,16 @@ export class CoffeeCatalog extends DurableObject<Env> {
       "SELECT SUM(CASE WHEN rest IS NULL THEN 1 ELSE 0 END) AS ok, SUM(CASE WHEN rest = 'failed' THEN 1 ELSE 0 END) AS failed FROM sitemap WHERE host = ?", host).one();
     const seen = this.sql.exec<{ n: number }>('SELECT COUNT(*) AS n FROM page WHERE host = ? AND seen >= ?', host, start).one().n;
     if (maps.failed && !maps.ok || !seen) {
-      // the sitemap could not be read: try again in an hour, keep everything as is
-      this.sql.exec('UPDATE site SET crawl_start = NULL, crawled = ? WHERE host = ?', Date.now() - RECRAWL + 3_600_000, host);
+      // the sitemap could not be read: keep everything as is and retry later; after MAX_FAILS leave it to the owner
+      const fails = (this.sql.exec<{ fails: number }>('SELECT fails FROM site WHERE host = ?', host).one().fails ?? 0) + 1;
+      if (fails >= MAX_FAILS) this.sql.exec('UPDATE site SET crawl_start = NULL, crawled = ?, fails = ?, retry_at = NULL WHERE host = ?', Date.now(), fails, host);
+      else this.sql.exec('UPDATE site SET crawl_start = NULL, fails = ?, retry_at = ? WHERE host = ?', fails, Date.now() + 2 ** (fails - 1) * 3_600_000, host);
       return;
     }
     const left = this.sql.exec<{ coffee: string | null }>("SELECT coffee FROM page WHERE host = ? AND seen < ? AND status <> 'gone'", host, start).toArray();
     this.sql.exec("UPDATE page SET status = 'gone' WHERE host = ? AND seen < ?", host, start);
     for (const p of left) if (p.coffee) this.sql.exec("UPDATE coffee SET state = 'gone' WHERE id = ? AND state <> 'archived'", p.coffee);
-    this.sql.exec('UPDATE site SET crawl_start = NULL, crawled = ? WHERE host = ?', Date.now(), host);
+    this.sql.exec('UPDATE site SET crawl_start = NULL, crawled = ?, fails = 0, retry_at = NULL WHERE host = ?', Date.now(), host);
   }
 
   private async pageStep(url: string, host: string) {

@@ -21,7 +21,7 @@ jobs:
           A=https://brewbook-ratings.brewbook.workers.dev
           (timeout 70 npx -y wrangler@4 tail brewbook-ratings --format json > out/tail.jsonl 2> out/tail.err &)
           sleep 20
-          curl -sS -m 20 -w " %{http_code}\n" "$A/roasters?t=1" -o out/r1.txt; cat out/r1.txt >> out/calls.txt
+          curl -sS -m 20 -w " %{http_code}\n" "$A/version" >> out/calls.txt
           curl -sS -m 20 -w " %{http_code}\n" "$A/lookup?url=https://shop.tastycoffee.ru/coffee/braziliya-sul-de-minas" >> out/calls.txt
           curl -sS -m 20 -w " %{http_code}\n" "$A/lookup?code=4600000000017" >> out/calls.txt
           curl -sS -m 20 -w " %{http_code}\n" "$A/stats?author=1" >> out/calls.txt

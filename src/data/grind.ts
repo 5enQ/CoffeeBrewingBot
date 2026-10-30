@@ -40,5 +40,5 @@ export function grinderOf(gearRefs: { id: string; cat: string }[] | undefined, m
   const ref = gearRefs?.find((g) => g.cat === 'grinder');
   if (!ref) return null;
   const g = myGear.find((x) => x.id === ref.id);
-  return { id: ref.id, type: g?.grindType };
+  return { id: ref.id, type: g?.grindType, loss: g?.loss && g.loss > 0 ? g.loss : 0 };
 }

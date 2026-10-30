@@ -345,9 +345,11 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
   const cat = catById(g.cat);
 
   // a popular hand grinder was picked — set the type automatically (if not chosen yet)
+  // the typed text is kept as is, so a decimal comma can be entered ("1," → "1,5")
+  const [lossText, setLossText] = useState(g.loss === undefined ? '' : String(g.loss).replace('.', ','));
   const setName = (name: string) => setG((x) => ({ ...x, name, grindType: x.cat === 'grinder' && !x.grindType ? guessGrindType(name) : x.grindType }));
   const save = () => {
-    saveGear({ ...g, name: g.name.trim(), details: g.details.trim(), sample: dirty ? undefined : g.sample, grindType: g.cat === 'grinder' ? g.grindType : undefined });
+    saveGear({ ...g, name: g.name.trim(), details: g.details.trim(), sample: dirty ? undefined : g.sample, grindType: g.cat === 'grinder' ? g.grindType : undefined, loss: g.cat === 'grinder' ? g.loss : undefined });
     platform.haptic('success');
     back(true);
   };
@@ -385,6 +387,17 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
           <Segmented value={g.grindType ?? 'mechanical'} onChange={(v) => setG({ ...g, grindType: v })}
             options={GRIND_TYPES.map((t) => ({ value: t.id, label: t.label }))} />
           <p className="muted pad small-note">{GRIND_TYPES.find((t) => t.id === (g.grindType ?? 'mechanical'))!.hint}. От этого зависит, в чём записывается помол в заварках.</p>
+          <div className="group" style={{ marginTop: 10 }}>
+            <Field label="Потери при помоле, г" id="gear-loss" inputMode="decimal" placeholder="0"
+              value={lossText}
+              onChange={(e) => {
+                const text = e.target.value.replace(/[^\d.,]/g, '').slice(0, 5);
+                setLossText(text);
+                const n = parseFloat(text.replace(',', '.'));
+                setG({ ...g, loss: isNaN(n) || n <= 0 ? undefined : Math.min(20, Math.round(n * 10) / 10) });
+              }} />
+          </div>
+          <p className="muted pad small-note">Сколько кофе теряется за помол: выдули, вычистили, выбросили. Из пачки будет списываться доза плюс эти граммы, а рецепт и пропорция считаются от того, что попало в воронку. Кофе, который застревает и выходит при следующем помоле, — не потери.</p>
         </Section>
       )}
 

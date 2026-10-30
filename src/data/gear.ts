@@ -11,6 +11,8 @@ export interface Gear {
   sample?: boolean;
   /** grinders only: hand (clicks), electronic (µm), mechanical (as before) */
   grindType?: GrindType;
+  /** grinders only: grams lost per grind (purged, cleaned out); taken from the pack on top of the dose */
+  loss?: number;
 }
 
 /** Gear snapshot inside a brew: stays even if the item is deleted later */

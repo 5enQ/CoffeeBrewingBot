@@ -5,6 +5,9 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Added
+- Grinder loss: a grinder has «Потери при помоле, г» (what is purged or cleaned out per grind). The pack gives dose + loss, the recipe, ratio and timer use the dose that went into the brewer; the method screen shows «Из пачки 16,5 г → в воронку 15 г», and the brew editor has «Из пачки» to correct it for one brew. Not applied to drips and cupping.
+
 ## v1.3.1 — Hotfix (2026-10-30)
 
 ### Changed

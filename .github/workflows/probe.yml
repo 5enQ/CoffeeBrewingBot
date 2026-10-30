@@ -9,13 +9,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Live
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tail logs while calling the server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           rm -rf out; mkdir -p out
           A=https://brewbook-ratings.brewbook.workers.dev
-          curl -sS -m 20 $A/version -o out/version.json
-          curl -sS -m 20 "$A/roasters?t=$(date +%s)" -o out/roasters.json
-          for h in shop.tastycoffee.ru kojocoffee.ru sbmrne.ru theweldercatherine.ru hq-coffee.com; do curl -sS -m 20 "$A/catalog/list?host=$h&t=$(date +%s)" -o out/list-$h.json; done
+          (timeout 70 npx -y wrangler@4 tail brewbook-ratings --format json > out/tail.jsonl 2> out/tail.err &)
+          sleep 20
+          curl -sS -m 20 -w " %{http_code}\n" "$A/roasters?t=1" -o out/r1.txt; cat out/r1.txt >> out/calls.txt
+          curl -sS -m 20 -w " %{http_code}\n" "$A/lookup?url=https://shop.tastycoffee.ru/coffee/braziliya-sul-de-minas" >> out/calls.txt
+          curl -sS -m 20 -w " %{http_code}\n" "$A/lookup?code=4600000000017" >> out/calls.txt
+          curl -sS -m 20 -w " %{http_code}\n" "$A/stats?author=1" >> out/calls.txt
+          sleep 45
+          true
       - name: Commit
         run: |
           git config user.name probe; git config user.email probe@example.com

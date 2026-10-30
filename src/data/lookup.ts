@@ -218,14 +218,18 @@ export interface SiteInfo {
   crawled: number | null; crawling: boolean; pages: Record<string, number>; lots: Record<string, number>;
 }
 
-/** Owner-only: list or change roaster sites. null — not the owner or no connection. */
-export async function adminSites(action: 'list' | 'approve' | 'reject' | 'recrawl' = 'list', host?: string, roaster?: string): Promise<SiteInfo[] | null> {
+export interface GrantInfo { account: string; tg: string | null; grants: string[] }
+export interface AdminData { sites: SiteInfo[]; grants: GrantInfo[] }
+
+/** Owner-only tools: roaster sites and special backgrounds. null — not the owner or no connection. */
+export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 'recrawl' | 'grant' | 'revoke'; host?: string; roaster?: string; tg?: string; what?: string } = { action: 'list' }): Promise<AdminData | null> {
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return null;
   try {
-    const r = await fetch(`${RATINGS_API}/admin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, action, host, roaster }) });
+    const r = await fetch(`${RATINGS_API}/admin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, ...body }) });
     if (!r.ok) return null;
-    return (await r.json()).sites ?? null;
+    const j = await r.json();
+    return { sites: j.sites ?? [], grants: j.grants ?? [] };
   } catch { return null; }
 }
 

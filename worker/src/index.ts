@@ -267,7 +267,7 @@ export default {
     }
 
     if (req.method === 'POST' && url.pathname === '/admin') {
-      let body: { initData?: string; action?: string; host?: string; roaster?: string };
+      let body: { initData?: string; action?: string; host?: string; roaster?: string; tg?: string; what?: string };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
@@ -278,8 +278,10 @@ export default {
       if (body.action && set[body.action]) {
         if (!(await catalog.setSite(host, set[body.action], body.roaster))) return json({ error: 'bad host' }, 400, h);
       } else if (body.action === 'recrawl') await catalog.recrawl(host);
-      else if (body.action !== 'list') return json({ error: 'bad action' }, 400, h);
-      return json({ sites: await catalog.sites() }, 200, h);
+      else if (body.action === 'grant' || body.action === 'revoke') {
+        if (!(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grant(String(body.tg ?? ''), String(body.what ?? ''), body.action === 'grant'))) return json({ error: 'bad grant' }, 400, h);
+      } else if (body.action !== 'list') return json({ error: 'bad action' }, 400, h);
+      return json({ sites: await catalog.sites(), grants: await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grantList() }, 200, h);
     }
 
     if (req.method === 'POST' && url.pathname === '/share') {

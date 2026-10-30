@@ -151,13 +151,35 @@ function VolumeIcon({ icon, x, y }: { icon: IconKey; x: number; y: number }) {
   );
 }
 
+/* ---------- developers' background ---------- */
+
+const CODE = [
+  'const brew = await v60({ dose: 15, water: 250 });', 'if (bloom.done) pour(to: 150);', 'export default function Brewbook() {',
+  '  return <Coffee strength="just right" />;', 'git commit -m "more coffee"', '// TODO: drink while hot', 'while (awake) refill(cup);',
+  'npm run brew --profile=light', 'SELECT * FROM beans WHERE roast > now() - 14d;', '} catch (e) { makeEspresso(); }',
+];
+
+/** Terminal-dark card with faint code, a glowing cursor and a "</>" mark in the corner */
+function DevLayer() {
+  return (
+    <>
+      <div className="pcard-code" aria-hidden="true"><div className="pcard-code-in">{[...CODE, ...CODE].map((l, i) => <div key={i}>{l}</div>)}</div></div>
+      <div className="pcard-corner pcard-dev-mark" aria-hidden="true">
+        <svg width="64" height="64" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 9l-6 7 6 7M21 9l6 7-6 7M18 7l-4 18" />
+        </svg>
+      </div>
+    </>
+  );
+}
+
 /* ---------- card ---------- */
 
 export function ProfileCard({ card, live = true }: { card: CardData; live?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const view = cardView(card);
   const tier = 'tier' in view.theme ? view.theme.tier : null;
-  const t = useTilt(live && !!tier, ref);
+  const t = useTilt(live && (!!tier || 'special' in view.theme), ref);
   const [photoOk, setPhotoOk] = useState(true);
   const icon = 'tier' in view.theme ? view.theme.icon : null;
 
@@ -170,12 +192,13 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
   const volume = tier === 'volume' && icon && icon !== 'star';
 
   return (
-    <div ref={ref} className={`pcard ${'tier' in view.theme ? `tier tier-${view.theme.tier}` : `base-${view.theme.base}`}`} style={style}
+    <div ref={ref} className={`pcard ${'tier' in view.theme ? `tier tier-${view.theme.tier}` : 'special' in view.theme ? `special special-${view.theme.special}` : `base-${view.theme.base}`}`} style={style}
       onClick={turn ? () => requestTiltPermission() : undefined}>
       {tier === 'diamond' && <><Facets x={t.x} y={t.y} /><div className="pcard-iris" aria-hidden="true" /><div className="pcard-film" aria-hidden="true" /><div className="pcard-edge" aria-hidden="true" /></>}
       {tier && <div className="pcard-sheen" aria-hidden="true" />}
       {tier && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
       {volume && <VolumeIcon icon={icon as IconKey} x={t.x} y={t.y} />}
+      {'special' in view.theme && view.theme.special === 'dev' && <DevLayer />}
       {tier === 'diamond' && card.no && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}
       {icon && !volume && (
         <div className="pcard-corner" aria-hidden="true">
@@ -193,7 +216,7 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); platform.openLink(`https://t.me/${card.username}`); }}>@{card.username}</a>}
           </div>
         </div>
-        {'tier' in view.theme && <div className="pcard-tier">{view.theme.title}</div>}
+        {('tier' in view.theme || 'special' in view.theme) && <div className="pcard-tier">{view.theme.title}</div>}
         {card.about && <p className="pcard-about">{card.about}</p>}
         {view.badges.length > 0 && <BadgeRow badges={view.badges} max={3} />}
         {card.setup.length > 0 && (

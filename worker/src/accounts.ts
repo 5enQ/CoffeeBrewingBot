@@ -3,13 +3,17 @@
  * so a standalone app can open the same account). The account owns:
  *  - a short brew log (method, water, date — no notes, beans or recipes) and the numbers counted from it;
  *  - the diamond number (1, 2, 3… in the order people reach 1000 liters);
+ *  - special backgrounds the owner grants by hand (the developers' background);
  *  - the profile card. Levels on a shared card always come from this count, never from the client.
  */
 import { DurableObject } from 'cloudflare:workers';
 import { countStats, earnedLevels, givesBackground, type BrewStat, type Stats } from '../../src/data/levels.ts';
 import type { Env } from './index';
 
-export interface AccountStats extends Stats { account: string; at: number; diamondNo?: number }
+export interface AccountStats extends Stats { account: string; at: number; diamondNo?: number; grants: string[] }
+
+/** Backgrounds that only the owner can give */
+export const SPECIAL = ['dev'] as const;
 
 const KEY = /^(method:[a-z0-9_-]{1,40}|liters|ratings)$/i;
 const id = (n: number) => {
@@ -27,6 +31,29 @@ export class Accounts extends DurableObject<Env> {
     sql.exec(`CREATE TABLE IF NOT EXISTS identity (provider TEXT NOT NULL, subject TEXT NOT NULL, account TEXT NOT NULL, PRIMARY KEY (provider, subject))`);
     sql.exec(`CREATE TABLE IF NOT EXISTS brew (account TEXT NOT NULL, bid TEXT NOT NULL, m TEXT NOT NULL, w INTEGER NOT NULL, t INTEGER NOT NULL, r INTEGER NOT NULL, PRIMARY KEY (account, bid))`);
     sql.exec(`CREATE TABLE IF NOT EXISTS card (id TEXT PRIMARY KEY, account TEXT NOT NULL UNIQUE, data TEXT NOT NULL, ts INTEGER NOT NULL)`);
+    try { sql.exec("ALTER TABLE account ADD COLUMN grants TEXT NOT NULL DEFAULT '[]'"); } catch { /* already there */ }
+  }
+
+  private grantsOf(account: string): string[] {
+    const g = this.sql.exec<{ grants: string }>('SELECT grants FROM account WHERE id = ?', account).toArray()[0]?.grants;
+    try { return JSON.parse(g ?? '[]'); } catch { return []; }
+  }
+
+  /** Owner: give or take away a special background by Telegram id (the account is created if the person never opened the app) */
+  grant(tg: string, what: string, on: boolean) {
+    if (!(SPECIAL as readonly string[]).includes(what) || !/^\d{1,20}$/.test(tg)) return false;
+    const acc = this.resolve('tg', tg);
+    const cur = new Set(this.grantsOf(acc.id));
+    if (on) cur.add(what); else cur.delete(what);
+    this.sql.exec('UPDATE account SET grants = ? WHERE id = ?', JSON.stringify([...cur]), acc.id);
+    return true;
+  }
+
+  /** Owner: everyone with a special background */
+  grantList() {
+    return this.sql.exec<{ id: string; grants: string; subject: string | null }>(
+      "SELECT a.id, a.grants, i.subject FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.grants <> '[]'").toArray()
+      .map((r) => ({ account: r.id, tg: r.subject, grants: JSON.parse(r.grants) as string[] }));
   }
 
   /** The account of a sign-in identity; created on first sign-in */
@@ -60,7 +87,7 @@ export class Accounts extends DurableObject<Env> {
       no = (this.sql.exec<{ m: number | null }>('SELECT MAX(diamond_no) AS m FROM account').one().m ?? 0) + 1;
       this.sql.exec('UPDATE account SET diamond_no = ? WHERE id = ?', no, acc.id);
     }
-    const out: AccountStats = { ...s, account: acc.id, at: Date.now(), diamondNo: no };
+    const out: AccountStats = { ...s, account: acc.id, at: Date.now(), diamondNo: no, grants: this.grantsOf(acc.id) };
     this.sql.exec('UPDATE account SET stats = ? WHERE id = ?', JSON.stringify(out), acc.id);
     return out;
   }
@@ -101,13 +128,16 @@ export class Accounts extends DurableObject<Env> {
     const levels = earnedLevels({ ...cached, ratings: await this.ratings(row.account) });
     const card = JSON.parse(row.data) as Record<string, unknown>;
     const ach = (Array.isArray(card.ach) ? card.ach : []).filter((k): k is string => typeof k === 'string' && KEY.test(k) && !!levels[k]).slice(0, 3);
-    let theme = card.theme as { ach?: string; base?: string } | undefined;
+    let theme = card.theme as { ach?: string; base?: string; special?: string } | undefined;
     if (theme?.ach && !(levels[theme.ach] && givesBackground(theme.ach, levels[theme.ach].tier))) theme = { base: 'paper' };
+    const grants = this.grantsOf(row.account);
+    if (theme?.special && !grants.includes(theme.special)) theme = { base: 'paper' };
     const keys = [...ach, ...(theme?.ach ? [theme.ach] : [])];
     const badges = (Array.isArray(card.badges) ? card.badges : []).filter((b: { kind?: string }) => b?.kind !== 'achieve');
     return {
       ...card, ach, theme, badges,
       earned: Object.fromEntries(keys.map((k) => [k, levels[k]])),
+      granted: theme?.special ? [theme.special] : [],
       no: theme?.ach === 'liters' && acc.diamond_no ? acc.diamond_no : undefined,
     };
   }

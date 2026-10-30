@@ -25,6 +25,10 @@ export const BASE_THEMES = [
 ] as const;
 export type BaseTheme = typeof BASE_THEMES[number]['id'];
 
+/** Backgrounds the owner gives by hand (Profile → owner tools); the server checks them on every shared card */
+export const SPECIAL_THEMES = [{ id: 'dev', label: 'Разработчик', title: 'Команда Brewbook' }] as const;
+export type SpecialTheme = typeof SPECIAL_THEMES[number]['id'];
+
 export interface CardData {
   v: 2;
   name: string;
@@ -36,16 +40,18 @@ export interface CardData {
   /** featured achievements by key, up to 3 together with badges */
   ach: string[];
   setup: { cat: GearCat; name: string }[];
-  /** a base color, or the achievement whose metal background is shown */
-  theme: { base: BaseTheme } | { ach: string };
+  /** a base color, the achievement whose metal background is shown, or a special background */
+  theme: { base: BaseTheme } | { ach: string } | { special: SpecialTheme };
   /** levels of the achievements above (filled in by the server on a shared card) */
   earned?: Record<string, Level>;
   /** diamond only: the holder's place among everyone who reached 1000 liters (given by the server) */
   no?: number;
+  /** special backgrounds confirmed for this person (filled in by the server on a shared card) */
+  granted?: string[];
 }
 
-/** What is painted: a base color, or a metal tier with the achievement's icon */
-export type CardTheme = { base: BaseTheme } | { tier: Tier; icon: string; title: string };
+/** What is painted: a base color, a metal tier with the achievement's icon, or a special background */
+export type CardTheme = { base: BaseTheme } | { tier: Tier; icon: string; title: string } | { special: SpecialTheme; title: string };
 
 export const MAX_SETUP = 6;
 
@@ -67,7 +73,10 @@ export function cardView(c: CardData): { theme: CardTheme; badges: BadgeLite[] }
   const earned = c.earned ?? {};
   let theme: CardTheme = { base: 'paper' };
   if ('base' in c.theme) theme = { base: c.theme.base };
-  else {
+  else if ('special' in c.theme) {
+    const sp = SPECIAL_THEMES.find((x) => x.id === (c.theme as { special: string }).special);
+    if (sp && c.granted?.includes(sp.id)) theme = { special: sp.id, title: sp.title };
+  } else {
     const l = earned[c.theme.ach];
     if (l && givesBackground(c.theme.ach, l.tier)) theme = { tier: l.tier, icon: achievementIcon(c.theme.ach), title: achievementBadge(c.theme.ach, l.tier, l.at).title };
   }
@@ -85,15 +94,17 @@ export function cardSetup(gear: Gear[], chosen?: string[]) {
 }
 
 /** featured: showcase keys — 'ach:<key>' for achievements, an own badge id otherwise */
-export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite }[], gear: Gear[], stats: Stats, diamondNo?: number): CardData {
+export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite }[], gear: Gear[], stats: Stats, diamondNo?: number, grants: string[] = []): CardData {
   const tg = p.telegram.trim();
   const photo = platform.user()?.photo;
   const levels = earnedLevels(stats);
   const ach = featured.filter((f) => f.key.startsWith('ach:')).map((f) => f.key.slice(4)).filter((k) => levels[k]);
   const own = featured.filter((f) => !f.key.startsWith('ach:')).map((f) => { const { id: _id, ...b } = f.badge as BadgeLite & { id?: string }; return b; });
   const chosen = p.cardTheme?.startsWith('ach:') ? p.cardTheme.slice(4) : null;
-  const theme: CardData['theme'] = chosen && levels[chosen] && givesBackground(chosen, levels[chosen].tier)
-    ? { ach: chosen } : { base: (BASE_THEMES.find((t) => t.id === p.cardTheme)?.id ?? 'paper') as BaseTheme };
+  const special = p.cardTheme?.startsWith('special:') ? SPECIAL_THEMES.find((x) => `special:${x.id}` === p.cardTheme && grants.includes(x.id)) : undefined;
+  const theme: CardData['theme'] = special ? { special: special.id }
+    : chosen && levels[chosen] && givesBackground(chosen, levels[chosen].tier) ? { ach: chosen }
+    : { base: (BASE_THEMES.find((t) => t.id === p.cardTheme)?.id ?? 'paper') as BaseTheme };
   const earned = Object.fromEntries([...ach, ...('ach' in theme ? [theme.ach] : [])].map((k) => [k, levels[k]]));
   return {
     v: 2,
@@ -107,6 +118,7 @@ export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite 
     theme,
     earned,
     no: 'ach' in theme && theme.ach === 'liters' ? diamondNo : undefined,
+    granted: special ? [special.id] : [],
   };
 }
 
@@ -121,6 +133,7 @@ export function cleanCard(raw: unknown): CardData | null {
   if (!name) return null;
   const t = (r.theme ?? {}) as Record<string, unknown>;
   const theme: CardData['theme'] = typeof t.ach === 'string' && KEY.test(t.ach) ? { ach: t.ach }
+    : SPECIAL_THEMES.some((x) => x.id === t.special) ? { special: t.special as SpecialTheme }
     : { base: (BASE_THEMES.find((x) => x.id === t.base)?.id ?? 'paper') as BaseTheme };
   const badges = Array.isArray(r.badges) ? r.badges.slice(0, 3).map((b: Record<string, unknown>) => ({
     kind: str(b?.kind, 20) as BadgeLite['kind'], title: str(b?.title, 80), detail: str(b?.detail, 60), year: str(b?.year, 10),
@@ -139,6 +152,7 @@ export function cleanCard(raw: unknown): CardData | null {
   return {
     v: 2, name, username: username || undefined, about: str(r.about, 200) || undefined, photo: /^https:\/\//.test(photo) ? photo : undefined,
     badges, ach, setup, theme, earned, no: Number.isInteger(no) && no > 0 ? no : undefined,
+    granted: Array.isArray(r.granted) ? r.granted.filter((g): g is string => SPECIAL_THEMES.some((x) => x.id === g)) : [],
   };
 }
 
@@ -148,8 +162,8 @@ export function cleanCard(raw: unknown): CardData | null {
 export async function storeCard(card: CardData): Promise<string | null> {
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return null;
-  const { earned: _e, no: _n, ...body } = card; // the server decides both
-  void _e; void _n;
+  const { earned: _e, no: _n, granted: _g, ...body } = card; // the server decides these
+  void _e; void _n; void _g;
   try {
     const r = await fetch(`${RATINGS_API}/cards`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, card: body }) });
     if (!r.ok) return null;
@@ -172,6 +186,7 @@ export function cardText(c: CardData) {
   const lines = [`☕ ${c.name}${c.username ? ` (@${c.username})` : ''} — профиль в Brewbook`];
   if (c.about) lines.push(c.about);
   if ('tier' in v.theme) lines.push(`🏅 ${v.theme.title}`);
+  if ('special' in v.theme) lines.push(`⌘ ${v.theme.title}`);
   if (v.badges.length) lines.push(v.badges.map((b) => b.title).join(' · '));
   if (c.setup.length) lines.push('', 'Сетап:', ...c.setup.map((g) => `• ${g.name}`));
   return lines.join('\n');

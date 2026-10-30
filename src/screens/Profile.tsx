@@ -15,7 +15,7 @@ import { useBackGuard, useRouter, useSelected } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { Button, Chips, Field, Row, SampleTag, Screen, Section, Segmented } from '../ui/kit';
 import { DESKTOP_MIN, useLayoutMode } from '../layout';
-import { adminSites, type SiteInfo } from '../data/lookup';
+import { adminCall, type GrantInfo, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
 import { ProfileCard } from '../ui/ProfileCard';
 import { useMyCard } from './CardScreens';
@@ -247,7 +247,7 @@ export function Profile() {
         )}
       </Section>
 
-      <RoasterSites />
+      <OwnerTools />
     </Screen>
   );
 }
@@ -262,20 +262,55 @@ const appVersion = () => [import.meta.env.VITE_APP_VERSION || 'разработ�
 const SITE_STATUS: Record<SiteInfo['status'], string> = { approved: 'подключён', pending: 'ждёт решения', rejected: 'отклонён' };
 
 /** Owner only: roaster sites for the shared catalog. Invisible to everyone else (the server answers 403). */
-function RoasterSites() {
-  const [sites, setSites] = useState<SiteInfo[] | null>(null);
+/** Owner only (the server answers 403 to everyone else): roaster sites and the developers' background */
+function OwnerTools() {
+  const [data, setData] = useState<{ sites: SiteInfo[]; grants: GrantInfo[] } | null>(null);
+  useEffect(() => { if (myTelegramId()) adminCall().then(setData); }, []);
+  if (!data) return null;
+  return <><RoasterSites sites={data.sites} onChange={setData} /><DevGrants grants={data.grants} onChange={setData} /></>;
+}
+
+/** Give or take away the developers' background by Telegram id */
+function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: { sites: SiteInfo[]; grants: GrantInfo[] }): void }) {
+  const [tg, setTg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const devs = grants.filter((g) => g.grants.includes('dev'));
+  const act = async (action: 'grant' | 'revoke', id: string) => {
+    if (action === 'revoke' && !(await platform.confirm(`Забрать фон разработчика у ${id}?`))) return;
+    setBusy(true);
+    const next = await adminCall({ action, tg: id, what: 'dev' });
+    setBusy(false);
+    if (next) { onChange(next); setTg(''); platform.haptic('success'); toast(action === 'grant' ? 'Фон выдан — появится у человека в карточке' : 'Фон забран'); }
+    else toast('Не получилось — проверьте ID');
+  };
+  return (
+    <Section title="Фон разработчика">
+      <p className="muted pad small-note">Особый фон карточки, который можете выдать только вы. Telegram ID человек видит у себя: Профиль → «О приложении».</p>
+      {devs.map((g) => (
+        <Row key={g.account} label={g.tg ? `Telegram ${g.tg}` : `Аккаунт ${g.account}`} hint={g.tg === myTelegramId() ? 'это вы' : undefined}
+          value={<button type="button" className="link-btn" disabled={busy} onClick={() => act('revoke', g.tg ?? '')}>Забрать</button>} />
+      ))}
+      <Field label="Telegram ID" id="dev-grant-id" inputMode="numeric" placeholder="например, 123456789" value={tg}
+        onChange={(e) => setTg(e.target.value.replace(/\D/g, '').slice(0, 20))} />
+      <div className="site-actions">
+        <Button icon="plus" disabled={busy || tg.length < 4} onClick={() => act('grant', tg)}>Выдать фон</Button>
+        {myTelegramId() && !devs.some((g) => g.tg === myTelegramId()) && <Button kind="secondary" disabled={busy} onClick={() => act('grant', myTelegramId()!)}>Себе</Button>}
+      </div>
+    </Section>
+  );
+}
+
+function RoasterSites({ sites, onChange }: { sites: SiteInfo[]; onChange(d: { sites: SiteInfo[]; grants: GrantInfo[] }): void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [names, setNames] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (myTelegramId()) adminSites().then(setSites); }, []);
-  if (!sites) return null;
 
   const act = async (action: 'approve' | 'reject' | 'recrawl', s: SiteInfo) => {
     if (action === 'reject' && !(await platform.confirm(`Отклонить ${s.host}? Сервер не будет открывать страницы этого сайта.`))) return;
     setBusy(true);
-    const next = await adminSites(action, s.host, names[s.host]?.trim() || undefined);
+    const next = await adminCall({ action, host: s.host, roaster: names[s.host]?.trim() || undefined });
     setBusy(false);
-    if (next) { setSites(next); platform.haptic('success'); toast(action === 'approve' ? 'Сайт подключён — каталог начнёт заполняться' : action === 'recrawl' ? 'Сайт будет обойден заново' : 'Сайт отклонён'); }
+    if (next) { onChange(next); platform.haptic('success'); toast(action === 'approve' ? 'Сайт подключён — каталог начнёт заполняться' : action === 'recrawl' ? 'Сайт будет обойден заново' : 'Сайт отклонён'); }
     else toast('Не получилось — нет связи с сервером');
   };
   const sum = (o: Record<string, number>, ...keys: string[]) => keys.reduce((a, k) => a + (o[k] ?? 0), 0);

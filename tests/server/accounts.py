@@ -38,5 +38,18 @@ ok(sa.get('diamondNo') == 2, f'second person → № {sa.get("diamondNo")}')
 ok(post('/brews', {'initData': B, 'brews': []}).get('diamondNo') == 1, 'the number never changes')
 ok(post('/me', {'initData': 'forged'}).get('status') == 401, 'forged Telegram data is rejected')
 
+# developers' background: only the owner (111) gives it
+C = sign(333)
+cid3 = post('/cards', {'initData': C, 'card': {'name': 'Разраб', 'theme': {'special': 'dev'}, 'ach': [], 'granted': ['dev']}})['id']
+ok(get(f'/cards/{cid3}')['card']['theme'] == {'base': 'paper'}, 'a self-declared developers background is not shown')
+ok(post('/admin', {'initData': C, 'action': 'grant', 'tg': '333', 'what': 'dev'}).get('status') == 403, 'a non-owner cannot give it')
+g = post('/admin', {'initData': A, 'action': 'grant', 'tg': '333', 'what': 'dev'})
+ok(any(x['tg'] == '333' and 'dev' in x['grants'] for x in g.get('grants', [])), 'the owner gives it by Telegram id')
+c3 = get(f'/cards/{cid3}')['card']; ok(c3['theme'] == {'special': 'dev'} and c3['granted'] == ['dev'], 'then the card shows it')
+ok('dev' in post('/me', {'initData': C})['grants'], 'the person sees it in their numbers')
+ok(post('/admin', {'initData': A, 'action': 'grant', 'tg': '333', 'what': 'gold-forever'}).get('status') == 400, 'unknown special backgrounds are refused')
+post('/admin', {'initData': A, 'action': 'revoke', 'tg': '333', 'what': 'dev'})
+ok(get(f'/cards/{cid3}')['card']['theme'] == {'base': 'paper'}, 'taken away → the card falls back to the default')
+
 print('\n' + (f'{len(FAILS)} check(s) failed' if FAILS else 'all checks passed'))
 sys.exit(1 if FAILS else 0)

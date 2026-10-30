@@ -14,6 +14,8 @@ CARDS = {
     'diamond1': card({'ach': 'liters'}, {'liters': {'tier': 'diamond', 'at': 1000}}, no=7),
     'volume1': card({'ach': 'method:aeropress'}, {'method:aeropress': {'tier': 'volume', 'at': 1000}}),
     'espresso1': card({'base': 'espresso'}),
+    'dev1': {**card({'special': 'dev'}), 'granted': ['dev']},
+    'devfake': {**card({'special': 'dev'}), 'granted': []},
     # a card whose owner faked a background: no levels from the server → plain card
     'fake1': {**card({'ach': 'method:espresso'}), 'earned': {}},
 }
@@ -102,7 +104,14 @@ async def main():
                 await mock(pv, [])
                 await pv.reload(); await pv.wait_for_timeout(900)
                 check(await pv.locator('.pcard:visible').count() == 1, f'shared card {k} opens{" (dark)" if dark else ""}')
-                if k == 'fake1':
+                if k == 'devfake':
+                    check(await pv.locator('.pcard.special-dev').count() == 0, 'developers background without the server grant is not shown')
+                elif k == 'dev1':
+                    check(await pv.locator('.pcard.special-dev .pcard-dev-mark').count() == 1, 'developers background with its mark')
+                    for i, ga in enumerate((-20, 20)):
+                        await tilt(pv, 0, 0); await pv.wait_for_timeout(50); await tilt(pv, 0, ga); await pv.wait_for_timeout(600)
+                        await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-dev-{i}.png'))
+                elif k == 'fake1':
                     check(await pv.locator('.pcard.base-paper').count() == 1 and await pv.locator('.pcard .pcard-tier').count() == 0, 'a faked background without server levels is not shown')
                 elif k in ('silver1', 'gold1'):
                     pos = []

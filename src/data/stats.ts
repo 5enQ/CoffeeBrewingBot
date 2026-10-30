@@ -10,7 +10,7 @@ import { localStats, ownBrews } from './achievements';
 import type { Stats } from './levels';
 import { useStore, type DB } from './store';
 
-export interface ServerStats extends Stats { at: number; account: string; diamondNo?: number }
+export interface ServerStats extends Stats { at: number; account: string; diamondNo?: number; grants?: string[] }
 
 const SENT_KEY = 'brewbook.statsSent';
 const CHUNK = 400;
@@ -69,11 +69,11 @@ export function useStatsSync() {
 }
 
 /** The numbers to show: the server's when known, otherwise the local estimate */
-export function useStats(): { stats: Stats; verified: boolean; diamondNo?: number } {
+export function useStats(): { stats: Stats; verified: boolean; diamondNo?: number; grants: string[] } {
   const { brews, profile } = useStore();
   return useMemo(() => {
     const s = profile.serverStats;
-    if (s) return { stats: { methods: s.methods, liters: s.liters, ratings: s.ratings }, verified: true, diamondNo: s.diamondNo };
-    return { stats: localStats(brews, profile.ratingStats?.count ?? 0), verified: false };
+    if (s) return { stats: { methods: s.methods, liters: s.liters, ratings: s.ratings }, verified: true, diamondNo: s.diamondNo, grants: s.grants ?? [] };
+    return { stats: localStats(brews, profile.ratingStats?.count ?? 0), verified: false, grants: [] };
   }, [brews, profile.serverStats, profile.ratingStats]);
 }

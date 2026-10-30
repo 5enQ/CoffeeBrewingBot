@@ -1,6 +1,6 @@
 /** Profile card: set it up and share it (own), or view a card a friend sent */
 import { useEffect, useMemo, useState } from 'react';
-import { BASE_THEMES, buildCard, cardText, MAX_SETUP, storeCard, unlockedThemes, type CardData, type UnlockedTheme } from '../data/card';
+import { BASE_THEMES, buildCard, cardText, MAX_SETUP, SPECIAL_THEMES, storeCard, unlockedThemes, type CardData, type UnlockedTheme } from '../data/card';
 import { useStats } from '../data/stats';
 import { useBadges } from '../data/featured';
 import { GEAR_CATS } from '../data/gear';
@@ -17,12 +17,12 @@ import { copyText, toast } from '../ui/toast';
 import { Toggle } from './Share';
 
 /** The card as it would be sent now (levels from the server's numbers when known) */
-export function useMyCard(): { card: CardData; unlocked: UnlockedTheme[]; verified: boolean } {
+export function useMyCard(): { card: CardData; unlocked: UnlockedTheme[]; verified: boolean; grants: string[] } {
   const { profile, gear } = useStore();
   const badges = useBadges();
-  const { stats, verified, diamondNo } = useStats();
+  const { stats, verified, diamondNo, grants } = useStats();
   const unlocked = useMemo(() => unlockedThemes(stats), [stats]);
-  return { card: buildCard(profile, badges.featured, gear, stats, diamondNo), unlocked, verified };
+  return { card: buildCard(profile, badges.featured, gear, stats, diamondNo, grants), unlocked, verified, grants };
 }
 
 const TIERS: Tier[] = ['bronze', 'silver', 'gold', 'volume', 'diamond'];
@@ -35,7 +35,7 @@ const swatchClass = (t: { tier: Tier } | { base: string }) => ('tier' in t ? `ti
 
 export function CardEditScreen() {
   const { profile, gear, saveProfile } = useStore();
-  const { card, unlocked, verified } = useMyCard();
+  const { card, unlocked, verified, grants } = useMyCard();
   const [link, setLink] = useState('');
   const [prepared, setPrepared] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -106,6 +106,13 @@ export function CardEditScreen() {
             <button type="button" key={t.id} className={'theme-pick ' + swatchClass({ base: t.id }) + (current === t.id ? ' on' : '')} aria-pressed={current === t.id}
               onClick={() => { platform.haptic('select'); saveProfile({ ...profile, cardTheme: t.id }); }}>
               <span>{t.label}</span>
+            </button>
+          ))}
+          {/* special backgrounds the owner gave this person */}
+          {SPECIAL_THEMES.filter((sp) => grants.includes(sp.id)).map((sp) => (
+            <button type="button" key={sp.id} className={'theme-pick special-' + sp.id + (current === `special:${sp.id}` ? ' on' : '')} aria-pressed={current === `special:${sp.id}`}
+              onClick={() => { platform.haptic('select'); saveProfile({ ...profile, cardTheme: `special:${sp.id}` }); }}>
+              <span>{sp.label}</span><small>{sp.title}</small>
             </button>
           ))}
           {/* metal themes appear only once earned — like achievements, they are a surprise; one tile per tier */}

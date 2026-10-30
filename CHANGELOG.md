@@ -10,6 +10,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - Card backgrounds from achievements. Every brew method: bronze (50 brews), silver (100), gold (500) and «Объёмный» (1000) — an obsidian card with the method icon extruded in 3D. Diamond for 1000 liters: faceted, iridescent, turns in 3D with the device, and carries the holder's number in the bottom-left corner (№ 1 for the first person to reach it, given by the server). Metals of one tier are one tile with a choice of the corner icon. Metals catch the light: a bright band travels across them with the tilt and small glints flash.
 
 - Accounts on the server, linked to Telegram (ready for other sign-in methods in a standalone app). The app sends a short brew log (method, water, date) — the whole history once, then changes — and the server counts it with limits: 5 brews of a method per day, 3 L per brew, 6 L per day, no backdating after the first day.
+- Developers' card background («Разработчик»: terminal black, scrolling code, a glowing "</>" mark): only the owner can give or take it away by Telegram ID (Profile → «Фон разработчика»); the server checks it on every shared card.
 - Achievements, card backgrounds, achievement badges on cards and diamond numbers are decided by the server's count: a shared card shows only what the server confirms.
 
 ### Fixed

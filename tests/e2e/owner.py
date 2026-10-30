@@ -8,6 +8,7 @@ SITES = [
     {'host': 'shop.tastycoffee.ru', 'roaster': 'Tasty Coffee', 'status': 'approved', 'added': 0, 'requests': 0, 'sample': None, 'crawled': 1793300000000, 'crawling': False, 'pages': {'ok': 120, 'queued': 30}, 'lots': {'active': 100, 'gone': 20}},
     {'host': 'newroaster.ru', 'roaster': '', 'status': 'pending', 'added': 0, 'requests': 3, 'sample': 'https://newroaster.ru/coffee/kenya', 'crawled': None, 'crawling': False, 'pages': {}, 'lots': {}},
 ]
+GRANTS = []
 TG = """window.Telegram = { WebApp: {
   initData: 'query_id=x&user=%7B%22id%22%3A111%7D&auth_date=1&hash=abc', initDataUnsafe: { user: { id: 111, first_name: 'Owner', username: 'owner' } },
   version: '6.0', platform: 'tdesktop', colorScheme: 'light', themeParams: {}, isVersionAtLeast: (v) => parseFloat(v) <= 6.0,
@@ -24,7 +25,8 @@ async def mock(pg, admin_log=None):
             req = json.loads(route.request.post_data or '{}')
             if admin_log is not None: admin_log.append(req)
             if req.get('action') == 'approve': SITES[1].update(status='approved', roaster=req.get('roaster') or '')
-            body = {'sites': SITES}
+            if req.get('action') == 'grant': GRANTS.append({'account': 'x', 'tg': req['tg'], 'grants': ['dev']})
+            body = {'sites': SITES, 'grants': GRANTS}
         else: return await route.continue_()
         await route.fulfill(status=200, content_type='application/json', body=json.dumps(body))
     await pg.route('**/*', handle)
@@ -73,6 +75,14 @@ async def main():
         await sec.locator('.row:has-text("newroaster.ru")').click(); await pg2.wait_for_timeout(200)
         await pg2.fill('#site-name-newroaster\\.ru', 'Новый обжарщик')
         await sec.locator('button:has-text("Подключить")').click(); await pg2.wait_for_timeout(400)
+        dev = pg2.locator('.section:has(h2:text("Фон разработчика"))')
+        check(await dev.count() == 1, 'owner sees the developers background section')
+        await pg2.fill('#dev-grant-id', '55 5x666')
+        check(await pg2.input_value('#dev-grant-id') == '555666', 'only digits in the Telegram ID field')
+        await dev.locator('button:has-text("Выдать фон")').click(); await pg2.wait_for_timeout(400)
+        check(any(x.get('action') == 'grant' and x.get('tg') == '555666' and x.get('what') == 'dev' for x in log), 'grant request sent')
+        check(await dev.locator('.row:has-text("555666")').count() == 1, 'the person appears in the list')
+        await dev.screenshot(path='out/owner-dev.png')
         check(any(x.get('action') == 'approve' and x.get('host') == 'newroaster.ru' and x.get('roaster') == 'Новый обжарщик' for x in log), 'approve request sent with the roaster name')
         check(not errors2, f'no page errors in Telegram mode: {errors2[:3]}')
         await b.close()

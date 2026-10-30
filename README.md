@@ -115,6 +115,7 @@ Achievements, card backgrounds and diamond numbers are decided on the server, so
 - **Counting rules** (`src/data/levels.ts`, shared by the app and the server): at most 5 brews of one method per day; water up to 3 L per brew and 6 L per day; history imported on the first day of an account counts as is, after that a brew must arrive within 14 days of its date (no backdating). So 1000 brews of a method or 1000 liters take months, not an evening of tapping.
 - **Levels.** Methods: bronze 50, silver 100, gold 500, «Объёмный» 1000. Liters: 10 / 100 / 500, diamond 1000 (numbered 1, 2, 3… in the order people reach it). Ratings of the user's recipes: badges only. Backgrounds come from method levels and the liters diamond.
 - **Cards** name achievements by key (`method:v60`, `liters`) and never carry a level. When a card is opened, the server fills in levels from its own count and drops what is not earned. Self-declared badges (SCA certificates, championships) are shown as entered.
+- **Special backgrounds** (the developers' «Разработчик») are granted by hand: the owner gives or takes them away by Telegram ID in Profile → «Фон разработчика» (`POST /admin` actions `grant` / `revoke`). A shared card shows one only if the account has it.
 - Outside Telegram (no account) the app shows its own estimate with the same rules; such a card cannot be shared.
 
 ## Coffee catalog

@@ -2,19 +2,19 @@ import type { Bean, Brew } from './store';
 import { brewBeanIds, gramsFromBean } from './cva';
 
 export interface Stock {
-  /** g — граммы зерна, pcs — дрип-пакеты, штуки */
+  /** g — grams of beans, pcs — drip bags, pieces */
   unit: 'g' | 'pcs';
-  /** вес пачки, г (0 — не указан) */
+  /** pack weight, g (0 — not set) */
   total: number;
-  /** списано заварками */
+  /** used by brews */
   used: number;
-  /** осталось с учётом ручной поправки */
+  /** remaining, including the manual correction */
   left: number;
-  /** доля оставшегося 0..1 */
+  /** remaining share 0..1 */
   ratio: number;
-  /** примерно на сколько заварок хватит (по средней дозе с этой пачки) */
+  /** roughly how many brews are left (by the average dose from this pack) */
   brewsLeft: number | null;
-  /** сколько раз заваривали */
+  /** how many times brewed */
   brewCount: number;
 }
 
@@ -23,19 +23,19 @@ const num = (s: string) => {
   return isNaN(n) ? 0 : n;
 };
 
-/** Дрипов в коробке: у ассорти — сумма по видам */
+/** Drips in the box: the sum over kinds for an assorted box */
 export const dripTotal = (bean: Bean) => (bean.assorted ? (bean.drips ?? []).reduce((s, d) => s + (d.count || 0), 0) : bean.dripCount ?? 0);
 
 export function beanStock(bean: Bean, brews: Brew[]): Stock {
   if (bean.kind === 'drip') {
-    // одна заварка — один дрип
+    // one brew — one drip
     const mine = brews.filter((b) => b.beanId === bean.id);
     const total = dripTotal(bean);
     const used = mine.length;
     const left = total ? Math.max(0, total - used + (bean.adjust ?? 0)) : 0;
     return { unit: 'pcs', total, used, left, ratio: total ? Math.min(1, left / total) : 0, brewsLeft: total ? left : null, brewCount: used };
   }
-  // каппинг: доза × чашки по каждому образцу этой пачки
+  // cupping: dose × cups for each sample of this pack
   const mine = brews.filter((b) => brewBeanIds(b).includes(bean.id));
   const used = mine.reduce((s, b) => s + gramsFromBean(b, bean.id), 0);
   const total = num(bean.weight);
@@ -49,10 +49,10 @@ export function beanStock(bean: Bean, brews: Brew[]): Stock {
   };
 }
 
-/** Пачка закончилась: отмечена вручную или вес кончился */
+/** Pack is finished: marked manually or out of weight */
 export const isFinished = (bean: Bean, st: Stock) => !!bean.finished || (st.total > 0 && st.left <= 0);
 
-/** Остаток одного вида дрипа в коробке-ассорти */
+/** Remaining count of one drip kind in an assorted box */
 export function dripItemLeft(bean: Bean, itemId: string, brews: Brew[]) {
   const item = bean.drips?.find((d) => d.id === itemId);
   if (!item) return 0;

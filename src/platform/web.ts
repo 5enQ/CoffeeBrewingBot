@@ -17,7 +17,7 @@ export async function requestWakeLock(on: boolean) {
     const nav = navigator as Navigator & { wakeLock?: { request(t: 'screen'): Promise<{ release(): Promise<void> }> } };
     if (on && nav.wakeLock && !wakeLock) wakeLock = await nav.wakeLock.request('screen');
     if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
-  } catch { /* не критично */ }
+  } catch { /* not critical */ }
 }
 
 const vibrateMap: Record<HapticKind, number | number[]> = {
@@ -47,15 +47,15 @@ export function createWebPlatform(): Platform {
       return () => mq?.removeEventListener('change', cb);
     },
     haptic(kind) {
-      try { navigator.vibrate?.(vibrateMap[kind]); } catch { /* нет вибро */ }
+      try { navigator.vibrate?.(vibrateMap[kind]); } catch { /* no vibration */ }
     },
     storage: {
       async get(key) { return lsGet(key); },
       async set(key, value) { lsSet(key, value); },
     },
-    // облака в обычном браузере нет; window.__brewbookCloud — подмена для тестов
+    // a plain browser has no cloud; window.__brewbookCloud is a stub for tests
     get cloud() { return (globalThis as { __brewbookCloud?: CloudKV }).__brewbookCloud ?? null; },
-    setBackHandler() { /* в вебе кнопка «назад» рисуется в шапке */ },
+    setBackHandler() { /* on the web the "back" button is drawn in the header */ },
     confirm: (m) => dialog.confirm(m),
     alert: (m) => dialog.alert(m),
     keepAwake: requestWakeLock,

@@ -22,7 +22,7 @@ async function decodeImageFile(file: File): Promise<string | null> {
       const bmp = await createImageBitmap(file);
       const r = await det.detect(bmp);
       if (r[0]) return r[0].rawValue;
-    } catch { /* пробуем ZXing */ }
+    } catch { /* try ZXing */ }
   }
   const url = URL.createObjectURL(file);
   try {
@@ -33,8 +33,8 @@ async function decodeImageFile(file: File): Promise<string | null> {
 }
 
 /**
- * Полноэкранный сканер: камера (BarcodeDetector или ZXing),
- * фото пачки, нативный QR-сканер Telegram и ручной ввод.
+ * Full-screen scanner: camera (BarcodeDetector or ZXing),
+ * photo of the pack, Telegram's native QR scanner and manual input.
  */
 export function Scanner({ onResult, onClose }: { onResult(code: string): void; onClose(): void }) {
   const video = useRef<HTMLVideoElement>(null);
@@ -73,7 +73,7 @@ export function Scanner({ onResult, onClose }: { onResult(code: string): void; o
             if (cancelled || doneRef.current) return;
             if (t - last > 180 && v.readyState >= 2) {
               last = t;
-              try { const r = await det.detect(v); if (r[0]) return finish(r[0].rawValue); } catch { /* кадр не распознан */ }
+              try { const r = await det.detect(v); if (r[0]) return finish(r[0].rawValue); } catch { /* frame not recognized */ }
             }
             raf = requestAnimationFrame(tick);
           };

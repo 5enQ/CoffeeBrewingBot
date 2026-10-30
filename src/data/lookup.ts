@@ -11,9 +11,9 @@ export interface LookupResult {
   source?: string;
 }
 
-/* ---------- Общий каталог кофе на сервере ---------- */
+/* ---------- Shared coffee catalog on the server ---------- */
 
-/** Что хранится в каталоге: описание лота без личного (дата обжарки, остаток, заметки — только у вас) */
+/** What the catalog stores: the lot description without personal data (roast date, stock, notes stay with you) */
 const COFFEE_TEXT = ['name', 'roaster', 'country', 'region', 'farm', 'producer', 'variety', 'process', 'altitude', 'roastLevel', 'packNotes'] as const;
 
 type Coffee = Partial<Pick<Bean, typeof COFFEE_TEXT[number] | 'kind' | 'dripCount' | 'assorted' | 'isBlend' | 'scales'>> & {
@@ -39,7 +39,7 @@ function coffeeToPatch(c: Coffee, id?: string): Partial<Bean> {
   for (const k of COFFEE_TEXT) if (c[k]) out[k] = c[k];
   if (c.kind === 'drip') out.kind = 'drip';
   if (c.dripCount) out.dripCount = c.dripCount;
-  // на сайте количество не указано — считаем, что дрип один
+  // the site gives no count — assume a single drip
   else if (c.kind === 'drip' && !c.assorted) out.dripCount = 1;
   if (c.assorted) out.assorted = true;
   if (c.isBlend && c.parts?.length) {
@@ -52,7 +52,7 @@ function coffeeToPatch(c: Coffee, id?: string): Partial<Bean> {
   return out;
 }
 
-/** Пачка → описание для каталога */
+/** Pack → catalog description */
 export function beanToCoffee(b: Bean): Coffee {
   const c: Coffee = {};
   for (const k of COFFEE_TEXT) { const v = (b[k] ?? '').trim(); if (v) c[k] = v; }
@@ -66,14 +66,14 @@ export function beanToCoffee(b: Bean): Coffee {
   return c;
 }
 
-/** Ключи пачки в каталоге: ссылка из QR и штрихкод */
+/** Catalog keys of a pack: QR link and barcode */
 export function catalogKeys(b: Pick<Bean, 'link' | 'barcode'>) {
   const url = [b.link, b.barcode].find((x) => /^https?:\/\//i.test(x ?? ''));
   const code = /^\d{8,14}$/.test(b.barcode ?? '') ? b.barcode : undefined;
   return { url, code };
 }
 
-/** Сохранили пачку — дополнить или подтвердить лот в общем каталоге. Возвращает id лота. */
+/** A pack was saved — fill in or confirm the lot in the shared catalog. Returns the lot id. */
 export async function contributeCoffee(b: Bean): Promise<string | null> {
   const initData = platform.initData();
   const { url, code } = catalogKeys(b);
@@ -90,7 +90,7 @@ export async function contributeCoffee(b: Bean): Promise<string | null> {
   } catch { return null; }
 }
 
-/** Подписи заполненных полей — для сообщения «Заполнено: …» */
+/** Labels of filled fields — for the "Filled in: …" message */
 const FIELD_LABELS: Partial<Record<keyof Bean, string>> = {
   name: 'название', roaster: 'обжарщик', country: 'страна', region: 'регион', farm: 'ферма', producer: 'производитель',
   variety: 'сорт', process: 'обработка', altitude: 'высота', roastLevel: 'обжарка', packNotes: 'дескрипторы',
@@ -107,7 +107,7 @@ export function filledLabels(before: Bean, after: Bean) {
   return out;
 }
 
-/** Синонимы полей для QR с текстом или JSON на пачке */
+/** Field synonyms for QR codes with text or JSON on the pack */
 const KEYS: Record<string, keyof Bean> = {
   name: 'name', lot: 'name', 'название': 'name', 'лот': 'name', coffee: 'name',
   roaster: 'roaster', 'обжарщик': 'roaster', brand: 'roaster',
@@ -148,7 +148,7 @@ function mapFields(entries: [string, unknown][]): Partial<Bean> {
 function parseQrText(text: string): Partial<Bean> {
   const t = text.trim();
   if (t.startsWith('{')) {
-    try { return mapFields(Object.entries(JSON.parse(t))); } catch { /* не JSON */ }
+    try { return mapFields(Object.entries(JSON.parse(t))); } catch { /* not JSON */ }
   }
   const lines = t.split(/\r?\n|;/).map((l) => l.split(/:\s*/)).filter((p) => p.length >= 2);
   return mapFields(lines.map(([k, ...rest]) => [k, rest.join(':')]));
@@ -207,7 +207,7 @@ function sourceText(r: Remote) {
   return 'страница обжарщика';
 }
 
-/** Перенести данные, не затирая то, что пользователь уже ввёл */
+/** Merge data without overwriting what the user already entered */
 export function mergeEmpty(b: Bean, patch: Partial<Bean>): Bean {
   const next = { ...b } as Record<string, unknown>;
   for (const [k, v] of Object.entries(patch)) {

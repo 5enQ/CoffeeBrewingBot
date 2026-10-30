@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
 
-/** Короткое всплывающее сообщение внизу экрана («Скопировано» и т. п.) */
+/** Short popup message at the bottom of the screen ("Copied" etc.) */
 let current: { id: number; text: string } | null = null;
 let seq = 0;
 const listeners = new Set<() => void>();
@@ -23,9 +23,9 @@ export function ToastHost() {
   return <div className="snack" role="status" key={t.id}>{t.text}</div>;
 }
 
-/** Копирование с запасным способом для вебвью, где Clipboard API недоступен */
+/** Copy with a fallback for webviews without the Clipboard API */
 export async function copyText(text: string): Promise<boolean> {
-  try { await navigator.clipboard.writeText(text); return true; } catch { /* ниже */ }
+  try { await navigator.clipboard.writeText(text); return true; } catch { /* fall back below */ }
   try {
     const ta = document.createElement('textarea');
     ta.value = text;

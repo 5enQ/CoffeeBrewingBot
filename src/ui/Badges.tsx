@@ -31,7 +31,7 @@ export function BadgeRow({ badges, max = 3 }: { badges: BadgeLite[]; max?: numbe
 
 const initials = (s: string) => s.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 
-/** Автор рецепта: имя, ссылка на Telegram (если автор разрешил), значки */
+/** Recipe author: name, Telegram link (if the author allowed it), badges */
 export function AuthorBlock({ author, label = 'Рецепт от' }: { author: Author; label?: string }) {
   const name = author.name || (author.username ? '@' + author.username : 'Без имени');
   return (

@@ -12,7 +12,7 @@ import { beanTitle } from '../screens/beanUtils';
 
 const fmtScore = (n: number) => n.toFixed(2).replace('.', ',');
 
-/* ================= Редактор сессии ================= */
+/* ================= Session editor ================= */
 
 export function CvaEditor({ value, onChange }: { value: CvaSession; onChange(v: CvaSession): void }) {
   const { beans } = useStore();
@@ -59,7 +59,7 @@ export function CvaEditor({ value, onChange }: { value: CvaSession; onChange(v: 
   );
 }
 
-/* ================= 104: аффективная форма ================= */
+/* ================= 104: affective form ================= */
 
 const STEPS: Record<number, string> = { 1: 'Шаг 1 · до заливки', 2: 'Шаг 2 · заливка и корочка', 3: 'Шаг 3 · дегустация по мере остывания' };
 
@@ -160,7 +160,7 @@ function AffectiveForm({ value, cups, onChange }: { value: Affective; cups: numb
   );
 }
 
-/* ================= 103: дескриптивная форма ================= */
+/* ================= 103: descriptive form ================= */
 
 function Intensity({ label, value, onChange }: { label: string; value?: number; onChange(v: number | undefined): void }) {
   return (
@@ -272,7 +272,7 @@ function DescriptiveForm({ value, onChange }: { value: Descriptive; onChange(v: 
   );
 }
 
-/* ================= 105: внешняя информация ================= */
+/* ================= 105: extrinsic information ================= */
 
 function ExtrinsicForm({ value, onChange }: { value: Extrinsic; onChange(v: Extrinsic): void }) {
   const [open, setOpen] = useState(false);
@@ -307,7 +307,7 @@ function ExtrinsicForm({ value, onChange }: { value: Extrinsic; onChange(v: Extr
   );
 }
 
-/* ================= Итоги в дневнике ================= */
+/* ================= Journal summary ================= */
 
 export function CvaSummary({ session }: { session: CvaSession }) {
   const { beans } = useStore();
@@ -380,6 +380,6 @@ export function CvaSummary({ session }: { session: CvaSession }) {
   );
 }
 
-/** Балл для списков: лучший образец сессии */
+/** Score for lists: the best sample of the session */
 export const fmtCva = fmtScore;
 export { fmtNum };

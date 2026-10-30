@@ -4,7 +4,7 @@ import { useStore } from './data/store';
 
 export type LayoutMode = 'mobile' | 'desktop';
 
-/** Ширина окна, с которой включается раскладка для компьютера (одна для «Авто» и «Компьютер») */
+/** Window width from which the desktop layout is used (same for "Auto" and "Desktop") */
 export const DESKTOP_MIN = 860;
 
 export const LayoutCtx = createContext<LayoutMode>('mobile');
@@ -20,7 +20,7 @@ function useWidth() {
   return w;
 }
 
-/** Какую раскладку показать: выбор в профиле → устройство → ширина окна */
+/** Which layout to show: profile choice → device → window width */
 export function useLayoutMode(): { mode: LayoutMode; desktopClient: boolean; width: number } {
   const { profile } = useStore();
   const width = useWidth();

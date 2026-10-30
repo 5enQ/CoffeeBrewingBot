@@ -1,7 +1,7 @@
 import { methodById, type BrewStep, type IconKey, type Method } from './methods';
 import type { Author } from './store';
 
-/** Свой рецепт: параметры + собственная схема проливов */
+/** Custom recipe: parameters + its own pour schedule */
 export interface CustomRecipe {
   id: string;
   methodId: string;
@@ -10,16 +10,16 @@ export interface CustomRecipe {
   ratio: number;
   temp: number;
   grind: string;
-  /** время до «готово», сек */
+  /** time until "done", s */
   total: number;
   steps: BrewStep[];
   notes: string;
-  /** если рецепт сохранён от друга */
+  /** if the recipe was saved from a friend */
   author?: Author;
   createdAt: number;
 }
 
-/** Схема заварки, по которой идёт таймер. Хранится снимком в заварке и уходит в «Поделиться». */
+/** Brew schedule the timer follows. Stored as a snapshot in the brew and sent with "Share". */
 export interface BrewPlan {
   recipeId?: string;
   name: string;
@@ -31,14 +31,14 @@ export function planFromRecipe(r: CustomRecipe): BrewPlan {
   return { recipeId: r.id, name: r.name, total: r.total, steps: r.steps };
 }
 
-/** Схема для таймера: своя, если есть, иначе стандартная для метода */
+/** Schedule for the timer: the custom one if present, otherwise the method's standard one */
 export function effectivePlan(methodId: string, plan?: BrewPlan | null): BrewPlan {
   if (plan && plan.steps.length) return plan;
   const m = methodById(methodId);
   return { name: 'Стандартный', total: m.total, steps: m.steps };
 }
 
-/** Новый рецепт на основе стандартного (или текущих параметров) */
+/** New recipe based on the standard one (or the current parameters) */
 export function recipeFromStandard(methodId: string, id: string, params?: Partial<CustomRecipe>): CustomRecipe {
   const m = methodById(methodId);
   return {
@@ -52,7 +52,7 @@ export function sortSteps(steps: BrewStep[]) {
   return [...steps].sort((a, b) => a.at - b.at);
 }
 
-/** Свой метод заваривания: как стандартный, но создан пользователем */
+/** Custom brew method: like a standard one, but created by the user */
 export interface CustomMethod {
   id: string;
   name: string;

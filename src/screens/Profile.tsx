@@ -241,7 +241,7 @@ const fmtWhen = (iso?: string | null) => {
 };
 const appVersion = () => [import.meta.env.VITE_APP_VERSION || 'разработка', fmtWhen(import.meta.env.VITE_APP_BUILT)].filter(Boolean).join(' · ');
 
-/** Версия сервера — чтобы понимать, какая выкладка сейчас работает */
+/** Server version — to know which deployment is running */
 function ServerVersionRow() {
   const [v, setV] = useState<string | null>(null);
   useEffect(() => {
@@ -254,7 +254,7 @@ function ServerVersionRow() {
   return <Row label="Версия сервера" value={v ?? '…'} chevron={false} />;
 }
 
-/** Синхронизация между устройствами через облако Telegram */
+/** Sync between devices via Telegram's cloud */
 function SyncSection() {
   const { sync, syncNow } = useStore();
   if (sync.state === 'off') {
@@ -292,7 +292,7 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
   useBackGuard(dirty, 'Выйти без сохранения?');
   const cat = GEAR_CATS.find((c) => c.id === g.cat)!;
 
-  // выбрали популярную ручную кофемолку — тип подставим сам (если ещё не выбран)
+  // a popular hand grinder was picked — set the type automatically (if not chosen yet)
   const setName = (name: string) => setG((x) => ({ ...x, name, grindType: x.cat === 'grinder' && !x.grindType ? guessGrindType(name) : x.grindType }));
   const save = () => {
     saveGear({ ...g, name: g.name.trim(), details: g.details.trim(), sample: dirty ? undefined : g.sample, grindType: g.cat === 'grinder' ? g.grindType : undefined });
@@ -347,7 +347,7 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
   );
 }
 
-/* ---------- Значок ---------- */
+/* ---------- Badge ---------- */
 
 export function BadgeEdit({ badge: initial, isNew }: { badge: Badge; isNew: boolean }) {
   const { profile, saveProfile } = useStore();

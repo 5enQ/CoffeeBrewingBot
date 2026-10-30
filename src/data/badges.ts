@@ -1,17 +1,17 @@
-/** achieve — выдаются автоматически (литры, оценки), вручную не создаются */
+/** achieve — awarded automatically (liters, ratings), never created manually */
 export type BadgeKind = 'sca' | 'q' | 'champ' | 'custom' | 'achieve';
 
 export interface Badge {
   id: string;
   kind: BadgeKind;
-  /** основная надпись: модуль, чемпионат, звание */
+  /** main caption: module, championship, title */
   title: string;
-  /** уровень, место, категория */
+  /** level, place, category */
   detail: string;
   year: string;
 }
 
-/** В рецепте значок передаётся без id */
+/** In a recipe the badge is sent without an id */
 export type BadgeLite = Omit<Badge, 'id'>;
 
 export const BADGE_KINDS: { id: BadgeKind; label: string; hint: string }[] = [
@@ -36,7 +36,7 @@ export const CHAMPIONSHIPS = [
 ];
 export const PLACES = ['1 место', '2 место', '3 место', 'Финалист', 'Полуфиналист', 'Участник'];
 
-/** Тон значка: золото / серебро / бронза для призовых мест, свой цвет для типов */
+/** Badge tone: gold / silver / bronze for podium places, own color per type */
 const ACHIEVE_TONES: Record<string, string> = { 'Бронза': 'bronze', 'Серебро': 'silver', 'Золото': 'gold', 'Бриллиант': 'diamond' };
 
 export function badgeTone(b: Pick<Badge, 'kind' | 'detail'>): string {
@@ -52,11 +52,11 @@ export function badgeTone(b: Pick<Badge, 'kind' | 'detail'>): string {
 
 export const badgeText = (b: BadgeLite) => [b.title, b.detail, b.year].filter(Boolean).join(' · ');
 
-/** Порядок показа: призовые места, Q, SCA, остальное */
+/** Display order: podium places, Q, SCA, the rest */
 export function sortBadges<T extends BadgeLite>(list: T[]): T[] {
   const rank = (b: BadgeLite) => {
     const base = ({ diamond: 0, gold: 1, silver: 2, bronze: 3, q: 4, champ: 5, sca: 6, custom: 7 } as Record<string, number>)[badgeTone(b)] ?? 9;
-    return base + (b.kind === 'achieve' ? 0.5 : 0); // награды чемпионатов выше достижений того же цвета
+    return base + (b.kind === 'achieve' ? 0.5 : 0); // championship awards above achievements of the same color
   };
   return [...list].sort((a, z) => rank(a) - rank(z) || Number(z.year || 0) - Number(a.year || 0));
 }

@@ -16,8 +16,8 @@ import type { Method } from '../data/methods';
 import type { TileLayout } from '../data/store';
 
 const HOLD_MS = 450;
-/** После закрепления плитки переставляются, и палец оказывается над соседней.
- *  Общая пауза не даёт тому же жесту закрепить вторую плитку. */
+/** After pinning, tiles are reordered and the finger ends up over a neighbor.
+ *  A shared cooldown keeps the same gesture from pinning a second tile. */
 const PIN_COOLDOWN_MS = 1000;
 let lastPinAt = 0;
 let lastPointer = 'mouse';
@@ -29,7 +29,7 @@ function pinOnce(onPin: () => void) {
   return true;
 }
 
-/** Плитка метода: нажатие открывает, долгое нажатие (или правая кнопка мыши) закрепляет */
+/** Method tile: tap opens, long press (or right click) pins */
 function MethodTile({ id, className, onOpen, onPin, pinned, label, children }: {
   id: string; className: string; onOpen(): void; onPin(): void; pinned: boolean; label: string; children: ReactNode;
 }) {
@@ -52,7 +52,7 @@ function MethodTile({ id, className, onOpen, onPin, pinned, label, children }: {
       onPointerUp={cancel} onPointerLeave={cancel} onPointerCancel={cancel}
       onContextMenu={(e) => {
         e.preventDefault();
-        // на сенсорном экране контекстное меню приходит вместе с долгим нажатием — его обрабатывает таймер
+        // on touch screens the context menu arrives together with the long press — the timer handles it
         if (lastPointer !== 'mouse' || held.current || timer.current) return;
         held.current = true; pinOnce(onPin);
       }}
@@ -62,11 +62,11 @@ function MethodTile({ id, className, onOpen, onPin, pinned, label, children }: {
   );
 }
 
-/* ---------- Редактирование плиток ---------- */
+/* ---------- Tile editing ---------- */
 
 type Size = 1 | 2;
 
-/** Плитка в режиме редактирования: нажатие — выбрать, перетаскивание — переставить, ручка справа — размер */
+/** Tile in edit mode: tap — select, drag — reorder, right handle — size */
 function EditTile({ m, size, shown, selected, pinned, dragging, onSelect, onDragStart, onDragMove, onDragEnd, onResize, onPreview, onKey }: {
   m: Method; size: Size; shown: Size; selected: boolean; pinned: boolean; dragging: boolean; onPreview(s: Size | null): void;
   onSelect(): void; onDragStart(el: HTMLElement, x: number, y: number): void; onDragMove(x: number, y: number): void; onDragEnd(): void;
@@ -74,7 +74,7 @@ function EditTile({ m, size, shown, selected, pinned, dragging, onSelect, onDrag
 }) {
   const start = useRef<{ x: number; y: number; moved: boolean; el: HTMLElement } | null>(null);
   const handle = useRef<{ x: number; base: Size } | null>(null);
-  // размер, пока тянут ручку, хранится у родителя: так соседние плитки плавно переезжают вместе с ней
+  // the size while the handle is dragged lives in the parent, so neighboring tiles glide along with it
   const setPreview = onPreview;
 
   const down = (e: RPointerEvent) => {
@@ -138,7 +138,7 @@ function EditTile({ m, size, shown, selected, pinned, dragging, onSelect, onDrag
   );
 }
 
-/** Порядок плиток: закреплённые первыми, затем сохранённый порядок, новые методы — в конце */
+/** Tile order: pinned first, then the saved order, new methods at the end */
 function orderTiles(all: Method[], tiles: TileLayout, pinned: string[]) {
   const ids = all.map((m) => m.id);
   const base = [...tiles.order.filter((id) => ids.includes(id)), ...ids.filter((id) => !tiles.order.includes(id))];
@@ -166,7 +166,7 @@ export function BrewHome() {
   const commit = (next: { order?: string[]; size?: Record<string, Size> }) => {
     setHistory((h) => [...h.slice(-30), { tiles, pinned }]);
     const nextOrder = next.order ?? savedOrder;
-    // закреплённые остаются первыми — в том порядке, в каком их расставили
+    // pinned tiles stay first — in the order they were arranged
     saveTiles({ order: nextOrder, size: next.size ?? tiles.size }, nextOrder.filter((id) => pinned.includes(id)));
   };
   const undo = () => {
@@ -178,7 +178,7 @@ export function BrewHome() {
     saveTiles(last.tiles, last.pinned);
   };
 
-  /** Куда встанет плитка: закреплённые двигаются только среди закреплённых, остальные — после них */
+  /** Where the tile lands: pinned ones move only among pinned, the rest after them */
   const place = (list: string[], id: string, to: number) => {
     const pins = list.filter((x) => pinned.includes(x)).length;
     const rest = list.filter((x) => x !== id);
@@ -193,7 +193,7 @@ export function BrewHome() {
   const dragRef = useRef(drag);
   dragRef.current = drag;
   const lastHit = useRef<string | null>(null);
-  // плитка едет за пальцем: смещение от её места в сетке до пальца
+  // the tile follows the finger: offset from its grid slot to the finger
   const grab = useRef<{ id: string; ox: number; oy: number; x: number; y: number } | null>(null);
   const placeGhost = () => {
     const g = grab.current, grid = gridRef.current;
@@ -201,7 +201,7 @@ export function BrewHome() {
     const el = grid.querySelector<HTMLElement>(`[data-tile="${g.id}"]`);
     if (!el) return;
     const gr = grid.getBoundingClientRect();
-    // не даём плитке уехать за край сетки: иначе страница начинает сдвигаться вбок
+    // keep the tile inside the grid: otherwise the page starts shifting sideways
     const left = Math.max(-8, Math.min(grid.clientWidth - el.offsetWidth + 8, g.x - gr.left - g.ox));
     const top = Math.max(-16, Math.min(grid.clientHeight - el.offsetHeight + 16, g.y - gr.top - g.oy));
     el.style.transform = `translate(${left - el.offsetLeft}px, ${top - el.offsetTop}px) scale(1.05)`;
@@ -221,24 +221,24 @@ export function BrewHome() {
     if (!grid || !grab.current) return;
     grab.current.x = x; grab.current.y = y;
     placeGhost();
-    // место ищем по сетке (без учёта анимаций), а не по тому, что сейчас под пальцем
+    // the slot is found by the grid (ignoring animations), not by what is under the finger now
     const gr = grid.getBoundingClientRect();
     const gx = x - gr.left, gy = y - gr.top;
     const els = [...grid.querySelectorAll<HTMLElement>('[data-tile]')].filter((e) => e.dataset.tile !== id);
     const hit = els.find((e) => gx >= e.offsetLeft && gx <= e.offsetLeft + e.offsetWidth && gy >= e.offsetTop && gy <= e.offsetTop + e.offsetHeight);
-    // одна плитка — один обмен: пока палец над той же плиткой, повторно не переставляем (иначе дрожит)
+    // one tile — one swap: while the finger is over the same tile, do not reorder again (otherwise it jitters)
     const hitId = hit?.dataset.tile ?? null;
     if (!hitId || hitId === lastHit.current) { if (!hitId) lastHit.current = null; return; }
     lastHit.current = hitId;
     const cur = dragRef.current?.order ?? savedOrder;
-    // встаём на место той плитки, над которой палец: остальные сдвигаются на одну позицию
+    // take the slot of the tile under the finger: the others shift by one position
     const next = place(cur, id, cur.indexOf(hitId));
     if (next.join() === cur.join()) return;
     snapshot();
     setDrag({ id, order: next });
   };
   const dragEnd = () => {
-    // отпустили — плитка доезжает до своего места
+    // released — the tile glides into its place
     const g = grab.current;
     grab.current = null;
     const el = g && gridRef.current?.querySelector<HTMLElement>(`[data-tile="${g.id}"]`);
@@ -299,7 +299,7 @@ export function BrewHome() {
 
       <Section title="Метод приготовления" aside={editing ? (
         <span className="aside-actions">
-          {/* кнопка есть всегда, чтобы шапка не прыгала, когда появляется первое изменение */}
+          {/* the button is always rendered so the header does not jump when the first change appears */}
           <button type="button" className={'icon-btn' + (history.length ? '' : ' invisible')} aria-label="Отменить" aria-hidden={!history.length} tabIndex={history.length ? 0 : -1} onClick={undo} disabled={!history.length}><Icon name="undo" /></button>
           <button type="button" className="btn btn-primary btn-small" onClick={finish}>Готово</button>
         </span>

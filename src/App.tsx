@@ -21,6 +21,7 @@ import { LayoutCtx, useLayoutMode } from './layout';
 import { MethodIcon } from './ui/icons';
 import { platform } from './platform';
 import { resolveStartParam } from './data/share';
+import { t } from './i18n';
 
 function renderRoute(r: Route) {
   switch (r.name) {
@@ -42,11 +43,11 @@ function renderRoute(r: Route) {
   }
 }
 
-const TABS: { id: Tab; label: string; icon: 'brew' | 'journal' | 'beans' | 'profile' }[] = [
-  { id: 'brew', label: 'Заварить', icon: 'brew' },
-  { id: 'journal', label: 'Дневник', icon: 'journal' },
-  { id: 'beans', label: 'Полка', icon: 'beans' },
-  { id: 'profile', label: 'Профиль', icon: 'profile' },
+const TABS: { id: Tab; readonly label: string; icon: 'brew' | 'journal' | 'beans' | 'profile' }[] = [
+  { id: 'brew', get label() { return t('tab.brew'); }, icon: 'brew' },
+  { id: 'journal', get label() { return t('tab.journal'); }, icon: 'journal' },
+  { id: 'beans', get label() { return t('tab.shelf'); }, icon: 'beans' },
+  { id: 'profile', get label() { return t('tab.profile'); }, icon: 'profile' },
 ];
 
 function Shell() {
@@ -59,7 +60,7 @@ function Shell() {
 
   useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
 
-  // Открыли по ссылке «поделиться» — показываем присланный рецепт
+  // Opened from a share link — show the received recipe
   useEffect(() => {
     if (!ready) return;
     const param = platform.startParam();
@@ -76,7 +77,7 @@ function Shell() {
   const renderTab = (t: Tab) => ({ brew: <BrewHome />, journal: <Journal />, beans: <Beans />, profile: <Profile /> }[t]);
   const root = renderTab(tab);
   const top = stack.length;
-  // Экраны стека остаются смонтированными, чтобы не терять ввод и таймер
+  // Stack screens stay mounted so input and timers are not lost
   const stackScreens = stack.map((r, i) => (
     <div key={`${i}-${r.name}`} hidden={i !== top - 1} className="stack-screen">
       <DepthCtx.Provider value={i + 1}>{renderRoute(r)}</DepthCtx.Provider>
@@ -134,7 +135,7 @@ function Shell() {
   );
 }
 
-/** Правая колонка, пока ничего не выбрано */
+/** Right pane while nothing is selected */
 function Placeholder({ tab }: { tab: Tab }) {
   const text: Record<Tab, [ReactNode, string, string]> = {
     brew: [<MethodIcon icon="v60" size={48} />, 'Выберите метод', 'Слева — способы заваривания и последние заварки. Рецепт и таймер откроются здесь.'],

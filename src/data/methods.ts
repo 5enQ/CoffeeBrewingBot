@@ -1,8 +1,9 @@
+import { t } from '../i18n';
 export interface BrewStep {
-  /** секунда от старта */
+  /** second from start */
   at: number;
   title: string;
-  /** долить до этой доли от общего объёма воды (0..1) */
+  /** pour up to this share of the total water (0..1) */
   to?: number;
   hint?: string;
 }
@@ -10,22 +11,22 @@ export interface BrewStep {
 export interface Method {
   id: string;
   name: string;
-  /** коротко о методе */
+  /** short method description */
   about: string;
   icon: IconKey;
-  dose: number;   // г кофе
+  dose: number;   // g of coffee
   ratio: number;  // 1:ratio
-  temp: number;   // °C, 0 — «холодная вода»
+  temp: number;   // °C, 0 — "cold water"
   grind: string;
-  /** espresso — считаем выход напитка, а не воду */
+  /** espresso — count the beverage yield rather than water */
   yieldLabel?: string;
-  /** длительность до «готово», сек */
+  /** duration until "done", s */
   total: number;
   steps: BrewStep[];
   tips: string[];
-  /** свой метод пользователя */
+  /** the user's custom method */
   custom?: boolean;
-  /** свой метод удалён: в списке не показывается, но старые заварки его помнят */
+  /** archived: hidden from lists, but old brews still resolve it (deleted custom methods, retired standard ones) */
   archived?: boolean;
 }
 
@@ -34,12 +35,12 @@ export type IconKey =
   | 'espresso' | 'moka' | 'cezve' | 'cupping' | 'siphon' | 'coldbrew' | 'batch' | 'dripbag'
   | 'cup' | 'kettle' | 'drop' | 'bean';
 
-/** Значки, которые можно выбрать для своего метода */
+/** Icons available for a custom method */
 export const ICON_CHOICES: IconKey[] = ['cup', 'drop', 'kettle', 'bean', 'v60', 'kalita', 'chemex', 'aeropress', 'french', 'clever', 'espresso', 'moka', 'cezve', 'siphon', 'coldbrew', 'batch', 'dripbag', 'cupping'];
 
 export const METHODS: Method[] = [
   {
-    id: 'v60', name: 'V60', icon: 'v60',
+    id: 'v60', get name() { return t('method.v60'); }, icon: 'v60',
     about: 'Конусная воронка: чистая чашка, яркая кислотность.',
     dose: 15, ratio: 16.67, temp: 95, grind: 'средне-мелкий', total: 210,
     steps: [
@@ -56,7 +57,7 @@ export const METHODS: Method[] = [
     ],
   },
   {
-    id: 'kalita', name: 'Kalita Wave', icon: 'kalita',
+    id: 'kalita', archived: true, get name() { return t('method.kalita'); }, icon: 'kalita',
     about: 'Плоское дно и импульсные проливы: ровная экстракция, сладость.',
     dose: 20, ratio: 16, temp: 94, grind: 'средний', total: 210,
     steps: [
@@ -70,7 +71,7 @@ export const METHODS: Method[] = [
     tips: ['Лейте в центр небольшими кругами', 'Уровень воды держите примерно одинаковым'],
   },
   {
-    id: 'chemex', name: 'Chemex', icon: 'chemex',
+    id: 'chemex', get name() { return t('method.chemex'); }, icon: 'chemex',
     about: 'Плотный фильтр: очень чистая, лёгкая чашка на двоих.',
     dose: 30, ratio: 16.67, temp: 94, grind: 'средне-крупный', total: 270,
     steps: [
@@ -83,7 +84,7 @@ export const METHODS: Method[] = [
     tips: ['Складка фильтра в три слоя — к носику', 'Если слив дольше 5 минут, сделайте помол крупнее'],
   },
   {
-    id: 'aeropress', name: 'AeroPress', icon: 'aeropress',
+    id: 'aeropress', get name() { return t('method.aeropress'); }, icon: 'aeropress',
     about: 'Иммерсия с давлением: насыщенно и прощает ошибки.',
     dose: 15, ratio: 15.3, temp: 90, grind: 'средне-мелкий', total: 180,
     steps: [
@@ -94,7 +95,7 @@ export const METHODS: Method[] = [
     tips: ['Для кофе посветлее — температура до 95°', 'Горчит — уменьшите время до прожима'],
   },
   {
-    id: 'french', name: 'Френч-пресс', icon: 'french',
+    id: 'french', get name() { return t('method.french'); }, icon: 'french',
     about: 'Полная иммерсия: плотное тело, мягкая кислотность.',
     dose: 30, ratio: 16.67, temp: 96, grind: 'средний', total: 540,
     steps: [
@@ -106,7 +107,7 @@ export const METHODS: Method[] = [
     tips: ['Чем дольше отстаивание, тем чище чашка', 'Наливайте медленно, последние 10% не выливайте'],
   },
   {
-    id: 'clever', name: 'Clever', icon: 'clever',
+    id: 'clever', get name() { return t('method.clever'); }, icon: 'clever',
     about: 'Иммерсия с бумажным фильтром: тело френча, чистота пуровера.',
     dose: 20, ratio: 15, temp: 94, grind: 'средний', total: 180,
     steps: [
@@ -117,7 +118,7 @@ export const METHODS: Method[] = [
     tips: ['Слив должен закончиться к 3:00–3:30'],
   },
   {
-    id: 'espresso', name: 'Эспрессо', icon: 'espresso',
+    id: 'espresso', get name() { return t('method.espresso'); }, icon: 'espresso',
     about: 'Давление 9 бар: концентрат за полминуты.',
     dose: 18, ratio: 2, temp: 93, grind: 'мелкий', yieldLabel: 'Выход', total: 30,
     steps: [
@@ -129,7 +130,7 @@ export const METHODS: Method[] = [
     tips: ['Кисло и солоно — мельче помол или больше выход', 'Горько и вяжет — крупнее или меньше выход'],
   },
   {
-    id: 'moka', name: 'Мока', icon: 'moka',
+    id: 'moka', get name() { return t('method.moka'); }, icon: 'moka',
     about: 'Гейзерная кофеварка: крепко и плотно.',
     dose: 18, ratio: 10, temp: 70, grind: 'чуть крупнее эспрессо', total: 270,
     steps: [
@@ -140,7 +141,7 @@ export const METHODS: Method[] = [
     tips: ['Не трамбуйте кофе в корзинке', 'Холодная вода даёт подгоревший вкус'],
   },
   {
-    id: 'cezve', name: 'Джезва', icon: 'cezve',
+    id: 'cezve', get name() { return t('method.cezve'); }, icon: 'cezve',
     about: 'Кофе по-турецки: очень мелкий помол, густая пенка.',
     dose: 10, ratio: 10, temp: 0, grind: 'пудра', total: 180,
     steps: [
@@ -151,7 +152,7 @@ export const METHODS: Method[] = [
     tips: ['Не доводите до кипения', 'Дайте гуще осесть 1–2 минуты'],
   },
   {
-    id: 'siphon', name: 'Сифон', icon: 'siphon',
+    id: 'siphon', get name() { return t('method.siphon'); }, icon: 'siphon',
     about: 'Вакуумная заварка: чистый, ароматный и очень горячий кофе.',
     dose: 20, ratio: 15, temp: 92, grind: 'средний', total: 120,
     steps: [
@@ -163,7 +164,7 @@ export const METHODS: Method[] = [
     tips: ['Кисло — дольше настаивание или мельче помол', 'Горько и мутно — убавьте огонь, крупнее помол', 'Ткань фильтра храните в воде в холодильнике'],
   },
   {
-    id: 'coldbrew', name: 'Колд брю', icon: 'coldbrew',
+    id: 'coldbrew', get name() { return t('method.coldbrew'); }, icon: 'coldbrew',
     about: 'Холодная экстракция 12–18 часов: мягкий, сладкий, без горечи.',
     dose: 70, ratio: 10, temp: 0, grind: 'крупный', total: 43200,
     steps: [
@@ -173,7 +174,7 @@ export const METHODS: Method[] = [
     tips: ['Таймер можно закрыть — запишите заварку и процедите через 12–18 часов', 'Пейте с водой или льдом 1:1', 'Слишком крепко — разбавьте водой', 'Хранится в холодильнике до 2 недель'],
   },
   {
-    id: 'batch', name: 'Батч брю', icon: 'batch',
+    id: 'batch', get name() { return t('method.batch'); }, icon: 'batch',
     about: 'Фильтр-кофе в капельной машине на большой объём: Moccamaster, Fetco, Bunn и подобные.',
     dose: 60, ratio: 1000 / 60, temp: 93, grind: 'средний, чуть крупнее, чем для V60', total: 360,
     steps: [
@@ -185,7 +186,7 @@ export const METHODS: Method[] = [
     tips: ['SCA Golden Cup — около 55–60 г на литр', 'Кисло и пусто — мельче помол', 'Горько и долго капает — крупнее помол или меньше кофе', 'Не держите на подогреве дольше 30 минут — лучше термос'],
   },
   {
-    id: 'drip', name: 'Дрип', icon: 'dripbag',
+    id: 'drip', get name() { return t('method.drip'); }, icon: 'dripbag',
     about: 'Дрип-пакет: уже смолотый кофе в фильтре, который вешается на чашку. Зерно и помол задаёт сам пакет.',
     dose: 11, ratio: 15, temp: 92, grind: 'уже смолот в пакете', total: 150,
     steps: [
@@ -197,9 +198,9 @@ export const METHODS: Method[] = [
     tips: ['Чашка повыше — пакет не должен касаться кофе', 'Кисло и пусто — горячее вода или медленнее пролив', 'Горько — меньше воды или снимите пакет раньше', 'Лучше выпить коробку в течение месяца после обжарки'],
   },
   {
-    id: 'cupping', name: 'Каппинг', icon: 'cupping',
+    id: 'cupping', get name() { return t('method.cupping'); }, icon: 'cupping',
     about: 'Протокол SCA Coffee Value Assessment: 8,25 г на 150 мл, 93 °C, 5 чашек на образец.',
-    // параметры зафиксированы стандартом SCA 102; доза зависит только от объёма чашки
+    // parameters are fixed by SCA 102; the dose depends only on cup volume
     dose: 11, ratio: 150 / 8.25, temp: 93, grind: '70–75 % через сито 850 мкм', total: 1440,
     steps: [
       { at: 0, title: 'Залить до края', to: 1, hint: 'Вода 93 ± 3 °C, лёгкая турбулентность. Сухой аромат уже оценён до заливки' },
@@ -218,14 +219,15 @@ export const METHODS: Method[] = [
   },
 ];
 
-/** Свои методы пользователя — регистрирует хранилище при загрузке и изменениях */
+/** User's custom methods — registered by the store on load and on changes */
 let customMethods: Method[] = [];
 export function setCustomMethods(list: Method[]) { customMethods = list; }
-/** Все методы: стандартные и свои (без архивных — они только для старых заварок) */
-export const allMethods = () => [...METHODS, ...customMethods.filter((m) => !m.archived)];
+/** All methods: standard and custom (archived ones only resolve for old brews) */
+/** Methods offered in lists. Archived ones (e.g. Kalita Wave) are hidden but old brews still resolve via methodById */
+export const allMethods = () => [...METHODS, ...customMethods].filter((m) => !m.archived);
 
 export const methodById = (id: string) =>
-  METHODS.find((m) => m.id === id) ?? customMethods.find((m) => m.id === id) ?? { ...METHODS[0], id, name: 'Удалённый метод' };
+  METHODS.find((m) => m.id === id) ?? customMethods.find((m) => m.id === id) ?? { ...METHODS[0], id, name: t('method.deleted') };
 
 export function fmtRatio(r: number) {
   return `1:${(Math.round(r * 10) / 10).toString().replace('.', ',')}`;
@@ -237,7 +239,7 @@ export function fmtTime(sec: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-/** «1:30», «90», «12:00:00» → секунды */
+/** "1:30", "90", "12:00:00" → seconds */
 export function parseTime(text: string): number | null {
   const m = text.trim().match(/^(\d{1,4})(?::(\d{1,2}))?(?::(\d{1,2}))?$/);
   if (!m) return null;

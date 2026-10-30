@@ -13,7 +13,7 @@ export type Route =
   | { name: 'method'; methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }
   | { name: 'timer'; draft: Brew }
   | { name: 'brewEdit'; draft: Brew; isNew: boolean; openCupping?: boolean }
-  /** fresh — только что сварили: вместо «Повторить» кнопка «Домой» */
+  /** fresh — just brewed: a "Home" button instead of "Repeat" */
   | { name: 'brew'; id: string; fresh?: boolean }
   | { name: 'bean'; id: string }
   | { name: 'beanEdit'; bean: Bean; isNew: boolean; scanOnOpen?: boolean }
@@ -28,17 +28,17 @@ interface RouterApi {
   tab: Tab;
   setTab(t: Tab): void;
   stack: Route[];
-  /** открыть экран поверх экрана, из которого вызвали (на компьютере — заменить карточку справа) */
+  /** open a screen on top of the screen that called it (on desktop — replace the right card) */
   push(r: Route): void;
   replace(r: Route): void;
-  /** force — без вопроса «выйти без сохранения?» */
+  /** force — skip the "leave without saving?" question */
   back(force?: boolean): void;
   reset(): void;
 }
 
 const Ctx = createContext<RouterApi | null>(null);
 
-/** Подтверждения «назад» по глубине стека: экран может спросить, точно ли уходить */
+/** "Back" confirmations by stack depth: a screen can ask whether to really leave */
 const guards = new Map<number, string>();
 export const DepthCtx = createContext(0);
 
@@ -65,7 +65,7 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     setStack((s) => s.slice(0, -1));
   }, []);
 
-  // помним прокрутку каждого экрана, чтобы «назад» возвращал на то же место
+  // remember each screen's scroll so "back" returns to the same place
   const scrolls = useRef<number[]>([]);
   const prevLen = useRef(0);
   useEffect(() => {
@@ -81,8 +81,8 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     stack,
     push(r) { platform.haptic('light'); scrolls.current[depthRef.current] = window.scrollY; setStack((s) => [...s, r]); },
     async pushAt(depth: number, r: Route) {
-      // Вызвали не с верхнего экрана (на компьютере: из списка слева) — экраны выше заменяются.
-      // Если там несохранённые изменения — сначала спросим.
+      // Called from a screen below the top one (desktop: from the list on the left) — screens above are replaced.
+      // If they have unsaved changes, ask first.
       for (let d = depthRef.current; d > depth; d--) {
         const msg = guards.get(d);
         if (msg && !(await platform.confirm(msg))) return;
@@ -103,11 +103,11 @@ export function useRouter() {
   const r = useContext(Ctx) as (RouterApi & { pushAt(depth: number, r: Route): Promise<void> }) | null;
   const depth = useContext(DepthCtx);
   if (!r) throw new Error('RouterProvider missing');
-  // push привязан к глубине экрана, который его вызвал
+  // push is bound to the depth of the screen that called it
   return useMemo(() => ({ ...r, push: (route: Route) => { if (depth >= r.stack.length) r.push(route); else r.pushAt(depth, route); } }), [r, depth]);
 }
 
-/** Что открыто в правой колонке на компьютере — чтобы подсветить пункт в списке */
+/** What is open in the right pane on desktop — to highlight the list item */
 export function useSelected(): Route | undefined {
   const r = useContext(Ctx);
   return r?.stack[0];

@@ -1,24 +1,24 @@
 /**
- * Резервная копия в Markdown: читается и правится в любом текстовом редакторе и загружается обратно.
+ * Markdown backup: readable and editable in any text editor, and can be loaded back.
  *
- * Устройство файла:
- *   ## Раздел            — Полка, Дневник, Оборудование, …
- *   ### Заголовок записи — только для удобства чтения, при загрузке не используется
- *   - Поле: значение     — поля записи; вложенные поля — с отступом в два пробела
- *   1. значение          — элементы списка
- *   - Заметки: |         — многострочный текст, строки ниже с отступом начинаются с «> »
+ * File layout:
+ *   ## Section           — Полка, Дневник, Оборудование, …
+ *   ### Record title     — for readability only, ignored on load
+ *   - Field: value       — record fields; nested fields indented by two spaces
+ *   1. value             — list items
+ *   - Заметки: |         — multi-line text, the indented lines below start with "> "
  *
- * Значения: числа — как есть (десятичная запятая), да/нет, «—» — пусто,
- * текст, который можно спутать с числом или словом, — в кавычках.
+ * Values: numbers as is (decimal comma), да/нет, "—" — empty,
+ * text that could be mistaken for a number or a word is quoted.
  */
-import { allMethods, fmtTime, methodById, parseTime } from './methods';
+import { METHODS, fmtTime, methodById, parseTime } from './methods';
 import { catById } from './gear';
 import { beanTitle } from '../screens/beanUtils';
 import type { DB } from './store';
 
 export const BACKUP_FORMAT = 'brewbook-md 1';
 
-/* ---------- подписи полей ---------- */
+/* ---------- field labels ---------- */
 
 const LABELS: Record<string, string> = {
   name: 'Название', roaster: 'Обжарщик', country: 'Страна', region: 'Регион', farm: 'Ферма', producer: 'Производитель',
@@ -48,12 +48,12 @@ const KEY_OF = Object.fromEntries(Object.entries(LABELS).map(([k, l]) => [l.toLo
 
 const DATE_KEYS = new Set(['date', 'createdAt']);
 const TIME_KEYS = new Set(['time', 'total', 'at']);
-/** всегда текст, даже если похоже на число */
+/** always text, even if it looks like a number */
 const STRING_KEYS = new Set(['weight', 'barcode', 'code', 'share', 'year', 'harvest', 'altitude', 'roastDate', 'name', 'title', 'detail', 'details', 'grind', 'comment', 'notes', 'hint', 'about', 'purpose', 'roast', 'id']);
-/** списки слов — одной строкой через запятую */
+/** word lists — one line, comma-separated */
 const INLINE_LISTS = new Set(['descriptors', 'olfactory', 'retronasal', 'mainTastes', 'checked', 'pinned', 'seenAch', 'featured', 'order']);
 
-/* ---------- запись ---------- */
+/* ---------- writing ---------- */
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const fmtDate = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
@@ -103,7 +103,7 @@ function writeValue(out: string[], indent: string, head: string, key: string, v:
 
 function writeObject(out: string[], indent: string, obj: Record<string, unknown>, names: Map<string, string>) {
   for (const [k, v] of Object.entries(obj)) {
-    // пустое не пишем — при загрузке подставится само
+    // empty values are not written — defaults are filled in on load
     if (v === undefined || v === '' || (v === null && k !== 'beanId') || (k === 'sample' && !v)) continue;
     if (Array.isArray(v) && !v.length) continue;
     if (v && typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length) continue;
@@ -157,7 +157,7 @@ export function toMarkdown(db: DB): string {
   return out.join('\n');
 }
 
-/* ---------- чтение ---------- */
+/* ---------- reading ---------- */
 
 interface Line { indent: number; dash: boolean; label?: string; value?: string; n: number }
 
@@ -175,7 +175,7 @@ function parseScalar(key: string, raw: string): unknown {
   if (s === '—' || s === '-' || s === '') return key === 'beanId' ? null : STRING_KEYS.has(key) ? '' : null;
   if (s === '[]') return [];
   if (s === '{}') return {};
-  if (key === 'beanId') return s; // разбирается после чтения всех пачек
+  if (key === 'beanId') return s; // resolved after all packs are read
   if (INLINE_LISTS.has(key)) return s.split(',').map((x) => x.trim()).filter(Boolean);
   if (STRING_KEYS.has(key)) return s;
   if (s === 'да') return true;
@@ -188,7 +188,7 @@ function parseScalar(key: string, raw: string): unknown {
 
 const keyOf = (label: string) => KEY_OF[label.trim().toLowerCase()] ?? label.trim();
 
-/** Разобрать вложенные списки начиная со строки i с отступом больше parentIndent */
+/** Parse nested lists starting at line i with indent greater than parentIndent */
 function parseBlock(lines: Line[], i: number, parentIndent: number, key: string): [unknown, number] {
   const first = lines[i];
   if (!first || first.indent <= parentIndent) return [{}, i];
@@ -198,7 +198,7 @@ function parseBlock(lines: Line[], i: number, parentIndent: number, key: string)
   const obj: Record<string, unknown> = {};
   while (i < lines.length && lines[i].indent >= indent) {
     const ln = lines[i];
-    if (ln.indent > indent || ln.label === '\u0000quote') { i++; continue; } // лишний отступ — пропускаем
+    if (ln.indent > indent || ln.label === '\u0000quote') { i++; continue; } // extra indent — skip
     const k = ln.label !== undefined ? keyOf(ln.label) : key;
     let value: unknown;
     if (ln.value === '|') {
@@ -245,7 +245,7 @@ const SECTIONS: Record<string, string> = {
   'мои методы': 'customMethods', 'последние параметры': 'recipes', 'служебное': 'meta',
 };
 
-/** Markdown → данные в том же виде, что JSON-экспорт */
+/** Markdown → data in the same shape as the JSON export */
 export function fromMarkdown(text: string): Record<string, unknown> {
   const rows = text.replace(/\r\n?/g, '\n').split('\n');
   const data: Record<string, unknown[] | Record<string, unknown>> = {};
@@ -299,7 +299,7 @@ export function fromMarkdown(text: string): Record<string, unknown> {
     };
   }).map((b) => { if (!b.cva) delete b.cva; return b; });
 
-  const known = new Set(allMethods().map((m) => m.id));
+  const known = new Set(METHODS.map((m) => m.id)); // archived methods included: old data stays valid
   const recipes = Object.fromEntries(((data.recipes ?? []) as Record<string, unknown>[])
     .filter((r) => typeof r.methodId === 'string' && (known.has(r.methodId as string) || String(r.methodId).startsWith('cm')))
     .map(({ methodId, ...r }) => [methodId as string, r]));

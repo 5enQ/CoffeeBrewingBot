@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * Нативная обёртка (Capacitor, Android/iOS).
- * Плагины берутся из window.Capacitor.Plugins, поэтому код компилируется
- * и без установленного Capacitor. Ставятся так:
+ * Native wrapper (Capacitor, Android/iOS).
+ * Plugins come from window.Capacitor.Plugins, so the code compiles
+ * even without Capacitor installed. Install them with:
  *   npm i @capacitor/core @capacitor/cli @capacitor/haptics @capacitor/preferences @capacitor/app @capacitor/dialog @capacitor/share
- * Плагин может отсутствовать — тогда используется веб-реализация.
+ * A plugin may be missing — then the web implementation is used.
  */
 import type { Platform } from './types';
 import { createWebPlatform } from './web';
@@ -23,10 +23,10 @@ export function createNativePlatform(): Platform {
   return {
     ...web,
     kind: 'native',
-    hasNativeBack: false, // на iOS нет системной «назад», поэтому стрелка в шапке остаётся
+    hasNativeBack: false, // iOS has no system "back", so the header arrow stays
 
     async init() {
-      // Аппаратная «назад» на Android: сначала наш стек экранов, потом — свернуть приложение
+      // Hardware "back" on Android: first our screen stack, then minimize the app
       plugin('App')?.addListener('backButton', () => {
         if (backHandler) backHandler(); else plugin('App')?.minimizeApp?.();
       });

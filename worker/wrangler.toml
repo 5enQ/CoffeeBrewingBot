@@ -1,19 +1,19 @@
-# Сервер оценок рецептов Brewbook (Cloudflare Workers, бесплатный тариф)
+# Brewbook recipe ratings server (Cloudflare Workers, free plan)
 name = "brewbook-ratings"
 main = "src/index.ts"
 compatibility_date = "2025-09-01"
 
-# Один Durable Object на автора: внутри — SQLite с оценками его рецептов
+# One Durable Object per author: SQLite with ratings of their recipes inside
 [[durable_objects.bindings]]
 name = "AUTHORS"
 class_name = "AuthorRatings"
 
-# Рецепты для коротких ссылок «Поделиться»
+# Recipes for short "Share" links
 [[durable_objects.bindings]]
 name = "RECIPES"
 class_name = "RecipeStore"
 
-# Общий каталог кофе: лоты по ссылке из QR и штрихкоду (основа для глобального рейтинга зёрен)
+# Shared coffee catalog: lots by QR link and barcode (basis for the global coffee rating)
 [[durable_objects.bindings]]
 name = "CATALOG"
 class_name = "CoffeeCatalog"
@@ -31,7 +31,7 @@ tag = "v3"
 new_sqlite_classes = ["CoffeeCatalog"]
 
 [vars]
-# Откуда разрешены запросы (сайт мини-приложения)
+# Allowed request origin (the Mini App site)
 ALLOWED_ORIGIN = "https://5enq.github.io"
 
-# Секрет BOT_TOKEN задаётся через `wrangler secret put BOT_TOKEN` (или GitHub Actions)
+# The BOT_TOKEN secret is set via `wrangler secret put BOT_TOKEN` (or GitHub Actions)

@@ -6,14 +6,14 @@ import { useStore } from './store';
 export const MAX_FEATURED = 3;
 
 export interface BadgeItem {
-  /** ключ для витрины: id своего значка или 'ach:<id>' */
+  /** showcase key: own badge id or 'ach:<id>' */
   key: string;
   badge: BadgeLite;
-  /** свой значок (можно редактировать) */
+  /** own badge (editable) */
   own?: Badge;
 }
 
-/** Все значки пользователя: свои + полученные достижения, и витрина (до 3) */
+/** All user badges: own + earned achievements, and the showcase (up to 3) */
 export function useBadges() {
   const { profile, brews } = useStore();
   return useMemo(() => {

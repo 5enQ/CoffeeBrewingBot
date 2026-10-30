@@ -4,7 +4,7 @@ import { useStore } from '../data/store';
 import { platform } from '../platform';
 import { BadgeChip } from './Badges';
 
-/** Уведомление о новом достижении. Достижения скрыты, пока не получены — узнаёте о них в момент получения. */
+/** New achievement notification. Achievements are hidden until earned — you learn about them when you get them. */
 export function AchievementToast() {
   const { ready, brews, profile, seenAch, markSeen } = useStore();
   const [queue, setQueue] = useState<Achievement[]>([]);
@@ -12,7 +12,7 @@ export function AchievementToast() {
 
   useEffect(() => {
     if (!ready) return;
-    // Первый запуск: всё уже полученное считаем увиденным, чтобы не засыпать уведомлениями
+    // First run: treat everything already earned as seen, so we don't flood with notifications
     if (seenAch === null) { markSeen(ach.map((a) => a.unlock)); return; }
     const fresh = ach.filter((a) => !seenAch.includes(a.unlock));
     if (!fresh.length) return;

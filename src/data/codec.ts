@@ -1,4 +1,4 @@
-/** Общие помощники для упаковки данных: base64url и deflate через встроенные потоки браузера */
+/** Shared data packing helpers: base64url and deflate via the browser's built-in streams */
 
 export const b64url = (bytes: Uint8Array) => {
   let s = '';
@@ -16,11 +16,11 @@ export async function pipe(bytes: Uint8Array, stream: CompressionStream | Decomp
   return new Uint8Array(await new Response(out).arrayBuffer());
 }
 
-/** Строка → «z» + base64url(deflate) или «j» + base64url(utf-8), если сжатие недоступно */
+/** String → "z" + base64url(deflate), or "j" + base64url(utf-8) if compression is unavailable */
 export async function packText(text: string): Promise<string> {
   const bytes = new TextEncoder().encode(text);
   if (typeof CompressionStream !== 'undefined') {
-    try { return 'z' + b64url(await pipe(bytes, new CompressionStream('deflate-raw'))); } catch { /* ниже */ }
+    try { return 'z' + b64url(await pipe(bytes, new CompressionStream('deflate-raw'))); } catch { /* fall back below */ }
   }
   return 'j' + b64url(bytes);
 }
@@ -31,7 +31,7 @@ export async function unpackText(s: string): Promise<string> {
   return new TextDecoder().decode(bytes);
 }
 
-/** Быстрый хеш FNV-1a — чтобы понять, изменилась ли корзина, не сравнивая её целиком */
+/** Fast FNV-1a hash — to tell whether a bucket changed without comparing it whole */
 export function hash(s: string) {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }

@@ -4,7 +4,7 @@ import { createWebPlatform, requestWakeLock } from './web';
 
 const SDK_URL = 'https://telegram.org/js/telegram-web-app.js';
 
-/** Признаки запуска внутри Telegram: параметры tgWebApp* в URL или прокси клиента */
+/** Signs of running inside Telegram: tgWebApp* parameters in the URL or the client proxy */
 export function looksLikeTelegram(): boolean {
   const w = window as any;
   return /tgWebApp/.test(location.hash + location.search) || !!w.TelegramWebviewProxy || !!w.Telegram?.WebApp?.initData;
@@ -23,7 +23,7 @@ function loadSdk(): Promise<void> {
 
 const tg = () => (window as any).Telegram.WebApp;
 
-/** Переносим цвета темы Telegram в CSS-переменные приложения */
+/** Map Telegram theme colors to the app's CSS variables */
 function applyTheme() {
   const p = tg().themeParams || {};
   const root = document.documentElement.style;
@@ -42,7 +42,7 @@ function applyTheme() {
     tg().setHeaderColor?.('secondary_bg_color');
     tg().setBackgroundColor?.('secondary_bg_color');
     tg().setBottomBarColor?.('secondary_bg_color');
-  } catch { /* старые клиенты */ }
+  } catch { /* old clients */ }
 }
 
 export function createTelegramPlatform(): Platform {
@@ -62,7 +62,7 @@ export function createTelegramPlatform(): Platform {
       const app = tg();
       app.ready();
       app.expand();
-      if (can('7.7')) app.disableVerticalSwipes(); // свайп вниз не закрывает приложение во время скролла
+      if (can('7.7')) app.disableVerticalSwipes(); // swiping down does not close the app while scrolling
       applyTheme();
       app.onEvent('themeChanged', applyTheme);
       app.BackButton.onClick(onBack);
@@ -70,7 +70,7 @@ export function createTelegramPlatform(): Platform {
 
     user() {
       const u = tg().initDataUnsafe?.user;
-      return u ? { id: String(u.id), name: [u.first_name, u.last_name].filter(Boolean).join(' '), username: u.username } : null;
+      return u ? { id: String(u.id), name: [u.first_name, u.last_name].filter(Boolean).join(' '), username: u.username, languageCode: u.language_code } : null;
     },
     colorScheme: () => tg().colorScheme,
     onThemeChange(cb) {
@@ -87,8 +87,8 @@ export function createTelegramPlatform(): Platform {
     },
 
     storage: {
-      // DeviceStorage (Bot API 9.0) — локальное хранилище клиента Telegram, до 5 МБ.
-      // Для старых клиентов — localStorage вебвью.
+      // DeviceStorage (Bot API 9.0) — the Telegram client's local storage, up to 5 MB.
+      // Older clients use the webview's localStorage.
       get(key) {
         const ds = tg().DeviceStorage;
         if (!ds || !can('9.0')) return web.storage.get(key);
@@ -101,7 +101,7 @@ export function createTelegramPlatform(): Platform {
       },
     },
 
-    // CloudStorage (Bot API 6.9) — общее хранилище аккаунта на серверах Telegram, видно со всех устройств
+    // CloudStorage (Bot API 6.9) — account storage on Telegram servers, visible from all devices
     get cloud() {
       const cs = tg().CloudStorage;
       if (!cs || !can('6.9')) return null;
@@ -162,8 +162,8 @@ export function createTelegramPlatform(): Platform {
     },
 
     async share(text, url) {
-      // Окно выбора чата Telegram: друг получит текст рецепта и ссылку на него
-      // Telegram ставит ссылку первой строкой; перевод строки в начале текста даёт пустую строку после неё
+      // Telegram chat picker: the friend gets the recipe text and a link to it
+      // Telegram puts the link on the first line; a leading newline gives an empty line after it
       tg().openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent('\n' + text)}`);
       return 'shared';
     },

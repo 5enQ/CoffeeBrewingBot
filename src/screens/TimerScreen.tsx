@@ -20,7 +20,7 @@ function beep(freq = 880, ms = 140) {
     g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + ms / 1000);
     o.connect(g).connect(audio.destination);
     o.start(); o.stop(audio.currentTime + ms / 1000 + 0.02);
-  } catch { /* без звука */ }
+  } catch { /* no sound */ }
 }
 
 export function TimerScreen({ draft }: { draft: Brew }) {
@@ -30,7 +30,7 @@ export function TimerScreen({ draft }: { draft: Brew }) {
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(false);
   const [sound, setSound] = useState(true);
-  const base = useRef(0);       // накопленное время до последнего старта
+  const base = useRef(0);       // time accumulated before the last start
   const startedAt = useRef(0);
   const lastStep = useRef(-1);
   const finished = useRef(false);
@@ -42,7 +42,7 @@ export function TimerScreen({ draft }: { draft: Brew }) {
     return () => clearInterval(t);
   }, [running]);
 
-  // экран не гаснет, закрытие требует подтверждения
+  // the screen stays on, closing requires confirmation
   useEffect(() => {
     platform.keepAwake(running);
     platform.setClosingConfirmation(running || elapsed > 0);
@@ -87,7 +87,7 @@ export function TimerScreen({ draft }: { draft: Brew }) {
     replace({ name: 'brewEdit', draft: { ...draft, time: Math.round(total || plan.total), date: Date.now() }, isNew: true, openCupping: m.id === 'cupping' });
   };
 
-  // Клавиатура (компьютер): пробел — старт/пауза, R — сброс, Enter — готово
+  // Keyboard (desktop): space — start/pause, R — reset, Enter — done
   const keys = useRef({ toggle, reset, finish });
   keys.current = { toggle, reset, finish };
   useEffect(() => {

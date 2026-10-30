@@ -14,8 +14,8 @@ const METHOD_COUNT: Level[] = [{ tier: 'bronze', at: 100 }, { tier: 'silver', at
 const fmt = (n: number) => n.toLocaleString('ru-RU');
 
 /**
- * Полученное достижение.
- * id — постоянный (для выбора в витрину профиля), unlock — меняется с уровнем (для уведомления «новый значок»).
+ * An earned achievement.
+ * id — permanent (for the profile showcase), unlock — changes with the level (for the "new badge" notification).
  */
 export interface Achievement { id: string; unlock: string; badge: BadgeLite }
 
@@ -23,14 +23,14 @@ function reached(levels: Level[], value: number) {
   return levels.filter((l) => value >= l.at).pop() ?? null;
 }
 
-/** Свои заварки: без примеров и без рецептов, сохранённых от друзей */
+/** Own brews: without samples and without recipes saved from friends */
 const ownBrews = (brews: Brew[]) => brews.filter((b) => !b.sample && !b.author);
 
 export function litersBrewed(brews: Brew[]) {
   return ownBrews(brews).reduce((s, b) => s + (b.water || 0), 0) / 1000;
 }
 
-/** Все полученные достижения. Неполученные не показываются нигде — это сюрприз. */
+/** All earned achievements. Unearned ones are never shown — it's a surprise. */
 export function earnedAchievements(brews: Brew[], ratingsCount: number): Achievement[] {
   const out: Achievement[] = [];
   const own = ownBrews(brews);

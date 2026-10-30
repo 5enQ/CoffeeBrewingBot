@@ -1,10 +1,10 @@
-/** Классическая анкета SCA (100 баллов) */
+/** Classic SCA form (100 points) */
 
 export interface CuppingAttr {
   key: QualityKey;
   label: string;
   hint: string;
-  /** есть ли шкала интенсивности (низкая — высокая) */
+  /** whether there is an intensity scale (low — high) */
   intensity?: [string, string];
 }
 
@@ -61,7 +61,7 @@ export function cupScore(c: Cupping) {
   return { quality, cups, defects, total: quality + cups - defects };
 }
 
-/** Градация SCA */
+/** SCA grade */
 export function scoreGrade(total: number) {
   if (total >= 90) return 'Outstanding';
   if (total >= 85) return 'Excellent';
@@ -69,7 +69,7 @@ export function scoreGrade(total: number) {
   return 'Ниже спешелти';
 }
 
-/** Упрощённое колесо вкусов SCA */
+/** Simplified SCA flavor wheel */
 export const FLAVOR_WHEEL: { group: string; tone: string; items: string[] }[] = [
   { group: 'Фруктовые', tone: 'fruit', items: ['клубника', 'малина', 'черника', 'ежевика', 'вишня', 'гранат', 'виноград', 'яблоко', 'груша', 'персик', 'ананас', 'изюм', 'чернослив', 'кокос'] },
   { group: 'Цитрусовые', tone: 'citrus', items: ['грейпфрут', 'апельсин', 'лимон', 'лайм', 'бергамот'] },

@@ -1,15 +1,17 @@
 name: Deploy ratings worker
 
+# Releases only (push to `main`), and only when the server code changed.
+# parse.ts imports src/data/scales.ts, so that file counts as server code too.
 on:
   push:
     branches: [main]
-    paths: ['worker/**', '.github/workflows/worker.yml']
+    paths: ['worker/**', 'src/data/scales.ts', '.github/workflows/worker.yml', 'CHANGELOG.md']
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Пропускаем, пока не добавлены секреты Cloudflare
+    # Skipped until the Cloudflare secrets are configured
     if: ${{ vars.RATINGS_ENABLED == 'true' }}
     steps:
       - uses: actions/checkout@v4
@@ -18,20 +20,19 @@ jobs:
           node-version: 22
       - run: npm install
         working-directory: worker
-      # Понятная версия сервера: «1.N» (N — номер сборки) и что изменилось — видно в дашборде Cloudflare
-      # (Workers → brewbook-ratings → Deployments) и по адресу /version
+      # Readable server version: release version and title, visible in the Cloudflare dashboard
+      # (Workers → brewbook-ratings → Deployments) and at /version
       - id: v
         run: |
-          SUBJ=$(git log -1 --pretty=%s | tr -d '"\\$`' | cut -c1-90)
-          echo "version=1.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          echo "message=1.${{ github.run_number }} · $SUBJ" >> "$GITHUB_OUTPUT"
+          echo "version=$(node scripts/release-info.mjs version)" >> "$GITHUB_OUTPUT"
+          echo "title=$(node scripts/release-info.mjs title)" >> "$GITHUB_OUTPUT"
           echo "built=$(date -u +%s)000" >> "$GITHUB_OUTPUT"
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
-          command: deploy --tag "v${{ steps.v.outputs.version }}" --message "${{ steps.v.outputs.message }}" --var VERSION:${{ steps.v.outputs.version }} --var BUILT_AT:${{ steps.v.outputs.built }}
+          command: deploy --tag "v${{ steps.v.outputs.version }}" --message "${{ steps.v.outputs.title }}" --var VERSION:${{ steps.v.outputs.version }} --var BUILT_AT:${{ steps.v.outputs.built }}
           secrets: |
             BOT_TOKEN
         env:

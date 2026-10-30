@@ -1,14 +1,14 @@
 /**
- * Разбор страницы кофе на сайте обжарщика → поля пачки.
- * Без DOM: только регулярные выражения по исходному HTML (Cloudflare Workers).
+ * Roaster coffee page → pack fields.
+ * No DOM: only regular expressions over the raw HTML (Cloudflare Workers).
  *
- * Источники по убыванию надёжности:
- *  1. Характеристики магазинных движков: Tilda (js-store-prod-charcs / json_chars),
- *     1С-Битрикс с шаблоном Aspro (properties__title / properties__value),
- *     WooCommerce-темы с парами label / value.
- *  2. Строки «Подпись: значение» в описании.
- *  3. Название (h1) — страна и признаки дрипа.
- * Чего нет на странице — не заполняется.
+ * Sources, most reliable first:
+ *  1. Store engine attributes: Tilda (js-store-prod-charcs / json_chars),
+ *     1C-Bitrix with the Aspro template (properties__title / properties__value),
+ *     WooCommerce themes with label / value pairs.
+ *  2. "Label: value" lines in the description.
+ *  3. Title (h1) — country and drip markers.
+ * Whatever is not on the page is not filled in.
  */
 import { scaleKeyOf, scaleValueOf, type Scales } from '../../src/data/scales.ts';
 
@@ -32,7 +32,7 @@ export interface Parsed {
 
 type Field = Exclude<keyof Parsed, 'kind' | 'dripCount' | 'scales' | 'image' | 'name'>;
 
-/** Подписи на сайтах → поле пачки (в нижнем регистре, без двоеточия) */
+/** Site labels → pack field (lowercase, no colon) */
 const LABELS: Record<string, Field> = {};
 const add = (f: Field, ...labels: string[]) => labels.forEach((l) => { LABELS[l] = f; });
 add('country', 'страна', 'страна произрастания', 'страна происхождения', 'страна производства');
@@ -51,7 +51,7 @@ const COUNTRIES = ['Эфиопия', 'Кения', 'Руанда', 'Бурунд
   'Доминикана', 'Ямайка', 'Куба', 'Гаити', 'Йемен', 'Индонезия', 'Индия', 'Вьетнам', 'Китай', 'Таиланд', 'Лаос', 'Мьянма', 'Филиппины',
   'Папуа — Новая Гвинея', 'Папуа-Новая Гвинея', 'Тимор'];
 
-/** Известные сайты → обжарщик (если на странице нет поля «Бренд») */
+/** Known sites → roaster (if the page has no "Бренд" field) */
 const ROASTERS: Record<string, string> = {
   'kojocoffee.ru': 'Kojo',
   'sbmrne.ru': 'Submarine',
@@ -59,7 +59,7 @@ const ROASTERS: Record<string, string> = {
   'theweldercatherine.ru': 'Сварщица Екатерина',
 };
 
-/* ---------- текст ---------- */
+/* ---------- text ---------- */
 
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', mdash: '—', ndash: '–', laquo: '«', raquo: '»', hellip: '…', deg: '°' };
 export function decode(s: string) {
@@ -72,18 +72,18 @@ const text = (html: string) => decode(html.replace(/<[^>]+>/g, ' ')).replace(/\s
 const norm = (label: string) => label.toLowerCase().replace(/\s+/g, ' ').replace(/[:：\s]+$/, '').trim();
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
-/* ---------- источники пар «подпись — значение» ---------- */
+/* ---------- sources of "label — value" pairs ---------- */
 
 function tildaPairs(html: string, url: string): [string, string][] {
   const out: [string, string][] = [];
-  // карточка товара: <p class="js-store-prod-charcs">Подпись: значение</p>
+  // product card: <p class="js-store-prod-charcs">Label: value</p>
   for (const m of html.matchAll(/class="js-store-prod-charcs"[^>]*>([\s\S]*?)<\/p>/g)) {
     const t = text(m[1]);
     const i = t.indexOf(':');
     if (i > 0) out.push([t.slice(0, i), t.slice(i + 1)]);
   }
   if (out.length) return out;
-  // данные товара, встроенные в страницу: json_chars рядом с uid из адреса
+  // product data embedded in the page: json_chars next to the uid from the URL
   const uid = url.match(/\/tproduct\/\d+-(\d+)/)?.[1];
   const at = uid ? html.indexOf(`"uid":${uid}`) : -1;
   const m = html.slice(Math.max(0, at)).match(/"json_chars":"((?:[^"\\]|\\.)*)"/);
@@ -91,7 +91,7 @@ function tildaPairs(html: string, url: string): [string, string][] {
     try {
       const list = JSON.parse(JSON.parse(`"${m[1]}"`)) as { title: string; value: string }[];
       for (const c of list) out.push([c.title, c.value]);
-    } catch { /* не разобрали — значит, нет */ }
+    } catch { /* not parsed — so there is none */ }
   }
   return out;
 }
@@ -109,18 +109,18 @@ function wooPairs(html: string): [string, string][] {
   for (const m of html.matchAll(/class="product-detail"[\s\S]{0,200}?class="label"[^>]*>([\s\S]*?)<\/span>[\s\S]{0,300}?class="value[^"]*"[^>]*>([\s\S]*?)<\/span>/g)) {
     out.push([text(m[1]), text(m[2])]);
   }
-  // список «name / value» (Битрикс со своим шаблоном, например Сварщица Екатерина)
+  // "name / value" list (Bitrix with a custom template, e.g. The Welder Catherine)
   for (const m of html.matchAll(/<div class="name">([\s\S]{1,80}?)<\/div>\s*<div class="value">([\s\S]{0,300}?)<\/div>/g)) {
     out.push([text(m[1]), text(m[2])]);
   }
-  // стандартная таблица атрибутов WooCommerce
+  // standard WooCommerce attribute table
   for (const m of html.matchAll(/woocommerce-product-attributes-item__label"[^>]*>([\s\S]*?)<\/th>[\s\S]{0,200}?woocommerce-product-attributes-item__value"[^>]*>([\s\S]*?)<\/td>/g)) {
     out.push([text(m[1]), text(m[2])]);
   }
   return out;
 }
 
-/** Строки «Подпись: значение» в описании (только известные подписи) */
+/** "Label: value" lines in the description (known labels only) */
 function linePairs(html: string): [string, string][] {
   const body = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -135,7 +135,7 @@ function linePairs(html: string): [string, string][] {
   return out;
 }
 
-/** Шкалы точками (Битрикс, Submarine): класс one…five = сколько точек закрашено */
+/** Dot scales (Bitrix, Submarine): class one…five = how many dots are filled */
 function dotScales(html: string): Scales {
   const out: Scales = {};
   for (const m of html.matchAll(/card-custom-info__item-name"[^>]*>([^<]+)<\/span>\s*<div class="card-custom-info__params-value\s*([a-z]*)/g)) {
@@ -146,7 +146,7 @@ function dotScales(html: string): Scales {
   return out;
 }
 
-/* ---------- сборка ---------- */
+/* ---------- assembly ---------- */
 
 function cleanValue(field: Field, v: string) {
   let s = v.replace(/\s+/g, ' ').trim().replace(/[.;,]$/, '');
@@ -171,7 +171,7 @@ function cleanName(h1: string) {
     .trim();
 }
 
-/** Разметка schema.org Product (JSON-LD), если она есть */
+/** schema.org Product markup (JSON-LD), if present */
 function ldProduct(html: string): { name: string; description: string; brand: string } {
   for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
@@ -182,7 +182,7 @@ function ldProduct(html: string): { name: string; description: string; brand: st
         const brand = p.brand as { name?: string } | string | undefined;
         return { name: String(p.name ?? ''), description: String(p.description ?? ''), brand: typeof brand === 'string' ? brand : brand?.name ?? '' };
       }
-    } catch { /* битый JSON-LD — пропускаем */ }
+    } catch { /* broken JSON-LD — skip */ }
   }
   return { name: '', description: '', brand: '' };
 }
@@ -202,7 +202,7 @@ export function parsePage(html: string, pageUrl: string): Parsed {
     const l = norm(label);
     const field = LABELS[l];
     if (field) {
-      if (out[field]) continue; // первым идёт самый надёжный источник
+      if (out[field]) continue; // the most reliable source goes first
       const v = cleanValue(field, value);
       if (v) out[field] = v;
       continue;
@@ -215,30 +215,30 @@ export function parsePage(html: string, pageUrl: string): Parsed {
   }
   if (Object.keys(scales).length) out.scales = scales;
 
-  // название
+  // name
   const h1 = text(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '') || meta(html, 'og:title').split(/\s[—|-]\s/)[0];
   const name = cleanName(h1);
   if (name) out.name = name;
 
-  // страна из названия, если отдельного поля нет
+  // country from the title if there is no separate field
   if (!out.country) {
     const hay = `${h1} ${meta(html, 'og:title')}`;
     const c = COUNTRIES.find((x) => new RegExp(`(^|[^А-Яа-яЁё])${x}([^А-Яа-яЁё]|$)`).test(hay));
     if (c) out.country = c.replace('Папуа-Новая Гвинея', 'Папуа — Новая Гвинея');
   }
 
-  // дескрипторы в кратком описании: «…во вкусе абрикос, ежевика, сладкие специи»
+  // descriptors in the short description: "…во вкусе абрикос, ежевика, сладкие специи"
   if (!out.packNotes) {
     const d = html.match(/data-description="([^"]*)"/)?.[1] ?? meta(html, 'og:description');
     const m = decode(d).match(/во вкусе\s*[—:-]?\s*([^.!?]+)/i);
     if (m) out.packNotes = m[1].trim();
   }
 
-  // обжарщик
+  // roaster
   if (!out.roaster) out.roaster = ROASTERS[host] || meta(html, 'og:site_name') || undefined;
   if (!out.roaster) delete out.roaster;
 
-  // дрип-пакеты и сколько их в коробке (в т. ч. из разметки товара для поисковиков)
+  // drip bags and how many are in the box (including from the product markup for search engines)
   const ld = ldProduct(html);
   if (!out.roaster && ld.brand) out.roaster = ld.brand;
   const titles = [h1, meta(html, 'og:title'), ld.name, ld.description, decode(html.match(/"json_options":"((?:[^"\\]|\\.)*)"/)?.[1] ?? '')].join(' ');

@@ -1,7 +1,7 @@
 /**
- * Профиль кофе от обжарщика: шкалы 1–5, как их показывают на сайтах и пачках
- * (точки у Submarine, слова «Низкая / Средняя / Высокая» у Kojo).
- * Не указано — поле не хранится вовсе.
+ * Roaster coffee profile: 1–5 scales as shown on sites and packs
+ * (dots at Submarine, words "Низкая / Средняя / Высокая" at Kojo).
+ * Not given — the field is not stored at all.
  */
 export type ScaleKey = 'acidity' | 'sweetness' | 'bitterness' | 'body' | 'ferment';
 export type Scales = Partial<Record<ScaleKey, number>>;
@@ -14,7 +14,7 @@ export const SCALES: { key: ScaleKey; label: string; aliases: string[] }[] = [
   { key: 'ferment', label: 'Ферментация', aliases: ['фермент', 'ферментация', 'ферментированность'] },
 ];
 
-/** Подпись шкалы на сайте → ключ */
+/** Scale label on a site → key */
 export function scaleKeyOf(label: string): ScaleKey | null {
   const l = label.trim().toLowerCase().replace(/[:\s]+$/, '');
   return SCALES.find((s) => s.aliases.includes(l))?.key ?? null;
@@ -31,8 +31,8 @@ const WORDS: [RegExp, number][] = [
 const CLASS_NUM: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5 };
 
 /**
- * Значение шкалы с сайта → 1–5. Понимает числа («3», «3/5», «3 из 5»),
- * слова («Высокая», «ниже средней») и классы точек (one…five).
+ * Scale value from a site → 1–5. Understands numbers ("3", "3/5", "3 из 5"),
+ * words ("Высокая", "ниже средней") and dot classes (one…five).
  */
 export function scaleValueOf(raw: string): number | null {
   const v = raw.trim().toLowerCase();

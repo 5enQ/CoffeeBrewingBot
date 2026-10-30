@@ -1,5 +1,5 @@
 import { RATINGS_API } from '../config';
-import { GRIND_TYPES, guessGrindType } from '../data/grind';
+import { fmtMass, grinderMileage, GRIND_TYPES, guessGrindType } from '../data/grind';
 import { CLOUD_LIMITS } from '../platform/types';
 import { useEffect, useState } from 'react';
 import { fetchStats, myTelegramId, ratingsEnabled } from '../data/ratings';
@@ -59,6 +59,13 @@ export function Profile() {
   const sel = useSelected();
   const layoutInfo = useLayoutMode();
   const emptyCats = GEAR_CATS.filter((c) => !gear.some((g) => g.cat === c.id));
+  // grinders show their "mileage": how much coffee went through them
+  const gearHint = (g: Gear) => {
+    if (g.cat !== 'grinder') return g.details || undefined;
+    const m = grinderMileage(g.id, store.brews);
+    const run = m.count ? `смолото ${fmtMass(m.grams)} · ${m.count} ${m.count % 10 === 1 && m.count % 100 !== 11 ? 'заварка' : [2, 3, 4].includes(m.count % 10) && ![12, 13, 14].includes(m.count % 100) ? 'заварки' : 'заварок'}` : '';
+    return [g.details, run].filter(Boolean).join(' · ') || undefined;
+  };
 
   return (
     <Screen title="Профиль" root>
@@ -108,7 +115,7 @@ export function Profile() {
               </div>
               <div className="group">
                 {gear.filter((g) => g.cat === c.id).map((g) => (
-                  <Row key={g.id} label={<>{g.name} {g.sample && <SampleTag />}</>} hint={g.details || undefined}
+                  <Row key={g.id} label={<>{g.name} {g.sample && <SampleTag />}</>} hint={gearHint(g)}
                     onClick={() => push({ name: 'gearEdit', gear: g, isNew: false })}
                     active={sel?.name === 'gearEdit' && sel.gear.id === g.id} />
                 ))}

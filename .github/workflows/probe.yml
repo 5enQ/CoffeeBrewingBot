@@ -9,13 +9,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Dry crawl
+      - name: Live
         run: |
           rm -rf out; mkdir -p out
-          cd code && mkdir -p out && node --experimental-strip-types --no-warnings dry.mts > out/dry.log 2>&1; cd ..; mv code/out/* out/
+          A=https://brewbook-ratings.brewbook.workers.dev
+          curl -sS -m 20 $A/version -o out/version.json
+          curl -sS -m 20 $A/roasters -o out/roasters0.json
+          sleep 240
+          curl -sS -m 20 "$A/roasters?t=$(date +%s)" -H 'Cache-Control: no-cache' -o out/roasters.json
+          for h in shop.tastycoffee.ru kojocoffee.ru sbmrne.ru theweldercatherine.ru hq-coffee.com; do curl -sS -m 20 "$A/catalog/list?host=$h&kind=beans&t=$(date +%s)" -o out/list-$h.json; done
+          curl -sS -m 20 "$A/lookup?url=https://shop.tastycoffee.ru/coffee/braziliya-sul-de-minas?back=%2Fcoffee" -o out/lookup-tasty.json
+          curl -sS -m 20 "$A/lookup?url=https://example-roaster-test.ru/coffee/x" -o out/lookup-unknown.json
       - name: Commit
         run: |
           git config user.name probe; git config user.email probe@example.com

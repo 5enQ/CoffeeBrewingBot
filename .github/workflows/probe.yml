@@ -9,11 +9,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Version
+      - name: Fetch
         run: |
-          mkdir -p out
-          curl -sS -m 20 https://brewbook-ratings.brewbook.workers.dev/version -o out/version.json
+          rm -rf out; mkdir -p out
+          UA="Mozilla/5.0 (compatible; BrewbookBot/1.0; +https://5enq.github.io/CoffeeBrewingBot/)"
+          get() { curl -sSL -m 30 -A "$UA" -w "%{http_code} %{size_download} %{url_effective}\n" "$2" -o "out/$1" >> out/_status.txt 2>&1 || echo "ERR $2" >> out/_status.txt; }
+          get tasty.html 'https://shop.tastycoffee.ru/coffee/braziliya-sul-de-minas'
+          for h in kojocoffee.ru sbmrne.ru hq-coffee.com theweldercatherine.ru shop.tastycoffee.ru; do
+            get "$h.robots.txt" "https://$h/robots.txt"
+            get "$h.sitemap.xml" "https://$h/sitemap.xml"
+          done
+          # nested sitemaps listed in sitemap indexes and robots.txt
+          for f in out/*.sitemap.xml out/*.robots.txt; do
+            h=$(basename "$f" | sed 's/\.\(sitemap\.xml\|robots\.txt\)$//')
+            { grep -oiE '<loc>[^<]+\.xml[^<]*</loc>' "$f" | sed -E 's/<\/?loc>//g'; grep -iE '^sitemap:' "$f" | awk '{print $2}' | tr -d '\r'; } | sort -u | head -12 | while read u; do
+              n=$(echo "$u" | sed -E 's#https?://##; s#[/?=&]#_#g'); get "sub.$n" "$u"
+            done
+          done
+          for f in out/*; do echo "$f $(wc -c < "$f") $(grep -o '<loc>' "$f" | wc -l)"; done >> out/_status.txt
       - name: Commit
         run: |
           git config user.name probe; git config user.email probe@example.com
-          git add out && git commit -m "probe: version [skip ci]" && git push
+          git add -A out && git commit -m "probe: sitemaps [skip ci]" && git push

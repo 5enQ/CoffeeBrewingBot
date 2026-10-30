@@ -14,8 +14,8 @@ export function ScoreBadge({ c, big = false }: { c: Cupping; big?: boolean }) {
   );
 }
 
-/** Оценка заварки: у каппинга — баллы SCA, у остальных методов — звёзды */
-/** Балл CVA (SCA 104) — без словесных градаций старого протокола */
+/** Brew rating: SCA score for cupping, stars for other methods */
+/** CVA score (SCA 104) — without the verbal grades of the old protocol */
 export function CvaBadge({ score, big = false }: { score: number | null; big?: boolean }) {
   return (
     <div className={'score-badge cva' + (big ? ' big' : '')}>
@@ -27,7 +27,7 @@ export function CvaBadge({ score, big = false }: { score: number | null; big?: b
 
 export function BrewScore({ brew, size = 14, big = false, beanId }: { brew: { methodId: string; rating: number; cupping: Cupping | null; cva?: CvaSession; beanId: string | null }; size?: number; big?: boolean; beanId?: string }) {
   if (brew.cva) return <CvaBadge score={beanId ? beanSca(brew, beanId) : brewSca(brew)} big={big} />;
-  const scored = brew.cupping && (brew.methodId === 'cupping' || !brew.rating); // старые записи без звёзд — показываем баллы
+  const scored = brew.cupping && (brew.methodId === 'cupping' || !brew.rating); // old records without stars — show the score
   return scored ? <ScoreBadge c={brew.cupping!} big={big} /> : <Stars value={brew.rating} size={size} />;
 }
 

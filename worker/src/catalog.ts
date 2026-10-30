@@ -1,14 +1,14 @@
 /**
- * Общий каталог кофе: один лот — одна запись, к ней ведут ключи (ссылка из QR, штрихкод).
- * Сюда же потом ляжет глобальный рейтинг зёрен: у каждого лота постоянный id.
+ * Shared coffee catalog: one lot — one record, reached by keys (QR link, barcode).
+ * The global coffee rating will live here later: every lot has a permanent id.
  *
- * Личного здесь нет: дата обжарки, остаток, заметки и заварки остаются на устройстве пользователя.
- * Про пользователя хранится только Telegram id того, кто подтвердил или поправил лот (защита от накрутки).
+ * Nothing personal here: roast date, stock, notes and brews stay on the user's device.
+ * About users only the Telegram id of whoever confirmed or edited a lot is stored (protection against abuse).
  */
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from './index';
 
-/** Поля лота, которые можно хранить в каталоге */
+/** Lot fields that may be stored in the catalog */
 const TEXT = ['name', 'roaster', 'country', 'region', 'farm', 'producer', 'variety', 'process', 'altitude', 'roastLevel', 'packNotes'] as const;
 const SCALE_KEYS = ['acidity', 'sweetness', 'bitterness', 'body', 'ferment'] as const;
 
@@ -29,7 +29,7 @@ const strip = (o: Record<string, unknown>) => {
   return o;
 };
 
-/** Привести присланные данные к допустимому виду: только известные поля, разумная длина, без пустого */
+/** Normalize submitted data: known fields only, sane length, no empty values */
 export function cleanCoffee(raw: unknown): Coffee {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const out: Record<string, unknown> = {};
@@ -63,7 +63,7 @@ export function cleanCoffee(raw: unknown): Coffee {
   return strip(out) as Coffee;
 }
 
-/** Ключи лота: ссылка без «хвостов» и штрихкод */
+/** Lot keys: link without "tails" and the barcode */
 export function keysFor(url?: string | null, code?: string | null): string[] {
   const keys: string[] = [];
   if (url) {
@@ -73,7 +73,7 @@ export function keysFor(url?: string | null, code?: string | null): string[] {
         const path = decodeURIComponent(u.pathname).replace(/\/+$/, '').toLowerCase() || '/';
         keys.push(`url:${u.hostname.replace(/^www\./, '').toLowerCase()}${path}`);
       }
-    } catch { /* не ссылка */ }
+    } catch { /* not a link */ }
   }
   const digits = (code ?? '').trim();
   if (/^\d{8,14}$/.test(digits)) keys.push(`ean:${digits}`);
@@ -104,12 +104,12 @@ export class CoffeeCatalog extends DurableObject<Env> {
   private get(id: string): Found | null {
     const row = this.ctx.storage.sql.exec<{ data: string; source: string; confirms: number }>('SELECT data, source, confirms FROM coffee WHERE id = ?', id).toArray()[0];
     if (!row) return null;
-    // pv — версия разбора, которой лот получен со страницы (служебное, наружу не отдаём)
+    // pv — parser version the lot was taken from the page with (internal, not returned)
     const { pv, ...coffee } = JSON.parse(row.data) as Coffee & { pv?: number };
     return { id, coffee, source: row.source as Found['source'], confirms: row.confirms, pv };
   }
 
-  /** Разбор стал лучше — обновить лот, который никто ещё не подтверждал */
+  /** The parser improved — update a lot nobody has confirmed yet */
   refreshPage(id: string, coffee: Coffee, pv: number): Found | null {
     const cur = this.get(id);
     if (!cur || cur.source !== 'page' || cur.confirms > 0) return cur;
@@ -134,7 +134,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
     return id ? this.get(id) : null;
   }
 
-  /** Разобранная страница: сохраняем, если такого лота ещё нет */
+  /** Parsed page: save it if there is no such lot yet */
   savePage(keys: string[], coffee: Coffee, pv: number): Found {
     const found = this.find(keys);
     if (found) { this.link(found.id, keys); return found; }
@@ -143,9 +143,9 @@ export class CoffeeCatalog extends DurableObject<Env> {
   }
 
   /**
-   * Пользователь сохранил пачку. Пустые поля лота дополняются.
-   * Пока лот подтвердили не больше одного раза, правки пользователя заменяют разобранное со страницы —
-   * дальше лот считается проверенным и меняется только там, где было пусто.
+   * A user saved a pack. Empty lot fields are filled in.
+   * While a lot has at most one confirmation, user edits replace values parsed from the page —
+   * after that the lot counts as verified and only changes where it was empty.
    */
   contribute(keys: string[], coffee: Coffee, user: string): Found {
     const found = this.find(keys);

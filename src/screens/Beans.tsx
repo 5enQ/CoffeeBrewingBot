@@ -13,16 +13,16 @@ import { Scanner } from '../ui/Scanner';
 import { BrewScore } from '../ui/CuppingForm';
 import { beanMeta, beanOrigin, beanTitle, blendLines, brewBeanTitle, dripMeta, dripTitle, PROCESSES, RestBadge, ROAST_LEVELS } from './beanUtils';
 
-/* ---------- Полка ---------- */
+/* ---------- Shelf ---------- */
 
-/* ---------- Остаток картинками ---------- */
+/* ---------- Remaining stock as pictures ---------- */
 
 const BEAN_PATH = 'M12 2.5c-4.2 0-7 4.3-7 9.5s2.8 9.5 7 9.5 7-4.3 7-9.5-2.8-9.5-7-9.5z';
 const BEAN_SEAM = 'M12 3.5c-1.8 2.6-1.6 5.4 0 8.3s1.8 5.7 0 8.7';
 const DRIP_PATH = 'M6 4.5h12V15l-6 5.5L6 15z';
 
 function BeanIcon({ part }: { part: number }) {
-  // part 0..1 — какая доля зерна «осталась»: последнее зерно может быть закрашено частично
+  // part 0..1 — how much of the bean "remains": the last bean may be partly filled
   return (
     <span className="stock-ico">
       <svg viewBox="0 0 24 24" aria-hidden="true" className="ico-empty"><path d={BEAN_PATH} /><path d={BEAN_SEAM} className="seam" /></svg>
@@ -43,10 +43,10 @@ function DripIcon({ on }: { on: boolean }) {
   );
 }
 
-/** Сколько осталось: зёрна (10 штук = вся пачка) или нарисованные дрипы (каждый — один пакет) */
+/** What is left: beans (10 = full pack) or drawn drip bags (one per bag) */
 function StockIcons({ unit, left, total }: { unit: 'g' | 'pcs'; left: number; total: number }) {
   if (unit === 'pcs') {
-    // больше 20 дрипов не рисуем по одному — делим на 20 равных частей
+    // more than 20 drips are not drawn one by one — split into 20 equal parts
     const n = Math.min(total, 20);
     const on = total <= 20 ? left : Math.round((left / total) * 20);
     return <div className="stock-icons" aria-hidden="true">{Array.from({ length: n }, (_, i) => <DripIcon key={i} on={i < on} />)}</div>;
@@ -55,12 +55,12 @@ function StockIcons({ unit, left, total }: { unit: 'g' | 'pcs'; left: number; to
   return <div className="stock-icons" aria-hidden="true">{Array.from({ length: 10 }, (_, i) => <BeanIcon key={i} part={Math.max(0, Math.min(1, units - i))} />)}</div>;
 }
 
-/** Остаток пачки: «осталось N из M г» с зёрнами или дрипами вместо полоски */
+/** Pack stock: "N of M g left" with beans or drips instead of a bar */
 export function StockBar({ bean, compact = false }: { bean: Bean; compact?: boolean }) {
   const { brews } = useStore();
   const st = beanStock(bean, brews);
   if (!st.total) return compact ? null : <span className="stock-none">{st.unit === 'pcs' ? 'Сколько дрипов в коробке — не указано' : 'Вес пачки не указан'}</span>;
-  // допитое — без картинок: рисовать пустые зёрна незачем
+  // finished packs — no pictures: no point drawing empty beans
   const done = isFinished(bean, st);
   if (st.unit === 'pcs') {
     return (
@@ -97,7 +97,7 @@ function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
   const mine = brews.filter((x) => brewBeanIds(x).includes(b.id));
   const rated = mine.filter((x) => x.rating);
   const avg = rated.length ? rated.reduce((s, x) => s + x.rating, 0) / rated.length : 0;
-  // баллы SCA важнее звёзд: если пачку каппинговали — показываем средний балл
+  // SCA scores matter more than stars: if the pack was cupped, show the average score
   const scores = mine.map((x) => beanSca(x, b.id)).filter((x): x is number => x !== null);
   const avgScore = scores.length ? scores.reduce((s, x) => s + x, 0) / scores.length : 0;
   return (
@@ -176,7 +176,7 @@ export function Beans() {
   );
 }
 
-/* ---------- Карточка ---------- */
+/* ---------- Card ---------- */
 
 export function BeanDetail({ id }: { id: string }) {
   const { beans, brews, deleteBean, saveBean } = useStore();
@@ -199,14 +199,14 @@ export function BeanDetail({ id }: { id: string }) {
     setFix(null);
   };
   const toggleFinished = async () => {
-    if (finished && st.total > 0 && st.left <= 0) { setFix(''); return; } // вернуть на полку — сначала взвесить остаток
+    if (finished && st.total > 0 && st.left <= 0) { setFix(''); return; } // back on the shelf — weigh the remainder first
     if (!finished && !(await platform.confirm(drip ? 'Отметить коробку законченной? Она переедет в раздел «Допито».' : 'Отметить пачку допитой? Она переедет в раздел «Допито».'))) return;
     saveBean({ ...b, finished: !finished });
     platform.haptic('success');
   };
   const buyAgain = () => {
     const { id: _id, createdAt: _c, roastDate: _r, adjust: _a, finished: _f, sample: _s, ...rest } = b;
-    // у ассорти новые id видов: заварки старой коробки к ним не относятся
+    // an assorted copy gets new kind ids: brews of the old box do not belong to them
     push({ name: 'beanEdit', bean: { ...emptyBean(), ...rest, drips: rest.drips?.map((d) => ({ ...d, id: uid() })) }, isNew: true });
   };
 
@@ -257,7 +257,7 @@ export function BeanDetail({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* дрипы заваривают только как дрип — выбирать способ не из чего */}
+      {/* drips are brewed only as drips — there is no method to choose */}
       {!drip && <Section title="Заварить" plain>
         <div className="quick-methods">
           {allMethods().filter((m) => (m.id === 'drip') === drip && !(drip && m.id === 'cupping')).map((m) => (
@@ -324,14 +324,14 @@ export function BeanDetail({ id }: { id: string }) {
   );
 }
 
-/* ---------- Редактор ---------- */
+/* ---------- Editor ---------- */
 
 const COUNTRIES = ['Эфиопия', 'Кения', 'Руанда', 'Бурунди', 'Танзания', 'Уганда', 'Колумбия', 'Бразилия', 'Перу', 'Эквадор', 'Боливия', 'Коста-Рика', 'Панама', 'Гватемала', 'Гондурас', 'Сальвадор', 'Никарагуа', 'Мексика', 'Йемен', 'Индонезия', 'Индия', 'Вьетнам', 'Китай', 'Папуа — Новая Гвинея'];
 
 export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boolean; scanOnOpen?: boolean }) {
   const { saveBean, patchBean, beans, brews } = useStore();
   const { back } = useRouter();
-  // тип можно сменить, пока пачкой ничего не заварено
+  // the type can be changed while nothing has been brewed from the pack
   const kindLocked = !isNew && brews.some((x) => brewBeanIds(x).includes(bean.id));
   const [b, setB] = useState<Bean>(bean);
   const [scan, setScan] = useState(!!scanOnOpen);
@@ -348,7 +348,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
   const newPart = (): BlendPart => ({ id: uid(), share: '', country: '', region: '', farm: '', variety: '', process: '' });
   const setBlend = (on: boolean) => setB((x) => ({
     ...x, isBlend: on,
-    // при переключении на бленд переносим уже введённое происхождение в первый компонент
+    // switching to a blend moves the origin already entered into the first component
     parts: on && !(x.parts ?? []).length
       ? [{ ...newPart(), country: x.country, region: x.region, farm: x.farm, variety: x.variety, process: x.process }, newPart()]
       : x.parts,
@@ -362,7 +362,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
     : { ...x, kind: undefined, assorted: undefined }));
   const setAssorted = (on: boolean) => setB((x) => ({
     ...x, assorted: on || undefined,
-    // первый дрип ассорти — из уже введённого происхождения
+    // the first assorted drip — from the origin already entered
     drips: on && !(x.drips ?? []).length
       ? [{ ...newDripItem(), country: x.country, region: x.region, farm: x.farm, variety: x.variety, process: x.process, roastLevel: x.roastLevel, count: Math.max(1, Math.floor((x.dripCount ?? 2) / 2)) }, newDripItem()]
       : x.drips,
@@ -395,7 +395,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
     }
     const before = b;
     const next = mergeEmpty({ ...b, barcode: r.patch.barcode ?? code }, r.patch);
-    // число дрипов в коробке со страницы точнее, чем 10 по умолчанию
+    // the drip count from the page is more accurate than the default
     if (r.patch.dripCount) next.dripCount = r.patch.dripCount;
     setB(next);
     const filled = filledLabels(before, next);
@@ -406,15 +406,15 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
   };
 
   const save = () => {
-    // Пачку добавили уже начатой: остаток меньше веса — запоминаем поправку
+    // Pack added already opened: stock below weight — remember the correction
     const left = parseFloat(leftText.replace(',', '.'));
     const weight = drip ? dripTotal(b) : parseFloat(b.weight.replace(',', '.'));
     const adjust = isNew && !isNaN(left) && !isNaN(weight) && left < weight ? Math.round((left - weight) * 10) / 10 : b.adjust;
-    // ассорти: пустые строки-дрипы не сохраняем
+    // assorted: empty drip rows are not saved
     const drips = b.assorted ? (b.drips ?? []).filter((d) => d.name || d.country || d.region || d.notes) : b.drips;
     const saved: Bean = { ...b, drips, adjust, sample: dirty ? undefined : b.sample };
     saveBean(saved);
-    // описание кофе (без даты обжарки, остатка и заметок) — в общий каталог, чтобы у других заполнилось само
+    // coffee description (no roast date, stock or notes) goes to the shared catalog so it fills in for others
     if (!saved.sample && (isNew || dirty)) contributeCoffee(saved).then((id) => { if (id && id !== saved.catalogId) patchBean(saved.id, { catalogId: id }); });
     platform.haptic('success');
     back(true);
@@ -581,7 +581,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
       <Section title="Заметки">
         {f('packNotes', 'Дескрипторы с пачки', { placeholder: 'бергамот, персик, жасмин' })}
         {f('link', 'Ссылка на лот', { type: 'url', placeholder: 'https://', onBlur: () => {
-          // вставили ссылку на страницу обжарщика — заполним поля так же, как по QR
+          // a roaster page link was pasted — fill in fields the same way as from a QR code
           if (b.link && b.link !== bean.link && /^https?:\/\/\S+$/i.test(b.link) && !b.country && !(b.drips ?? []).length) onCode(b.link);
         } })}
         <textarea id="bean-comment" className="notes" rows={3} placeholder="Где купил, цена, впечатления" value={b.comment} onChange={(e) => set({ comment: e.target.value })} />

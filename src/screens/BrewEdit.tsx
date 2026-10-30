@@ -43,7 +43,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
       else back(true);
       return;
     }
-    // по анкете SCA оцениваем только каппинг; у остальных методов — звёзды
+    // only cupping is rated with the SCA form; other methods use stars
     const toSave: Brew = isCupping
       ? { ...b, rating: 0, cupping: { ...(b.cupping ?? emptyCupping()), descriptors: b.descriptors, notes: b.notes } }
       : { ...b, cupping: null };
@@ -146,7 +146,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
         <Stepper label="Температура" value={b.temp} step={0.1} min={0} max={100} unit={b.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
         {b.methodId !== 'drip' && (() => {
           const grinder = grinderOf(b.gear, myGear);
-          // кофемолку удалили — единицы берём из самой заварки
+          // grinder deleted — take the units from the brew itself
           const unit = unitOf(grinder?.type) ?? (grinder && !myGear.some((g) => g.id === grinder.id) ? b.grindUnit ?? null : null);
           const value = unit && b.grindUnit === unit ? b.grindValue : undefined;
           return (

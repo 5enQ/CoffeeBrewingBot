@@ -9,7 +9,7 @@ import { effectivePlan, type BrewPlan } from './recipes';
 import { beanTitle, blendLines } from '../screens/beanUtils';
 import type { Author, Bean, Brew } from './store';
 
-/** Рецепт, который уходит другу. Только то, что нужно, чтобы повторить заварку. */
+/** Recipe sent to a friend. Only what is needed to repeat the brew. */
 export interface SharedRecipe {
   author: Author;
   date: number;
@@ -25,9 +25,9 @@ export interface SharedRecipe {
   score?: number;
   bean: Partial<Pick<Bean, BeanKey>> | null;
   gear: Omit<GearRef, 'id'>[];
-  /** своя схема проливов автора (если не стандартная) */
+  /** the author's own pour schedule (if not the standard one) */
   plan?: Omit<BrewPlan, 'recipeId'>;
-  /** для оценок: id рецепта и telegram id автора */
+  /** for ratings: recipe id and the author's telegram id */
   ref?: { rid: string; author: string };
 }
 
@@ -48,7 +48,7 @@ export function toShared(b: Brew, bean: Bean | undefined, author: Author, myId?:
   };
 }
 
-/* ---------- Компактная упаковка: короткие ключи → deflate → base64url ---------- */
+/* ---------- Compact packing: short keys → deflate → base64url ---------- */
 
 const KINDS: BadgeKind[] = ['sca', 'q', 'champ', 'custom', 'achieve'];
 const CATS: GearCat[] = ['grinder', 'machine', 'dripper', 'press', 'stovetop', 'kettle', 'scale', 'filter', 'other'];
@@ -94,16 +94,16 @@ function unpack(o: ReturnType<typeof pack>): SharedRecipe {
   };
 }
 
-/** «r» + «z» (сжато) или «j» (без сжатия) + base64url */
+/** "r" + "z" (compressed) or "j" (uncompressed) + base64url */
 export async function encodeRecipe(r: SharedRecipe): Promise<string> {
   const bytes = new TextEncoder().encode(JSON.stringify(pack(r)));
   if (typeof CompressionStream !== 'undefined') {
-    try { return 'rz' + b64url(await pipe(bytes, new CompressionStream('deflate-raw'))); } catch { /* ниже */ }
+    try { return 'rz' + b64url(await pipe(bytes, new CompressionStream('deflate-raw'))); } catch { /* fall back below */ }
   }
   return 'rj' + b64url(bytes);
 }
 
-/** Параметр запуска → рецепт: «s…» — короткая ссылка (рецепт на сервере), «r…» — рецепт в самой ссылке */
+/** Launch parameter → recipe: "s…" — short link (recipe on the server), "r…" — recipe inside the link */
 export async function resolveStartParam(param: string): Promise<SharedRecipe | null> {
   if (param.startsWith('s')) {
     const code = await loadRecipeCode(param.slice(1));
@@ -124,14 +124,14 @@ export async function decodeRecipe(param: string): Promise<SharedRecipe | null> 
   }
 }
 
-/** Ссылка на рецепт: прямо в мини-приложение Telegram (если влезает в 512 символов startapp), иначе — на веб-версию */
+/** Recipe link: straight into the Telegram Mini App (if it fits the 512-char startapp), otherwise to the web version */
 export async function recipeLink(r: SharedRecipe): Promise<string> {
   if (TELEGRAM_BOT) {
     const base = TELEGRAM_APP ? `https://t.me/${TELEGRAM_BOT}/${TELEGRAM_APP}` : `https://t.me/${TELEGRAM_BOT}`;
-    // Лучший вариант: весь рецепт на сервере, в ссылке — короткий код. Влезает рецепт любого размера.
+    // Best option: the whole recipe on the server, a short code in the link. Fits a recipe of any size.
     const short = await storeRecipe(await encodeRecipe(r));
     if (short) return `${base}?startapp=s${short}`;
-    // Отбрасываем необязательное, пока не влезет: текст и так придёт в сообщении
+    // Drop optional parts until it fits: the text arrives in the message anyway
     const noHints = r.plan ? { ...r.plan, steps: r.plan.steps.map(({ hint: _h, ...st }) => st) } : undefined;
     const variants: SharedRecipe[] = [
       r,
@@ -149,7 +149,7 @@ export async function recipeLink(r: SharedRecipe): Promise<string> {
   return `${WEB_URL}#r=${await encodeRecipe(r)}`;
 }
 
-/** Человекочитаемый текст — его видно в чате, даже если ссылку не открывать */
+/** Human-readable text — visible in the chat even if the link is not opened */
 export function recipeText(r: SharedRecipe): string {
   const m = methodById(r.methodId);
   const lines: string[] = [];

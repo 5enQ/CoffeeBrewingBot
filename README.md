@@ -5,7 +5,7 @@ The user interface is in Russian; code, comments and documentation are in Englis
 
 ## Features
 
-- **Brew guides** for 14 methods: V60, Kalita Wave, Chemex, AeroPress, French press, Clever, espresso, moka, cezve, siphon, cold brew, batch brew, drip bags and cupping. Step-by-step timer with "pour to N g" marks, haptics and sound; the screen stays awake while brewing.
+- **Brew guides** for 13 methods: V60, Chemex, AeroPress, French press, Clever, espresso, moka, cezve, siphon, cold brew, batch brew, drip bags and cupping (Kalita Wave is retired: hidden from lists, old brews still show it). Step-by-step timer with "pour to N g" marks, haptics and sound; the screen stays awake while brewing.
 - **Home screen tiles**: long-press to pin a method; the pencil button opens edit mode to reorder tiles (drag) and resize them (handle on the right, like Android Quick Settings). Undo is available while editing.
 - **Custom recipes and methods**: own steps, dose, water, temperature, grind; shared recipes keep their steps.
 - **Grind by grinder type**: hand grinders use clicks, electronic grinders use microns (µm), mechanical grinders keep free text. The last value is remembered per grinder and method.
@@ -39,6 +39,17 @@ Server (Cloudflare Worker) locally: `cd worker && npm i && echo 'BOT_TOKEN="123:
 - Before merging: set `"version"` in `package.json` (semantic versioning: `X` — major changes or data format breaks, `Y` — new features, `Z` — fixes only) and turn **Unreleased** in [`CHANGELOG.md`](CHANGELOG.md) into `## vX.Y.Z — Title (YYYY-MM-DD)`. The title is used as the release name everywhere (`scripts/release-info.mjs`).
 - The running versions are visible in the app (Profile → "О приложении": app and server versions), at `https://brewbook-ratings.brewbook.workers.dev/version`, and in the Cloudflare dashboard (Workers → brewbook-ratings → Deployments: tag `v1.1.0` with the release title).
 - Before a release the change set is tested: unit tests (parser, scales), browser end-to-end tests on mobile/desktop and light/dark themes, a two-device sync simulation, backup round trip, a local server run and a live check of the roaster-page parser.
+
+## Localization
+
+The interface is Russian today; English, Japanese and Chinese are prepared. Code: `src/i18n/`.
+
+- `ru.ts` is the source of truth: every key lives there. `en.ts`, `ja.ts`, `zh.ts` may be partial.
+- `t('key', vars)` returns a string, `tn('key', n)` a plural form (Intl.PluralRules categories). Lookup order: current locale → English → Russian → the key.
+- The locale is picked at start from Telegram `language_code`, then browser languages (`detectLocale`). Only locales listed in `ENABLED_LOCALES` can be chosen — currently `['ru']`, so users never see a half-translated app.
+- Already translated through `t()`: tab labels and method names. Other strings are still literal Russian; move them to keys screen by screen.
+- Adding a string: add the key to `ru.ts`, use `t()`, then add the translations. A unit test checks that every locale only uses keys that exist in `ru.ts`.
+- Enabling a language: translate all keys, add it to `ENABLED_LOCALES`, test on mobile and desktop.
 
 ## Platform layer
 
@@ -115,9 +126,11 @@ In Telegram data lives on the device (DeviceStorage) and is mirrored to the acco
 src/
   platform/      Telegram / web / native adapters and the shared interface
   data/          methods, recipes, cupping (SCA CVA), store, sync, backup, catalog client
+  i18n/          localization dictionaries (ru, en, ja, zh) and t()
   screens/       screens
   ui/            components, scanner, forms, icons, animations
   router.tsx     screen stack and "leave without saving?" guards
+tests/           unit and browser tests (see tests/README.md)
 worker/
   src/index.ts   server endpoints
   src/catalog.ts coffee catalog (Durable Object)

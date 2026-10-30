@@ -21,8 +21,8 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const saved = recipes[m.id];
   const mine = custom.filter((r) => r.methodId === m.id);
 
-  // Какой рецепт выбран: 'std' — стандартный, 'from' — схема из повторяемой заварки, иначе id своего рецепта
-  // Схема из заварки совпадает с одним из своих рецептов — выбираем его, а не дублируем
+  // Selected recipe: 'std' — standard, 'from' — schedule of the repeated brew, otherwise a custom recipe id
+  // The brew's schedule matches a custom recipe — select it rather than duplicating
   const sameAsFrom = from?.plan
     ? mine.find((r) => r.id === from.plan!.recipeId) ?? mine.find((r) => r.name === from.plan!.name && JSON.stringify(r.steps) === JSON.stringify(from.plan!.steps))
     : undefined;
@@ -41,7 +41,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const [temp, setTemp] = useState(from?.temp ?? startActive?.temp ?? saved?.temp ?? m.temp);
   const [grind, setGrind] = useState(from?.grind ?? startActive?.grind ?? saved?.grind ?? m.grind);
   const [gear, setGear] = useState<GearRef[]>(() => from?.gear?.length ? from.gear : defaultGear(m.id, myGear, saved?.gear));
-  // помол числом — если выбрана ручная (щелчки) или электронная (µm) кофемолка
+  // numeric grind — when a hand (clicks) or electronic (µm) grinder is selected
   const grinder = grinderOf(gear, myGear);
   const grindUnit = unitOf(grinder?.type);
   const grindStart = () => {
@@ -50,7 +50,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     return saved?.grindBy?.[`${grinder.id}:${grindUnit}`] ?? GRIND_RULES[grindUnit].def;
   };
   const [grindValue, setGrindValue] = useState<number | undefined>(grindStart);
-  // сменили кофемолку — помол, который запомнили для неё
+  // grinder changed — use the grind remembered for it
   const grinderKey = `${grinder?.id}-${grindUnit}`;
   const firstGrinder = useRef(true);
   useEffect(() => {
@@ -71,7 +71,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     if (from?.dripId && box.drips?.some((d) => d.id === from.dripId)) return from.dripId;
     return (box.drips ?? []).find((d) => dripItemLeft(box, d.id, brews) > 0)?.id ?? box.drips?.[0]?.id;
   });
-  // у дрипа доза — сколько кофе в пакете
+  // for a drip the dose is the coffee in the bag
   const dripBox = drip ? beans.find((b) => b.id === bean) : undefined;
   useEffect(() => {
     if (dripBox?.dripWeight) setDose(dripBox.dripWeight);
@@ -80,7 +80,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const apply = (r: { dose: number; ratio: number; temp: number; grind: string }) => {
     setDose(r.dose); setRatio(r.ratio); setTemp(r.temp); setGrind(r.grind);
   };
-  // Рецепт изменили в редакторе — подхватываем новые параметры
+  // Recipe changed in the editor — pick up the new parameters
   const activeJson = active ? JSON.stringify(active) : '';
   const firstRun = useRef(true);
   useEffect(() => {
@@ -88,7 +88,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     if (active) apply(active);
   }, [activeJson]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Только что созданный рецепт сразу выбираем
+  // Select a just-created recipe right away
   const known = useRef<Set<string> | null>(null);
   useEffect(() => {
     if (!known.current) return;
@@ -106,7 +106,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     else createRecipe();
   };
 
-  // При повторе зерно то же, что в прошлый раз; выбор открывается по «Сменить»
+  // On repeat the beans are the same as last time; the picker opens with "Сменить"
   const [changeBean, setChangeBean] = useState(false);
   const beanObj = beans.find((x) => x.id === bean);
   const beanSt = beanObj ? beanStock(beanObj, brews) : null;
@@ -169,7 +169,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
       </Section>
 
       <Section title="Параметры">
-        {/* у дрипа кофе уже отмерен в пакете — меняется только вода */}
+        {/* a drip's coffee is pre-measured in the bag — only water changes */}
         {!drip && <Stepper label="Кофе" value={dose} onChange={setDose} step={espresso ? 0.5 : m.id === 'cupping' ? 0.25 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} />}
         <Stepper label={waterLabel} value={water} step={espresso ? 1 : 10} min={espresso ? 10 : 30} max={2000} unit="г"
           format={(v) => fmtNum(v)}

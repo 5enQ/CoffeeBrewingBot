@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 interface ImportMetaEnv {
-  /** версия приложения «1.N» — задаётся при сборке на GitHub */
+  /** app version "X.Y.Z" — set at build time on GitHub */
   readonly VITE_APP_VERSION?: string;
-  /** когда собрано (время коммита) */
+  /** build time (commit time) */
   readonly VITE_APP_BUILT?: string;
 }

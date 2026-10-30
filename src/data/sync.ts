@@ -1,12 +1,12 @@
 /**
- * Синхронизация через Telegram CloudStorage.
+ * Sync via Telegram CloudStorage.
  *
- * В облаке:
- *   idx          — оглавление: для каждой корзины хеш содержимого и число частей
- *   <корзина>_N  — части сжатой корзины по 4096 символов (m — метаданные, k — пачки, bYYYYMM — заварки месяца)
+ * In the cloud:
+ *   idx          — index: content hash and part count for each bucket
+ *   <bucket>_N   — 4096-char parts of a compressed bucket (m — metadata, k — packs, bYYYYMM — brews of a month)
  *
- * Скачиваются только корзины, у которых хеш отличается от последнего применённого;
- * загружаются только те, что изменились. Оглавление пишется последним.
+ * Only buckets whose hash differs from the last applied one are downloaded;
+ * only changed ones are uploaded. The index is written last.
  */
 import { CLOUD_LIMITS, type CloudKV } from '../platform/types';
 import { hash, packText, unpackText } from './codec';
@@ -17,7 +17,7 @@ const IDX = 'idx';
 const STATE_KEY = 'brewbook.sync.v1';
 const BATCH = 40;
 
-/** корзина → [хеш JSON, число частей, символов в облаке] */
+/** bucket → [JSON hash, part count, chars in the cloud] */
 interface Manifest { f: number; t: number; b: Record<string, [string, number, number?]> }
 
 export interface SyncUsage { chars: number; keys: number }
@@ -52,7 +52,7 @@ export class CloudSync {
     try {
       const raw = await this.local.get(STATE_KEY);
       if (raw) this.st = { applied: {}, ...JSON.parse(raw) };
-    } catch { /* начнём с нуля */ }
+    } catch { /* start from scratch */ }
     return this.st;
   }
 
@@ -77,7 +77,7 @@ export class CloudSync {
     return out;
   }
 
-  /** Скачать изменившиеся корзины. null — в облаке нет ничего нового. */
+  /** Download changed buckets. null — nothing new in the cloud. */
   async pull(localGear: DB['gear']): Promise<{ remote: Remote; names: Record<string, string> } | null> {
     const man = await this.manifest();
     this.remote = man;
@@ -89,13 +89,13 @@ export class CloudSync {
     const names: Record<string, string> = {};
     for (const [name, [h, n]] of changed) {
       const parts = range(n).map((i) => values[partKey(name, i)]);
-      if (parts.some((p) => p === undefined)) continue; // другое устройство как раз пишет — заберём в следующий раз
+      if (parts.some((p) => p === undefined)) continue; // another device is writing right now — pick it up next time
       try {
         const json = await unpackText(parts.join(''));
         if (hash(json) !== h) continue;
         buckets[name] = json;
         names[name] = h;
-      } catch { /* битая корзина — пропускаем */ }
+      } catch { /* broken bucket — skip */ }
     }
     if (!Object.keys(buckets).length) return null;
     const remote = fromBuckets(buckets, localGear);
@@ -103,14 +103,14 @@ export class CloudSync {
     return { remote, names };
   }
 
-  /** Отметить корзины применёнными (после слияния) */
+  /** Mark buckets as applied (after the merge) */
   async applied(names: Record<string, string>) {
     this.st.applied = { ...this.st.applied, ...names };
     await this.save();
   }
 
   /**
-   * Отправить изменения. 'stale' — пока мы сливали, другое устройство успело записать своё: надо скачать ещё раз.
+   * Upload changes. 'stale' — while we merged, another device wrote its data: download again.
    */
   async push(buckets: Record<string, string>): Promise<'ok' | 'stale'> {
     const man = await this.manifest();

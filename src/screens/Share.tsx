@@ -17,7 +17,7 @@ import { useBadges } from '../data/featured';
 import { Button, Empty, Field, Screen, Stars } from '../ui/kit';
 
 
-/** Карточка рецепта — одинаково выглядит у автора (превью) и у друга */
+/** Recipe card — looks the same for the author (preview) and the friend */
 export function RecipeCard({ r }: { r: SharedRecipe }) {
   const m = methodById(r.methodId);
   const plan = effectivePlan(r.methodId, r.plan);
@@ -104,14 +104,14 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
   );
 }
 
-/* ---------- Отправить свою заварку ---------- */
+/* ---------- Share your brew ---------- */
 
 export function ShareScreen({ id }: { id: string }) {
   const { brews, beans, profile, saveProfile, saveBrew } = useStore();
   const b = brews.find((x) => x.id === id);
   const myId = myTelegramId();
 
-  // Своему рецепту при первой отправке выдаём id — по нему друзья смогут его оценить
+  // An own recipe gets an id on first share — friends rate it by that id
   useEffect(() => {
     if (b && !b.author && !b.shareId && ratingsEnabled() && myId) saveBrew({ ...b, shareId: newRid() });
   }, [b?.id, b?.shareId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -138,7 +138,7 @@ export function ShareScreen({ id }: { id: string }) {
     recipeLink(recipe).then(async (l) => {
       if (!alive) return;
       setLink(l);
-      // Оформленное сообщение (жирное название, кнопка) готовим заранее, чтобы отправка шла сразу по нажатию
+      // The formatted message (bold title, button) is prepared in advance so sending happens right on tap
       if (platform.shareMessage) {
         const [title, ...rest] = recipeText(recipe).split('\n');
         const id = await prepareShare(title, rest.join('\n').replace(/^\n+/, ''), l);
@@ -154,8 +154,8 @@ export function ShareScreen({ id }: { id: string }) {
     if (prepared && platform.shareMessage) {
       const sent = await platform.shareMessage(prepared);
       if (sent) { platform.haptic('success'); return; }
-      if (sent === false) return; // окно закрыли без отправки
-      // null — не сработало: отправляем обычным способом
+      if (sent === false) return; // the window was closed without sending
+      // null — did not work: send the usual way
     }
     const res = await platform.share(recipeText(recipe), link);
     platform.haptic(res === 'failed' ? 'error' : 'success');
@@ -201,7 +201,7 @@ export function ShareScreen({ id }: { id: string }) {
   );
 }
 
-/* ---------- Рецепт, присланный другом ---------- */
+/* ---------- Recipe sent by a friend ---------- */
 
 export function SharedRecipeScreen({ recipe: r }: { recipe: SharedRecipe }) {
   const { beans, saveBean, saveBrew, saveCustom } = useStore();

@@ -7,13 +7,13 @@ import { beanTitle, blendSummary, dripMeta, dripTitle, RestBadge } from './beanU
 import { beanStock, dripItemLeft, isFinished } from '../data/stock';
 import { fmtNum } from '../data/methods';
 
-/** Горизонтальный выбор зерна + «новое» и «сканировать» */
+/** Horizontal bean picker + "new" and "scan" */
 export function BeanPicker({ value, onChange, dose }: { value: string | null; onChange(id: string | null): void; dose?: number }) {
   const { beans, brews } = useStore();
   const { push } = useRouter();
   const known = useRef<Set<string> | null>(null);
 
-  // после создания нового зерна — сразу выбрать его
+  // after creating new beans — select them right away
   useEffect(() => {
     if (!known.current) return;
     const fresh = beans.find((b) => !known.current!.has(b.id));
@@ -53,12 +53,12 @@ export function BeanPicker({ value, onChange, dose }: { value: string | null; on
   );
 }
 
-/** Новая коробка дрипов: тип уже выбран */
+/** New drip box: the type is already chosen */
 export const emptyDripBox = (): Bean => ({ ...emptyBean(), kind: 'drip', dripCount: 1 });
 
 /**
- * Выбор дрипа: только коробки дрипов с полки + «новый дрип».
- * В коробке-ассорти дальше выбирается конкретный дрип.
+ * Drip picker: only drip boxes from the shelf + "new drip".
+ * In an assorted box a specific drip is chosen next.
  */
 export function DripPicker({ value, dripId, onChange }: {
   value: string | null; dripId?: string; onChange(beanId: string | null, dripId?: string): void;
@@ -72,7 +72,7 @@ export function DripPicker({ value, dripId, onChange }: {
   const pick = (b: Bean) => {
     platform.haptic('select');
     if (!b.assorted) { onChange(b.id); return; }
-    // в ассорти сразу выбираем первый вид, который ещё остался
+    // in an assorted box, select the first kind that is still left
     const first = (b.drips ?? []).find((d) => dripItemLeft(b, d.id, brews) > 0) ?? b.drips?.[0];
     onChange(b.id, first?.id);
   };

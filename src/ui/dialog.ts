@@ -1,4 +1,4 @@
-/** Встроенные диалоги для веба (window.confirm блокируется во многих вебвью) */
+/** Built-in dialogs for the web (window.confirm is blocked in many webviews) */
 export interface DialogState {
   message: string;
   kind: 'confirm' | 'alert';

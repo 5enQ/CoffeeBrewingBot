@@ -28,3 +28,5 @@ dist-single
 worker/node_modules
 worker/.wrangler
 worker/.dev.vars
+tests/e2e/out/
+__pycache__/

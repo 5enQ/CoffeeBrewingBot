@@ -1,6 +1,6 @@
 /**
- * Помол в зависимости от кофемолки:
- *  ручная — в щелчках, электронная — в микронах (µm), механическая — как раньше, словами или своей шкалой.
+ * Grind depending on the grinder:
+ *  hand — in clicks, electronic — in microns (µm), mechanical — as before, in words or its own scale.
  */
 import type { Gear } from './gear';
 
@@ -13,7 +13,7 @@ export const GRIND_TYPES: { id: GrindType; label: string; hint: string }[] = [
   { id: 'mechanical', label: 'Механическая', hint: 'Помол словами или по своей шкале' },
 ];
 
-/** Популярные ручные кофемолки — тип подставится сам, когда выбираете модель из подсказок */
+/** Popular hand grinders — the type is set automatically when picking a model from suggestions */
 const MANUAL = /comandante|1zpresso|timemore\s*(c\d|chestnut|nano|g1|slim)|kinu|kingrinder|hario|porlex|lido|pietro|mazzer\s*omega|knock|hand\s*ground|ручн/i;
 export const guessGrindType = (name: string): GrindType | undefined => (MANUAL.test(name) ? 'manual' : undefined);
 
@@ -29,13 +29,13 @@ const plural = (n: number, f: [string, string, string]) => {
   return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2];
 };
 
-/** «22 щелчка», «650 µm» — так помол хранится в заварке текстом и показывается везде */
+/** "22 щелчка", "650 µm" — how grind is stored in a brew as text and shown everywhere */
 export function fmtGrind(value: number, unit: GrindUnit) {
   if (unit === 'um') return `${Math.round(value)} µm`;
   return `${value} ${plural(value, ['щелчок', 'щелчка', 'щелчков'])}`;
 }
 
-/** Тип кофемолки, выбранной для заварки (по списку оборудования) */
+/** Type of the grinder chosen for the brew (from the gear list) */
 export function grinderOf(gearRefs: { id: string; cat: string }[] | undefined, myGear: Gear[]) {
   const ref = gearRefs?.find((g) => g.cat === 'grinder');
   if (!ref) return null;

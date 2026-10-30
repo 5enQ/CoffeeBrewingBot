@@ -5,10 +5,24 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.1.0 — Bug fixes (2026-10-30)
+
+### Fixed
+- The recipe screen no longer marks the standard recipe as "last time" for a method that was never brewed (sample brews do not count either).
+- Removed the method description card from the recipe screen.
+
 ### Changed
+- Method names in Russian: Кемекс, Аэропресс, Клевер (gear category "Аэропресс и прессы").
+- Kalita Wave is retired: hidden from the method list and home tiles; old brews, backups and synced data still show it.
+
+### Added
+- Localization groundwork (`src/i18n/`): dictionaries for Russian, English, Japanese and Chinese, `t()` / `tn()` with plural rules, locale detection from Telegram `language_code`. Only Russian is enabled; tab labels and method names already go through `t()`.
+- Test suite in the repository: unit tests (`npm test`, also run by CI before every deploy) and browser tests (`npm run test:e2e`).
+
+### Internal
 - Release process: work happens on the `dev` branch; a release is a merge into `main`, deployed in one go (app and server) and tagged `vX.Y.Z` by CI.
 - Version and release title come from `package.json` and this changelog (`scripts/release-info.mjs`).
-- Versions are named in English (`v1.1.0 — Title`); documentation and code comments are in English.
+- Versions are named in English; documentation and code comments are in English (the interface stays Russian).
 
 ## v1.0.0 — Baseline (2026-10-28)
 

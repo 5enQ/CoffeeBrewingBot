@@ -5,14 +5,14 @@ import { platform } from '../platform';
 import { useRouter } from '../router';
 import { Icon } from './icons';
 
-/** Выбор оборудования для заварки: по одному предмету на категорию */
+/** Gear picker for a brew: one item per category */
 export function GearPicker({ methodId, value, onChange }: { methodId: string; value: GearRef[]; onChange(v: GearRef[]): void }) {
   const { gear } = useStore();
   const { push } = useRouter();
   const [all, setAll] = useState(false);
   const known = useRef<Set<string> | null>(null);
 
-  // только что добавленный предмет сразу отмечаем
+  // select a freshly added item right away
   useEffect(() => {
     if (!known.current) return;
     const fresh = gear.find((g) => !known.current!.has(g.id));
@@ -65,7 +65,7 @@ export function GearPicker({ methodId, value, onChange }: { methodId: string; va
   );
 }
 
-/** Оборудование по умолчанию: из прошлой заварки этим методом, иначе первое из каждой нужной категории */
+/** Default gear: from the last brew with this method, otherwise the first item of each needed category */
 export function defaultGear(methodId: string, gear: { id: string; cat: GearCat; name: string; details: string }[], remembered?: string[]): GearRef[] {
   const cats = catsForMethod(methodId);
   const pick = (ids: string[]) => ids.map((id) => gear.find((g) => g.id === id)).filter(Boolean) as typeof gear;

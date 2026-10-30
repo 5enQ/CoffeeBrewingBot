@@ -1,4 +1,4 @@
-/** Анимации интерфейса: перелистывание вкладок, «пузырёк» под активной вкладкой, перестановка плиток */
+/** UI animations: tab transitions, the active-tab "bubble", tile reordering */
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 
 export const reduceMotion = () => {
@@ -7,11 +7,11 @@ export const reduceMotion = () => {
 
 const EASE = 'cubic-bezier(0.3, 0.7, 0.2, 1)';
 
-/* ---------- Перелистывание вкладок ---------- */
+/* ---------- Tab transitions ---------- */
 
 /**
- * Содержимое вкладок: при переключении новая въезжает сбоку, старая уезжает в другую сторону.
- * Направление — по порядку вкладок в нижнем меню.
+ * Tab contents: on switch the new tab slides in from the side, the old one slides out the other way.
+ * Direction follows the tab order in the bottom bar.
  */
 export function TabPages<T extends string>({ tab, order, render }: { tab: T; order: T[]; render(t: T): ReactNode }) {
   const [leaving, setLeaving] = useState<{ tab: T; dir: number; scroll: number } | null>(null);
@@ -20,7 +20,7 @@ export function TabPages<T extends string>({ tab, order, render }: { tab: T; ord
   const inRef = useRef<HTMLDivElement>(null);
   const outRef = useRef<HTMLDivElement>(null);
 
-  // прокрутку уходящей вкладки запоминаем, чтобы она уезжала с того места, где была
+  // remember the leaving tab's scroll so it slides away from where it was
   useLayoutEffect(() => {
     const on = () => { scroll.current = window.scrollY; };
     window.addEventListener('scroll', on, { passive: true });
@@ -58,11 +58,11 @@ export function TabPages<T extends string>({ tab, order, render }: { tab: T; ord
   );
 }
 
-/* ---------- «Пузырёк» активной вкладки ---------- */
+/* ---------- Active tab "bubble" ---------- */
 
 /**
- * Подложка под активной вкладкой. При переключении она вытягивается до новой вкладки
- * и стягивается к ней — будто перетекает.
+ * Background under the active tab. On switch it stretches to the new tab
+ * and shrinks onto it — as if flowing over.
  */
 export function useTabPill(navRef: RefObject<HTMLElement | null>, pillRef: RefObject<HTMLElement | null>, key: string) {
   const last = useRef<{ x: number; w: number } | null>(null);
@@ -97,15 +97,15 @@ export function useTabPill(navRef: RefObject<HTMLElement | null>, pillRef: RefOb
   }, [navRef, pillRef, key]);
 }
 
-/* ---------- Плавная перестановка (FLIP) ---------- */
+/* ---------- Smooth reordering (FLIP) ---------- */
 
 type Box = { x: number; y: number; w: number };
 
 /**
- * Дети контейнера с атрибутом data-flip плавно переезжают на новое место и меняют ширину.
- * Перед изменением вызовите snapshot(): он запоминает, где плитки видны сейчас (с учётом идущей анимации),
- * и новая анимация продолжится с этого места, а не прыгнет к старой точке.
- * Контейнер должен быть position: relative (offsetLeft считается от него).
+ * Container children with a data-flip attribute glide to their new place and width.
+ * Call snapshot() before a change: it records where tiles are visible now (including a running animation),
+ * so the new animation continues from there instead of jumping back to the old point.
+ * The container must be position: relative (offsetLeft is measured from it).
  */
 export function useFlip(ref: RefObject<HTMLElement | null>, skip?: string | null) {
   const prev = useRef(new Map<string, Box>());

@@ -5,7 +5,7 @@ import { useStore } from '../data/store';
 import { platform } from '../platform';
 import { Stars } from './kit';
 
-/** Оценка чужого рецепта: уходит автору через сервер оценок */
+/** Rating someone else's recipe: sent to the author via the ratings server */
 export function RateBlock({ rid, author, authorName }: { rid: string; author: string; authorName?: string }) {
   const { rated, saveRated } = useStore();
   const [stars, setStars] = useState(rated[rid] ?? 0);

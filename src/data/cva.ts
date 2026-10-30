@@ -1,40 +1,40 @@
 /**
- * SCA Coffee Value Assessment (CVA), стандарты 2024–2025:
- *  102 — подготовка образцов и механика каппинга,
- *  103 — дескриптивная оценка,
- *  104 — аффективная оценка (балл),
- *  105 — внешняя (экстринсивная) оценка.
- * Заменяет протокол каппинга SCA 2004 года.
+ * SCA Coffee Value Assessment (CVA), standards 2024–2025:
+ *  102 — sample preparation and cupping mechanics,
+ *  103 — descriptive assessment,
+ *  104 — affective assessment (score),
+ *  105 — extrinsic assessment.
+ * Replaces the SCA 2004 cupping protocol.
  */
 import type { Bean, Brew } from './store';
 import type { Cupping } from './cupping';
 import { cupScore } from './cupping';
 
-/* ---------- 102: протокол подготовки (зафиксирован) ---------- */
+/* ---------- 102: preparation protocol (fixed) ---------- */
 
 export const PROTOCOL = {
-  gramsPer150: 8.25,        // 8,25 г кофе на 150 мл объёма чашки
-  doseTolerance: 0.2,       // ±0,2 г
+  gramsPer150: 8.25,        // 8.25 g of coffee per 150 ml of cup volume
+  doseTolerance: 0.2,       // ±0.2 g
   waterTemp: 93,            // 93 ± 3 °C
   waterTempTolerance: 3,
-  cupMin: 200,              // чашки 200–350 мл, стекло или керамика, диаметр 75–90 мм
+  cupMin: 200,              // 200–350 ml cups, glass or ceramic, 75–90 mm diameter
   cupMax: 350,
-  cupsAffective: 5,         // аффективная: 5 чашек на образец
-  cupsDescriptiveMin: 3,    // дескриптивная: 3–5 чашек
+  cupsAffective: 5,         // affective: 5 cups per sample
+  cupsDescriptiveMin: 3,    // descriptive: 3–5 cups
   cupsDescriptiveMax: 5,
-  maxSamples: 6,            // не больше 6 образцов за сессию
-  crustMin: 3,              // корочку не трогать 3–5 минут
+  maxSamples: 6,            // at most 6 samples per session
+  crustMin: 3,              // leave the crust for 3–5 minutes
   crustMax: 5,
-  liquorTemp: 70,           // дегустация начинается примерно с 70 °C
-  minRounds: 3,             // не меньше трёх кругов
+  liquorTemp: 70,           // tasting starts at about 70 °C
+  minRounds: 3,             // at least three rounds
 };
 
 export const CUP_VOLUMES = [200, 220, 250, 300, 350];
 
-/** Доза на чашку по объёму чашки до края: 8,25 г на 150 мл, с точностью 0,1 г */
+/** Dose per cup by brim volume: 8.25 g per 150 ml, rounded to 0.1 g */
 export const dosePerCup = (volumeMl: number) => Math.round((volumeMl * PROTOCOL.gramsPer150) / 150 * 10) / 10;
 
-/** Правила подготовки — показываются как неизменяемые параметры */
+/** Preparation rules — shown as locked parameters */
 export const PROTOCOL_RULES: { label: string; value: string; hint?: string }[] = [
   { label: 'Соотношение', value: '8,25 г на 150 мл', hint: 'Доза считается от объёма чашки до края, точность весов 0,1 г, допуск ±0,2 г' },
   { label: 'Вода', value: '93 ± 3 °C', hint: 'Лить до края, создавая лёгкую турбулентность' },
@@ -46,7 +46,7 @@ export const PROTOCOL_RULES: { label: string; value: string; hint?: string }[] =
   { label: 'Сессия', value: 'до 6 образцов', hint: 'Все образцы завариваются и оцениваются параллельно' },
 ];
 
-/* ---------- Режим оценки ---------- */
+/* ---------- Assessment mode ---------- */
 
 export type CvaMode = 'affective' | 'descriptive' | 'combined';
 export const MODES: { id: CvaMode; label: string; hint: string }[] = [
@@ -59,7 +59,7 @@ export const cupsFor = (mode: CvaMode, wanted?: number) =>
 export const hasAffective = (m: CvaMode) => m !== 'descriptive';
 export const hasDescriptive = (m: CvaMode) => m !== 'affective';
 
-/* ---------- 104: аффективная оценка ---------- */
+/* ---------- 104: affective assessment ---------- */
 
 export type AffKey = 'fragrance' | 'aroma' | 'flavor' | 'aftertaste' | 'acidity' | 'sweetness' | 'mouthfeel' | 'overall';
 
@@ -74,7 +74,7 @@ export const AFF_SECTIONS: { key: AffKey; label: string; step: 1 | 2 | 3; hint: 
   { key: 'overall', label: 'Общее', step: 3, hint: 'Целостное впечатление, в т. ч. баланс и личное предпочтение' },
 ];
 
-/** Шкала «впечатление о качестве», 1–9 (центр 5 — ни высокое, ни низкое) */
+/** "Impression of quality" scale, 1–9 (center 5 — neither high nor low) */
 export const IMPRESSION: Record<number, string> = {
   1: 'Крайне низкое', 2: 'Очень низкое', 3: 'Умеренно низкое', 4: 'Слегка низкое', 5: 'Ни высокое, ни низкое',
   6: 'Слегка высокое', 7: 'Умеренно высокое', 8: 'Очень высокое', 9: 'Крайне высокое',
@@ -90,11 +90,11 @@ export const DEFECT_TYPES: { id: DefectType; label: string }[] = [
 export interface Affective {
   scores: Partial<Record<AffKey, number>>;
   notes: Partial<Record<AffKey, string>>;
-  /** чашки 1–5: качественно отличаются от остальных */
+  /** cups 1–5: qualitatively different from the rest */
   nonUniform: boolean[];
-  /** чашки 1–5: с дефектом */
+  /** cups 1–5: defective */
   defective: boolean[];
-  /** без типа дефекта дефектные чашки не учитываются (104, 5.4.1) */
+  /** without a defect type, defective cups are not counted (104, 5.4.1) */
   defectType: DefectType | '';
 }
 
@@ -102,13 +102,13 @@ export const emptyAffective = (cups = PROTOCOL.cupsAffective): Affective => ({
   scores: {}, notes: {}, nonUniform: Array(cups).fill(false), defective: Array(cups).fill(false), defectType: '',
 });
 
-/** Дефектные чашки считаются, только если указан тип дефекта */
+/** Defective cups count only when a defect type is given */
 export const countedDefects = (a: Affective) => (a.defectType ? a.defective.filter(Boolean).length : 0);
 
 /**
- * Балл по SCA 104, 5.5: S = 0,65625·Σh + 52,75 − 2u − 4d, округление до 0,25.
- * u — неоднородные чашки, d — дефектные (с указанным типом).
- * null — пока заполнены не все восемь разделов.
+ * Score per SCA 104, 5.5: S = 0.65625·Σh + 52.75 − 2u − 4d, rounded to 0.25.
+ * u — non-uniform cups, d — defective cups (with a defect type).
+ * null — until all eight sections are filled in.
  */
 export function affectiveScore(a: Affective): number | null {
   const vals = AFF_SECTIONS.map((s) => a.scores[s.key]);
@@ -120,14 +120,14 @@ export function affectiveScore(a: Affective): number | null {
   return Math.round(raw * 4) / 4;
 }
 
-/** Все дефектные чашки должны быть отмечены и как неоднородные — кроме случая, когда дефектны все 5 (104, 5.4.2) */
+/** Every defective cup must also be marked non-uniform — except when all 5 are defective (104, 5.4.2) */
 export function syncUniformity(a: Affective): Affective {
   const all = a.defective.length > 0 && a.defective.every(Boolean);
   if (all) return a;
   return { ...a, nonUniform: a.nonUniform.map((v, i) => v || a.defective[i]) };
 }
 
-/* ---------- 103: дескриптивная оценка ---------- */
+/* ---------- 103: descriptive assessment ---------- */
 
 export type DescKey = 'fragrance' | 'aroma' | 'flavor' | 'aftertaste' | 'acidity' | 'sweetness' | 'mouthfeel';
 export const DESC_SECTIONS: { key: DescKey; label: string }[] = [
@@ -140,7 +140,7 @@ export const DESC_SECTIONS: { key: DescKey; label: string }[] = [
   { key: 'mouthfeel', label: 'Тактильность' },
 ];
 
-/** Обонятельный лексикон: категория и уточнения. Отмечать можно и категорию, и уточнение. */
+/** Olfactory lexicon: category and refinements. Both the category and a refinement can be checked. */
 export const OLFACTORY: { id: string; label: string; tone: string; children?: { id: string; label: string; tone?: string }[] }[] = [
   { id: 'floral', label: 'Цветочный', tone: 'floral' },
   { id: 'fruity', label: 'Фруктовый', tone: 'fruit', children: [{ id: 'berry', label: 'Ягодный' }, { id: 'dried-fruit', label: 'Сухофрукты' }, { id: 'citrus', label: 'Цитрусовый', tone: 'citrus' }] },
@@ -175,21 +175,21 @@ export const MOUTHFEEL_CATA = [
 ];
 export const MAX_MOUTHFEEL = 2;
 
-/** Визуальная оценка степени обжарки перед дегустацией (103, 6.1a) */
+/** Visual roast level assessment before tasting (103, 6.1a) */
 export const ROAST_LEVELS = ['Очень светлая', 'Светлая', 'Средняя', 'Средне-тёмная', 'Тёмная'];
 
 export interface Descriptive {
   roast: string;
-  intensity: Partial<Record<DescKey, number>>;   // 0–15, целые
-  /** запах (сухой аромат + аромат), до 5 */
+  intensity: Partial<Record<DescKey, number>>;   // 0–15, integers
+  /** fragrance (dry fragrance + aroma), up to 5 */
   olfactory: string[];
-  /** вкус + послевкусие (ретроназально), до 5 */
+  /** flavor + aftertaste (retronasal), up to 5 */
   retronasal: string[];
-  /** основные вкусы, до 2 */
+  /** main tastes, up to 2 */
   mainTastes: string[];
-  /** тактильность, до 2 */
+  /** mouthfeel, up to 2 */
   mouthfeel: string[];
-  /** свободные дескрипторы и заметки по разделам (у кислотности и сладости списков нет) */
+  /** free descriptors and notes per section (acidity and sweetness have no lists) */
   notes: Partial<Record<DescKey, string>>;
 }
 
@@ -197,7 +197,7 @@ export const emptyDescriptive = (): Descriptive => ({
   roast: '', intensity: {}, olfactory: [], retronasal: [], mainTastes: [], mouthfeel: [], notes: {},
 });
 
-/* ---------- 105: внешняя оценка ---------- */
+/* ---------- 105: extrinsic assessment ---------- */
 
 export interface ExtrinsicGroup { id: 'farming' | 'processing' | 'trading' | 'certification' | 'other'; label: string; items: { id: string; label: string; sub?: boolean }[] }
 
@@ -229,7 +229,7 @@ export interface Extrinsic {
   notes: Partial<Record<ExtrinsicGroup['id'], string>>;
 }
 
-/** Предзаполнение по карточке пачки: что известно — отмечено */
+/** Prefill from the pack card: whatever is known gets checked */
 export function extrinsicFromBean(b?: Bean | null): Extrinsic {
   const c = new Set<string>();
   if (b) {
@@ -252,11 +252,11 @@ export function extrinsicFromBean(b?: Bean | null): Extrinsic {
   return { checked: [...c], notes: { farming, processing } };
 }
 
-/* ---------- Сессия каппинга ---------- */
+/* ---------- Cupping session ---------- */
 
 export interface CvaSample {
   id: string;
-  /** номер образца на столе */
+  /** sample number on the table */
   code: string;
   beanId: string | null;
   affective?: Affective;
@@ -281,7 +281,7 @@ export function newSample(id: string, code: string, beanId: string | null, mode:
   };
 }
 
-/** Перестроить образцы под новый режим/число чашек, сохранив уже введённое */
+/** Rebuild samples for a new mode / cup count, keeping what was already entered */
 export function adaptSession(s: CvaSession, mode: CvaMode, cups: number): CvaSession {
   const fit = (arr: boolean[]) => Array.from({ length: cups }, (_, i) => arr[i] ?? false);
   return {
@@ -294,9 +294,9 @@ export function adaptSession(s: CvaSession, mode: CvaMode, cups: number): CvaSes
   };
 }
 
-/* ---------- Общие помощники для оценок ---------- */
+/* ---------- Shared rating helpers ---------- */
 
-/** Балл SCA заварки: CVA (лучший образец) или старый протокол 2004. null — балла нет. */
+/** SCA score of a brew: CVA (best sample) or the old 2004 protocol. null — no score. */
 export function brewSca(b: Pick<Brew, 'cva' | 'cupping'>): number | null {
   if (b.cva) {
     const scores = b.cva.samples.map((s) => (s.affective ? affectiveScore(s.affective) : null)).filter((x): x is number => x !== null);
@@ -305,7 +305,7 @@ export function brewSca(b: Pick<Brew, 'cva' | 'cupping'>): number | null {
   return b.cupping ? cupScore(b.cupping as Cupping).total : null;
 }
 
-/** Балл конкретной пачки внутри сессии */
+/** Score of a specific pack within a session */
 export function beanSca(b: Pick<Brew, 'cva' | 'cupping' | 'beanId'>, beanId: string): number | null {
   if (b.cva) {
     const s = b.cva.samples.filter((x) => x.beanId === beanId).map((x) => (x.affective ? affectiveScore(x.affective) : null)).filter((x): x is number => x !== null);
@@ -314,11 +314,11 @@ export function beanSca(b: Pick<Brew, 'cva' | 'cupping' | 'beanId'>, beanId: str
   return b.beanId === beanId && b.cupping ? cupScore(b.cupping as Cupping).total : null;
 }
 
-/** Пачки, участвующие в заварке/сессии */
+/** Packs used in a brew/session */
 export const brewBeanIds = (b: Pick<Brew, 'cva' | 'beanId'>) =>
   b.cva ? [...new Set(b.cva.samples.map((s) => s.beanId).filter((x): x is string => !!x))] : b.beanId ? [b.beanId] : [];
 
-/** Сколько граммов пачки ушло на заварку: для каппинга — доза × чашки по каждому образцу этой пачки */
+/** Grams of a pack used by a brew: for cupping — dose × cups for each sample of that pack */
 export function gramsFromBean(b: Pick<Brew, 'cva' | 'beanId' | 'dose'>, beanId: string) {
   if (b.cva) return b.cva.samples.filter((s) => s.beanId === beanId).length * b.cva.cups * b.dose;
   return b.beanId === beanId ? b.dose || 0 : 0;

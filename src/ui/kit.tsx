@@ -11,7 +11,7 @@ export function Screen({ title, subtitle, action, children, footer, root = false
   const { back } = useRouter();
   const layout = useLayout();
   const depth = useContext(DepthCtx);
-  // На компьютере стрелка «назад» нужна всегда (карточка справа), у первой карточки — «закрыть»
+  // On desktop the "back" arrow is always needed (right card); the first card gets "close"
   const showBack = !root && (layout === 'desktop' || !platform.hasNativeBack);
   const closeIcon = layout === 'desktop' && depth === 1;
   return (
@@ -96,7 +96,7 @@ export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format
     if (n !== latest.current) { platform.haptic('select'); latest.current = n; onChange(n); }
   };
 
-  // удержание кнопки — быстрый повтор
+  // holding the button — fast repeat
   const startHold = (dir: 1 | -1) => {
     hold.current.held = false;
     hold.current.t = setTimeout(() => {
@@ -172,7 +172,7 @@ export function Segmented<T extends string>({ options, value, onChange }: {
   );
 }
 
-/** Звёзды с половинками: 3,5 — три полные и половина. Нажатие на левую половину звезды ставит «.5». */
+/** Stars with halves: 3.5 — three full and a half. Tapping the left half of a star sets ".5". */
 export function Stars({ value, onChange, size = 28 }: { value: number; onChange?: (v: number) => void; size?: number }) {
   const v = Math.round((value || 0) * 2) / 2;
   const label = `Оценка ${String(v).replace('.', ',')} из 5`;
@@ -200,14 +200,14 @@ export function Stars({ value, onChange, size = 28 }: { value: number; onChange?
   );
 }
 
-/** «4,5» → подпись словами */
+/** "4.5" → a label in words */
 export function ratingLabel(v: number) {
   if (!v) return 'Не оценено';
   const words = ['Не понравилось', 'Так себе', 'Нормально', 'Хорошо', 'Отлично'];
   return `${String(v).replace('.', ',')} из 5 · ${words[Math.max(0, Math.ceil(v) - 1)]}`;
 }
 
-/** Шкала 1–5 точками */
+/** 1–5 scale as dots */
 export function Dots({ value, onChange, left, right, label }: {
   value: number; onChange(v: number): void; left: string; right: string; label: string;
 }) {
@@ -229,7 +229,7 @@ export function Dots({ value, onChange, left, right, label }: {
   );
 }
 
-/** Шкала 1–5 точками. С onChange — можно выбрать (повторное нажатие снимает), без — только показать */
+/** 1–5 scale as dots. With onChange it is selectable (tapping again clears), without — display only */
 export function ScaleDots({ label, value, onChange }: { label: string; value?: number; onChange?(v: number | undefined): void }) {
   const v = value ?? 0;
   return (

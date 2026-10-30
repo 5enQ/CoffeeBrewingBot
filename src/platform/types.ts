@@ -1,26 +1,28 @@
 /**
- * Единый интерфейс платформы.
- * Весь код приложения общается с окружением ТОЛЬКО через него —
- * поэтому одно и то же приложение работает в Telegram, в браузере
- * и внутри нативной обёртки (Capacitor) без изменений.
+ * Single platform interface.
+ * All app code talks to the environment ONLY through it —
+ * so the same app runs in Telegram, in a browser
+ * and inside the native wrapper (Capacitor) unchanged.
  */
 
 export type HapticKind =
-  | 'light' | 'medium' | 'heavy'      // тактильный «удар»
-  | 'success' | 'warning' | 'error'   // уведомление
-  | 'select';                         // смена выбора
+  | 'light' | 'medium' | 'heavy'      // tactile "impact"
+  | 'success' | 'warning' | 'error'   // notification
+  | 'select';                         // selection change
 
 export interface PlatformUser {
   id?: string;
   name?: string;
   username?: string;
+  /** IETF language tag from the platform (Telegram language_code), used to pick the UI locale */
+  languageCode?: string;
 }
 
 export type ShareResult = 'shared' | 'copied' | 'failed';
 
 export interface Platform {
   kind: 'telegram' | 'web' | 'native';
-  /** true — у платформы есть своя кнопка «назад», рисовать её в шапке не нужно */
+  /** true — the platform has its own "back" button, no need to draw one in the header */
   hasNativeBack: boolean;
 
   init(): Promise<void>;
@@ -30,51 +32,51 @@ export interface Platform {
 
   haptic(kind: HapticKind): void;
 
-  /** Асинхронное key-value хранилище (DeviceStorage в Telegram, Preferences в Capacitor, localStorage в вебе) */
+  /** Async key-value storage (DeviceStorage in Telegram, Preferences in Capacitor, localStorage on the web) */
   storage: {
     get(key: string): Promise<string | null>;
     set(key: string, value: string): Promise<void>;
   };
 
-  /** Облачное хранилище аккаунта (Telegram CloudStorage): общее для всех устройств пользователя. null — нет. */
+  /** Account cloud storage (Telegram CloudStorage): shared by all the user's devices. null — none. */
   cloud: CloudKV | null;
 
-  /** Обработчик системной «назад» (null — скрыть кнопку) */
+  /** System "back" handler (null — hide the button) */
   setBackHandler(fn: (() => void) | null): void;
 
   confirm(message: string): Promise<boolean>;
   alert(message: string): Promise<void>;
 
-  /** Не гасить экран (во время таймера) */
+  /** Keep the screen on (during the timer) */
   keepAwake(on: boolean): Promise<void>;
-  /** Спрашивать подтверждение при закрытии (во время заварки) */
+  /** Ask for confirmation on close (while brewing) */
   setClosingConfirmation(on: boolean): void;
 
-  /** Нативный сканер QR, если платформа его даёт (Telegram). Штрихкоды EAN — через камеру в браузере. */
+  /** Native QR scanner if the platform has one (Telegram). EAN barcodes go through the browser camera. */
   scanQr?: (hint: string) => Promise<string | null>;
 
   openLink(url: string): void;
 
-  /** Открыто на компьютере (Telegram Desktop / веб-версия / браузер с мышью) */
+  /** Opened on a computer (Telegram Desktop / web version / browser with a mouse) */
   isDesktopClient(): boolean;
-  /** Развернуть окно мини-приложения на весь экран (Telegram 8.0+) */
+  /** Expand the Mini App window to full screen (Telegram 8.0+) */
   requestFullscreen?: () => void;
 
-  /** Подписанные данные запуска Telegram (initData) — для проверки пользователя на сервере */
+  /** Signed Telegram launch data (initData) — to verify the user on the server */
   initData(): string | null;
 
-  /** Параметр запуска: startapp в Telegram, #r=… в вебе */
+  /** Launch parameter: startapp in Telegram, #r=… on the web */
   startParam(): string | null;
 
-  /** Отправить текст и ссылку: в Telegram — выбор чата, в вебе — системное «Поделиться» или буфер обмена */
+  /** Send text and a link: chat picker in Telegram, system share sheet or clipboard on the web */
   share(text: string, url: string): Promise<ShareResult>;
 
-  /** Отправить заранее подготовленное ботом сообщение (Telegram Bot API 8.0+, WebApp.shareMessage).
-   *  true — отправлено, false — пользователь закрыл окно, null — не сработало (нужен запасной способ) */
+  /** Send a message prepared by the bot in advance (Telegram Bot API 8.0+, WebApp.shareMessage).
+   *  true — sent, false — the user closed the window, null — did not work (a fallback is needed) */
   shareMessage?: (preparedId: string) => Promise<boolean | null>;
 }
 
-/** Облачное key-value: ключи до 128 символов [A-Za-z0-9_-], значения до 4096 символов, до 1024 ключей */
+/** Cloud key-value: keys up to 128 chars [A-Za-z0-9_-], values up to 4096 chars, up to 1024 keys */
 export interface CloudKV {
   getItems(keys: string[]): Promise<Record<string, string>>;
   setItem(key: string, value: string): Promise<void>;

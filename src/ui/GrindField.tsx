@@ -1,7 +1,7 @@
 import { GRIND_RULES, type GrindUnit } from '../data/grind';
 import { Field, Stepper } from './kit';
 
-/** Помол: у ручной кофемолки — щелчки, у электронной — µm (кнопками ±), иначе — текстом, как раньше */
+/** Grind: clicks for a hand grinder, µm for an electronic one (± buttons), otherwise free text as before */
 export function GrindField({ id, unit, value, text, onValue, onText, grinderName }: {
   id: string; unit: GrindUnit | null; value?: number; text: string; grinderName?: string;
   onValue(v: number): void; onText(t: string): void;

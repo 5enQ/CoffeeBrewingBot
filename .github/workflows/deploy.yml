@@ -27,6 +27,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # A failing unit test stops the release before anything is deployed
+      - run: npm test
       # App version is shown in Profile → "О приложении"
       - id: v
         run: |

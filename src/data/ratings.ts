@@ -10,7 +10,7 @@ export interface RatingStats {
 
 export const ratingsEnabled = () => !!RATINGS_API;
 
-/** Telegram id текущего пользователя — им подписаны рецепты для оценок */
+/** Telegram id of the current user — recipes are signed with it for ratings */
 export const myTelegramId = () => (platform.kind === 'telegram' ? platform.user()?.id ?? null : null);
 
 export async function fetchStats(author: string): Promise<RatingStats | null> {
@@ -41,11 +41,11 @@ export async function sendRating(rid: string, author: string, stars: number): Pr
 
 export const newRid = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => (b % 36).toString(36)).join('') + Date.now().toString(36).slice(-4);
 
-/* ---------- Короткие ссылки на рецепты ---------- */
+/* ---------- Short recipe links ---------- */
 
 const shortCache = new Map<string, string>();
 
-/** Сохранить рецепт на сервере и получить короткий id (только из Telegram). null — не получилось. */
+/** Save a recipe on the server and get a short id (Telegram only). null — failed. */
 export async function storeRecipe(code: string): Promise<string | null> {
   if (shortCache.has(code)) return shortCache.get(code)!;
   const initData = platform.initData();
@@ -73,7 +73,7 @@ export async function loadRecipeCode(id: string): Promise<string | null> {
   } catch { return null; }
 }
 
-/** Подготовить оформленное сообщение (жирное название + кнопка) для WebApp.shareMessage. null — не получилось. */
+/** Prepare a formatted message (bold title + button) for WebApp.shareMessage. null — failed. */
 export async function prepareShare(title: string, body: string, url: string): Promise<string | null> {
   const initData = platform.initData();
   if (!RATINGS_API || !initData || !url.startsWith('https://t.me/')) return null;

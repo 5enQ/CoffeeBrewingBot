@@ -7,7 +7,7 @@ import { useBackGuard, useRouter } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { Button, Field, Screen, Section, Stepper } from '../ui/kit';
 
-/** Шаг в редакторе: время и граммы — строками, чтобы удобно печатать */
+/** Step in the editor: time and grams as strings for easy typing */
 interface DraftStep { key: string; at: string; title: string; grams: string; hint: string }
 
 const parseNum = (s: string) => {
@@ -19,7 +19,7 @@ const key = () => `s${++k}`;
 
 interface MethodMeta { icon: IconKey; about: string; createdAt: number }
 
-/** Редактор своего метода — тот же редактор, что у рецепта, плюс значок и описание */
+/** Custom method editor — the same editor as for recipes, plus icon and description */
 export function MethodEdit({ method, isNew }: { method: CustomMethod; isNew: boolean }) {
   const recipe: CustomRecipe = {
     id: method.id, methodId: method.id, name: method.name, dose: method.dose, ratio: method.ratio, temp: method.temp,
@@ -44,7 +44,7 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
     grams: s.to !== undefined ? fmtNum(initWater * s.to, 0) : '', hint: s.hint ?? '',
   })));
   const [error, setError] = useState('');
-  // Изменения считаем сравнением с тем, что открыли: вернули как было — кнопка снова неактивна
+  // Changes are detected by comparing with what was opened: revert — the button is disabled again
   const snap = () => JSON.stringify({ r, totalText, meta, steps: steps.map(({ key: _k, ...st }) => st) });
   const initialSnap = useRef<string | null>(null);
   if (initialSnap.current === null) initialSnap.current = snap();
@@ -98,7 +98,7 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
   const remove = async () => {
     if (!(await platform.confirm(`Удалить ${kind} «${r.name}»? Заварки останутся в дневнике.`))) return;
     if (meta) {
-      // метод не стираем совсем — его помнят старые заварки; просто убираем из списка
+      // the method is not erased completely — old brews remember it; it is only removed from the list
       saveMethod({
         id: r.methodId, name: r.name, about: meta.about, icon: meta.icon, dose: r.dose, ratio: r.ratio, temp: r.temp,
         grind: r.grind, total: r.total, steps: r.steps, tips: [], createdAt: meta.createdAt, archived: true,

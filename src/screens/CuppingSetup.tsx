@@ -17,7 +17,7 @@ import { beanMeta, beanTitle } from './beanUtils';
 
 const NB = ' ';
 
-/** Слепые трёхзначные коды образцов, как на столе каппинга */
+/** Blind three-digit sample codes, as on a cupping table */
 function freshCode(taken: string[]) {
   for (;;) {
     const c = String(100 + Math.floor(Math.random() * 900));
@@ -27,7 +27,7 @@ function freshCode(taken: string[]) {
 
 interface Slot { key: string; code: string; beanId: string | null }
 
-/** Дней с обжарки (по дате на пачке) */
+/** Days since roast (by the date on the pack) */
 function restDays(roastDate: string) {
   if (!roastDate) return null;
   const t = Date.parse(roastDate + 'T12:00:00');
@@ -72,7 +72,7 @@ export function CuppingSetup({ beanId, from }: { beanId?: string | null; from?: 
 
   const ready = slots.length > 0 && slots.every((s) => s.beanId);
 
-  // Сколько граммов нужно от каждой пачки (одна пачка может быть на столе дважды)
+  // Grams needed from each pack (one pack can be on the table twice)
   const need = new Map<string, number>();
   slots.forEach((s) => s.beanId && need.set(s.beanId, (need.get(s.beanId) ?? 0) + perSample));
 

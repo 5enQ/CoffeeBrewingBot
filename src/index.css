@@ -1,17 +1,17 @@
-/* Layout: одна колонка как у нативных списков Telegram; карточки-группы, липкая шапка, нижняя панель вкладок.
-   Цвета — токены. В Telegram их перекрывают цвета темы клиента (platform/telegram.ts). */
+/* Layout: one column like Telegram's native lists; grouped cards, sticky header, bottom tab bar.
+   Colors are tokens. In Telegram they are overridden by the client's theme colors (platform/telegram.ts). */
 :root {
-  --bg: #eff1ec;          /* фон — бумага фильтра с зелёным оттенком */
+  --bg: #eff1ec;          /* background — filter paper with a green tint */
   --card: #ffffff;
   --fg: #1b211d;
   --hint: #6b756e;
-  --accent: #2c6a4c;      /* лист кофейного дерева */
+  --accent: #2c6a4c;      /* coffee tree leaf */
   --accent-fg: #ffffff;
   --link: #2c6a4c;
   --danger: #c0392b;
   --sep: rgba(27, 33, 29, 0.09);
-  --star: #c8862a;        /* карамель */
-  --cherry: #b4283c;      /* спелая ягода */
+  --star: #c8862a;        /* caramel */
+  --cherry: #b4283c;      /* ripe berry */
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-num: "SF Pro Display", -apple-system, "Segoe UI", Roboto, sans-serif;
   --r: 14px;
@@ -37,7 +37,7 @@
 }
 
 :root {
-  /* «пузырёк» активной вкладки — цвета кнопок из темы (в Telegram — из его настроек) */
+  /* active tab "bubble" — button colors from the theme (in Telegram — from its settings) */
   --pill-bg: var(--accent);
   --pill-fg: var(--accent-fg);
   --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
@@ -47,7 +47,7 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); }
-/* ничего не должно сдвигать страницу вбок: иначе в Telegram «едет» вся вкладка вместе с нижним меню */
+/* nothing may shift the page sideways: otherwise in Telegram the whole tab "slides" together with the bottom bar */
 html, body { overflow-x: clip; }
 body {
   font: 16px/1.4 var(--font);
@@ -63,7 +63,7 @@ button { cursor: pointer; }
 [hidden] { display: none !important; }
 .boot { min-height: 100vh; background: var(--bg); }
 
-/* ---------- Экран ---------- */
+/* ---------- Screen ---------- */
 .screen { min-height: 100vh; display: flex; flex-direction: column; }
 .topbar {
   position: sticky; top: var(--inset-top); z-index: 20;
@@ -92,12 +92,12 @@ button { cursor: pointer; }
 }
 .footer-actions { display: flex; gap: 10px; align-items: center; max-width: 640px; margin: 0 auto; }
 
-/* ---------- Вкладки ---------- */
+/* ---------- Tabs ---------- */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 25;
   display: grid; grid-template-columns: repeat(4, 1fr);
   padding: 6px var(--gutter-r) calc(6px + var(--inset-bottom)) var(--gutter-l);
-  /* без размытия фона: в Android WebView оно мигает, пока под меню идут анимации */
+  /* no backdrop blur: in Android WebView it flickers while animations run under the bar */
   background: var(--card);
   border-top: 1px solid var(--sep);
   transform: translateZ(0);
@@ -111,12 +111,12 @@ button { cursor: pointer; }
 .tabbar button.on { color: var(--pill-fg); }
 .tab-pill { position: absolute; left: 0; top: 6px; height: 48px; width: 0; border-radius: 16px; background: var(--pill-bg); pointer-events: none; z-index: 0; opacity: 0; will-change: transform, width; }
 
-/* ---------- Перелистывание вкладок ---------- */
+/* ---------- Tab transitions ---------- */
 .tab-pages { position: relative; }
 .tab-pages.moving { overflow-x: clip; }
 .tab-page.leaving { position: absolute; top: 0; left: 0; right: 0; pointer-events: none; }
 
-/* ---------- Секции и строки ---------- */
+/* ---------- Sections and rows ---------- */
 .section { display: flex; flex-direction: column; gap: 8px; }
 .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 4px; }
 .section h2 {
@@ -140,7 +140,7 @@ button.row:active { background: var(--fg-soft); }
 .group .pad { padding: 12px 14px; }
 .count { background: var(--accent); color: var(--accent-fg); border-radius: 99px; font-size: 12px; font-weight: 700; padding: 1px 8px; }
 
-/* ---------- Поля ---------- */
+/* ---------- Fields ---------- */
 .field { display: flex; align-items: center; gap: 12px; padding: 4px 14px; min-height: 48px; }
 .field-label { flex: 0 0 38%; color: var(--fg); font-size: 15px; }
 .field-input { flex: 1; display: flex; align-items: center; min-width: 0; }
@@ -172,7 +172,7 @@ button.row:active { background: var(--fg-soft); }
 .stepper-ctrl button { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .stepper-ctrl small { color: var(--hint); font-weight: 500; margin-left: 2px; font-size: 13px; }
 
-/* ---------- Кнопки ---------- */
+/* ---------- Buttons ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 50px; padding: 0 18px; border-radius: 13px; border: 0;
@@ -200,7 +200,7 @@ button.row:active { background: var(--fg-soft); }
 .round-btn.accent { background: var(--accent); color: var(--accent-fg); animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 8px var(--accent-soft); } }
 
-/* ---------- Чипсы, сегменты ---------- */
+/* ---------- Chips, segments ---------- */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
   --t: var(--accent);
@@ -227,7 +227,7 @@ button.row:active { background: var(--fg-soft); }
 .tag-rest-ready { background: var(--accent-soft); color: var(--accent); }
 .tag-rest-old { background: color-mix(in srgb, var(--danger) 13%, transparent); color: var(--danger); }
 
-/* ---------- Звёзды, точки ---------- */
+/* ---------- Stars, dots ---------- */
 .stars { display: inline-flex; gap: 2px; color: var(--hint); vertical-align: middle; }
 .stars .on { color: var(--star); }
 .stars button { border: 0; background: none; padding: 2px; color: inherit; display: flex; }
@@ -255,7 +255,7 @@ button.row:active { background: var(--fg-soft); }
 .switch input:checked + span::after { transform: translateX(20px); }
 .switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* ---------- Главная: методы ---------- */
+/* ---------- Home: methods ---------- */
 .method-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .method-grid > .method-card { grid-column: span 2; }
 .method-grid > .method-card.small { grid-column: span 1; justify-content: center; padding: 10px 6px; }
@@ -269,7 +269,7 @@ button.row:active { background: var(--fg-soft); }
 .method-name { font-weight: 650; font-size: 15px; line-height: 1.2; min-width: 0; text-wrap: balance; }
 @media (min-width: 560px) { .method-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 
-/* ---------- Экран метода ---------- */
+/* ---------- Method screen ---------- */
 .method-hero { display: flex; gap: 16px; align-items: center; background: var(--card); border-radius: var(--r); padding: 16px; }
 .method-hero-icon { color: var(--accent); flex-shrink: 0; width: 64px; height: 64px; display: grid; place-items: center; background: var(--accent-soft); border-radius: 18px; }
 .recipe-sum { flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; }
@@ -286,7 +286,7 @@ button.row:active { background: var(--fg-soft); }
 .steps-preview li.done time, .steps-preview li.done b { color: var(--hint); }
 .tips { margin: 0; padding: 12px 14px 12px 32px; color: var(--fg); font-size: 15px; display: flex; flex-direction: column; gap: 6px; }
 
-/* выбор зерна */
+/* bean picker */
 .bean-picker {
   display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x proximity;
   margin: 0 calc(-1 * var(--gutter-r)) 0 calc(-1 * var(--gutter-l)); padding: 2px var(--gutter-r) 6px var(--gutter-l);
@@ -305,7 +305,7 @@ button.row:active { background: var(--fg-soft); }
 .bean-pick.action { width: 96px; align-items: center; justify-content: center; text-align: center; color: var(--accent); background: var(--accent-soft); font-weight: 600; font-size: 13px; gap: 6px; }
 .bean-pick.action span { color: var(--accent) !important; font-size: 13px !important; }
 
-/* ---------- Таймер ---------- */
+/* ---------- Timer ---------- */
 .timer { position: relative; width: min(78vw, 300px); aspect-ratio: 1; max-width: 100%; margin: 4px auto 0; }
 .timer-ring { width: 100%; height: 100%; }
 .ring-track { fill: none; stroke: var(--sep); stroke-width: 10; }
@@ -328,7 +328,7 @@ button.row:active { background: var(--fg-soft); }
 .step-next b { color: var(--fg); font-weight: 600; text-align: right; }
 @media (prefers-reduced-motion: reduce) { .step-now.live, .round-btn.accent { animation: none; } .ring-fill { transition: none; } }
 
-/* ---------- Оценка, вкус ---------- */
+/* ---------- Rating, taste ---------- */
 .rating-card { background: var(--card); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .rating-card > span { color: var(--hint); font-size: 14px; }
 .picked { margin-bottom: 10px; }
@@ -339,7 +339,7 @@ button.row:active { background: var(--fg-soft); }
 .swatch { width: 12px; height: 12px; border-radius: 4px; background: var(--t); flex-shrink: 0; }
 .wheel-group .chips { padding: 0 14px 14px; }
 
-/* ---------- Каппинг ---------- */
+/* ---------- Cupping ---------- */
 .cupping { display: flex; flex-direction: column; gap: 10px; }
 .cupping-total {
   position: sticky; top: calc(var(--inset-top) + 64px); z-index: 5;
@@ -384,7 +384,7 @@ button.row:active { background: var(--fg-soft); }
 }
 .cup.on { border: 2px solid var(--accent); background: var(--accent-soft); color: var(--accent); }
 
-/* ---------- Дневник ---------- */
+/* ---------- Journal ---------- */
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .stats > div { background: var(--card); border-radius: var(--r); padding: 12px; display: flex; flex-direction: column; }
 .stats b { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
@@ -405,7 +405,7 @@ button.row:active { background: var(--fg-soft); }
 .mini-cups em.on { background: var(--accent); border-color: var(--accent); opacity: 1; }
 .note-text { margin: 0; padding: 12px 14px; white-space: pre-wrap; }
 
-/* ---------- Зёрна ---------- */
+/* ---------- Beans ---------- */
 .scan-cta {
   display: flex; align-items: center; gap: 14px; text-align: left; border: 0; border-radius: var(--r);
   background: var(--accent); color: var(--accent-fg); padding: 16px;
@@ -433,7 +433,7 @@ button.row:active { background: var(--fg-soft); }
 .status { margin: 0; padding: 0 4px; font-size: 14px; color: var(--accent); }
 .error { color: var(--danger); font-size: 14px; margin: 0; }
 
-/* ---------- Сканер ---------- */
+/* ---------- Scanner ---------- */
 .scanner { position: fixed; inset: 0; z-index: 50; background: #000; color: #fff; display: flex; flex-direction: column; }
 .scanner-view { position: relative; flex: 1; display: grid; place-items: center; overflow: hidden; padding-top: var(--inset-top); }
 .scanner video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -453,7 +453,7 @@ button.row:active { background: var(--fg-soft); }
 .manual input { flex: 1; min-width: 0; border: 0; border-radius: 13px; background: var(--card); padding: 0 14px; font-size: 18px; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
 .manual .btn { padding: 0 22px; }
 
-/* ---------- Пусто, диалоги ---------- */
+/* ---------- Empty states, dialogs ---------- */
 .empty { text-align: center; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .empty h3 { margin: 0; font-size: 19px; }
 .empty p { margin: 0 0 8px; color: var(--hint); max-width: 300px; }
@@ -463,7 +463,7 @@ button.row:active { background: var(--fg-soft); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 6px; }
 .dialog-actions .btn { min-height: 42px; }
 
-/* ---------- Оборудование ---------- */
+/* ---------- Gear ---------- */
 .gear-picker .gear-row { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: center; padding: 10px 14px; }
 .gear-cat { color: var(--hint); font-size: 13px; line-height: 1.2; }
 .gear-items { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
@@ -475,7 +475,7 @@ button.row:active { background: var(--fg-soft); }
 .gear-block-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px; font-weight: 650; font-size: 15px; }
 .link-btn { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 14px; padding: 4px 0; }
 
-/* ---------- Профиль ---------- */
+/* ---------- Profile ---------- */
 .profile-card { display: flex; gap: 14px; align-items: flex-start; background: var(--card); border-radius: var(--r); padding: 16px; }
 .avatar {
   flex-shrink: 0; width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center;
@@ -488,7 +488,7 @@ button.row:active { background: var(--fg-soft); }
 .profile-handle { color: var(--accent); font-size: 14px; font-weight: 600; }
 .profile-about { border: 0; background: none; resize: none; font-size: 15px; color: var(--hint); padding: 4px 0; width: 100%; }
 
-/* ---------- Карточка рецепта ---------- */
+/* ---------- Recipe card ---------- */
 .recipe-card { display: flex; flex-direction: column; gap: 14px; }
 .recipe-head { display: flex; gap: 14px; align-items: center; background: var(--card); border-radius: var(--r); padding: 16px; }
 .recipe-head h2 { margin: 2px 0; font-size: 22px; line-height: 1.2; letter-spacing: -0.01em; text-wrap: balance; }
@@ -511,7 +511,7 @@ button.row:active { background: var(--fg-soft); }
 .score-inline b { color: var(--cherry); font-size: 18px; font-variant-numeric: tabular-nums; }
 .note-text.flush { padding: 0; }
 
-/* ---------- Значки ---------- */
+/* ---------- Badges ---------- */
 .badge {
   --t: var(--accent);
   display: inline-flex; align-items: center; gap: 8px; text-align: left;
@@ -561,7 +561,7 @@ button.row:active { background: var(--fg-soft); }
 .badge[data-tone="silver"] .badge-medal { background: linear-gradient(135deg, #d5dce1, #8c97a0); }
 .badge[data-tone="bronze"] .badge-medal { background: linear-gradient(135deg, #e0a676, #a5602f); }
 
-/* ---------- Достижения ---------- */
+/* ---------- Achievements ---------- */
 .tracks { display: flex; flex-direction: column; gap: 10px; }
 .track { --t: var(--hint); display: flex; gap: 14px; background: var(--card); border-radius: var(--r); padding: 14px; }
 .track[data-tier="bronze"] { --t: #b06c3b; } .track[data-tier="silver"] { --t: #8c97a0; }
@@ -595,7 +595,7 @@ button.row:active { background: var(--fg-soft); }
 .friends-rating b { color: var(--star); font-size: 20px; font-variant-numeric: tabular-nums; }
 .friends-rating small { color: var(--hint); }
 
-/* ---------- Свои рецепты ---------- */
+/* ---------- Custom recipes ---------- */
 .recipe-picker { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
   margin: 0 calc(-1 * var(--gutter-r)) 0 calc(-1 * var(--gutter-l)); padding: 2px var(--gutter-r) 4px var(--gutter-l); }
 .recipe-picker::-webkit-scrollbar { display: none; }
@@ -620,7 +620,7 @@ button.row:active { background: var(--fg-soft); }
 .pick-method { margin-bottom: 10px; }
 .steps-preview li p { overflow-wrap: anywhere; }
 
-/* ---------- Полка ---------- */
+/* ---------- Shelf ---------- */
 .stock { display: flex; flex-direction: column; gap: 5px; }
 .stock-bar { height: 8px; border-radius: 99px; background: var(--sep); overflow: hidden; }
 .stock-bar i { display: block; height: 100%; width: var(--w); border-radius: 99px; background: var(--accent); transition: width 0.3s; }
@@ -651,7 +651,7 @@ button.row:active { background: var(--fg-soft); }
 .pick-stock.short i { background: var(--danger); }
 .status.warn { color: var(--star); }
 
-/* ---------- Витрина значков, уведомление ---------- */
+/* ---------- Badge showcase, notification ---------- */
 .profile-badges { margin: 6px 0 2px; }
 .badge-pick-list { display: flex; flex-direction: column; gap: 8px; }
 .badge-pick { display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: var(--r); padding: 8px 6px 8px 8px; border: 1.5px solid transparent; }
@@ -674,7 +674,7 @@ button.row:active { background: var(--fg-soft); }
 @keyframes toastIn { from { transform: translate(-50%, -24px) scale(0.9); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 
-/* ---------- Бленд ---------- */
+/* ---------- Blend ---------- */
 .blend-editor { display: flex; flex-direction: column; gap: 8px; }
 .blend-part { background: var(--card); border-radius: var(--r); padding: 8px 6px 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 .blend-part-head { display: flex; align-items: center; gap: 8px; }
@@ -698,7 +698,7 @@ button.row:active { background: var(--fg-soft); }
 .round-btn:disabled { opacity: 0.4; }
 
 /* =========================================================
-   Раскладка для компьютера: меню слева · список · карточка
+   Desktop layout: menu on the left · list · card
    ========================================================= */
 .desk {
   display: grid; grid-template-columns: 232px minmax(340px, 420px) minmax(0, 1fr);
@@ -708,7 +708,7 @@ button.row:active { background: var(--fg-soft); }
 :root[data-layout="desktop"] body { overflow: hidden; }
 :root[data-layout="desktop"] body::before { display: none; }
 
-/* меню */
+/* menu */
 .side {
   display: flex; flex-direction: column; gap: 6px; padding: 18px 12px 14px;
   background: var(--card); border-right: 1px solid var(--sep); min-height: 0;
@@ -730,7 +730,7 @@ button.row:active { background: var(--fg-soft); }
 .side-me b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side-me small { color: var(--hint); font-size: 12px; }
 
-/* колонки */
+/* columns */
 .pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .pane-list { border-right: 1px solid var(--sep); }
 .pane-scroll, .pane-detail > .stack-screen { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
@@ -749,18 +749,18 @@ button.row:active { background: var(--fg-soft); }
 .desk .footer-actions { max-width: 772px; margin: 0; }
 .desk .footer-error { margin: 0 0 8px; text-align: left; }
 
-/* правая колонка без выбора */
+/* right pane without a selection */
 .placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px; text-align: center; color: var(--hint); }
 .placeholder-icon { width: 88px; height: 88px; border-radius: 26px; background: var(--card); color: var(--accent); display: grid; place-items: center; margin-bottom: 8px; }
 .placeholder h2 { margin: 0; font-size: 20px; color: var(--fg); }
 .placeholder p { margin: 0; max-width: 320px; font-size: 14px; }
 
-/* выбранный пункт списка */
+/* selected list item */
 .row.active { background: var(--accent-soft); }
 .row.active .row-label { color: var(--accent); }
 .bean-card.active, .method-card.active { box-shadow: inset 0 0 0 2px var(--accent); }
 
-/* мышь: подсветка при наведении */
+/* mouse: hover highlight */
 @media (hover: hover) and (pointer: fine) {
   button.row:hover { background: var(--fg-soft); }
   .method-card:hover, .bean-card:hover, .bean-pick:hover { box-shadow: inset 0 0 0 1.5px var(--sep); }
@@ -770,7 +770,7 @@ button.row:active { background: var(--fg-soft); }
   .method-card.active:hover, .bean-card.active:hover { box-shadow: inset 0 0 0 2px var(--accent); }
 }
 
-/* шире — больше колонок */
+/* wider — more columns */
 .desk .pane-list .method-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .pane-detail { container-type: inline-size; }
 @container (min-width: 760px) {
@@ -785,16 +785,16 @@ button.row:active { background: var(--fg-soft); }
 .desk .pane-detail .bean-picker { margin: 0; padding: 2px 0 6px; flex-wrap: wrap; overflow: visible; }
 .desk .pane-detail .recipe-picker { margin: 0; padding: 2px 0 4px; flex-wrap: wrap; overflow: visible; }
 
-/* таймер крупнее */
+/* larger timer */
 .desk .timer { width: min(46vh, 380px); }
 .desk .timer-time { font-size: 84px; }
 .kbd-hint { text-align: center; color: var(--hint); font-size: 13px; margin: 4px 0 0; }
 kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid var(--sep); border-bottom-width: 2px; border-radius: 6px; padding: 3px 6px; color: var(--fg); }
 
-/* оверлеи поверх всего окна */
+/* overlays above the whole window */
 .desk ~ .snack { bottom: 28px; }
 
-/* ---------- Выбор рецепта ---------- */
+/* ---------- Recipe picker ---------- */
 .method-hero.compact { padding: 14px; gap: 14px; }
 .method-hero.compact .method-hero-icon { width: 54px; height: 54px; border-radius: 16px; }
 .method-hero.compact p { margin: 0; font-size: 15px; }
@@ -817,11 +817,11 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .icon-pick-btn { aspect-ratio: 1; border: 1.5px solid transparent; border-radius: 14px; background: var(--card); color: var(--accent); display: grid; place-items: center; }
 .icon-pick-btn.on { border-color: var(--accent); background: var(--accent-soft); }
 
-/* числа с единицами не разрываем: «до 700 г», «12:00:00» */
+/* numbers with units do not wrap: "до 700 г", "12:00:00" */
 .pour, .steps-preview time, .recipe-tile-meta span, .stock-text span, .tag, .count, .score-badge b, .pick-stock, .stepper-value, .gear-ul small { white-space: nowrap; }
 .steps-preview.long li { grid-template-columns: 78px 1fr; }
 
-/* ---------- Звёзды с половинками ---------- */
+/* ---------- Half stars ---------- */
 .star-cell { position: relative; display: inline-flex; }
 .star { position: relative; display: inline-block; color: var(--hint); }
 .stars:not(.editable) .star { opacity: 1; }
@@ -834,7 +834,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .star-half:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 4px; }
 .stars.editable { gap: 4px; }
 
-/* ---------- Каппинг: большой тайл и CVA ---------- */
+/* ---------- Cupping: big tile and CVA ---------- */
 .method-card.wide { grid-column: 1 / -1; width: 100%; background: linear-gradient(100deg, color-mix(in srgb, var(--cherry) 13%, var(--card)), var(--card) 70%); }
 .method-card.wide .method-icon { background: color-mix(in srgb, var(--cherry) 16%, transparent); color: var(--cherry); }
 .method-card.wide .method-name { display: flex; flex-direction: column; gap: 2px; }
@@ -948,7 +948,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .sync-usage { padding: 4px 14px 12px; display: grid; gap: 6px; }
 .sync-usage small { color: var(--hint); font-size: 12px; }
 
-/* ---------- Дрипы ---------- */
+/* ---------- Drips ---------- */
 .drip-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
 .drip-item { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 10px 12px; border-radius: var(--r); border: 1.5px solid transparent; background: var(--card); color: inherit; min-width: 0; }
 .drip-item b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -970,7 +970,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .drip-count input { width: 52px; text-align: center; box-sizing: border-box; }
 .drip-count span { color: var(--hint); font-size: 13px; }
 
-/* ---------- Плитки: режим редактирования ---------- */
+/* ---------- Tiles: edit mode ---------- */
 .sr-only { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .aside-actions { display: inline-flex; align-items: center; gap: 4px; }
 .btn.btn-small { padding: 6px 14px; min-height: 0; font-size: 14px; border-radius: 99px; width: auto; }
@@ -983,16 +983,16 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .method-card.edit:active { transform: none; }
 .tile-handle { position: absolute; right: 3px; top: 50%; width: 10px; height: 28px; transform: translateY(-50%); border-radius: 99px; border: 0; padding: 0;
   background: var(--accent); box-shadow: 0 0 0 3px var(--card); cursor: ew-resize; touch-action: none; }
-.tile-handle::before { content: ''; position: absolute; inset: -14px -16px; } /* палец промахивается — делаем зону побольше */
+.tile-handle::before { content: ''; position: absolute; inset: -14px -16px; } /* fingers miss — make the hit area larger */
 .edit-hint { margin: 0 0 10px; }
 
-/* плитки: плавная перестановка и перетаскивание */
+/* tiles: smooth reordering and dragging */
 .method-grid { position: relative; }
 .method-card.edit.dragging { transition: none; }
 .method-card.edit.dropping { transition: transform 0.22s cubic-bezier(0.3, 0.7, 0.2, 1); }
 .icon-btn.invisible { visibility: hidden; }
 
-/* ---------- Профиль от обжарщика ---------- */
+/* ---------- Roaster profile ---------- */
 .scales { display: grid; }
 .scale-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--sep); }
 .scales .scale-row:first-child { border-top: 0; }
@@ -1006,8 +1006,8 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .scale-row.editable .scale-dots button.on { background: transparent; }
 .scale-row.editable .scale-dots button.on::after { background: var(--fg); border-color: var(--fg); }
 
-/* ---------- Остаток зёрнами и дрипами ---------- */
-/* цвета — из темы интерфейса (в Telegram — из его настроек): закрашенные как кнопки, пустые как подсказки */
+/* ---------- Stock as beans and drips ---------- */
+/* colors from the interface theme (in Telegram — from its settings): filled like buttons, empty like hints */
 :root { --bean: var(--accent); --bean-empty: color-mix(in srgb, var(--hint) 28%, transparent); }
 .stock-icons { display: flex; flex-wrap: wrap; gap: 3px; }
 .stock-ico { position: relative; width: 18px; height: 18px; display: inline-block; flex-shrink: 0; }

@@ -1,17 +1,17 @@
 /**
- * Brewbook — сервер оценок рецептов.
+ * Brewbook — recipe ratings server.
  *
- * POST /rate   { initData, rid, author, stars }  — оценить рецепт (только из Telegram, 1 оценка на человека)
- * GET  /stats?author=<telegram id>                — сколько оценок у автора, средняя, по рецептам
- * POST /recipes { initData, code }               — сохранить рецепт для короткой ссылки (только из Telegram)
- * GET  /recipes/<id>                             — получить рецепт по короткой ссылке
- * POST /share { initData, title, body, url }     — подготовить красивое сообщение для WebApp.shareMessage
- * GET  /version                                 — версия сервера (1.N) и когда он выложен
- * GET  /lookup?url=…&code=…                       — кофе по QR или штрихкоду: из общего каталога или со страницы обжарщика
- * POST /catalog { initData, url, code, coffee }  — пользователь сохранил пачку: дополнить или подтвердить лот в каталоге
+ * POST /rate   { initData, rid, author, stars }  — rate a recipe (Telegram only, 1 rating per person)
+ * GET  /stats?author=<telegram id>                — the author's rating count, average, per recipe
+ * POST /recipes { initData, code }               — save a recipe for a short link (Telegram only)
+ * GET  /recipes/<id>                             — get a recipe by short link
+ * POST /share { initData, title, body, url }     — prepare a formatted message for WebApp.shareMessage
+ * GET  /version                                 — server version (X.Y.Z) and when it was deployed
+ * GET  /lookup?url=…&code=…                       — coffee by QR or barcode: from the shared catalog or the roaster page
+ * POST /catalog { initData, url, code, coffee }  — a user saved a pack: fill in or confirm the catalog lot
  *
- * Подлинность пользователя проверяется подписью initData (HMAC с токеном бота),
- * поэтому подделать оценку «от чужого имени» нельзя, а повторная оценка заменяет прежнюю.
+ * The user is authenticated by the initData signature (HMAC with the bot token),
+ * so a rating "on someone else's behalf" cannot be forged, and a repeated rating replaces the previous one.
  */
 import { DurableObject } from 'cloudflare:workers';
 import { CoffeeCatalog, cleanCoffee, keysFor } from './catalog';
@@ -25,7 +25,7 @@ export interface Env {
   CATALOG: DurableObjectNamespace<CoffeeCatalog>;
   BOT_TOKEN: string;
   ALLOWED_ORIGIN: string;
-  /** версия сервера «1.N» и время сборки — подставляются при выкладке (GitHub Actions) */
+  /** server version "X.Y.Z" and build time — set on deploy (GitHub Actions) */
   VERSION?: string;
   BUILT_AT?: string;
 }
@@ -38,7 +38,7 @@ async function hmac(key: ArrayBuffer | Uint8Array, data: string) {
 }
 const hex = (b: Uint8Array) => [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
 
-/** Проверка initData по документации Telegram; возвращает пользователя или null */
+/** Verify initData per the Telegram docs; returns the user or null */
 export async function verifyInitData(initData: string, botToken: string, maxAgeSec = 86_400) {
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
@@ -87,7 +87,7 @@ export class AuthorRatings extends DurableObject<Env> {
   }
 }
 
-/** Рецепты для коротких ссылок: в ссылку Telegram помещается только 512 символов */
+/** Recipes for short links: a Telegram link holds only 512 chars */
 export class RecipeStore extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -96,7 +96,7 @@ export class RecipeStore extends DurableObject<Env> {
   }
 
   put(code: string, author: string) {
-    // Тот же рецепт от того же автора — та же ссылка
+    // Same recipe from the same author — same link
     const same = this.ctx.storage.sql.exec<{ id: string }>('SELECT id FROM recipes WHERE code = ? AND author = ? LIMIT 1', code, author).toArray()[0];
     if (same) return same.id;
     const abc = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -190,13 +190,13 @@ export default {
       const stale = found && found.source === 'page' && found.confirms === 0 && (found.pv ?? 0) < PARSER_VERSION && pageUrl;
       if (found && !stale) return json(publicFound(found), 200, h);
       if (!pageUrl) return json({ source: 'none' }, 200, h);
-      // в каталоге нет — открываем страницу обжарщика
+      // not in the catalog — open the roaster page
       const page = await fetchPage(pageUrl);
       if (!page) return json({ source: 'none' }, 200, h);
       keys = [...new Set([...keys, ...keysFor(page.url, null)])];
       const coffee = cleanCoffee(parsePage(page.html, page.url));
       if (found) {
-        // лот разобран старой версией и никем не подтверждён — обновляем
+        // lot parsed by an old parser version and not confirmed by anyone — refresh it
         const fresh = await catalog.refreshPage(found.id, coffee, PARSER_VERSION);
         return json({ ...publicFound(fresh ?? found), source: 'page' }, 200, h);
       }
@@ -238,7 +238,7 @@ export default {
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-/** savePreparedInlineMessage: ссылка, пустая строка, жирное название, рецепт и кнопка «Открыть рецепт» */
+/** savePreparedInlineMessage: link, empty line, bold title, recipe and an "Открыть рецепт" button */
 async function prepareMessage(token: string, userId: string, title: string, text: string, link: string) {
   const html = `${esc(link)}\n\n<b>${esc(title)}</b>\n${esc(text)}`;
   const res = await fetch(`https://api.telegram.org/bot${token}/savePreparedInlineMessage`, {
@@ -262,12 +262,12 @@ async function prepareMessage(token: string, userId: string, title: string, text
   return j.ok ? j.result!.id : null;
 }
 
-/** Версия разбора страниц: увеличить, когда разбор научился новому, — неподтверждённые лоты обновятся при следующем скане */
+/** Page parser version: bump when the parser learns something new — unconfirmed lots refresh on the next scan */
 const PARSER_VERSION = 2;
 
 const publicFound = (f: { id: string; coffee: unknown; confirms: number }) => ({ source: 'catalog', id: f.id, coffee: f.coffee, confirms: f.confirms });
 
-/** Открыть страницу обжарщика: только https/http, не больше 3 МБ и 8 секунд */
+/** Fetch a roaster page: https/http only, at most 3 MB and 8 seconds */
 async function fetchPage(raw: string): Promise<{ html: string; url: string } | null> {
   let u: URL;
   try { u = new URL(raw); } catch { return null; }

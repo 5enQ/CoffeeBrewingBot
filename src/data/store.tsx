@@ -16,49 +16,49 @@ import type { CvaSession } from './cva';
 
 export interface Bean {
   id: string;
-  name: string;        // название лота
+  name: string;        // lot name
   roaster: string;
   country: string;
   region: string;
-  farm: string;        // ферма / станция
+  farm: string;        // farm / washing station
   producer: string;
-  variety: string;     // сорт
-  process: string;     // обработка
+  variety: string;     // variety
+  process: string;     // process
   altitude: string;
   harvest: string;
   roastLevel: string;
   roastDate: string;   // YYYY-MM-DD
-  weight: string;      // граммы в пачке
+  weight: string;      // grams in the pack
   barcode: string;
   link: string;
-  packNotes: string;   // дескрипторы обжарщика
+  packNotes: string;   // roaster's descriptors
   comment: string;
   createdAt: number;
-  /** бленд из нескольких зёрен (иначе — моносорт) */
+  /** blend of several coffees (otherwise single origin) */
   isBlend?: boolean;
-  /** состав бленда */
+  /** blend components */
   parts?: BlendPart[];
-  /** ручная поправка остатка, г (просыпал, отдал другу, взвесил) */
+  /** manual stock correction, g (spilled, gave away, weighed) */
   adjust?: number;
-  /** пачка допита (убрана с полки) */
+  /** pack finished (removed from the shelf) */
   finished?: boolean;
   sample?: boolean;
-  /** 'drip' — коробка дрип-пакетов (иначе — пачка зерна) */
+  /** 'drip' — a box of drip bags (otherwise a pack of beans) */
   kind?: 'beans' | 'drip';
-  /** дрипов в коробке (если все одинаковые) */
+  /** drips in the box (when all are the same) */
   dripCount?: number;
-  /** кофе в одном дрипе, г */
+  /** coffee in one drip bag, g */
   dripWeight?: number;
-  /** в коробке разные дрипы — каждый описан в drips */
+  /** the box has different drips — each one described in drips */
   assorted?: boolean;
   drips?: DripItem[];
-  /** профиль от обжарщика: шкалы 1–5 (кислотность, сладость, горечь, плотность, ферментация) */
+  /** roaster profile: 1–5 scales (acidity, sweetness, bitterness, body, fermentation) */
   scales?: Scales;
-  /** id лота в общем каталоге кофе (для глобального рейтинга) */
+  /** lot id in the shared coffee catalog (for the global rating) */
   catalogId?: string;
 }
 
-/** Дрип в коробке-ассорти: своё происхождение и сколько штук */
+/** Drip in an assorted box: its own origin and count */
 export interface DripItem {
   id: string;
   name: string;
@@ -68,7 +68,7 @@ export interface DripItem {
   variety: string;
   process: string;
   roastLevel: string;
-  /** дескрипторы с упаковки */
+  /** descriptors from the package */
   notes: string;
   count: number;
 }
@@ -76,10 +76,10 @@ export interface DripItem {
 export const isDrip = (b?: Pick<Bean, 'kind'> | null) => b?.kind === 'drip';
 export const newDripItem = (): DripItem => ({ id: uid(), name: '', country: '', region: '', farm: '', variety: '', process: '', roastLevel: '', notes: '', count: 1 });
 
-/** Компонент бленда */
+/** Blend component */
 export interface BlendPart {
   id: string;
-  /** доля в %, строкой — как ввели */
+  /** share in %, as a string — as entered */
   share: string;
   country: string;
   region: string;
@@ -101,31 +101,31 @@ export interface Brew {
   methodId: string;
   beanId: string | null;
   dose: number;
-  water: number;     // вода или выход (для эспрессо)
+  water: number;     // water or yield (for espresso)
   temp: number;
   grind: string;
-  /** помол числом, если кофемолка ручная (щелчки) или электронная (µm); grind — то же текстом */
+  /** grind as a number for a hand (clicks) or electronic (µm) grinder; grind holds the same as text */
   grindValue?: number;
   grindUnit?: GrindUnit;
-  time: number;      // фактическое время, сек
+  time: number;      // actual time, s
   rating: number;    // 0..5
   taste: QuickTaste;
   descriptors: string[];
   notes: string;
   cupping: Cupping | null;
-  /** каппинг по SCA CVA: образцы, формы, режим */
+  /** SCA CVA cupping: samples, forms, mode */
   cva?: CvaSession;
-  /** своя схема проливов (если варили не по стандартному рецепту) */
+  /** own pour schedule (if not brewed by the standard recipe) */
   plan?: BrewPlan;
-  /** снимок оборудования, которым варили */
+  /** snapshot of the gear used */
   gear?: GearRef[];
-  /** автор, если рецепт пришёл от друга */
+  /** author, if the recipe came from a friend */
   author?: Author;
-  /** id рецепта для оценок: свой — при первой отправке, чужой — из присланной ссылки */
+  /** recipe id for ratings: own — on first share, others' — from the received link */
   shareId?: string;
-  /** telegram id автора (для чужих рецептов) — куда уходят оценки */
+  /** author's telegram id (for others' recipes) — where ratings go */
   authorId?: string;
-  /** какой дрип из коробки-ассорти заварили */
+  /** which drip from an assorted box was brewed */
   dripId?: string;
   sample?: boolean;
 }
@@ -135,24 +135,24 @@ export interface Author { name: string; username?: string; badges?: BadgeLite[] 
 export interface Profile {
   name: string;
   about: string;
-  /** username в Telegram без @ */
+  /** Telegram username without @ */
   telegram: string;
   badges: Badge[];
-  /** настройки «Поделиться» */
+  /** "Share" settings */
   shareTelegram: boolean;
   shareBadges: boolean;
-  /** отправлять ли свои заметки к заварке */
+  /** whether to send own brew notes */
   shareNotes?: boolean;
-  /** вид интерфейса: авто, компьютер, телефон */
+  /** interface layout: auto, desktop, phone */
   layout?: 'auto' | 'desktop' | 'mobile';
-  /** значки на витрине профиля (до 3): id своего значка или 'ach:<id>' достижения. undefined — выбрать автоматически */
+  /** profile showcase badges (up to 3): own badge id or 'ach:<id>' for an achievement. undefined — choose automatically */
   featured?: string[];
-  /** оценки моих рецептов с сервера (кэш) */
+  /** ratings of my recipes from the server (cache) */
   ratingStats?: RatingStats;
 }
 
 export interface Recipe { dose: number; ratio: number; temp: number; grind: string; gear?: string[]; recipeId?: string;
-  /** последний помол числом для каждой кофемолки: «id:clicks» / «id:um» → значение */
+  /** last numeric grind per grinder: "id:clicks" / "id:um" → value */
   grindBy?: Record<string, number> }
 
 export interface TileLayout { order: string[]; size: Record<string, 1 | 2> }
@@ -161,33 +161,33 @@ export interface DB {
   v: 1;
   beans: Bean[];
   brews: Brew[];
-  /** Последние параметры по методу — чтобы не вводить каждый раз */
+  /** Last parameters per method — so they need not be entered every time */
   recipes: Record<string, Recipe>;
   gear: Gear[];
   profile: Profile;
   seeded?: boolean;
   gearSeeded?: boolean;
-  /** свои рецепты */
+  /** custom recipes */
   custom?: CustomRecipe[];
-  /** свои методы заваривания */
+  /** custom brew methods */
   customMethods?: CustomMethod[];
-  /** достижения, о которых уже показали уведомление */
+  /** achievements already announced */
   seenAch?: string[];
-  /** мои оценки чужих рецептов: shareId → звёзды */
+  /** my ratings of others' recipes: shareId → stars */
   rated?: Record<string, number>;
-  /** закреплённые методы — наверху списка, в порядке закрепления */
+  /** pinned methods — at the top of the list, in pin order */
   pinned?: string[];
-  /** раскладка плиток методов на главной: порядок и размер (1 — только значок, 2 — значок с названием) */
+  /** home method tile layout: order and size (1 — icon only, 2 — icon with name) */
   tiles?: TileLayout;
-  /** когда менялась запись (для синхронизации): «b:id» заварка, «k:id» пачка, «g:id» оборудование,
-   *  «c:id» свой рецепт, «x:id» свой метод, «r:метод» последние параметры, «p» профиль, «n» закрепы. Мс. */
+  /** when a record changed (for sync): "b:id" brew, "k:id" pack, "g:id" gear,
+   *  "c:id" custom recipe, "x:id" custom method, "r:method" last parameters, "p" profile, "n" pins. Ms. */
   mod?: Record<string, number>;
-  /** когда запись удалили — чтобы удаление дошло до других устройств. Мс. */
+  /** when a record was deleted — so the deletion reaches other devices. Ms. */
   del?: Record<string, number>;
 }
 
-/** Отметить изменённые и удалённые записи */
-/** Подставить значения по умолчанию в данные из резервной копии (в Markdown пустые поля не пишутся) */
+/** Stamp changed and deleted records */
+/** Fill defaults into backup data (empty fields are not written in Markdown) */
 function normalizeBackup(data: { beans: Partial<Bean>[]; brews: Partial<Brew>[]; gear?: Partial<Gear>[]; custom?: Partial<CustomRecipe>[]; customMethods?: Partial<CustomMethod>[]; profile?: Partial<Profile> }) {
   const bean0 = emptyBean();
   return {
@@ -327,14 +327,14 @@ interface StoreApi {
   seenAch: string[] | null;
   pinned: string[];
   tiles: TileLayout;
-  /** сохранить раскладку плиток (и закрепы — они идут первыми) */
+  /** save the tile layout (and pins — they come first) */
   saveTiles(t: TileLayout, pinned: string[]): void;
   togglePin(methodId: string): void;
   markSeen(keys: string[]): void;
   saveCustom(r: CustomRecipe): void;
   deleteCustom(id: string): void;
   saveBean(b: Bean): void;
-  /** дописать поля пачки (например, id лота из общего каталога) */
+  /** add fields to a pack (e.g. the lot id from the shared catalog) */
   patchBean(id: string, patch: Partial<Bean>): void;
   deleteBean(id: string): void;
   saveBrew(b: Brew): void;
@@ -343,10 +343,10 @@ interface StoreApi {
   removeSamples(): void;
   exportJson(): string;
   exportMarkdown(): string;
-  /** Markdown или JSON */
+  /** Markdown or JSON */
   importBackup(text: string): void;
   hasSamples: boolean;
-  /** синхронизация между устройствами (Telegram CloudStorage) */
+  /** sync between devices (Telegram CloudStorage) */
   sync: SyncStatus;
   syncNow(): void;
 }
@@ -377,7 +377,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const base = dbRef.current;
           const merged = merge(base, got.remote);
           dbRef.current = merged;
-          // если пользователь что-то поменял за это время — сливаем поверх его правок
+          // if the user changed something meanwhile — merge on top of their edits
           setDb((d) => (d === base ? merged : merge(d, got.remote)));
           await s.applied(got.names);
           await new Promise((res) => setTimeout(res, 0));
@@ -404,11 +404,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!next.seeded) next = { ...next, ...seed(), seeded: true };
       if (!next.gearSeeded) next = { ...next, gear: [...next.gear, ...(next.beans.some((b) => b.sample) ? seedGear() : [])], gearSeeded: true };
       next = { ...next, profile: { ...EMPTY.profile, ...next.profile } };
-      // старые подписи степени обжарки: «Светлая (фильтр)» → «Светлая»
+      // old roast level labels: "Светлая (фильтр)" → "Светлая"
       next = { ...next, beans: next.beans.map((b) => (/ \(.+\)$/.test(b.roastLevel ?? '') ? { ...b, roastLevel: b.roastLevel.replace(/ \(.+\)$/, '') } : b)) };
-      // известные ручные кофемолки (Comandante, 1Zpresso, Timemore C…) — сразу с помолом в щелчках
+      // known hand grinders (Comandante, 1Zpresso, Timemore C…) — grind in clicks right away
       next = { ...next, gear: next.gear.map((g) => (g.cat === 'grinder' && !g.grindType && guessGrindType(g.name) ? { ...g, grindType: guessGrindType(g.name) } : g)) };
-      // «Карбоническая мацерация» теперь называется «Углекислая мацерация»
+      // "Карбоническая мацерация" is now called "Углекислая мацерация"
       const carb = (s?: string) => (s ?? '').replace(/карбонич\S*\s+мацерац\S*/gi, 'Углекислая мацерация');
       next = { ...next, beans: next.beans.map((b) => (/карбонич/i.test(JSON.stringify([b.process, b.parts, b.drips]))
         ? { ...b, process: carb(b.process), parts: b.parts?.map((p) => ({ ...p, process: carb(p.process) })), drips: b.drips?.map((d) => ({ ...d, process: carb(d.process) })) }
@@ -433,12 +433,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loaded.current) return;
     const t = setTimeout(() => { platform.storage.set(KEY, JSON.stringify(db)); }, 250);
-    // в облако — чуть позже, чтобы серия правок ушла одним пакетом
+    // to the cloud a bit later, so a series of edits goes in one batch
     const c = syncer.current ? setTimeout(runSync, 2000) : undefined;
     return () => { clearTimeout(t); if (c) clearTimeout(c); };
   }, [db, runSync]);
 
-  // вернулись в приложение — забираем правки с других устройств; уходим — отправляем свои
+  // back in the app — pull edits from other devices; leaving — push ours
   useEffect(() => {
     const onVis = () => { if (syncer.current) runSync(); };
     document.addEventListener('visibilitychange', onVis);
@@ -465,7 +465,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const saveGear = useCallback((g: Gear) => setDb((d) => ({ ...d, gear: d.gear.some((x) => x.id === g.id) ? d.gear.map((x) => (x.id === g.id ? g : x)) : [...d.gear, g], ...stamp(d, ['g:' + g.id]) })), []);
   const deleteGear = useCallback((id: string) => setDb((d) => ({ ...d, gear: d.gear.filter((g) => g.id !== id), ...stamp(d, [], ['g:' + id]) })), []);
   const saveProfile = useCallback((profile: Profile) => setDb((d) => {
-    // вид интерфейса — настройка конкретного устройства, не синхронизируется
+    // interface layout is a per-device setting, not synced
     const onlyLayout = JSON.stringify({ ...d.profile, layout: undefined }) === JSON.stringify({ ...profile, layout: undefined });
     return { ...d, profile, ...(onlyLayout ? {} : stamp(d, ['p'])) };
   }), []);
@@ -515,7 +515,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
   }), [db, ready, saveBean, patchBean, deleteBean, saveBrew, deleteBrew, saveRecipe, removeSamples, saveGear, deleteGear, saveProfile, saveRated, setRatingStats, saveCustom, deleteCustom, markSeen, saveMethod, togglePin, saveTiles, sync, runSync]);
 
-  // Свои методы должны быть известны methodById() до отрисовки экранов
+  // Custom methods must be known to methodById() before screens render
   setCustomMethods((db.customMethods ?? []).map(toMethod));
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;

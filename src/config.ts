@@ -1,17 +1,17 @@
 /**
- * Настройки ссылок «Поделиться».
+ * Share link settings.
  *
- * TELEGRAM_BOT — username бота без @ (например, 'CoffeeBrewingBot').
- * TELEGRAM_APP — короткое имя из /newapp (если создавали). Пусто — используется
- *   «главное» мини-приложение бота: BotFather → Bot Settings → Configure Mini App.
- * Если бот не указан, ссылка ведёт на веб-версию.
+ * TELEGRAM_BOT — bot username without @ (e.g. 'CoffeeBrewingBot').
+ * TELEGRAM_APP — short name from /newapp (if created). Empty — the bot's
+ *   main Mini App is used: BotFather → Bot Settings → Configure Mini App.
+ * Without a bot the link leads to the web version.
  */
 export const TELEGRAM_BOT = 'CoffeeBrewingBot';
 export const TELEGRAM_APP = '';
 export const WEB_URL = 'https://5enq.github.io/CoffeeBrewingBot/';
 
 /**
- * Адрес сервера оценок (папка worker/, Cloudflare Workers), например
- * 'https://brewbook-ratings.<ваш-поддомен>.workers.dev'. Пусто — оценки друзей выключены.
+ * Ratings server address (worker/ folder, Cloudflare Workers), e.g.
+ * 'https://brewbook-ratings.<your-subdomain>.workers.dev'. Empty — friends' ratings are off.
  */
 export const RATINGS_API = 'https://brewbook-ratings.brewbook.workers.dev';

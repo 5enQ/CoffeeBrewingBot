@@ -1,13 +1,13 @@
 /**
- * Компактный формат для облака (Telegram CloudStorage: до 1024 ключей по 4096 символов).
+ * Compact cloud format (Telegram CloudStorage: up to 1024 keys of 4096 chars).
  *
- * Что делаем, чтобы занимать меньше места:
- *  1. Не храним пустое и значения по умолчанию — при чтении они подставляются обратно.
- *  2. Оборудование в заварке — только id; удалённые вещи живут в «архиве» в метаданных.
- *  3. Каждая корзина сжимается deflate и кодируется base64url.
- *  4. Дескрипторы из словаря — номером, отметки пяти чашек — битовой маской, даты — в секундах.
- *  5. Не отправляем демо-записи, кэш оценок с сервера и настройки конкретного устройства.
- *  6. Заварки лежат по корзинам-месяцам: меняется одна заварка — отправляется только её месяц.
+ * How we save space:
+ *  1. Empty and default values are not stored — they are filled back in on read.
+ *  2. Brew gear is stored as an id only; deleted items live in the metadata "archive".
+ *  3. Each bucket is deflated and base64url-encoded.
+ *  4. Dictionary descriptors as indices, five-cup marks as bitmasks, dates in seconds.
+ *  5. Sample records, the ratings cache and per-device settings are not uploaded.
+ *  6. Brews are bucketed by month: one changed brew uploads only its month.
  */
 import { hash } from './codec';
 import { FLAVOR_WHEEL, emptyCupping, type Cupping } from './cupping';
@@ -17,20 +17,20 @@ import { EMPTY, type Bean, type Brew, type DB } from './store';
 
 export const FORMAT = 1;
 
-/* ---------- словарь дескрипторов ---------- */
-// ВАЖНО: только дописывать в конец. Номер — это позиция, переставлять нельзя, иначе старые записи прочитаются неверно.
+/* ---------- descriptor dictionary ---------- */
+// IMPORTANT: only append. The index is the position; reordering breaks reading old records.
 const DICT: string[] = FLAVOR_WHEEL.flatMap((g) => g.items);
 const DICT_INDEX = new Map(DICT.map((d, i) => [d, i]));
 const packDesc = (list: string[]) => list.map((d) => DICT_INDEX.get(d) ?? d);
 const unpackDesc = (list: (string | number)[] | undefined) => (list ?? []).map((d) => (typeof d === 'number' ? DICT[d] ?? '' : d)).filter(Boolean);
 
-/* ---------- битовые маски ---------- */
+/* ---------- bitmasks ---------- */
 const bits = (a: boolean[]) => a.reduce((m, v, i) => (v ? m | (1 << i) : m), 0);
 const unbits = (m: number | undefined, n: number) => Array.from({ length: n }, (_, i) => !!((m ?? 0) & (1 << i)));
 
-/* ---------- 1. без пустого ---------- */
+/* ---------- 1. no empty values ---------- */
 const KEEP_AS_IS = new Set(['author', 'plan', 'parts', 'drips']);
-/** Убирает null, undefined, '', [] и {} (рекурсивно). Ноль и false оставляет — они что-то значат. */
+/** Removes null, undefined, '', [] and {} (recursively). Keeps zero and false — they mean something. */
 export function strip<T>(v: T): T {
   if (Array.isArray(v)) return v.map(strip) as T;
   if (v && typeof v === 'object') {
@@ -54,7 +54,7 @@ const sameTaste = (t: Brew['taste']) => Object.entries(DEFAULT_TASTE).every(([k,
 
 type Packed = Record<string, unknown>;
 
-/* ---------- заварка ---------- */
+/* ---------- brew ---------- */
 
 function packCva(s: CvaSession): Packed {
   return {
@@ -97,9 +97,9 @@ function unpackCupping(p: Packed): Cupping {
   } as Cupping;
 }
 
-/* ---------- оборудование заварки ---------- */
-// В заварке хранится снимок оборудования на момент записи. Если снимок совпадает с вещью в списке — пишем только её id.
-// Если вещь с тех пор переименовали или удалили — пишем ключ версии «id~хеш», а сам снимок кладём в архив метаданных.
+/* ---------- brew gear ---------- */
+// A brew keeps a snapshot of the gear at the time of recording. If the snapshot matches the item in the list, only its id is written.
+// If the item was renamed or deleted since, a version key "id~hash" is written and the snapshot goes to the metadata archive.
 const snap = (g: GearRef): GearRef => ({ id: g.id, cat: g.cat, name: g.name, ...(g.details ? { details: g.details } : {}) });
 const sameGear = (a: GearRef, b: GearRef) => a.cat === b.cat && a.name === b.name && (a.details ?? '') === (b.details ?? '');
 let current = new Map<string, GearRef>();
@@ -149,7 +149,7 @@ export function unpackBrew(p: Packed, gearById: Map<string, GearRef>): { brew: B
   return { brew, u: ms(u), missing };
 }
 
-/* ---------- пачка ---------- */
+/* ---------- pack ---------- */
 
 const BEAN_TEXT = ['name', 'roaster', 'country', 'region', 'farm', 'producer', 'variety', 'process', 'altitude', 'harvest',
   'roastLevel', 'roastDate', 'weight', 'barcode', 'link', 'packNotes', 'comment'] as const;
@@ -165,9 +165,9 @@ export function unpackBean(p: Packed): { bean: Bean; u: number } {
   return { bean, u: ms(u) };
 }
 
-/* ---------- корзины ---------- */
+/* ---------- buckets ---------- */
 
-/** JSON с ключами по алфавиту: одинаковые данные на любом устройстве дают одинаковую строку и хеш */
+/** JSON with sorted keys: the same data gives the same string and hash on any device */
 export function canonical(v: unknown): string {
   return JSON.stringify(v, (_k, x) => (x && typeof x === 'object' && !Array.isArray(x)
     ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, (x as Record<string, unknown>)[k]]))
@@ -179,13 +179,13 @@ export const monthOf = (date: number) => {
   return `b${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 };
 
-/** Метаданные: всё, кроме пачек и заварок */
+/** Metadata: everything except packs and brews */
 export interface Meta {
   f: number;
   profile: Partial<DB['profile']>;
   recipes: DB['recipes'];
   gear: DB['gear'];
-  /** снимки оборудования из заварок, которые отличаются от текущего списка (переименовали или удалили): ключ версии → снимок */
+  /** gear snapshots from brews that differ from the current list (renamed or deleted): version key → snapshot */
   archive: Record<string, GearRef>;
   custom: NonNullable<DB['custom']>;
   methods: NonNullable<DB['customMethods']>;
@@ -193,25 +193,25 @@ export interface Meta {
   tiles?: DB['tiles'];
   rated: Record<string, number>;
   seen: string[];
-  /** отметки времени записей из метаданных, сек */
+  /** timestamps of metadata records, s */
   s: Record<string, number>;
-  /** удалённые записи, сек */
+  /** deleted records, s */
   d: Record<string, number>;
 }
 
 const TOMBSTONE_TTL = 180 * 86_400_000;
 
-/** DB → корзины в виде JSON-строк (до сжатия). Демо-записи и кэш не попадают. */
+/** DB → buckets as JSON strings (before compression). Sample records and caches are left out. */
 export function toBuckets(db: DB): Record<string, string> {
   const mod = db.mod ?? {};
   const realBrews = db.brews.filter((b) => !b.sample);
-  // пачку-пример всё же сохраняем, если ею сварена настоящая заварка
+  // a sample pack is still saved if a real brew used it
   const usedBeans = new Set(realBrews.map((b) => b.beanId).concat(realBrews.flatMap((b) => b.cva?.samples.map((s) => s.beanId) ?? [])));
   const beans = db.beans.filter((b) => !b.sample || usedBeans.has(b.id));
   const gear = db.gear.filter((g) => !g.sample);
   current = new Map(gear.map((g) => [g.id, snap(g)]));
   archiveOut = new Map();
-  // заварки упаковываем первыми — по ходу собирается архив снимков
+  // brews are packed first — the snapshot archive is collected along the way
   const months = new Map<string, Packed[]>();
   for (const b of realBrews) {
     const key = monthOf(b.date);
@@ -246,12 +246,12 @@ export function toBuckets(db: DB): Record<string, string> {
   return out;
 }
 
-/** Часть базы, прочитанная из облака: только те корзины, что изменились */
+/** Part of the database read from the cloud: only the changed buckets */
 export interface Remote {
   meta?: Meta;
   beans?: { bean: Bean; u: number }[];
   brews?: { brew: Brew; u: number }[];
-  /** корзины заварок, которые пока нельзя применить: архив снимков оборудования ещё не дописан */
+  /** brew buckets that cannot be applied yet: the gear snapshot archive is not complete */
   skipped?: string[];
 }
 
@@ -262,7 +262,7 @@ export function fromBuckets(buckets: Record<string, string>, localGear: DB['gear
   for (const g of localGear) gearById.set(g.id, snap(g));
   for (const g of out.meta?.gear ?? []) gearById.set(g.id, snap(g));
   const arch = out.meta?.archive ?? {};
-  if (Array.isArray(arch)) for (const g of arch as GearRef[]) gearById.set(g.id, snap(g)); // формат первых часов: архив списком
+  if (Array.isArray(arch)) for (const g of arch as GearRef[]) gearById.set(g.id, snap(g)); // format of the first hours: archive as a list
   else for (const [key, g] of Object.entries(arch)) gearById.set(key, snap(g));
   if (buckets.k) out.beans = (JSON.parse(buckets.k) as Packed[]).map(unpackBean);
   const brewKeys = Object.keys(buckets).filter((k) => /^b\d{6}$/.test(k));
@@ -277,13 +277,13 @@ export function fromBuckets(buckets: Record<string, string>, localGear: DB['gear
   return out;
 }
 
-/* ---------- слияние ---------- */
+/* ---------- merge ---------- */
 
 type WithId = { id: string };
 
 /**
- * Слияние по записям: побеждает более поздняя правка; удаление побеждает, если оно позже правки.
- * Отсутствие записи в облаке ничего не значит — удаления приходят только отметками.
+ * Per-record merge: the later edit wins; a deletion wins if it is later than the edit.
+ * A record missing in the cloud means nothing — deletions arrive only as stamps.
  */
 export function merge(local: DB, remote: Remote): DB {
   const mod = { ...(local.mod ?? {}) };
@@ -315,7 +315,7 @@ export function merge(local: DB, remote: Remote): DB {
       }
     }
     res = append === 'end' ? [...res, ...fresh] : [...fresh, ...res];
-    // удаления с других устройств
+    // deletions from other devices
     return res.filter((x) => {
       const key = prefix + x.id;
       const gone = (del[key] ?? 0) > 0 && (del[key] ?? 0) >= (mod[key] ?? 0);
@@ -328,7 +328,7 @@ export function merge(local: DB, remote: Remote): DB {
   let next: DB = { ...local };
   next.beans = coll(local.beans, remote.beans?.map((x) => x.bean), 'k:', 'start');
   next.brews = coll(local.brews, remote.brews?.map((x) => x.brew), 'b:').sort((a, z) => z.date - a.date);
-  // если пачку удалили на другом устройстве, заварки остаются без зерна
+  // if a pack was deleted on another device, its brews stay without beans
   const beanIds = new Set(next.beans.map((b) => b.id));
   next.brews = next.brews.map((b) => (b.beanId && !beanIds.has(b.beanId) && (del['k:' + b.beanId] ?? 0) > 0 ? { ...b, beanId: null } : b));
 
@@ -342,7 +342,7 @@ export function merge(local: DB, remote: Remote): DB {
       if (!recipes[id] || newer(key)) { recipes[id] = r; mod[key] = Math.max(mod[key] ?? 0, rmod[key] ?? 0); }
     }
     next.recipes = recipes;
-    // профиль, который ни на одном устройстве ещё не сохраняли с отметкой времени, — берём более заполненный
+    // a profile never saved with a timestamp on any device — take the more filled one
     const filled = (p: Partial<DB['profile']>) => (p.name ? 1 : 0) + (p.about ? 1 : 0) + (p.telegram ? 1 : 0) + (p.badges?.length ?? 0) + (p.featured ? 1 : 0);
     const unstamped = !mod.p && !rmod.p;
     if (newer('p') || (unstamped && filled(m.profile) > filled(local.profile))) {
@@ -355,7 +355,7 @@ export function merge(local: DB, remote: Remote): DB {
     next.seenAch = [...new Set([...(local.seenAch ?? []), ...m.seen])];
   }
 
-  // свежее устройство: примеры не нужны, если из облака пришли настоящие записи
+  // fresh device: samples are not needed if real records came from the cloud
   const remoteReal = (remote.beans?.length ?? 0) + (remote.brews?.length ?? 0) > 0;
   const localReal = local.beans.some((b) => !b.sample) || local.brews.some((b) => !b.sample);
   if (remoteReal && !localReal) {

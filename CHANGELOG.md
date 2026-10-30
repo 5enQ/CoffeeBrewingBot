@@ -6,6 +6,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Added
+- Two more roaster sites in the catalog: Silky Drum (silkydrum.ru) and Rockets (rockets.coffee); crawled once after the release.
 - Timers survive closing the app: the running timer is kept on the device by the clock, and reopening the app resumes it where it is (with pause). The brew tab shows a banner with the running timer («Колд брю · 3:00:01 из 12:00:00 · осталось 8:59:59»).
 - Long timers (an hour and more — cold brew) run in the background: leaving the screen does not abandon them («Свернуть»), the screen is not kept awake, and the bot sends a Telegram message when the time is up, with a button that opens the timer — even if the app is closed. The app asks Telegram once for permission to receive bot messages. Pause, reset and «готово» cancel the message.
 - Health warning: the 11th own brew of a day shows a one-time note that this much coffee is a lot for the body (cuppings and sample brews are not counted).

@@ -15,10 +15,11 @@ import { GRIND_RULES, fmtGrind, grinderOf, unitOf } from '../data/grind';
 import { GrindField } from '../ui/GrindField';
 import { LOCKED_TEXT, loadLock, saveLock, solve, type Lock } from '../data/ratio';
 import { toast } from '../ui/toast';
+import { TdsField } from '../ui/TdsField';
 
 export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }) {
   const m = methodById(methodId);
-  const { recipes, saveRecipe, beans, brews, gear: myGear, custom } = useStore();
+  const { recipes, saveRecipe, beans, brews, gear: myGear, custom, profile, saveProfile } = useStore();
   const { push } = useRouter();
   const saved = recipes[m.id];
   const mine = custom.filter((r) => r.methodId === m.id);
@@ -40,6 +41,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const startActive = mine.find((r) => r.id === initialChoice);
   const [dose, setDose] = useState(from?.dose ?? startActive?.dose ?? saved?.dose ?? m.dose);
   const [ratio, setRatio] = useState(from ? from.water / from.dose : startActive?.ratio ?? saved?.ratio ?? m.ratio);
+  const [tds, setTds] = useState(from?.tds ?? profile.waterTds ?? 0);
   const [temp, setTemp] = useState(from?.temp ?? startActive?.temp ?? saved?.temp ?? m.temp);
   const [grind, setGrind] = useState(from?.grind ?? startActive?.grind ?? saved?.grind ?? m.grind);
   const [gear, setGear] = useState<GearRef[]>(() => from?.gear?.length ? from.gear : defaultGear(m.id, myGear, saved?.gear));
@@ -140,13 +142,19 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     ...(!drip && grindUnit && grindValue !== undefined ? { grindValue, grindUnit } : {}),
     ...(drip && dripId ? { dripId } : {}),
     ...(loss && bean ? { fromPack } : {}),
+    ...(tds > 0 ? { tds } : {}),
     rating: 0, taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, descriptors: [], notes: '',
     cupping: m.id === 'cupping' ? emptyCupping() : null,
     gear,
     plan: choice === 'std' ? undefined : plan,
   });
 
-  const remember = () => saveRecipe(m.id, {
+  const remember = () => {
+    // the same water next time, on any method
+    if (tds > 0 && tds !== profile.waterTds) saveProfile({ ...profile, waterTds: tds });
+    rememberRecipe();
+  };
+  const rememberRecipe = () => saveRecipe(m.id, {
     dose, ratio, temp, grind, gear: gear.map((g) => g.id), recipeId: active?.id,
     grindBy: grinder && grindUnit && grindValue !== undefined ? { ...(saved?.grindBy ?? {}), [`${grinder.id}:${grindUnit}`]: grindValue } : saved?.grindBy,
   });
@@ -199,6 +207,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
           onChange={(r) => (drip ? setRatio(r) : change('ratio', r))} lock={drip ? undefined : lockFor('ratio')} />
         <Stepper label="Температура" value={temp} step={0.1} min={0} max={100} unit={temp ? '°C' : ''}
           format={(v) => (v === 0 ? 'холодная' : fmtNum(v))} onChange={setTemp} />
+        {m.id !== 'cupping' && <TdsField value={tds} onChange={setTds} />}
         {!drip && <GrindField id="grind" unit={grindUnit} value={grindValue} text={grind} onValue={setGrindValue} onText={setGrind}
           grinderName={gear.find((g) => g.cat === 'grinder')?.name} />}
       </Section>

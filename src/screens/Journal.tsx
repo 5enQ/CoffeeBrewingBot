@@ -162,6 +162,7 @@ export function BrewDetail({ id, fresh }: { id: string; fresh?: boolean }) {
         <div><dt>Температура</dt><dd>{b.temp ? `${fmtNum(b.temp)}°C` : 'холодная'}</dd></div>
         <div><dt>Время</dt><dd>{fmtTime(b.time)}</dd></div>
         <div><dt>Помол</dt><dd className="dd-text">{b.grind || '—'}</dd></div>
+        {b.tds !== undefined && <div><dt>TDS воды</dt><dd>{b.tds}{'\u00a0'}ppm</dd></div>}
       </dl>
 
       {b.plan && (

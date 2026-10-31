@@ -127,6 +127,8 @@ export interface Brew {
   authorId?: string;
   /** grams taken from the pack when it differs from the dose (grinder loss); stock uses this, the recipe uses dose */
   fromPack?: number;
+  /** TDS of the brewing water, ppm (from a TDS meter); not set — unknown */
+  tds?: number;
   /** which drip from an assorted box was brewed */
   dripId?: string;
   sample?: boolean;
@@ -135,6 +137,8 @@ export interface Brew {
 export interface Author { name: string; username?: string; badges?: BadgeLite[] }
 
 export interface Profile {
+  /** the last water TDS used, ppm — offered for the next brew (same water, usually) */
+  waterTds?: number;
   name: string;
   about: string;
   /** Telegram username without @ */

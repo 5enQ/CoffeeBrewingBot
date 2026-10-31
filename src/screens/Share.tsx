@@ -44,6 +44,7 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
         <div><dt>Температура</dt><dd>{r.temp ? `${fmtNum(r.temp)}°C` : 'холодная'}</dd></div>
         <div><dt>Время</dt><dd>{fmtTime(r.time)}</dd></div>
         <div><dt>Помол</dt><dd className="dd-text">{r.grind || '—'}</dd></div>
+        {r.tds !== undefined && <div><dt>TDS воды</dt><dd>{r.tds}{'\u00a0'}ppm</dd></div>}
       </dl>
 
       {r.gear.length > 0 && (

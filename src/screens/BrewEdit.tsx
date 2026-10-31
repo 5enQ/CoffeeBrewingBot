@@ -13,6 +13,7 @@ import { GrindField } from '../ui/GrindField';
 import { CvaEditor } from '../ui/Cva';
 import { MODES } from '../data/cva';
 import { healthWarning } from '../data/health';
+import { TdsField } from '../ui/TdsField';
 
 
 export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: boolean; openCupping?: boolean }) {
@@ -153,6 +154,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
         )}
         <Stepper label={m.yieldLabel ?? 'Вода'} value={b.water} step={b.methodId === 'espresso' ? 1 : 5} min={5} max={2000} unit="г" onChange={(water) => set({ water })} />
         <Stepper label="Температура" value={b.temp} step={0.1} min={0} max={100} unit={b.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
+        <TdsField value={b.tds ?? 0} onChange={(v) => set({ tds: v > 0 ? v : undefined })} />
         {b.methodId !== 'drip' && (() => {
           const grinder = grinderOf(b.gear, myGear);
           // grinder deleted — take the units from the brew itself

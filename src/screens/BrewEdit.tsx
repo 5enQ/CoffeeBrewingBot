@@ -109,7 +109,7 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
 
       {!isCupping && (
         <Section title="Измерения">
-          <CupTdsField brew={b} onChange={(tds) => set({ tds })} />
+          <CupTdsField brew={b} onChange={(patch) => set(patch)} />
         </Section>
       )}
 

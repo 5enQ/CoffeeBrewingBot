@@ -1216,3 +1216,4 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .profile-about.field-area::placeholder { color: var(--hint); }
 .crawl-usage.warn { color: var(--danger); }
 .tds-hint.ok { color: var(--accent); }
+.ppm-hint.warn { color: var(--star); }

@@ -131,6 +131,8 @@ export interface Brew {
   ppm?: number;
   /** TDS of the brewed cup, % (refractometer) — gives the extraction yield */
   tds?: number;
+  /** weight of the finished drink, g (optional) — makes the extraction exact */
+  beverage?: number;
   /** which drip from an assorted box was brewed */
   dripId?: string;
   sample?: boolean;

@@ -1,4 +1,4 @@
-import { extraction } from '../data/extraction';
+import { exactMass, extraction } from '../data/extraction';
 import { useMemo, useState } from 'react';
 import { cupScore, QUALITY, CUP_ATTRS, toneOf, SCORE_MIN, SCORE_MAX } from '../data/cupping';
 import { allMethods, methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
@@ -165,7 +165,8 @@ export function BrewDetail({ id, fresh }: { id: string; fresh?: boolean }) {
         <div><dt>Помол</dt><dd className="dd-text">{b.grind || '—'}</dd></div>
         {b.ppm !== undefined && <div><dt>Вода</dt><dd>{b.ppm}{'\u00a0'}ppm</dd></div>}
         {b.tds !== undefined && <div><dt>TDS</dt><dd>{fmtNum(b.tds, 2)}{'\u00a0'}%</dd></div>}
-        {extraction(b) !== null && <div><dt>Экстракция</dt><dd>≈{'\u00a0'}{fmtNum(extraction(b)!, 1)}{'\u00a0'}%</dd></div>}
+        {b.beverage !== undefined && <div><dt>Напиток</dt><dd>{fmtNum(b.beverage)}{'\u00a0'}г</dd></div>}
+        {extraction(b) !== null && <div><dt>Экстракция</dt><dd>{exactMass(b) ? '' : '≈\u00a0'}{fmtNum(extraction(b)!, 1)}{'\u00a0'}%</dd></div>}
       </dl>
 
       {b.plan && (

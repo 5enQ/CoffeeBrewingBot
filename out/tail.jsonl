@@ -1,0 +1,578 @@
+{
+    "wallTime": 0,
+    "cpuTime": 0,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "5709a6dc-b60c-41c5-a11c-39a6ca5a5011"
+    },
+    "scriptName": "brewbook-ratings",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1793427860963,
+    "event": {
+        "request": {
+            "url": "https://brewbook-ratings.brewbook.workers.dev/version",
+            "method": "GET",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "130.131.198.131",
+                "cf-ipcountry": "US",
+                "cf-ray": "a53093830cbb1ccd",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "brewbook-ratings.brewbook.workers.dev",
+                "user-agent": "curl/8.5.0",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "130.131.198.131"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": [
+                    ":method",
+                    ":scheme",
+                    ":authority",
+                    ":path",
+                    "user-agent",
+                    "accept"
+                ],
+                "clientTcpRtt": 5,
+                "clientQuicRtt": 0,
+                "colo": "MSP",
+                "asn": 8075,
+                "asOrganization": "Microsoft Limited",
+                "country": "US",
+                "isEUCountry": false,
+                "city": "Des Moines",
+                "continent": "NA",
+                "region": "Iowa",
+                "regionCode": "IA",
+                "timezone": "America/Chicago",
+                "longitude": "-93.60911",
+                "latitude": "41.60054",
+                "postalCode": "50309",
+                "metroCode": "679",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "gA7ZKyjY05cJZLzEJfzmsUQ3mk/bbiAR3aB45ZLcWgI=",
+                "tlsClientCiphersSha1": "GXSPDLP4G3X+prK73a4wBuOaHRc=",
+                "tlsClientExtensionsSha1": "tlH5gnoC5Z1HF45J5OgHEi338V0=",
+                "tlsClientExtensionsSha1Le": "mRCkyUCRFDTLCNHGQsZNFhkU1/4=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "974cd0c95f287f040fe871c3d9b78d25dcfdd137d2416240efcd156e515790a08a6e2b0ef5870f56a44420e169788fa6",
+                    "serverHandshake": "06ce161a809d5cbaccdc4400eaa996f481c30a1b995e2f976a1b47785f7cb8c4bee37af5585a8aeea92dd7b6d917fa88",
+                    "clientFinished": "0f7a67d4eea38f0260e8f8412bf09f3f069b662e05f1edcecde88e5e31daddae6d3c4d1550135c02af98795c1cc6ce28",
+                    "serverFinished": "59259b755e4d689981c0938fd4aafa1e3d08b5816ca742f0e527a7361152f360a49e30617010c36ee97cbad71d6694b8"
+                },
+                "tlsClientHelloLength": "508",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 736968
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 269,
+    "cpuTime": 4,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "5709a6dc-b60c-41c5-a11c-39a6ca5a5011"
+    },
+    "scriptName": "brewbook-ratings",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1793427861019,
+    "event": {
+        "request": {
+            "url": "https://brewbook-ratings.brewbook.workers.dev/lookup?url=https://shop.tastycoffee.ru/coffee/braziliya-sul-de-minas",
+            "method": "GET",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "130.131.198.131",
+                "cf-ipcountry": "US",
+                "cf-ray": "a53093834f2019ca",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "brewbook-ratings.brewbook.workers.dev",
+                "user-agent": "curl/8.5.0",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "130.131.198.131"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": [
+                    ":method",
+                    ":scheme",
+                    ":authority",
+                    ":path",
+                    "user-agent",
+                    "accept"
+                ],
+                "clientTcpRtt": 6,
+                "clientQuicRtt": 0,
+                "colo": "MSP",
+                "asn": 8075,
+                "asOrganization": "Microsoft Limited",
+                "country": "US",
+                "isEUCountry": false,
+                "city": "Des Moines",
+                "continent": "NA",
+                "region": "Iowa",
+                "regionCode": "IA",
+                "timezone": "America/Chicago",
+                "longitude": "-93.60911",
+                "latitude": "41.60054",
+                "postalCode": "50309",
+                "metroCode": "679",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "HKj3Qk6o8Wi00lxAbN+QAvR8N15gpDszKuJi/JoY2sI=",
+                "tlsClientCiphersSha1": "GXSPDLP4G3X+prK73a4wBuOaHRc=",
+                "tlsClientExtensionsSha1": "tlH5gnoC5Z1HF45J5OgHEi338V0=",
+                "tlsClientExtensionsSha1Le": "mRCkyUCRFDTLCNHGQsZNFhkU1/4=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "911aadb0a651d60a6968f3222b2dd0039186f250cca3352d47e9fc4844338e7a7f30f8777d07c25c3d5019624c9827cf",
+                    "serverHandshake": "f2deeb5f43d9d54105a8b827a7f984284661d416097c1360c7ea6727eec907cd5b768685b644852fb9e9b550237ce513",
+                    "clientFinished": "6b81540c48411c5cd194e1afd965f83043f4e655030217a6a98605eba9e8089d47601ffaaff689a9ff92885804902c97",
+                    "serverFinished": "c6e91b952d04d73b0b801b62caeaa3e7364075274689ac0af999a5178e17cb296c2d46a4a1d4a84375c550a9b35c3da1"
+                },
+                "tlsClientHelloLength": "508",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 740279
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 94,
+    "cpuTime": 1,
+    "truncated": false,
+    "executionModel": "durableObject",
+    "outcome": "ok",
+    "durableObjectId": "18fd4badd55bc071cae9fe4897ff214a8e5953385808dc00c4d552e4c31be550",
+    "scriptVersion": {
+        "id": "5709a6dc-b60c-41c5-a11c-39a6ca5a5011"
+    },
+    "entrypoint": "CoffeeCatalog",
+    "scriptName": "brewbook-ratings",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1793427861246,
+    "event": {
+        "rpcMethod": "find"
+    }
+}
+{
+    "wallTime": 0,
+    "cpuTime": 0,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "5709a6dc-b60c-41c5-a11c-39a6ca5a5011"
+    },
+    "scriptName": "brewbook-ratings",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1793427861372,
+    "event": {
+        "request": {
+            "url": "https://brewbook-ratings.brewbook.workers.dev/me",
+            "method": "POST",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "130.131.198.131",
+                "cf-ipcountry": "US",
+                "cf-ray": "a5309385799a710e",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "content-length": "2",
+                "content-type": "application/json",
+                "host": "brewbook-ratings.brewbook.workers.dev",
+                "user-agent": "curl/8.5.0",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "130.131.198.131"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": [
+                    ":method",
+                    ":scheme",
+                    ":authority",
+                    ":path",
+                    "user-agent",
+                    "accept",
+                    "content-type",
+                    "content-length"
+                ],
+                "clientTcpRtt": 7,
+                "clientQuicRtt": 0,
+                "colo": "MSP",
+                "asn": 8075,
+                "asOrganization": "Microsoft Limited",
+                "country": "US",
+                "isEUCountry": false,
+                "city": "Des Moines",
+                "continent": "NA",
+                "region": "Iowa",
+                "regionCode": "IA",
+                "timezone": "America/Chicago",
+                "longitude": "-93.60911",
+                "latitude": "41.60054",
+                "postalCode": "50309",
+                "metroCode": "679",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "NtbA5ltiLJHAODoKKEWcHVu3P2IqUeyuGFIF8u0uEW4=",
+                "tlsClientCiphersSha1": "GXSPDLP4G3X+prK73a4wBuOaHRc=",
+                "tlsClientExtensionsSha1": "tlH5gnoC5Z1HF45J5OgHEi338V0=",
+                "tlsClientExtensionsSha1Le": "mRCkyUCRFDTLCNHGQsZNFhkU1/4=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "6c136f59b7d354f1b84e529dbf22cbc61fbe7b39e0b0f8465007e2fe06e40097bc15957b6c2ae9d23311a854330ed7aa",
+                    "serverHandshake": "cd5b34d7f2cc801e2b99ba39e941bff38b0a6b924a295cfab5dfcb22faad9ec16b074ebf013fb4822710ec82e85f21ac",
+                    "clientFinished": "d0cc235b7de6adefced5961a809f77e5067bdb4fa938a63a23f61ee20186292b13292fa9691a024c5366b4a035c06b85",
+                    "serverFinished": "b170220ae57c62ce00f479b80316387f4a46994805b83231a1f0ee7fc7c674785a698e7593b1a1326c850c4749782ed8"
+                },
+                "tlsClientHelloLength": "508",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 771891
+                }
+            }
+        },
+        "response": {
+            "status": 401
+        }
+    }
+}
+{
+    "wallTime": 0,
+    "cpuTime": 0,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "5709a6dc-b60c-41c5-a11c-39a6ca5a5011"
+    },
+    "scriptName": "brewbook-ratings",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1793427861429,
+    "event": {
+        "request": {
+            "url": "https://brewbook-ratings.brewbook.workers.dev/reminders",
+            "method": "POST",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "130.131.198.131",
+                "cf-ipcountry": "US",
+                "cf-ray": "a5309385dfe6102a",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "content-length": "8",
+                "content-type": "application/json",
+                "host": "brewbook-ratings.brewbook.workers.dev",
+                "user-agent": "curl/8.5.0",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "130.131.198.131"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": [
+                    ":method",
+                    ":scheme",
+                    ":authority",
+                    ":path",
+                    "user-agent",
+                    "accept",
+                    "content-type",
+                    "content-length"
+                ],
+                "clientTcpRtt": 6,
+                "clientQuicRtt": 0,
+                "colo": "MSP",
+                "asn": 8075,
+                "asOrganization": "Microsoft Limited",
+                "country": "US",
+                "isEUCountry": false,
+                "city": "Des Moines",
+                "continent": "NA",
+                "region": "Iowa",
+                "regionCode": "IA",
+                "timezone": "America/Chicago",
+                "longitude": "-93.60911",
+                "latitude": "41.60054",
+                "postalCode": "50309",
+                "metroCode": "679",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "fAEWnMAXDAnX24KWjytflawgrH9AfADeYOCAH/8m4XY=",
+                "tlsClientCiphersSha1": "GXSPDLP4G3X+prK73a4wBuOaHRc=",
+                "tlsClientExtensionsSha1": "tlH5gnoC5Z1HF45J5OgHEi338V0=",
+                "tlsClientExtensionsSha1Le": "mRCkyUCRFDTLCNHGQsZNFhkU1/4=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "4bc129e075d7b59c37b137dc938e9034867286b6505202da777ec9840653c170aaca3506b1c51d247f3a447e00ddf7b4",
+                    "serverHandshake": "da4d551d3bbf8103c1d07b9be950cd35c1e978e70e77e1c2f7d5e34068744f60686f75072e4e47748fa2e9954348d15d",
+                    "clientFinished": "9fb4bcdce0c5258f2752300be3a6c4d7f12b19a82f5363bb2c978ca88ae1aabc7fca8c9561e69a5afdb7225cf69a42b5",
+                    "serverFinished": "6762fba52d98d6422990efbdeb6da7035eaf8adcc61aaa50e8487f13a96fedc594e29e7e8fa952b8968f256a52d3f733"
+                },
+                "tlsClientHelloLength": "508",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 745043
+                }
+            }
+        },
+        "response": {
+            "status": 401
+        }
+    }
+}
+{
+    "wallTime": 419,
+    "cpuTime": 1,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "5709a6dc-b60c-41c5-a11c-39a6ca5a5011"
+    },
+    "scriptName": "brewbook-ratings",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1793427861493,
+    "event": {
+        "request": {
+            "url": "https://brewbook-ratings.brewbook.workers.dev/cards/zzzzzzzz",
+            "method": "GET",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "130.131.198.131",
+                "cf-ipcountry": "US",
+                "cf-ray": "a53093862d7ba200",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "brewbook-ratings.brewbook.workers.dev",
+                "user-agent": "curl/8.5.0",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "130.131.198.131"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": [
+                    ":method",
+                    ":scheme",
+                    ":authority",
+                    ":path",
+                    "user-agent",
+                    "accept"
+                ],
+                "clientTcpRtt": 5,
+                "clientQuicRtt": 0,
+                "colo": "MSP",
+                "asn": 8075,
+                "asOrganization": "Microsoft Limited",
+                "country": "US",
+                "isEUCountry": false,
+                "city": "Des Moines",
+                "continent": "NA",
+                "region": "Iowa",
+                "regionCode": "IA",
+                "timezone": "America/Chicago",
+                "longitude": "-93.60911",
+                "latitude": "41.60054",
+                "postalCode": "50309",
+                "metroCode": "679",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "ovhOewsmyosefDzkOVl7Bk2L/xgV+DUUY2zBZuYnF34=",
+                "tlsClientCiphersSha1": "GXSPDLP4G3X+prK73a4wBuOaHRc=",
+                "tlsClientExtensionsSha1": "tlH5gnoC5Z1HF45J5OgHEi338V0=",
+                "tlsClientExtensionsSha1Le": "mRCkyUCRFDTLCNHGQsZNFhkU1/4=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "243cfd88860c2e050b1487fb77ab11c0c6f7b183c3ac783c96afcd29167ec23c6b2ba8dbb92f1fc9e9f0bfe2b35dd6ae",
+                    "serverHandshake": "824c20221ec997614d097324a7b39dd3adc572c0a7331110279485ad2007c9fab1bc7eb8c91e63c6260015ae0c6bdcf4",
+                    "clientFinished": "9394fd5c373a63d0af9feed645ef788338955e6ed99b82fcce38a2a3193d3d5d8f7757d039f3143e1314bdfaeb4062e0",
+                    "serverFinished": "3318e828ff24f5d8d96547a259ce532b8afaca99da593211d7a854c9479530ce857e9fe620f5c3030b65c455c6bae527"
+                },
+                "tlsClientHelloLength": "508",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 798211
+                }
+            }
+        },
+        "response": {
+            "status": 404
+        }
+    }
+}
+{
+    "wallTime": 117,
+    "cpuTime": 0,
+    "truncated": false,
+    "executionModel": "durableObject",
+    "outcome": "ok",
+    "durableObjectId": "86ecada2ff492ecfc21d3e96045364d0bc7588b9cee1f1d5ca9f64577b03959c",
+    "scriptVersion": {
+        "id": "5709a6dc-b60c-41c5-a11c-39a6ca5a5011"
+    },
+    "entrypoint": "Accounts",
+    "scriptName": "brewbook-ratings",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1793427861847,
+    "event": {
+        "rpcMethod": "getCard"
+    }
+}

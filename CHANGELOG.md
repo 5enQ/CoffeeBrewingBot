@@ -6,6 +6,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Fixed
+- An empty profile card (only a name, a plain background) is as tall as its content instead of a large empty block.
 - Developers' card: the background code scrolls in a seamless loop. Before, the code was shorter than the card, so the lower part ran empty and the code then jumped back in.
 
 ## v1.3.2 — Timers & Fixes (2026-10-31)

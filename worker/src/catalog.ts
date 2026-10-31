@@ -228,6 +228,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
     this.sql.exec('INSERT INTO coffee (id, data, source, confirms, created, updated, host, url) VALUES (?, ?, ?, 0, ?, ?, ?, ?)',
       id, JSON.stringify(coffee), source, now, now, host, url);
     this.link(id, keys);
+    this.staleCounts();
     return id;
   }
 
@@ -318,10 +319,13 @@ export class CoffeeCatalog extends DurableObject<Env> {
     return 'new';
   }
 
-  /** Owner view: every site with its numbers */
+  /**
+   * Owner view: every site with its numbers.
+   * Page and lot counts are aggregates over whole tables (thousands of rows read), so they are cached in meta
+   * and recounted only after something changed them (a crawler step, a new lot, a rejected site).
+   */
   sites() {
-    const pages = this.sql.exec<{ host: string; status: string; n: number }>('SELECT host, status, COUNT(*) AS n FROM page GROUP BY host, status').toArray();
-    const lots = this.sql.exec<{ host: string; state: string; n: number }>('SELECT host, state, COUNT(*) AS n FROM coffee WHERE host IS NOT NULL GROUP BY host, state').toArray();
+    const { pages, lots } = this.counts();
     return this.sql.exec<{ host: string }>('SELECT host FROM site ORDER BY status, host').toArray().map(({ host }) => {
       const s = this.site(host as string)!;
       const p = Object.fromEntries(pages.filter((x) => x.host === s.host).map((x) => [x.status, x.n]));
@@ -330,6 +334,20 @@ export class CoffeeCatalog extends DurableObject<Env> {
     });
   }
 
+  private counts(): { pages: { host: string; status: string; n: number }[]; lots: { host: string; state: string; n: number }[] } {
+    const cached = this.sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'site_counts'").toArray()[0]?.value;
+    if (cached) { try { return JSON.parse(cached); } catch { /* recount */ } }
+    const pc = this.sql.exec<{ host: string; status: string; n: number }>('SELECT host, status, COUNT(*) AS n FROM page GROUP BY host, status');
+    const lc = this.sql.exec<{ host: string; state: string; n: number }>('SELECT host, state, COUNT(*) AS n FROM coffee WHERE host IS NOT NULL GROUP BY host, state');
+    const pages = pc.toArray(), lots = lc.toArray();
+    console.log('site counts recounted, rows read:', pc.rowsRead + lc.rowsRead);
+    this.sql.exec("INSERT INTO meta (key, value) VALUES ('site_counts', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify({ pages, lots }));
+    return { pages, lots };
+  }
+
+  /** pages or lots changed: the cached counts are recounted on the next owner view (no row written when already stale) */
+  private staleCounts() { this.sql.exec("DELETE FROM meta WHERE key = 'site_counts'"); }
+
   setSite(host: string, status: SiteStatus, roaster?: string) {
     const h = normHost(host);
     if (!/^[a-z0-9.-]{3,100}$/.test(h)) return false;
@@ -337,7 +355,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
       ON CONFLICT(host) DO UPDATE SET status = excluded.status, roaster = CASE WHEN excluded.roaster <> '' THEN excluded.roaster ELSE site.roaster END`,
     h, (roaster ?? '').trim().slice(0, 60), status, Date.now());
     if (status === 'approved') this.recrawl(h);
-    if (status === 'rejected') this.sql.exec("UPDATE page SET status = 'skip' WHERE host = ? AND status = 'queued'", h);
+    if (status === 'rejected') { this.sql.exec("UPDATE page SET status = 'skip' WHERE host = ? AND status = 'queued'", h); this.staleCounts(); }
     return true;
   }
 
@@ -368,6 +386,8 @@ export class CoffeeCatalog extends DurableObject<Env> {
     let next: number | null = null;
     try {
       try { busy = await this.step(); } catch (e) { console.log('crawl step failed', e); busy = true; }
+      // a step that did work may have changed page or lot counts
+      if (busy) this.staleCounts();
       next = busy ? Date.now() + STEP : this.nextDue();
     } finally {
       this.sql = real;

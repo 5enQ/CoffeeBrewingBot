@@ -16,13 +16,13 @@ describe('cloud format', () => {
   it('round-trips beans and brews through buckets', () => {
     const local = db({
       beans: [{ id: 'k1', name: 'Кения', roaster: 'X', country: 'Кения', region: '', farm: '', variety: '', process: '', roastLevel: '', roastDate: '2026-10-01', weight: '250', notes: '', packNotes: '' } as DB['beans'][number]],
-      brews: [{ id: 'b1', methodId: 'chemex', beanId: 'k1', date: Date.UTC(2026, 9, 10), dose: 30, water: 500, temp: 94, tds: 120, grind: '22 щелчка', time: 240, rating: 4.5, notes: 'ok' } as DB['brews'][number]],
+      brews: [{ id: 'b1', methodId: 'chemex', beanId: 'k1', date: Date.UTC(2026, 9, 10), dose: 30, water: 500, temp: 94, ppm: 120, tds: 1.32, grind: '22 щелчка', time: 240, rating: 4.5, notes: 'ok' } as DB['brews'][number]],
       mod: { 'k:k1': 1_790_000_000_000, 'b:b1': 1_790_000_000_000 },
     });
     const buckets = toBuckets(local);
     expect(Object.keys(buckets).sort()).toEqual(['b202610', 'k', 'm']);
     const merged = merge(db({}), fromBuckets(buckets, []));
     expect(merged.beans.map((b) => b.id)).toEqual(['k1']);
-    expect(merged.brews[0]).toMatchObject({ id: 'b1', methodId: 'chemex', dose: 30, rating: 4.5, beanId: 'k1', tds: 120 });
+    expect(merged.brews[0]).toMatchObject({ id: 'b1', methodId: 'chemex', dose: 30, rating: 4.5, beanId: 'k1', ppm: 120, tds: 1.32 });
   });
 });

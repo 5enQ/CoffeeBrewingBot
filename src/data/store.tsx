@@ -127,7 +127,9 @@ export interface Brew {
   authorId?: string;
   /** grams taken from the pack when it differs from the dose (grinder loss); stock uses this, the recipe uses dose */
   fromPack?: number;
-  /** TDS of the brewing water, ppm (from a TDS meter); not set — unknown */
+  /** mineralization (TDS) of the brewing water, ppm, from a TDS meter; not set — unknown */
+  ppm?: number;
+  /** TDS of the brewed cup, % (refractometer) — gives the extraction yield */
   tds?: number;
   /** which drip from an assorted box was brewed */
   dripId?: string;
@@ -137,8 +139,8 @@ export interface Brew {
 export interface Author { name: string; username?: string; badges?: BadgeLite[] }
 
 export interface Profile {
-  /** the last water TDS used, ppm — offered for the next brew (same water, usually) */
-  waterTds?: number;
+  /** the last water ppm used — offered for the next brew (same water, usually) */
+  waterPpm?: number;
   name: string;
   about: string;
   /** Telegram username without @ */

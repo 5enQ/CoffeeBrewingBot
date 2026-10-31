@@ -15,7 +15,7 @@ import { GRIND_RULES, fmtGrind, grinderOf, unitOf } from '../data/grind';
 import { GrindField } from '../ui/GrindField';
 import { LOCKED_TEXT, loadLock, saveLock, solve, type Lock } from '../data/ratio';
 import { toast } from '../ui/toast';
-import { TdsField } from '../ui/TdsField';
+import { PpmField } from '../ui/WaterFields';
 
 export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }) {
   const m = methodById(methodId);
@@ -41,7 +41,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const startActive = mine.find((r) => r.id === initialChoice);
   const [dose, setDose] = useState(from?.dose ?? startActive?.dose ?? saved?.dose ?? m.dose);
   const [ratio, setRatio] = useState(from ? from.water / from.dose : startActive?.ratio ?? saved?.ratio ?? m.ratio);
-  const [tds, setTds] = useState(from?.tds ?? profile.waterTds ?? 0);
+  const [ppm, setPpm] = useState(from?.ppm ?? profile.waterPpm ?? 0);
   const [temp, setTemp] = useState(from?.temp ?? startActive?.temp ?? saved?.temp ?? m.temp);
   const [grind, setGrind] = useState(from?.grind ?? startActive?.grind ?? saved?.grind ?? m.grind);
   const [gear, setGear] = useState<GearRef[]>(() => from?.gear?.length ? from.gear : defaultGear(m.id, myGear, saved?.gear));
@@ -142,7 +142,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     ...(!drip && grindUnit && grindValue !== undefined ? { grindValue, grindUnit } : {}),
     ...(drip && dripId ? { dripId } : {}),
     ...(loss && bean ? { fromPack } : {}),
-    ...(tds > 0 ? { tds } : {}),
+    ...(ppm > 0 ? { ppm } : {}),
     rating: 0, taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, descriptors: [], notes: '',
     cupping: m.id === 'cupping' ? emptyCupping() : null,
     gear,
@@ -151,7 +151,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
 
   const remember = () => {
     // the same water next time, on any method
-    if (tds > 0 && tds !== profile.waterTds) saveProfile({ ...profile, waterTds: tds });
+    if (ppm > 0 && ppm !== profile.waterPpm) saveProfile({ ...profile, waterPpm: ppm });
     rememberRecipe();
   };
   const rememberRecipe = () => saveRecipe(m.id, {
@@ -207,7 +207,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
           onChange={(r) => (drip ? setRatio(r) : change('ratio', r))} lock={drip ? undefined : lockFor('ratio')} />
         <Stepper label="Температура" value={temp} step={0.1} min={0} max={100} unit={temp ? '°C' : ''}
           format={(v) => (v === 0 ? 'холодная' : fmtNum(v))} onChange={setTemp} />
-        {m.id !== 'cupping' && <TdsField value={tds} onChange={setTds} />}
+        {m.id !== 'cupping' && <PpmField value={ppm} onChange={setPpm} />}
         {!drip && <GrindField id="grind" unit={grindUnit} value={grindValue} text={grind} onValue={setGrindValue} onText={setGrind}
           grinderName={gear.find((g) => g.cat === 'grinder')?.name} />}
       </Section>

@@ -3,7 +3,7 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
-## Unreleased
+## v1.3.2 — Timers & Fixes (2026-10-31)
 
 ### Added
 - Two more roaster sites in the catalog: Silky Drum (silkydrum.ru) and Rockets (rockets.coffee); crawled once after the release.

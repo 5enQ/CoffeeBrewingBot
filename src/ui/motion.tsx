@@ -126,6 +126,9 @@ export function useFlip(ref: RefObject<HTMLElement | null>, skip?: string | null
   useLayoutEffect(() => {
     const box = ref.current;
     if (!box) return;
+    // the screen is hidden (another screen is open on top): every box measures 0×0 here.
+    // Keep the last real positions, or coming back would animate the tiles from a zero size in the corner.
+    if (!box.getClientRects().length) { snap.current = null; return; }
     const next = new Map<string, Box>();
     const calm = reduceMotion();
     box.querySelectorAll<HTMLElement>('[data-flip]').forEach((el) => {

@@ -2,6 +2,7 @@
 
 A Telegram Mini App that also builds, without code changes, into an Android/iOS app (Capacitor).
 The user interface is in Russian; code, comments and documentation are in English.
+Plans and ideas for later: [ROADMAP.md](ROADMAP.md); changes by version: [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
 

@@ -3,7 +3,7 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
-## Unreleased
+## v1.3.3 — Locks & Water (2026-10-31)
 
 ### Added
 - Water mineralization (ppm) before brewing: optional «Минерализация воды» on the method screen and in the brew editor («не указана» until set; the first «+» gives 100 ppm, then 5 ppm steps), with a hint and the SCA range. Any value is accepted; outside 75–250 ppm the app says the water is softer or harder than SCA advises and what that does to the cup. The last value is offered for the next brew on any method.

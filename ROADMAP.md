@@ -1,6 +1,7 @@
 # Roadmap
 
 Plans and ideas for later, so they are not lost between conversations.
+This file lives in the `dev` branch only: a release merges `dev` into `main` without it (see README → Branches, releases and versions).
 What is already done but not released lives in [CHANGELOG.md](CHANGELOG.md) under **Unreleased**.
 
 How to use this file:

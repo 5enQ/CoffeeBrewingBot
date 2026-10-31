@@ -12,24 +12,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Tail logs while calling the server
+      - name: Durable Objects usage (GraphQL analytics) and a log tail
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           rm -rf out; mkdir -p out
+          H="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          curl -sS -H "$H" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/durable_objects/namespaces" | jq '[.result[]? | {id, name, class, script}], .errors' > out/namespaces.json || true
+          q() { jq -n --arg q "$1" --arg a "$CLOUDFLARE_ACCOUNT_ID" '{query:$q, variables:{a:$a}}' | curl -sS -H "$H" -H 'Content-Type: application/json' https://api.cloudflare.com/client/v4/graphql -d @- ; }
+          q 'query { __type(name: "AccountDurableObjectsPeriodicGroupsSum") { fields { name } } }' > out/schema-periodic.json
+          q 'query { __type(name: "AccountDurableObjectsSqlStorageGroupsSum") { fields { name } } }' > out/schema-sql.json
+          q 'query { __type(name: "account") { fields { name } } }' | jq '[.data.__type.fields[]?.name | select(test("urable"))]' > out/schema-account.json
+          q 'query($a: String!) { viewer { accounts(filter:{accountTag:$a}) { durableObjectsPeriodicGroups(limit: 500, filter:{date_geq:"2026-10-30"}, orderBy:[datetimeHour_ASC]) { dimensions { datetimeHour namespaceId } sum { rowsRead rowsWritten activeTime cpuTime } } } } }' > out/periodic.json
+          q 'query($a: String!) { viewer { accounts(filter:{accountTag:$a}) { durableObjectsInvocationsAdaptiveGroups(limit: 500, filter:{date_geq:"2026-10-31"}, orderBy:[datetimeHour_ASC]) { dimensions { datetimeHour namespaceId } sum { requests } } } } }' > out/invocations.json
           A=https://brewbook-ratings.brewbook.workers.dev
-          (timeout 150 npx -y wrangler@4 tail brewbook-ratings --format json > out/tail.jsonl 2> out/tail.err &)
-          sleep 20
-          curl -sS -m 20 -w " %{http_code}\n" "$A/version" >> out/calls.txt
-          curl -sS -m 20 -w " %{http_code}\n" "$A/lookup?url=https://shop.tastycoffee.ru/coffee/braziliya-sul-de-minas" >> out/calls.txt
-          curl -sS -m 20 -w " %{http_code}\n" "$A/lookup?code=4600000000017" >> out/calls.txt
-          curl -sS -m 20 -w " %{http_code}\n" "$A/stats?author=1" >> out/calls.txt
-          curl -sS -m 20 -w " %{http_code}\n" -X POST -H 'Content-Type: application/json' -d '{}' "$A/me" >> out/calls.txt
-          curl -sS -m 20 -w " %{http_code}\n" "$A/cards/zzzzzzzz" >> out/calls.txt
-          sleep 120
+          (timeout 100 npx -y wrangler@4 tail brewbook-ratings --format json > out/tail.jsonl 2> out/tail.err &)
+          sleep 95
           true
       - name: Commit
         run: |
           git config user.name probe; git config user.email probe@example.com
-          git add -A out && git commit -m "probe: sitemaps [skip ci]" && git push
+          git add -A out && git commit -m "probe: usage [skip ci]" && git push

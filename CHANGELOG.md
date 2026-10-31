@@ -5,6 +5,9 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Added
+- The running timer is shared between devices through the account cloud: a cold brew started on the phone shows up on the computer (banner on the brew tab), and pausing, resuming or finishing it on one device does the same on the other within half a minute.
+
 ### Fixed
 - An empty profile card (only a name, a plain background) is as tall as its content instead of a large empty block.
 - Developers' card: the background code scrolls in a seamless loop. Before, the code was shorter than the card, so the lower part ran empty and the code then jumped back in.

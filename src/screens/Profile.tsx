@@ -204,7 +204,7 @@ const SITE_STATUS: Record<SiteInfo['status'], string> = { approved: 'подкл�
 /** Owner only: roaster sites for the shared catalog. Invisible to everyone else (the server answers 403). */
 /** Owner only (the server answers 403 to everyone else): roaster sites and the developers' background */
 function OwnerTools() {
-  const [data, setData] = useState<{ sites: SiteInfo[]; grants: GrantInfo[] } | null>(null);
+  const [data, setData] = useState<AdminData | null>(null);
   useEffect(() => { if (myTelegramId()) adminCall().then(setData); }, []);
   if (!data) return null;
   return <><RoasterSites sites={data.sites} crawl={data.crawl} onChange={setData} /><DevGrants grants={data.grants} onChange={setData} /></>;
@@ -216,7 +216,7 @@ const GRANTS = [
 ] as const;
 
 /** Give or take away special grants by Telegram id, each separately */
-function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: { sites: SiteInfo[]; grants: GrantInfo[] }): void }) {
+function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: AdminData): void }) {
   const [tg, setTg] = useState('');
   const [busy, setBusy] = useState(false);
   const me = myTelegramId();

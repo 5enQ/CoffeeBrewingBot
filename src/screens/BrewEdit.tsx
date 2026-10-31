@@ -12,10 +12,11 @@ import { GRIND_RULES, fmtGrind, grinderOf, unitOf } from '../data/grind';
 import { GrindField } from '../ui/GrindField';
 import { CvaEditor } from '../ui/Cva';
 import { MODES } from '../data/cva';
+import { healthWarning } from '../data/health';
 
 
 export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: boolean; openCupping?: boolean }) {
-  const { saveBrew, gear: myGear } = useStore();
+  const { saveBrew, gear: myGear, brews } = useStore();
   const { setTab, push, back } = useRouter();
   const [b, setB] = useState<Brew>(draft);
   const [timeText, setTimeText] = useState(fmtTime(draft.time));
@@ -47,8 +48,10 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
     const toSave: Brew = isCupping
       ? { ...b, rating: 0, cupping: { ...(b.cupping ?? emptyCupping()), descriptors: b.descriptors, notes: b.notes } }
       : { ...b, cupping: null };
+    const warn = isNew ? healthWarning(brews, toSave) : null;
     saveBrew(toSave);
     platform.haptic('success');
+    if (warn) setTimeout(() => void platform.alert(warn), 400);
     if (isNew) { setTab('journal'); push({ name: 'brew', id: toSave.id, fresh: true }); }
     else back(true);
   };
@@ -141,7 +144,13 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
             {allMethods().filter((x) => (x.id !== 'cupping' || isCupping) && (x.id === 'drip') === (b.methodId === 'drip')).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </select>
         </Field>
-        <Stepper label="Кофе" value={b.dose} step={0.25} min={1} max={100} unit="г" format={(v) => String(v).replace('.', ',')} onChange={(dose) => set({ dose })} />
+        <Stepper label="Кофе" value={b.dose} step={0.25} min={1} max={100} unit="г" format={(v) => String(v).replace('.', ',')}
+          onChange={(dose) => set({ dose, fromPack: b.fromPack !== undefined ? Math.round((b.fromPack + dose - b.dose) * 10) / 10 : undefined })} />
+        {/* what actually left the pack: dose + grinder loss; can be corrected for this brew */}
+        {b.beanId && !b.dripId && !b.cva && b.methodId !== 'drip' && (
+          <Stepper label="Из пачки" value={b.fromPack ?? b.dose} step={0.1} min={b.dose} max={b.dose + 20} unit="г" format={(v) => String(Math.round(v * 10) / 10).replace('.', ',')}
+            onChange={(v) => { const r = Math.round(v * 10) / 10; set({ fromPack: r > b.dose ? r : undefined }); }} />
+        )}
         <Stepper label={m.yieldLabel ?? 'Вода'} value={b.water} step={b.methodId === 'espresso' ? 1 : 5} min={5} max={2000} unit="г" onChange={(water) => set({ water })} />
         <Stepper label="Температура" value={b.temp} step={0.1} min={0} max={100} unit={b.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
         {b.methodId !== 'drip' && (() => {

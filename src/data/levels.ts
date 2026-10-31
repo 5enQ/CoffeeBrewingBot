@@ -39,8 +39,8 @@ export const givesBackground = (key: string, tier: Tier) => key.startsWith('meth
 export interface BrewStat { m: string; w: number; t: number; r: number }
 
 export const COUNT_RULES = {
-  /** brews of one method counted per day */
-  perMethodDay: 5,
+  /** technical ceiling against scripted brews, far above what a person drinks (the app warns past HEALTH_CUPS) */
+  perDay: 100,
   /** water counted per brew, ml (batch brew included) */
   maxWater: 3000,
   /** water counted per day, ml */
@@ -53,13 +53,16 @@ export const COUNT_RULES = {
   earliest: Date.UTC(2015, 0, 1),
 };
 
+/** past this many own brews a day the app shows a health warning (nothing is capped) */
+export const HEALTH_CUPS = 10;
+
 /**
- * Count brews with the limits: per-method-per-day cap, water caps, no backdating after the import window.
+ * Count brews with the limits: technical per-day ceiling, water caps, no backdating after the import window.
  * t — brew date, r — when the server first saw it, created — account creation.
  */
 export function countStats(rows: BrewStat[], created: number, ratings = 0): Stats {
   const R = COUNT_RULES;
-  const perMethodDay = new Map<string, number>();
+  const perDay = new Map<number, number>();
   const waterDay = new Map<number, number>();
   const methods: Record<string, number> = {};
   let ml = 0;
@@ -67,10 +70,9 @@ export function countStats(rows: BrewStat[], created: number, ratings = 0): Stat
     if (!b.m || !(b.t >= R.earliest) || b.t > b.r + 86_400_000) continue;
     if (b.r > created + R.importWindow && b.t < b.r - R.maxLate) continue;
     const day = Math.floor(b.t / 86_400_000);
-    const k = `${b.m}|${day}`;
-    const n = perMethodDay.get(k) ?? 0;
-    if (n >= R.perMethodDay) continue;
-    perMethodDay.set(k, n + 1);
+    const n = perDay.get(day) ?? 0;
+    if (n >= R.perDay) continue;
+    perDay.set(day, n + 1);
     methods[b.m] = (methods[b.m] ?? 0) + 1;
     const used = waterDay.get(day) ?? 0;
     const w = Math.max(0, Math.min(R.maxWater, Math.round(b.w) || 0, R.perDayWater - used));

@@ -24,6 +24,10 @@ export const SEED_SITES: SeedSite[] = [
     exclude: ['^/shop/$', 'futbolka', 'shirt', 'shopper', 'lanyard', 'karta', '^/cake/', 'test-product'] },
   { host: 'theweldercatherine.ru', roaster: 'Сварщица Екатерина', include: ['^/catalog/(dlya_filtra|dlya_espresso|kofe_v_filtr_pakete|arkhiv_kofe)/.+/$'], archive: ['^/catalog/arkhiv_kofe/'] },
   { host: 'shop.tastycoffee.ru', roaster: 'Tasty Coffee', include: ['^/coffee/[^/]+$'], exclude: ['^/coffee/capsules-'] },
+  // Tilda store: lots at /catalog/<slug>, accessories live under /accessories
+  { host: 'silkydrum.ru', roaster: 'Silky Drum', include: ['^/catalog/[^/]+/?$'], exclude: ['sertifikat', 'certificate', 'podar', 'merch', 'futbolk', 'kruzhk', 'shopper'] },
+  { host: 'rockets.coffee', roaster: 'Rockets', include: ['^/products/[^/]+/?$'],
+    exclude: ['sertifikat', 'certificate', 'gift', 'podar', 'merch', 'futbolk', 't-shirt', 'tshirt', 'hoodie', 'hudi', 'kruzhk', 'mug', 'shopper', 'tote', 'filtr-bumag', 'paper-filter', 'kapsul', 'capsul'] },
 ];
 
 export const normHost = (h: string) => h.toLowerCase().replace(/^www\./, '');

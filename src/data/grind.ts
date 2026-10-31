@@ -40,5 +40,23 @@ export function grinderOf(gearRefs: { id: string; cat: string }[] | undefined, m
   const ref = gearRefs?.find((g) => g.cat === 'grinder');
   if (!ref) return null;
   const g = myGear.find((x) => x.id === ref.id);
-  return { id: ref.id, type: g?.grindType };
+  return { id: ref.id, type: g?.grindType, loss: g?.loss && g.loss > 0 ? g.loss : 0 };
 }
+
+/**
+ * Grinder "mileage": coffee ground on it over all brews where it was used.
+ * Counts what went through the burrs — the dose plus the grinder's loss (fromPack); cupping — every cup of every sample.
+ * Drips (pre-ground) and sample brews are not counted.
+ */
+export function grinderMileage(grinderId: string, brews: { gear?: { id: string }[]; methodId: string; sample?: boolean; dose: number; fromPack?: number; cva?: { cups: number; samples: unknown[] } | null }[]) {
+  let grams = 0, count = 0;
+  for (const b of brews) {
+    if (b.sample || b.methodId === 'drip' || !b.gear?.some((g) => g.id === grinderId)) continue;
+    grams += b.cva ? b.cva.cups * b.cva.samples.length * b.dose : b.fromPack ?? b.dose ?? 0;
+    count++;
+  }
+  return { grams: Math.round(grams), count };
+}
+
+/** "850 г", "12,4 кг" */
+export const fmtMass = (g: number) => (g < 1000 ? `${g} г` : `${(Math.round(g / 100) / 10).toLocaleString('ru-RU')} кг`);

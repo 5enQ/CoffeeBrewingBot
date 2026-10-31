@@ -45,4 +45,12 @@ describe('site rules', () => {
     expect(wanted(site('hq-coffee.com'), '/varenaya-futbolka/')).toBe(false);
     expect(wanted(site('hq-coffee.com'), '/kenya-kii-drip/')).toBe(true);
   });
+  it('Silky Drum and Rockets: lots in, the rest out', () => {
+    expect(wanted(site('silkydrum.ru'), '/catalog/colombia-brayan-smith-geisha')).toBe(true);
+    expect(wanted(site('silkydrum.ru'), '/catalog')).toBe(false);
+    expect(wanted(site('silkydrum.ru'), '/accessories/kettle')).toBe(false);
+    expect(wanted(site('rockets.coffee'), '/products/espresso-indoneziya-asman-arianto')).toBe(true);
+    expect(wanted(site('rockets.coffee'), '/products/gift-card')).toBe(false);
+    expect(wanted(site('rockets.coffee'), '/collections/all')).toBe(false);
+  });
 });

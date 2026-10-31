@@ -12,7 +12,8 @@ export type Tab = 'brew' | 'journal' | 'beans' | 'profile';
 export type Route =
   | { name: 'recipes'; methodId: string; beanId?: string | null }
   | { name: 'method'; methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }
-  | { name: 'timer'; draft: Brew }
+  /** resume — reopen the timer kept on the device */
+  | { name: 'timer'; draft: Brew; resume?: boolean }
   | { name: 'brewEdit'; draft: Brew; isNew: boolean; openCupping?: boolean }
   /** fresh — just brewed: a "Home" button instead of "Repeat" */
   | { name: 'brew'; id: string; fresh?: boolean }

@@ -13,6 +13,8 @@ import { toast } from '../ui/toast';
 import { useFlip } from '../ui/motion';
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import type { Method } from '../data/methods';
+import { elapsedOf, useActiveTimer } from '../data/timer';
+import { fmtTime } from '../data/methods';
 import type { TileLayout } from '../data/store';
 
 const HOLD_MS = 450;
@@ -58,6 +60,26 @@ function MethodTile({ id, className, onOpen, onPin, pinned, label, children }: {
       }}
       onClick={() => { if (held.current || Date.now() - lastPinAt < 400) { held.current = false; return; } onOpen(); }}>
       {children}
+    </button>
+  );
+}
+
+/** A timer kept running on the device (cold brew while the app was closed) */
+function TimerBanner() {
+  const t = useActiveTimer();
+  const { push } = useRouter();
+  if (!t) return null;
+  const m = methodById(t.draft.methodId);
+  const e = elapsedOf(t);
+  const done = e >= t.total;
+  return (
+    <button type="button" className={'timer-banner' + (done ? ' done' : '')} onClick={() => push({ name: 'timer', draft: t.draft, resume: true })}>
+      <span className="method-icon"><MethodIcon icon={m.icon} size={24} /></span>
+      <span className="timer-banner-text">
+        <b>{m.name}{t.startedAt === null ? ' · пауза' : ''}</b>
+        <small>{done ? 'Время вышло — пора процедить и записать' : `${fmtTime(e)} из ${fmtTime(t.total)} · осталось ${fmtTime(t.total - e)}`}</small>
+      </span>
+      <Icon name="chevron" size={18} />
     </button>
   );
 }
@@ -278,6 +300,7 @@ export function BrewHome() {
 
   return (
     <Screen title="Что завариваем?" root>
+      <TimerBanner />
       {recent.length > 0 && (
         <Section title="Повторить">
           {recent.map((b) => {

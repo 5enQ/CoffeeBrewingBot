@@ -110,7 +110,10 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const [changeBean, setChangeBean] = useState(false);
   const beanObj = beans.find((x) => x.id === bean);
   const beanSt = beanObj ? beanStock(beanObj, brews) : null;
-  const lowStock = !drip && beanSt && beanSt.total > 0 && beanSt.left < dose ? beanSt : null;
+  // grinder loss: the pack gives dose + loss, the brewer gets the dose (not for drips and cupping)
+  const loss = !drip && m.id !== 'cupping' ? grinder?.loss ?? 0 : 0;
+  const fromPack = Math.round((dose + loss) * 10) / 10;
+  const lowStock = !drip && beanSt && beanSt.total > 0 && beanSt.left < fromPack ? beanSt : null;
   const dripLeft = drip && beanObj ? (beanObj.assorted && dripId ? dripItemLeft(beanObj, dripId, brews) : beanSt?.total ? beanSt.left : null) : null;
 
   const water = Math.round(dose * ratio * (m.id === 'espresso' ? 10 : 1)) / (m.id === 'espresso' ? 10 : 1);
@@ -121,6 +124,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     id: uid(), date: Date.now(), methodId: m.id, beanId: bean, dose, water, temp, grind: drip ? '' : grindUnit && grindValue !== undefined ? fmtGrind(grindValue, grindUnit) : grind, time: plan.total,
     ...(!drip && grindUnit && grindValue !== undefined ? { grindValue, grindUnit } : {}),
     ...(drip && dripId ? { dripId } : {}),
+    ...(loss && bean ? { fromPack } : {}),
     rating: 0, taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, descriptors: [], notes: '',
     cupping: m.id === 'cupping' ? emptyCupping() : null,
     gear,
@@ -171,6 +175,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
       <Section title="Параметры">
         {/* a drip's coffee is pre-measured in the bag — only water changes */}
         {!drip && <Stepper label="Кофе" value={dose} onChange={setDose} step={espresso ? 0.5 : m.id === 'cupping' ? 0.25 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} />}
+        {loss > 0 && <p className="muted pad small-note grind-loss">Из пачки {fmtNum(fromPack, 1)} г → в воронку {fmtNum(dose, 2)} г · потери кофемолки {fmtNum(loss, 1)} г</p>}
         <Stepper label={waterLabel} value={water} step={espresso ? 1 : 10} min={espresso ? 10 : 30} max={2000} unit="г"
           format={(v) => fmtNum(v)}
           onChange={(w) => (drip ? setRatio(Math.max(1, w / dose)) : setDose(Math.max(1, Math.round((w / ratio) * 4) / 4)))} />

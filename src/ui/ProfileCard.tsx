@@ -2,7 +2,7 @@
  * Profile card. Base themes are flat colors; bronze / silver / gold are brushed metal with a sheen that follows the tilt;
  * diamond is a faceted, iridescent 3D card that turns with the device (or the mouse on a computer).
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { cardView, type CardData } from '../data/card';
 import { catById } from '../data/gear';
 import type { IconKey } from '../data/methods';
@@ -44,11 +44,12 @@ export function useTilt(active: boolean, ref: React.RefObject<HTMLElement | null
     const tick = (now: number) => {
       if (now - lastInput.current > 2500) {
         // idle sway
-        target.current = { x: Math.sin(now / 1700) * 0.55, y: Math.cos(now / 2300) * 0.4 };
+        target.current = { x: Math.sin(now / 1700) * 0.4, y: Math.cos(now / 2300) * 0.3 };
       }
       setT((cur) => {
         const nx = cur.x + (target.current.x - cur.x) * 0.12, ny = cur.y + (target.current.y - cur.y) * 0.12;
-        return Math.abs(nx - cur.x) < 0.001 && Math.abs(ny - cur.y) < 0.001 ? cur : { x: nx, y: ny };
+        // tiny steps are not worth a repaint
+        return Math.abs(nx - cur.x) < 0.004 && Math.abs(ny - cur.y) < 0.004 ? cur : { x: nx, y: ny };
       });
       raf = requestAnimationFrame(tick);
     };
@@ -85,7 +86,13 @@ function makeFacets(): Facet[] {
   return out;
 }
 
-function Facets({ x, y }: { x: number; y: number }) {
+function Facets({ x: rx, y: ry }: { x: number; y: number }) {
+  // colors in 1/50 steps: invisible, and the SVG is rebuilt far less often
+  const x = Math.round(rx * 50) / 50, y = Math.round(ry * 50) / 50;
+  return <FacetsAt x={x} y={y} />;
+}
+
+const FacetsAt = memo(function FacetsAt({ x, y }: { x: number; y: number }) {
   const facets = useMemo(makeFacets, []);
   return (
     <svg className="pcard-facets" viewBox="0 0 100 64" preserveAspectRatio="none" aria-hidden="true">
@@ -103,7 +110,7 @@ function Facets({ x, y }: { x: number; y: number }) {
       })}
     </svg>
   );
-}
+});
 
 /* ---------- metal glints ---------- */
 
@@ -183,8 +190,8 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
   const [photoOk, setPhotoOk] = useState(true);
   const icon = 'tier' in view.theme ? view.theme.icon : null;
 
-  // diamond and volume cards turn in 3D; diamond the most
-  const turn = tier === 'diamond' ? [18, 15] : tier === 'volume' ? [10, 8] : null;
+  // diamond and volume cards turn in 3D; the diamond only slightly (its shine does the work)
+  const turn = tier === 'diamond' ? [5, 4] : tier === 'volume' ? [10, 8] : null;
   const style = {
     '--tx': t.x.toFixed(3), '--ty': t.y.toFixed(3),
     ...(turn ? { transform: `perspective(800px) rotateY(${(t.x * turn[0]).toFixed(2)}deg) rotateX(${(-t.y * turn[1]).toFixed(2)}deg)` } : {}),

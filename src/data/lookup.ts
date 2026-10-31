@@ -219,7 +219,9 @@ export interface SiteInfo {
 }
 
 export interface GrantInfo { account: string; tg: string | null; grants: string[] }
-export interface AdminData { sites: SiteInfo[]; grants: GrantInfo[] }
+/** what the crawler spent today (UTC day) out of its budget — 70% of the Cloudflare free tier */
+export interface CrawlUsage { day: string; reads: number; writes: number; maxReads: number; maxWrites: number; paused: boolean }
+export interface AdminData { sites: SiteInfo[]; grants: GrantInfo[]; crawl?: CrawlUsage }
 
 /** Owner-only tools: roaster sites and special backgrounds. null — not the owner or no connection. */
 export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 'recrawl' | 'grant' | 'revoke'; host?: string; roaster?: string; tg?: string; what?: string } = { action: 'list' }): Promise<AdminData | null> {
@@ -229,7 +231,7 @@ export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 
     const r = await fetch(`${RATINGS_API}/admin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, ...body }) });
     if (!r.ok) return null;
     const j = await r.json();
-    return { sites: j.sites ?? [], grants: j.grants ?? [] };
+    return { sites: j.sites ?? [], grants: j.grants ?? [], crawl: j.crawl ?? undefined };
   } catch { return null; }
 }
 

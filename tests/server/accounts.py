@@ -16,9 +16,9 @@ A, B = sign(111), sign(222)
 me = post('/me', {'initData': A}); ok(me.get('account') and me['methods'] == {}, f'account created {me.get("account")}')
 again = post('/me', {'initData': A}); ok(again['account'] == me['account'], 'same Telegram user → same account')
 hist = [{'id': f'v{i}', 'm': 'v60', 'w': 250, 't': T0 + i * DAY} for i in range(120)] + [{'id': f'x{i}', 'm': 'v60', 'w': 250, 't': T0 + 5 * DAY + i} for i in range(10)]
-s = post('/brews', {'initData': A, 'brews': hist}); ok(s['methods'].get('v60') == 124, f'history import with the per-day limit: {s["methods"]}')
-s = post('/brews', {'initData': A, 'brews': [], 'removed': ['v0', 'v1']}); ok(s['methods']['v60'] == 122, 'deleted brews stop counting')
-s = post('/brews', {'initData': A, 'brews': [{'id': 'bad id!', 'm': 'v60', 'w': 1, 't': T0}]}); ok(s['methods']['v60'] == 122, 'malformed brews are ignored')
+s = post('/brews', {'initData': A, 'brews': hist}); ok(s['methods'].get('v60') == 130, f'history import, no daily cap: {s["methods"]}')
+s = post('/brews', {'initData': A, 'brews': [], 'removed': ['v0', 'v1']}); ok(s['methods']['v60'] == 128, 'deleted brews stop counting')
+s = post('/brews', {'initData': A, 'brews': [{'id': 'bad id!', 'm': 'v60', 'w': 1, 't': T0}]}); ok(s['methods']['v60'] == 128, 'malformed brews are ignored')
 fake = {'name': 'Аня', 'theme': {'ach': 'method:v60'}, 'ach': ['method:v60', 'method:espresso', 'liters'],
         'badges': [{'kind': 'achieve', 'title': 'Эспрессо · 1000 заварок', 'detail': 'Объёмный'}, {'kind': 'sca', 'title': 'SCA Brewing'}],
         'earned': {'method:espresso': {'tier': 'volume', 'at': 1000}}, 'no': 1}
@@ -65,6 +65,26 @@ ok(get(f'/cards/{cid3}')['card']['theme'] == {'special': 'dev'}, 'the same link 
 post('/admin', {'initData': A, 'action': 'revoke', 'tg': '333', 'what': 'dev'})
 ok(get(f'/cards/{cid3}')['card']['theme'] == {'base': 'paper'}, 'taken away → the card falls back to the default')
 ok('tester' in post('/me', {'initData': C})['grants'], 'taking dev away keeps the separate tester grant')
+
+# bot reminders
+LINK = 'https://t.me/CoffeeBrewingBot?startapp=timer'
+now = int(time.time() * 1000)
+ok(post('/reminders', {'initData': A, 'at': now + 3600_000, 'title': 'Колд брю', 'link': LINK}).get('ok') is True, 'reminder scheduled')
+ok(post('/reminders', {'initData': A, 'at': now + 73 * 3600_000, 'title': 'x', 'link': LINK}).get('status') == 400, 'more than 72 h ahead is refused')
+ok(post('/reminders', {'initData': A, 'at': now + 5000, 'title': 'x', 'link': LINK}).get('status') == 400, 'less than 30 s ahead is refused')
+ok(post('/reminders', {'initData': A, 'at': now + 3600_000, 'title': 'x', 'link': 'https://evil.example/?startapp=timer'}).get('status') == 400, 'only a t.me timer link is accepted')
+ok(post('/reminders', {'initData': 'forged', 'at': now + 3600_000, 'link': LINK}).get('status') == 401, 'unsigned requests are refused')
+ok(post('/reminders', {'initData': A, 'cancel': True}).get('ok') is True, 'reminder cancelled')
+# a real one fires: the local token is fake, so Telegram refuses — the log shows the alarm ran
+ok(post('/reminders', {'initData': B, 'at': int(time.time() * 1000) + 31_000, 'title': 'Колд брю', 'link': LINK}).get('ok') is True, 'short reminder scheduled')
+log = os.environ.get('WRANGLER_LOG')
+if log:
+    fired = False
+    for _ in range(25):
+        time.sleep(2)
+        txt = open(log, encoding='utf-8', errors='replace').read()
+        if 'reminder not sent' in txt or 'reminder error' in txt: fired = True; break
+    ok(fired, 'the alarm sends the bot message when the time comes')
 
 print('\n' + (f'{len(FAILS)} check(s) failed' if FAILS else 'all checks passed'))
 sys.exit(1 if FAILS else 0)

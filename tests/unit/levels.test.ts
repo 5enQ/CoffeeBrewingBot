@@ -13,10 +13,12 @@ describe('server counting rules', () => {
     expect(countStats(rows, created).methods.v60).toBe(60);
   });
 
-  it('at most 5 brews of one method per day', () => {
+  it('no daily cap for people, only a technical ceiling of 100 a day', () => {
     const rows = Array.from({ length: 20 }, (_, i) => b('v60', T0 + i * 60_000, created));
-    expect(countStats(rows, created).methods.v60).toBe(5);
-    expect(countStats([...rows, b('aeropress', T0, created)], created).methods.aeropress).toBe(1);
+    expect(countStats(rows, created).methods.v60).toBe(20);
+    const flood = Array.from({ length: 150 }, (_, i) => b(i % 2 ? 'v60' : 'aeropress', T0 + i * 1000, created));
+    const s = countStats(flood, created).methods;
+    expect((s.v60 ?? 0) + (s.aeropress ?? 0)).toBe(100);
   });
 
   it('water: 3 L per brew, 6 L per day', () => {

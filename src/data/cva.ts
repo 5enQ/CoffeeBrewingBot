@@ -319,7 +319,8 @@ export const brewBeanIds = (b: Pick<Brew, 'cva' | 'beanId'>) =>
   b.cva ? [...new Set(b.cva.samples.map((s) => s.beanId).filter((x): x is string => !!x))] : b.beanId ? [b.beanId] : [];
 
 /** Grams of a pack used by a brew: for cupping — dose × cups for each sample of that pack */
-export function gramsFromBean(b: Pick<Brew, 'cva' | 'beanId' | 'dose'>, beanId: string) {
+export function gramsFromBean(b: Pick<Brew, 'cva' | 'beanId' | 'dose' | 'fromPack'>, beanId: string) {
   if (b.cva) return b.cva.samples.filter((s) => s.beanId === beanId).length * b.cva.cups * b.dose;
-  return b.beanId === beanId ? b.dose || 0 : 0;
+  // the grinder's loss comes from the pack too: what went into the brewer is the dose, what left the pack is fromPack
+  return b.beanId === beanId ? b.fromPack ?? b.dose ?? 0 : 0;
 }

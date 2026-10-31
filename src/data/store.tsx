@@ -125,6 +125,8 @@ export interface Brew {
   shareId?: string;
   /** author's telegram id (for others' recipes) — where ratings go */
   authorId?: string;
+  /** grams taken from the pack when it differs from the dose (grinder loss); stock uses this, the recipe uses dose */
+  fromPack?: number;
   /** which drip from an assorted box was brewed */
   dripId?: string;
   sample?: boolean;

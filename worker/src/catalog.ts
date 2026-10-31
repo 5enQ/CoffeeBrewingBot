@@ -117,15 +117,29 @@ const MAX_FAILS = 5;
 let STEP = 60_000;
 /** Minimum pause between two requests to the same site */
 let PER_SITE = 120_000;
+/**
+ * Daily budget of the crawler: at most 70% of the Cloudflare free tier for Durable Objects SQLite
+ * (5 M rows read and 100 k rows written per day, account-wide, reset at 00:00 UTC). The crawler meters its own steps
+ * and sleeps until the next UTC day once either half is spent; the rest stays for the app (lookups, accounts, ratings).
+ * CRAWL_BUDGET="reads,writes" overrides it in local tests.
+ */
+const FREE_TIER = { reads: 5_000_000, writes: 100_000 };
+const BUDGET_SHARE = 0.7;
+const utcDay = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
+const nextUtcDay = (t = Date.now()) => Math.floor(t / 86_400_000) * 86_400_000 + 86_400_000 + 60_000;
+export interface CrawlUsage { day: string; reads: number; writes: number; maxReads: number; maxWrites: number; paused: boolean }
+
 /** Sitemap entries handled per step (the rest wait in the sitemap row) */
 const CHUNK = 250;
 
 export class CoffeeCatalog extends DurableObject<Env> {
   private sql: SqlStorage;
+  private budget = { reads: FREE_TIER.reads * BUDGET_SHARE, writes: FREE_TIER.writes * BUDGET_SHARE };
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     setCrawlProxy(env.CRAWL_PROXY);
+    if (env.CRAWL_BUDGET) { const [r, w] = env.CRAWL_BUDGET.split(',').map(Number); if (r > 0 && w > 0) this.budget = { reads: r, writes: w }; }
     if (env.CRAWL_STEP_MS) { STEP = Number(env.CRAWL_STEP_MS); PER_SITE = STEP * 2; }
     const sql = (this.sql = ctx.storage.sql);
     sql.exec(`CREATE TABLE IF NOT EXISTS coffee (
@@ -214,6 +228,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
     this.sql.exec('INSERT INTO coffee (id, data, source, confirms, created, updated, host, url) VALUES (?, ?, ?, 0, ?, ?, ?, ?)',
       id, JSON.stringify(coffee), source, now, now, host, url);
     this.link(id, keys);
+    this.staleCounts();
     return id;
   }
 
@@ -304,10 +319,13 @@ export class CoffeeCatalog extends DurableObject<Env> {
     return 'new';
   }
 
-  /** Owner view: every site with its numbers */
+  /**
+   * Owner view: every site with its numbers.
+   * Page and lot counts are aggregates over whole tables (thousands of rows read), so they are cached in meta
+   * and recounted only after something changed them (a crawler step, a new lot, a rejected site).
+   */
   sites() {
-    const pages = this.sql.exec<{ host: string; status: string; n: number }>('SELECT host, status, COUNT(*) AS n FROM page GROUP BY host, status').toArray();
-    const lots = this.sql.exec<{ host: string; state: string; n: number }>('SELECT host, state, COUNT(*) AS n FROM coffee WHERE host IS NOT NULL GROUP BY host, state').toArray();
+    const { pages, lots } = this.counts();
     return this.sql.exec<{ host: string }>('SELECT host FROM site ORDER BY status, host').toArray().map(({ host }) => {
       const s = this.site(host as string)!;
       const p = Object.fromEntries(pages.filter((x) => x.host === s.host).map((x) => [x.status, x.n]));
@@ -316,6 +334,20 @@ export class CoffeeCatalog extends DurableObject<Env> {
     });
   }
 
+  private counts(): { pages: { host: string; status: string; n: number }[]; lots: { host: string; state: string; n: number }[] } {
+    const cached = this.sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'site_counts'").toArray()[0]?.value;
+    if (cached) { try { return JSON.parse(cached); } catch { /* recount */ } }
+    const pc = this.sql.exec<{ host: string; status: string; n: number }>('SELECT host, status, COUNT(*) AS n FROM page GROUP BY host, status');
+    const lc = this.sql.exec<{ host: string; state: string; n: number }>('SELECT host, state, COUNT(*) AS n FROM coffee WHERE host IS NOT NULL GROUP BY host, state');
+    const pages = pc.toArray(), lots = lc.toArray();
+    console.log('site counts recounted, rows read:', pc.rowsRead + lc.rowsRead);
+    this.sql.exec("INSERT INTO meta (key, value) VALUES ('site_counts', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify({ pages, lots }));
+    return { pages, lots };
+  }
+
+  /** pages or lots changed: the cached counts are recounted on the next owner view (no row written when already stale) */
+  private staleCounts() { this.sql.exec("DELETE FROM meta WHERE key = 'site_counts'"); }
+
   setSite(host: string, status: SiteStatus, roaster?: string) {
     const h = normHost(host);
     if (!/^[a-z0-9.-]{3,100}$/.test(h)) return false;
@@ -323,7 +355,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
       ON CONFLICT(host) DO UPDATE SET status = excluded.status, roaster = CASE WHEN excluded.roaster <> '' THEN excluded.roaster ELSE site.roaster END`,
     h, (roaster ?? '').trim().slice(0, 60), status, Date.now());
     if (status === 'approved') this.recrawl(h);
-    if (status === 'rejected') this.sql.exec("UPDATE page SET status = 'skip' WHERE host = ? AND status = 'queued'", h);
+    if (status === 'rejected') { this.sql.exec("UPDATE page SET status = 'skip' WHERE host = ? AND status = 'queued'", h); this.staleCounts(); }
     return true;
   }
 
@@ -344,11 +376,46 @@ export class CoffeeCatalog extends DurableObject<Env> {
   /* ---------- crawler ---------- */
 
   async alarm() {
+    // today's budget is spent: sleep until the free tier resets
+    if (this.overBudget()) { await this.ctx.storage.setAlarm(nextUtcDay()); return; }
     let busy = false;
-    try { busy = await this.step(); } catch (e) { console.log('crawl step failed', e); busy = true; }
-    const next = busy ? Date.now() + STEP : this.nextDue();
+    const real = this.sql;
+    const cursors: SqlStorageCursor<Record<string, SqlStorageValue>>[] = [];
+    // meter every query of this step (the counters are what Cloudflare bills)
+    this.sql = { exec: (q: string, ...b: SqlStorageValue[]) => { const c = real.exec(q, ...b); cursors.push(c); return c; } } as unknown as SqlStorage;
+    let next: number | null = null;
+    try {
+      try { busy = await this.step(); } catch (e) { console.log('crawl step failed', e); busy = true; }
+      // a step that did work may have changed page or lot counts
+      if (busy) this.staleCounts();
+      next = busy ? Date.now() + STEP : this.nextDue();
+    } finally {
+      this.sql = real;
+      let r = 0, w = 0;
+      for (const c of cursors) { r += c.rowsRead; w += c.rowsWritten; }
+      this.spend(r, w);
+    }
+    if (this.overBudget()) { console.log('crawl budget spent for today', JSON.stringify(this.usage())); next = next && nextUtcDay(); }
     // nothing left to crawl: no alarm at all (approving a site or "Обойти заново" wakes the crawler again)
     if (next) await this.ctx.storage.setAlarm(next);
+  }
+
+  /** What the crawler spent today (UTC) */
+  usage(): CrawlUsage {
+    const raw = this.sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'usage'").toArray()[0]?.value;
+    let u = { day: '', reads: 0, writes: 0 };
+    try { if (raw) u = JSON.parse(raw); } catch { /* broken row: start over */ }
+    if (u.day !== utcDay()) u = { day: utcDay(), reads: 0, writes: 0 };
+    return { ...u, maxReads: this.budget.reads, maxWrites: this.budget.writes, paused: u.reads >= this.budget.reads || u.writes >= this.budget.writes };
+  }
+
+  private overBudget() { return this.usage().paused; }
+
+  /** one meta row per step; its own read and write are counted too */
+  private spend(reads: number, writes: number) {
+    const u = this.usage();
+    const value = JSON.stringify({ day: u.day, reads: u.reads + reads + 2, writes: u.writes + writes + 1 });
+    this.sql.exec("INSERT INTO meta (key, value) VALUES ('usage', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", value);
   }
 
   /** When a site waiting for a retry is due; null — every site has been crawled */

@@ -3,6 +3,11 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
+## Unreleased
+
+### Fixed
+- Developers' card: the background code scrolls in a seamless loop. Before, the code was shorter than the card, so the lower part ran empty and the code then jumped back in.
+
 ## v1.3.2 — Timers & Fixes (2026-10-31)
 
 ### Added

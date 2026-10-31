@@ -166,11 +166,17 @@ const CODE = [
   'npm run brew --profile=light', 'SELECT * FROM beans WHERE roast > now() - 14d;', '} catch (e) { makeEspresso(); }',
 ];
 
+/**
+ * Four copies of the code, scrolled by exactly one copy per loop: the copies below always fill the card,
+ * so the loop restart is invisible (with two copies the bottom ran empty, then the code jumped back in).
+ */
+const CODE_LOOP = [...CODE, ...CODE, ...CODE, ...CODE];
+
 /** Terminal-dark card with faint code, a glowing cursor and a "</>" mark in the corner */
 function DevLayer() {
   return (
     <>
-      <div className="pcard-code" aria-hidden="true"><div className="pcard-code-in">{[...CODE, ...CODE].map((l, i) => <div key={i}>{l}</div>)}</div></div>
+      <div className="pcard-code" aria-hidden="true"><div className="pcard-code-in">{CODE_LOOP.map((l, i) => <div key={i}>{l}</div>)}</div></div>
       <div className="pcard-corner pcard-dev-mark" aria-hidden="true">
         <svg width="64" height="64" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M11 9l-6 7 6 7M21 9l6 7-6 7M18 7l-4 18" />

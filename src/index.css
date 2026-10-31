@@ -1163,8 +1163,8 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .pcard-code { position: absolute; inset: 0; z-index: 0; padding: 10px 14px; overflow: hidden; pointer-events: none;
   font: 10.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: rgba(126,231,135,0.13); white-space: nowrap;
   -webkit-mask: linear-gradient(180deg, transparent, #000 25%, #000 75%, transparent); mask: linear-gradient(180deg, transparent, #000 25%, #000 75%, transparent); }
-.pcard-code-in { animation: devscroll 26s linear infinite; }
-@keyframes devscroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+.pcard-code-in { animation: devscroll 26s linear infinite; will-change: transform; }
+@keyframes devscroll { from { transform: translateY(0); } to { transform: translateY(-25%); } }
 .pcard-dev-mark { color: #58a6ff; opacity: 0.85; filter: drop-shadow(0 0 6px rgba(88,166,255,0.6)); }
 .theme-pick.special-dev { --pc-fg: #e6edf3; background: radial-gradient(80% 80% at 90% 0%, rgba(56,189,248,0.4), transparent 70%), #0d1117; font-family: ui-monospace, Menlo, monospace; }
 @media (prefers-reduced-motion: reduce) { .pcard-code-in, .pcard.special-dev .pcard-tier::after { animation: none; } }

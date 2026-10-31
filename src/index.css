@@ -169,6 +169,13 @@ button.row:active { background: var(--fg-soft); }
 .stepper-ctrl .stepper-value { width: auto; color: var(--fg); min-width: 92px; height: 38px; border: 0; background: none; padding: 0 4px; text-align: center; font-weight: 650; font-variant-numeric: tabular-nums; font-size: 16px; border-radius: 8px; }
 .stepper-ctrl .stepper-value:active { background: var(--fg-soft); }
 .stepper-input { width: 92px; height: 32px; border: 0; border-radius: 8px; background: var(--card); text-align: center; font-weight: 650; font-size: 16px; font-variant-numeric: tabular-nums; outline: 2px solid var(--accent); }
+.stepper-label { display: inline-flex; align-items: center; gap: 4px; user-select: none; -webkit-user-select: none; }
+.stepper-lock { width: 30px; height: 30px; margin-left: -8px; display: grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--hint); opacity: 0.55; cursor: pointer; }
+.stepper-lock.on { color: var(--accent); opacity: 1; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.stepper.locked .stepper-ctrl button { color: var(--hint); }
+.stepper.locked .stepper-ctrl .stepper-value { color: var(--fg); }
+.stepper-ctrl.denied { animation: stepper-deny 0.42s ease; box-shadow: 0 0 0 2px var(--danger); }
+@keyframes stepper-deny { 0%, 100% { transform: none; } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
 .stepper-ctrl button { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .stepper-ctrl small { color: var(--hint); font-weight: 500; margin-left: 2px; font-size: 13px; }
 

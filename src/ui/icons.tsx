@@ -32,7 +32,7 @@ export function MethodIcon({ icon, size = 32 }: { icon: IconKey; size?: number }
   );
 }
 
-type UiIcon = 'brew' | 'journal' | 'beans' | 'more' | 'profile' | 'share' | 'gear' | 'medal' | 'copy' | 'back' | 'plus' | 'scan' | 'chevron' | 'play' | 'pause' | 'reset' | 'check' | 'star' | 'trash' | 'repeat' | 'edit' | 'camera' | 'image' | 'close' | 'lock' | 'pin' | 'undo' | 'home' | 'search';
+type UiIcon = 'brew' | 'journal' | 'beans' | 'more' | 'profile' | 'share' | 'gear' | 'medal' | 'copy' | 'back' | 'plus' | 'scan' | 'chevron' | 'play' | 'pause' | 'reset' | 'check' | 'star' | 'trash' | 'repeat' | 'edit' | 'camera' | 'image' | 'close' | 'lock' | 'unlock' | 'pin' | 'undo' | 'home' | 'search';
 
 const UI_PATHS: Record<UiIcon, React.ReactNode> = {
   brew: <><path d="M5 8h14l-5 7h-4z" /><path d="M9 19h6M12 15v4" /><path d="M10 3v2M14 3v2" /></>,
@@ -65,6 +65,7 @@ const UI_PATHS: Record<UiIcon, React.ReactNode> = {
   undo: <><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></>,
   pin: <><path d="M9 4h6l-1 6 3 3H7l3-3z" /><path d="M12 16v5" /></>,
   lock: <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>,
+  unlock: <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 7.6-1.7" /></>,
 };
 
 export function Icon({ name, size = 22, filled = false }: { name: UiIcon; size?: number; filled?: boolean }) {

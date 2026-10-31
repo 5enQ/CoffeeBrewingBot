@@ -6,6 +6,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Added
+- Coffee / water / ratio locks on the method screen and in the recipe editor: a lock next to each of the three (or a long press on its name). Lock coffee — water and ratio move each other; lock water — coffee and ratio; lock ratio (default, as before) — coffee and water. The locked value cannot be changed: a tap shakes it red with a hint. The choice is remembered per method on the device. A recipe known as «20 г и 300 г» is entered without counting the ratio.
 - The running timer is shared between devices through the account cloud: a cold brew started on the phone shows up on the computer (banner on the brew tab), and pausing, resuming or finishing it on one device does the same on the other within half a minute.
 
 ### Fixed

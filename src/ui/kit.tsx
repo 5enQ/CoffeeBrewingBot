@@ -79,11 +79,18 @@ export function Field({ label, id, suffix, children, ...rest }: {
   );
 }
 
-export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format, label, unit }: {
+/** A stepper that can be locked (coffee / water / ratio): the lock button next to the label, or a long press on the label */
+export interface StepperLock { on: boolean; onToggle(): void; onLockedTap(): void }
+
+export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format, label, unit, lock }: {
   value: number; onChange(v: number): void; step?: number; min?: number; max?: number;
-  format?: (v: number) => string; label: string; unit?: string;
+  format?: (v: number) => string; label: string; unit?: string; lock?: StepperLock;
 }) {
   const [editing, setEditing] = useState(false);
+  const [denied, setDenied] = useState(0);
+  const locked = !!lock?.on;
+  const deny = () => { platform.haptic('error'); setDenied((n) => n + 1); lock?.onLockedTap(); };
+  const labelHold = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [text, setText] = useState('');
   const latest = useRef(value);
   latest.current = value;
@@ -98,6 +105,7 @@ export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format
 
   // holding the button — fast repeat
   const startHold = (dir: 1 | -1) => {
+    if (locked) return;
     hold.current.held = false;
     hold.current.t = setTimeout(() => {
       hold.current.held = true;
@@ -106,7 +114,7 @@ export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format
   };
   const stopHold = () => { clearTimeout(hold.current.t); clearInterval(hold.current.i); };
   useEffect(() => stopHold, []);
-  const tap = (dir: 1 | -1) => { if (hold.current.held) { hold.current.held = false; return; } set(latest.current + dir * step); };
+  const tap = (dir: 1 | -1) => { if (locked) { deny(); return; } if (hold.current.held) { hold.current.held = false; return; } set(latest.current + dir * step); };
 
   const commit = () => {
     const n = parseFloat(text.replace(',', '.'));
@@ -121,9 +129,19 @@ export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format
   );
 
   return (
-    <div className="stepper">
-      <span className="stepper-label">{label}</span>
-      <div className="stepper-ctrl">
+    <div className={'stepper' + (lock ? ' lockable' : '') + (locked ? ' locked' : '')}>
+      {lock ? (
+        <span className="stepper-label">
+          <button type="button" className={'stepper-lock' + (locked ? ' on' : '')} aria-pressed={locked}
+            aria-label={locked ? `${label}: закреплено` : `Закрепить: ${label}`} onClick={() => { platform.haptic('select'); lock.onToggle(); }}>
+            <Icon name={locked ? 'lock' : 'unlock'} size={16} />
+          </button>
+          <span onPointerDown={() => { labelHold.current = setTimeout(() => { labelHold.current = undefined; platform.haptic('medium'); lock.onToggle(); }, 500); }}
+            onPointerUp={() => clearTimeout(labelHold.current)} onPointerLeave={() => clearTimeout(labelHold.current)} onPointerCancel={() => clearTimeout(labelHold.current)}
+            onContextMenu={(e) => e.preventDefault()}>{label}</span>
+        </span>
+      ) : <span className="stepper-label">{label}</span>}
+      <div className={'stepper-ctrl' + (denied ? ' denied' : '')} key={denied} onAnimationEnd={() => setDenied(0)}>
         {btn(-1)}
         {editing ? (
           <input className="stepper-input" autoFocus inputMode="decimal" aria-label={label} value={text}
@@ -131,7 +149,7 @@ export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format
             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditing(false); }} />
         ) : (
           <button type="button" className="stepper-value" aria-label={`${label}: ввести вручную`}
-            onClick={() => { setText(String(value).replace('.', ',')); setEditing(true); }}>
+            onClick={() => { if (locked) { deny(); return; } setText(String(value).replace('.', ',')); setEditing(true); }}>
             {format ? format(value) : value}{unit && <small>{unit}</small>}
           </button>
         )}

@@ -5,7 +5,9 @@ import { useStore } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
-import { Button, Field, Screen, Section, Stepper } from '../ui/kit';
+import { type StepperLock, Button, Field, Screen, Section, Stepper } from '../ui/kit';
+import { LOCKED_TEXT, loadLock, saveLock, solve, type Lock } from '../data/ratio';
+import { toast } from '../ui/toast';
 
 /** Step in the editor: time and grams as strings for easy typing */
 interface DraftStep { key: string; at: string; title: string; grams: string; hint: string }
@@ -53,6 +55,17 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
 
   const water = Math.round(r.dose * r.ratio * (espresso ? 10 : 1)) / (espresso ? 10 : 1);
   const set = (patch: Partial<CustomRecipe>) => { setError(''); setR((x) => ({ ...x, ...patch })); };
+  // coffee / water / ratio locks, as on the method screen
+  const [lock, setLock] = useState<Lock>(() => loadLock(m.id));
+  const change = (field: Lock, value: number) => {
+    const next = solve({ dose: r.dose, ratio: r.ratio }, field, value, lock, 0.1);
+    if (next) set({ dose: Math.min(100, Math.max(1, next.dose)), ratio: Math.min(25, Math.max(1, Math.round(next.ratio * 100) / 100)) });
+  };
+  const lockFor = (field: Lock): StepperLock => ({
+    on: lock === field,
+    onToggle: () => { setLock(field); saveLock(m.id, field); toast(LOCKED_TEXT[field]); },
+    onLockedTap: () => toast(`${LOCKED_TEXT[field]} — чтобы менять, закрепите другой параметр`),
+  });
   const setStep = (i: number, patch: Partial<DraftStep>) => { setError(''); setSteps((list) => list.map((s, j) => (j === i ? { ...s, ...patch } : s))); };
 
   const addStep = () => {
@@ -141,10 +154,10 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
       {r.author && <p className="muted pad">Рецепт от {r.author.name || '@' + r.author.username}. Можно менять под себя.</p>}
 
       <Section title="Параметры" aside={<span className="muted">{fmtNum(r.dose, 2)} г → {fmtNum(water)} г</span>}>
-        <Stepper label="Кофе" value={r.dose} step={espresso ? 0.5 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} onChange={(dose) => set({ dose })} />
+        <Stepper label="Кофе" value={r.dose} step={espresso ? 0.5 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} onChange={(v) => change('dose', v)} lock={lockFor('dose')} />
         <Stepper label={m.yieldLabel ?? 'Вода'} value={water} step={espresso ? 1 : 10} min={5} max={2000} unit="г" format={(v) => fmtNum(v)}
-          onChange={(w) => set({ ratio: Math.round((w / r.dose) * 100) / 100 })} />
-        <Stepper label="Пропорция" value={r.ratio} step={espresso ? 0.1 : 0.1} min={1} max={25} format={fmtRatio} onChange={(ratio) => set({ ratio })} />
+          onChange={(w) => change('water', w)} lock={lockFor('water')} />
+        <Stepper label="Пропорция" value={r.ratio} step={espresso ? 0.1 : 0.1} min={1} max={25} format={fmtRatio} onChange={(v) => change('ratio', v)} lock={lockFor('ratio')} />
         <Stepper label="Температура" value={r.temp} step={0.1} min={0} max={100} unit={r.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
         <Field label="Помол" id="recipe-grind" value={r.grind} onChange={(e) => set({ grind: e.target.value })} />
         <Field label="Готово к" id="recipe-total" value={totalText} inputMode="numeric" placeholder="3:30"

@@ -1,4 +1,4 @@
-import { loadTimer } from './data/timer';
+import { loadTimer, useTimerSync } from './data/timer';
 import { TabPages, useTabPill } from './ui/motion';
 import { CuppingSetup } from './screens/CuppingSetup';
 import { StoreProvider, useStore } from './data/store';
@@ -176,7 +176,8 @@ function Placeholder({ tab }: { tab: Tab }) {
 }
 
 /** Keeps the server's brew log (for verified achievements) up to date */
-function StatsSync() { useStatsSync(); return null; }
+/** background sync: verified numbers to the server, the running timer between devices */
+function StatsSync() { useStatsSync(); useTimerSync(); return null; }
 
 export default function App() {
   return (

@@ -3,6 +3,20 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
+## v1.3.3 — Locks & Water (2026-10-31)
+
+### Added
+- Water mineralization (ppm) before brewing: optional «Минерализация воды» on the method screen and in the brew editor («не указана» until set; the first «+» gives 100 ppm, then 5 ppm steps), with a hint and the SCA range. Any value is accepted; outside 75–250 ppm the app says the water is softer or harder than SCA advises and what that does to the cup. The last value is offered for the next brew on any method.
+- Cup TDS (%) after brewing, in the brew form («Измерения → TDS чашки», refractometer; the first «+» gives 1,30 %, espresso 9 %). The app shows the extraction yield and whether the cup is in the SCA golden range. Without the drink weight it is marked approximate («≈», the grounds are assumed to keep ~2 g of water per gram) with a note to weigh the drink; an optional «Вес напитка» (the first «+» starts from the estimate) makes it exact. Espresso uses the yield.
+- Both are saved with the brew, shown on its page («Вода 105 ppm · TDS 1,31 % · Экстракция ≈ 19,2 %») and travel in shared recipes.
+- Coffee / water / ratio locks on the method screen and in the recipe editor: a lock next to each of the three (or a long press on its name). Lock coffee — water and ratio move each other; lock water — coffee and ratio; lock ratio (default, as before) — coffee and water. The locked value cannot be changed: a tap shakes it red with a hint. The choice is remembered per method on the device. A recipe known as «20 г и 300 г» is entered without counting the ratio.
+- The running timer is shared between devices through the account cloud: a cold brew started on the phone shows up on the computer (banner on the brew tab), and pausing, resuming or finishing it on one device does the same on the other within half a minute.
+
+### Fixed
+- Coming back to «Заварить» from a recipe, the method tiles no longer shrink and fly in from the corner: positions measured while the tab was hidden are ignored.
+- An empty profile card (only a name, a plain background) is as tall as its content instead of a large empty block.
+- Developers' card: the background code scrolls in a seamless loop. Before, the code was shorter than the card, so the lower part ran empty and the code then jumped back in.
+
 ## v1.3.2 — Timers & Fixes (2026-10-31)
 
 ### Added

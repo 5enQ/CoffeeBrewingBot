@@ -169,6 +169,13 @@ button.row:active { background: var(--fg-soft); }
 .stepper-ctrl .stepper-value { width: auto; color: var(--fg); min-width: 92px; height: 38px; border: 0; background: none; padding: 0 4px; text-align: center; font-weight: 650; font-variant-numeric: tabular-nums; font-size: 16px; border-radius: 8px; }
 .stepper-ctrl .stepper-value:active { background: var(--fg-soft); }
 .stepper-input { width: 92px; height: 32px; border: 0; border-radius: 8px; background: var(--card); text-align: center; font-weight: 650; font-size: 16px; font-variant-numeric: tabular-nums; outline: 2px solid var(--accent); }
+.stepper-label { display: inline-flex; align-items: center; gap: 4px; user-select: none; -webkit-user-select: none; }
+.stepper-lock { width: 30px; height: 30px; margin-left: -8px; display: grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--hint); opacity: 0.55; cursor: pointer; }
+.stepper-lock.on { color: var(--accent); opacity: 1; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.stepper.locked .stepper-ctrl button { color: var(--hint); }
+.stepper.locked .stepper-ctrl .stepper-value { color: var(--fg); }
+.stepper-ctrl.denied { animation: stepper-deny 0.42s ease; box-shadow: 0 0 0 2px var(--danger); }
+@keyframes stepper-deny { 0%, 100% { transform: none; } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
 .stepper-ctrl button { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
 .stepper-ctrl small { color: var(--hint); font-weight: 500; margin-left: 2px; font-size: 13px; }
 
@@ -1049,10 +1056,12 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .pcard-open { display: block; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; margin-bottom: 10px; }
 .pcard {
   --pc-fg: var(--fg); --pc-muted: var(--hint); --pc-line: rgba(0,0,0,0.08);
-  position: relative; isolation: isolate; overflow: hidden; border-radius: 22px; padding: 18px 18px 14px; min-height: 196px;
+  position: relative; isolation: isolate; overflow: hidden; border-radius: 22px; padding: 18px 18px 14px;
   color: var(--pc-fg); background: var(--card); box-shadow: 0 10px 30px -12px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.08);
   transition: transform 0.05s linear; transform-style: preserve-3d; will-change: transform;
 }
+/* a plain card is as tall as what is on it; achievement and special backgrounds keep room for their art */
+.pcard.tier, .pcard.special { min-height: 196px; }
 .pcard-body { position: relative; z-index: 3; display: flex; flex-direction: column; gap: 10px; }
 .pcard-head { display: flex; align-items: center; gap: 12px; padding-right: 64px; }
 .pcard-avatar {
@@ -1163,8 +1172,8 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .pcard-code { position: absolute; inset: 0; z-index: 0; padding: 10px 14px; overflow: hidden; pointer-events: none;
   font: 10.5px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: rgba(126,231,135,0.13); white-space: nowrap;
   -webkit-mask: linear-gradient(180deg, transparent, #000 25%, #000 75%, transparent); mask: linear-gradient(180deg, transparent, #000 25%, #000 75%, transparent); }
-.pcard-code-in { animation: devscroll 26s linear infinite; }
-@keyframes devscroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+.pcard-code-in { animation: devscroll 26s linear infinite; will-change: transform; }
+@keyframes devscroll { from { transform: translateY(0); } to { transform: translateY(-25%); } }
 .pcard-dev-mark { color: #58a6ff; opacity: 0.85; filter: drop-shadow(0 0 6px rgba(88,166,255,0.6)); }
 .theme-pick.special-dev { --pc-fg: #e6edf3; background: radial-gradient(80% 80% at 90% 0%, rgba(56,189,248,0.4), transparent 70%), #0d1117; font-family: ui-monospace, Menlo, monospace; }
 @media (prefers-reduced-motion: reduce) { .pcard-code-in, .pcard.special-dev .pcard-tier::after { animation: none; } }
@@ -1206,3 +1215,5 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .profile-about.field-area { display: block; box-sizing: border-box; padding: 12px 16px; color: var(--fg); font: inherit; font-size: 16px; min-height: 64px; }
 .profile-about.field-area::placeholder { color: var(--hint); }
 .crawl-usage.warn { color: var(--danger); }
+.tds-hint.ok { color: var(--accent); }
+.ppm-hint.warn { color: var(--star); }

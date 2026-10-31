@@ -7,7 +7,8 @@ import { useBackGuard, useRouter } from '../router';
 import { useLayout } from '../layout';
 import { Button, Screen } from '../ui/kit';
 import { Icon } from '../ui/icons';
-import { LONG_TIMER, clearTimer, elapsedOf, loadTimer, saveTimer } from '../data/timer';
+import { LONG_TIMER, clearTimer, elapsedOf, loadTimer, onTimerChange, saveTimer } from '../data/timer';
+import { toast } from '../ui/toast';
 import { cancelReminder, remindersAvailable, scheduleReminder } from '../data/remind';
 
 let audio: AudioContext | null = null;
@@ -44,10 +45,12 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   const lastStep = useRef(stored ? plan.steps.reduce((acc, s, i) => (s.at <= elapsedOf(stored) ? i : acc), -1) : -1);
   const finished = useRef(stored ? elapsedOf(stored) >= plan.total : false);
   const closed = useRef(false);
+  const live = useRef(running); // the tick may fire once more after a pause from another device
 
   useEffect(() => {
     if (!running) return;
-    const tick = () => setElapsed(base.current + (Date.now() - startedAt.current) / 1000);
+    live.current = true;
+    const tick = () => { if (live.current) setElapsed(base.current + (Date.now() - startedAt.current) / 1000); };
     tick();
     const t = setInterval(tick, 100);
     // the screen may have slept: catch up as soon as it is visible again
@@ -73,6 +76,29 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     if (loadTimer()?.draft.id === draft.id) persist(true, ok ? 'on' : 'fail');
   };
   const dropReminder = () => { if (remind === 'on' || remind === 'pending') { void cancelReminder(); setRemind('off'); } };
+
+  // the same timer changed on another device (paused, resumed, reset or finished there): follow it
+  useEffect(() => onTimerChange((remote) => {
+    if (!remote) return;
+    const t = loadTimer();
+    if (t && t.draft.id === draft.id) {
+      live.current = t.startedAt !== null;
+      base.current = t.base;
+      if (t.startedAt !== null) startedAt.current = t.startedAt;
+      setRunning(t.startedAt !== null);
+      setElapsed(elapsedOf(t));
+      setRemind(t.remind ? 'on' : 'off');
+      lastStep.current = plan.steps.reduce((acc, s, i) => (s.at <= elapsedOf(t) ? i : acc), -1);
+      finished.current = elapsedOf(t) >= plan.total;
+    } else if (!t && (base.current > 0 || running)) {
+      // finished or reset elsewhere
+      closed.current = true;
+      live.current = false;
+      setRunning(false);
+      toast('Таймер остановлен на другом устройстве');
+      setTab('brew');
+    }
+  }), [draft.id, running]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // the screen stays on, closing requires confirmation (not for long timers: they live on without the app)
   useEffect(() => {
@@ -108,6 +134,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   const toggle = () => {
     platform.haptic('medium');
     if (running) {
+      live.current = false;
       base.current += (Date.now() - startedAt.current) / 1000; setElapsed(base.current);
       persist(false); dropReminder();
     } else {

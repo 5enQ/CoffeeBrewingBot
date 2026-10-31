@@ -4,7 +4,7 @@ import { emptyCupping } from '../data/cupping';
 import { isDrip, useStore, uid, type Brew } from '../data/store';
 import { useRouter } from '../router';
 import { MethodIcon } from '../ui/icons';
-import { Button, Row, Screen, Section, Stepper } from '../ui/kit';
+import { type StepperLock, Button, Row, Screen, Section, Stepper } from '../ui/kit';
 import { beanMeta, brewBeanTitle } from './beanUtils';
 import { BeanPicker, DripPicker } from './BeanPicker';
 import { GearPicker, defaultGear } from '../ui/GearPicker';
@@ -13,10 +13,13 @@ import { effectivePlan, planFromRecipe, recipeFromStandard, type BrewPlan } from
 import { beanStock, dripItemLeft } from '../data/stock';
 import { GRIND_RULES, fmtGrind, grinderOf, unitOf } from '../data/grind';
 import { GrindField } from '../ui/GrindField';
+import { LOCKED_TEXT, loadLock, saveLock, solve, type Lock } from '../data/ratio';
+import { toast } from '../ui/toast';
+import { PpmField } from '../ui/WaterFields';
 
 export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }) {
   const m = methodById(methodId);
-  const { recipes, saveRecipe, beans, brews, gear: myGear, custom } = useStore();
+  const { recipes, saveRecipe, beans, brews, gear: myGear, custom, profile, saveProfile } = useStore();
   const { push } = useRouter();
   const saved = recipes[m.id];
   const mine = custom.filter((r) => r.methodId === m.id);
@@ -38,6 +41,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const startActive = mine.find((r) => r.id === initialChoice);
   const [dose, setDose] = useState(from?.dose ?? startActive?.dose ?? saved?.dose ?? m.dose);
   const [ratio, setRatio] = useState(from ? from.water / from.dose : startActive?.ratio ?? saved?.ratio ?? m.ratio);
+  const [ppm, setPpm] = useState(from?.ppm ?? profile.waterPpm ?? 0);
   const [temp, setTemp] = useState(from?.temp ?? startActive?.temp ?? saved?.temp ?? m.temp);
   const [grind, setGrind] = useState(from?.grind ?? startActive?.grind ?? saved?.grind ?? m.grind);
   const [gear, setGear] = useState<GearRef[]>(() => from?.gear?.length ? from.gear : defaultGear(m.id, myGear, saved?.gear));
@@ -120,18 +124,37 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const waterLabel = m.yieldLabel ?? 'Вода';
   const espresso = m.id === 'espresso';
 
+  // coffee / water / ratio: one of them is locked, the other two move each other (see data/ratio.ts)
+  const [lock, setLock] = useState<Lock>(() => loadLock(m.id));
+  const change = (field: Lock, value: number) => {
+    const next = solve({ dose, ratio }, field, value, lock, m.id === 'cupping' ? 0.25 : 0.1);
+    if (!next) return;
+    setDose(Math.min(100, Math.max(1, next.dose))); setRatio(Math.min(25, Math.max(1, next.ratio)));
+  };
+  const lockFor = (field: Lock): StepperLock => ({
+    on: lock === field,
+    onToggle: () => { setLock(field); saveLock(m.id, field); toast(LOCKED_TEXT[field]); },
+    onLockedTap: () => toast(`${LOCKED_TEXT[field]} — чтобы менять, закрепите другой параметр`),
+  });
+
   const draft = (): Brew => ({
     id: uid(), date: Date.now(), methodId: m.id, beanId: bean, dose, water, temp, grind: drip ? '' : grindUnit && grindValue !== undefined ? fmtGrind(grindValue, grindUnit) : grind, time: plan.total,
     ...(!drip && grindUnit && grindValue !== undefined ? { grindValue, grindUnit } : {}),
     ...(drip && dripId ? { dripId } : {}),
     ...(loss && bean ? { fromPack } : {}),
+    ...(ppm > 0 ? { ppm } : {}),
     rating: 0, taste: { acidity: 3, sweetness: 3, bitterness: 2, body: 3 }, descriptors: [], notes: '',
     cupping: m.id === 'cupping' ? emptyCupping() : null,
     gear,
     plan: choice === 'std' ? undefined : plan,
   });
 
-  const remember = () => saveRecipe(m.id, {
+  const remember = () => {
+    // the same water next time, on any method
+    if (ppm > 0 && ppm !== profile.waterPpm) saveProfile({ ...profile, waterPpm: ppm });
+    rememberRecipe();
+  };
+  const rememberRecipe = () => saveRecipe(m.id, {
     dose, ratio, temp, grind, gear: gear.map((g) => g.id), recipeId: active?.id,
     grindBy: grinder && grindUnit && grindValue !== undefined ? { ...(saved?.grindBy ?? {}), [`${grinder.id}:${grindUnit}`]: grindValue } : saved?.grindBy,
   });
@@ -174,15 +197,17 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
 
       <Section title="Параметры">
         {/* a drip's coffee is pre-measured in the bag — only water changes */}
-        {!drip && <Stepper label="Кофе" value={dose} onChange={setDose} step={espresso ? 0.5 : m.id === 'cupping' ? 0.25 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} />}
+        {!drip && <Stepper label="Кофе" value={dose} onChange={(v) => change('dose', v)} step={espresso ? 0.5 : m.id === 'cupping' ? 0.25 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)}
+          lock={lockFor('dose')} />}
         {loss > 0 && <p className="muted pad small-note grind-loss">Из пачки {fmtNum(fromPack, 1)} г → в воронку {fmtNum(dose, 2)} г · потери кофемолки {fmtNum(loss, 1)} г</p>}
         <Stepper label={waterLabel} value={water} step={espresso ? 1 : 10} min={espresso ? 10 : 30} max={2000} unit="г"
           format={(v) => fmtNum(v)}
-          onChange={(w) => (drip ? setRatio(Math.max(1, w / dose)) : setDose(Math.max(1, Math.round((w / ratio) * 4) / 4)))} />
+          onChange={(w) => (drip ? setRatio(Math.max(1, w / dose)) : change('water', w))} lock={drip ? undefined : lockFor('water')} />
         <Stepper label="Пропорция" value={ratio} step={espresso ? 0.1 : 0.5} min={1} max={25} format={fmtRatio}
-          onChange={(r) => setRatio(r)} />
+          onChange={(r) => (drip ? setRatio(r) : change('ratio', r))} lock={drip ? undefined : lockFor('ratio')} />
         <Stepper label="Температура" value={temp} step={0.1} min={0} max={100} unit={temp ? '°C' : ''}
           format={(v) => (v === 0 ? 'холодная' : fmtNum(v))} onChange={setTemp} />
+        {m.id !== 'cupping' && <PpmField value={ppm} onChange={setPpm} />}
         {!drip && <GrindField id="grind" unit={grindUnit} value={grindValue} text={grind} onValue={setGrindValue} onText={setGrind}
           grinderName={gear.find((g) => g.cat === 'grinder')?.name} />}
       </Section>

@@ -19,6 +19,8 @@ CARDS = {
     'devfake': {**card({'special': 'dev'}), 'granted': []},
     # a card whose owner faked a background: no levels from the server → plain card
     'fake1': {**card({'ach': 'method:espresso'}), 'earned': {}},
+    # just a name: the card is as small as its content
+    'empty1': {'v': 2, 'name': 'Ilja', 'username': 'memoSintiq', 'badges': [], 'ach': [], 'setup': [], 'theme': {'base': 'graphite'}},
 }
 # what the server counted (it differs from the device on purpose: the app must show the server's numbers)
 SERVER = {'account': 'acc1', 'methods': {'v60': 60, 'kalita': 100}, 'liters': 40, 'ratings': 0, 'at': 1}
@@ -152,9 +154,22 @@ async def main():
                     check(await pv.locator('.pcard.special-dev').count() == 0, 'developers background without the server grant is not shown')
                 elif k == 'dev1':
                     check(await pv.locator('.pcard.special-dev .pcard-dev-mark').count() == 1, 'developers background with its mark')
+                    # the scrolling code fills the card through the whole loop (no empty gap, then a jump)
+                    gaps = await pv.evaluate('''() => {
+                      const box = document.querySelector('.pcard.special-dev .pcard-code'), inner = box.firstElementChild;
+                      const a = inner.getAnimations()[0]; a.pause(); const out = [];
+                      for (let f = 0; f <= 1.0001; f += 0.05) { a.currentTime = f * 26000;
+                        const b = box.getBoundingClientRect(), r = inner.getBoundingClientRect();
+                        if (r.bottom < b.bottom || r.top > b.top + 12) out.push(f.toFixed(2)); }
+                      return out; }''')
+                    check(gaps == [], f'code fills the developers card through the whole loop (gaps at {gaps})')
                     for i, ga in enumerate((-20, 20)):
                         await tilt(pv, 0, 0); await pv.wait_for_timeout(50); await tilt(pv, 0, ga); await pv.wait_for_timeout(600)
                         await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-dev-{i}.png'))
+                elif k == 'empty1':
+                    h = (await pv.locator('.pcard:visible').bounding_box())['height']
+                    check(h < 130, f'an empty card shrinks to its content ({h:.0f}px)')
+                    await pv.locator('.pcard:visible').screenshot(path=str(OUT / 'card-empty.png'))
                 elif k == 'fake1':
                     check(await pv.locator('.pcard.base-paper').count() == 1 and await pv.locator('.pcard .pcard-tier').count() == 0, 'a faked background without server levels is not shown')
                 elif k in ('silver1', 'gold1'):

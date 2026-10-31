@@ -17,6 +17,12 @@ export interface SharedRecipe {
   dose: number;
   water: number;
   temp: number;
+  /** water mineralization, ppm */
+  ppm?: number;
+  /** cup TDS, % */
+  tds?: number;
+  /** drink weight, g */
+  beverage?: number;
   grind: string;
   time: number;
   rating: number;
@@ -38,7 +44,7 @@ export function toShared(b: Brew, bean: Bean | undefined, author: Author, myId?:
   return {
     author: b.author ?? author,
     date: b.date,
-    methodId: b.methodId, dose: b.dose, water: b.water, temp: b.temp, grind: b.grind, time: b.time,
+    methodId: b.methodId, dose: b.dose, water: b.water, temp: b.temp, ...(b.ppm ? { ppm: b.ppm } : {}), ...(b.tds ? { tds: b.tds } : {}), ...(b.tds && b.beverage ? { beverage: b.beverage } : {}), grind: b.grind, time: b.time,
     rating: b.rating, descriptors: b.descriptors, notes: b.notes,
     score: b.cva || (b.cupping && (b.methodId === 'cupping' || !b.rating)) ? brewSca(b) ?? undefined : undefined,
     bean: bean ? Object.fromEntries(BEAN_KEYS.filter((k) => bean[k]).map((k) => [k, bean[k]])) : null,
@@ -59,6 +65,7 @@ function pack(r: SharedRecipe) {
     h: r.author.badges?.length ? r.author.badges.map((b) => [KINDS.indexOf(b.kind), b.title, b.detail, b.year]) : undefined,
     t: Math.round(r.date / 60000),
     m: r.methodId, d: r.dose, w: r.water, c: r.temp, g: r.grind, s: r.time, r: r.rating,
+    z: r.ppm, y: r.tds, v: r.beverage,
     k: r.descriptors.length ? r.descriptors : undefined,
     n: r.notes || undefined,
     x: r.score,
@@ -77,6 +84,7 @@ function unpack(o: ReturnType<typeof pack>): SharedRecipe {
     },
     date: (o.t ?? 0) * 60000,
     methodId: String(o.m), dose: Number(o.d), water: Number(o.w), temp: Number(o.c), grind: String(o.g ?? ''),
+    ...(Number(o.z) > 0 ? { ppm: Number(o.z) } : {}), ...(Number(o.y) > 0 ? { tds: Number(o.y) } : {}), ...(Number(o.v) > 0 ? { beverage: Number(o.v) } : {}),
     time: Number(o.s ?? 0), rating: Number(o.r ?? 0),
     descriptors: Array.isArray(o.k) ? o.k.map(String) : [],
     notes: String(o.n ?? ''),
@@ -175,7 +183,7 @@ export function recipeText(r: SharedRecipe): string {
       if (meta) lines.push(`Зерно: ${meta}`);
     }
   }
-  lines.push(`${fmtNum(r.dose, 2)} г → ${fmtNum(r.water)} г ${m.yieldLabel ? 'на выходе ' : 'воды '}(${fmtRatio(r.water / r.dose)}), ${r.temp ? fmtNum(r.temp) + '°C' : 'холодная вода'}, ${fmtTime(r.time)}`);
+  lines.push(`${fmtNum(r.dose, 2)} г → ${fmtNum(r.water)} г ${m.yieldLabel ? 'на выходе ' : 'воды '}(${fmtRatio(r.water / r.dose)}), ${r.temp ? fmtNum(r.temp) + '°C' : 'холодная вода'}${r.ppm ? `, вода ${r.ppm} ppm` : ''}, ${fmtTime(r.time)}${r.tds ? `, TDS ${fmtNum(r.tds, 2)} %` : ''}`);
   if (r.grind) lines.push(`Помол: ${r.grind}`);
   if (r.gear.length) {
     lines.push('', 'Оборудование:');

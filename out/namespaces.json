@@ -1,0 +1,27 @@
+[
+  {
+    "id": "5fefa23b6e1c4478baf9e562ca510248",
+    "name": "brewbook-ratings_AuthorRatings",
+    "class": "AuthorRatings",
+    "script": "brewbook-ratings"
+  },
+  {
+    "id": "2cfbc2bcd0a64f91b00311473720d154",
+    "name": "brewbook-ratings_RecipeStore",
+    "class": "RecipeStore",
+    "script": "brewbook-ratings"
+  },
+  {
+    "id": "60c6a765d1a64ee9bccbb115b374f36e",
+    "name": "brewbook-ratings_CoffeeCatalog",
+    "class": "CoffeeCatalog",
+    "script": "brewbook-ratings"
+  },
+  {
+    "id": "b8c48f54f1424417acf341c09e1af400",
+    "name": "brewbook-ratings_Accounts",
+    "class": "Accounts",
+    "script": "brewbook-ratings"
+  }
+]
+null

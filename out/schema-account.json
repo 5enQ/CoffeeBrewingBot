@@ -1,0 +1,7 @@
+[
+  "durableObjectsInvocationsAdaptiveGroups",
+  "durableObjectsPeriodicGroups",
+  "durableObjectsSqlStorageGroups",
+  "durableObjectsStorageGroups",
+  "durableObjectsSubrequestsAdaptiveGroups"
+]

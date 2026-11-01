@@ -1,7 +1,7 @@
 # Roadmap
 
 Plans and ideas for later, so they are not lost between conversations.
-This file lives in the `dev` branch only: a release merges `dev` into `main` without it (see README → Branches, releases and versions).
+This file lives in the `dev` branch only: changes go `dev` → `test` → `main`, and the merge into `test` leaves it out (see README → Branches, releases and versions).
 What is already done but not released lives in [CHANGELOG.md](CHANGELOG.md) under **Unreleased**.
 
 How to use this file:
@@ -19,6 +19,8 @@ _Nothing agreed yet._
 
 ## Ideas
 
+- **Test build for testers.** The `test` branch exists, but testers use the production app. A separate build of `test` (its own Mini App link and, ideally, its own copy of the server so tests do not touch real data) would let them try versions before the release.
+
 - **Global coffee rating.** The server catalog of roaster lots was built as its base: lots already carry their state (on sale, out of stock, archived, gone) and how many users confirmed them. Missing: collecting ratings per lot from brews, a screen to browse it, protection against rating the same lot many times.
 - **Standalone app outside Telegram.** Accounts are ready for it: one account with linked sign-in identities (`tg:<id>` now). Missing: another way to sign in (for example "Log in with Telegram" on the web, or Apple/Google), an app shell, sync without Telegram CloudStorage.
 - **Other languages.** English, Japanese and Chinese strings are prepared (`src/i18n`), only Russian is enabled (`ENABLED_LOCALES`). Missing: translating the rest of the UI that is still written in Russian directly, a language switch.
@@ -27,6 +29,7 @@ _Nothing agreed yet._
 
 ## To check
 
+- **Testers' panel** — the bot messages to the owner (answers on the checklist, bug reports with a screenshot) were tested locally only; check that they arrive.
 - **Bot reminder when a cold brew ends** — did not arrive on 2026-11-01 (the server never had it scheduled: no alarm ran). Fixed in dev (no hang on the write-access request, self-repair, status on the server). After the release: Profile → «О приложении» → «Сообщения от бота» must say «Работает», then a real cold brew must bring the message.
 - **Rockets (rockets.coffee) crawl rules** — the site could not be opened from the build environment; check the lot count in Profile → «Сайты обжарщиков» and adjust the rules if pages are missing or merch slipped in.
 - **Owner tools** need the GitHub secret `OWNER_TELEGRAM_ID`; confirm it is set (Profile shows «Сайты обжарщиков» and «Разработчики и тестировщики» only to the owner).

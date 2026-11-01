@@ -167,6 +167,8 @@ export function createTelegramPlatform(): Platform {
       if (can('8.0') && tg().requestFullscreen) tg().requestFullscreen();
     },
 
+    clientInfo: () => `${tg().platform ?? '?'} · Telegram ${tg().version ?? '?'}`,
+
     requestWriteAccess() {
       if (!can('6.9') || !tg().requestWriteAccess) return Promise.resolve(true); // older clients: the bot can write if the chat exists
       return new Promise((res) => {

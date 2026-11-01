@@ -51,6 +51,10 @@ export class Accounts extends DurableObject<Env> {
     sql.exec(`CREATE TABLE IF NOT EXISTS reminder (account TEXT PRIMARY KEY, chat TEXT NOT NULL, at INTEGER NOT NULL, title TEXT NOT NULL, link TEXT NOT NULL)`);
     sql.exec('CREATE INDEX IF NOT EXISTS reminder_at ON reminder (at)');
     // what happened to each person's last reminder (scheduled / cancelled / sent / failed + Telegram's answer)
+    // testers: what to check in this version, each tester's answer, and a daily cap on reports
+    sql.exec(`CREATE TABLE IF NOT EXISTS check_item (id TEXT PRIMARY KEY, text TEXT NOT NULL, ord INTEGER NOT NULL, created INTEGER NOT NULL)`);
+    sql.exec(`CREATE TABLE IF NOT EXISTS check_result (item TEXT NOT NULL, account TEXT NOT NULL, state TEXT NOT NULL, note TEXT, ts INTEGER NOT NULL, PRIMARY KEY (item, account))`);
+    sql.exec(`CREATE TABLE IF NOT EXISTS feedback_day (account TEXT NOT NULL, day TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (account, day))`);
     sql.exec(`CREATE TABLE IF NOT EXISTS reminder_log (account TEXT PRIMARY KEY, at INTEGER NOT NULL, state TEXT NOT NULL, detail TEXT, ts INTEGER NOT NULL)`);
     // one-time migrations, gated by the schema version (the object wakes up often; see CoffeeCatalog)
     sql.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
@@ -253,6 +257,69 @@ export class Accounts extends DurableObject<Env> {
     const next = this.sql.exec<{ at: number | null }>('SELECT MIN(at) AS at FROM reminder').toArray()[0]?.at ?? null;
     if (next === null) await this.ctx.storage.deleteAlarm();
     else await this.ctx.storage.setAlarm(Math.max(next, Date.now() + 1000));
+  }
+
+  /* ---------- testers ---------- */
+
+  /** who this person is, for the owner's messages: note, name, @username, Telegram id; null — not a tester */
+  tester(provider: string, subject: string): { account: string; tg: string; label: string } | null {
+    const acc = this.resolve(provider, subject);
+    if (!this.grantsOf(acc.id).includes('beta')) return null;
+    const r = this.sql.exec<{ note: string | null; username: string | null; name: string | null }>(
+      "SELECT a.note, i.username, i.name FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.id = ?", acc.id).toArray()[0];
+    const parts = [r?.note || r?.name || 'Тестировщик', r?.username ? '@' + r.username : null, `ID ${subject}`].filter(Boolean);
+    return { account: acc.id, tg: subject, label: parts.join(' · ') };
+  }
+
+  /** a report counts toward a daily cap (a stuck button must not flood the owner's chat) */
+  spendReport(account: string, cap = 30): boolean {
+    const day = new Date().toISOString().slice(0, 10);
+    const n = this.sql.exec<{ n: number }>('SELECT n FROM feedback_day WHERE account = ? AND day = ?', account, day).toArray()[0]?.n ?? 0;
+    if (n >= cap) return false;
+    this.sql.exec('INSERT INTO feedback_day (account, day, n) VALUES (?, ?, 1) ON CONFLICT(account, day) DO UPDATE SET n = n + 1', account, day);
+    return true;
+  }
+
+  /** the checklist; with `account` — this tester's answers; for the owner — counts and who answered */
+  checks(account?: string) {
+    const items = this.sql.exec<{ id: string; text: string }>('SELECT id, text FROM check_item ORDER BY ord, created').toArray();
+    const results = this.sql.exec<{ item: string; account: string; state: string; note: string | null; ts: number; who: string | null }>(
+      "SELECT r.item, r.account, r.state, r.note, r.ts, COALESCE(a.note, i.name, i.username) AS who FROM check_result r LEFT JOIN account a ON a.id = r.account LEFT JOIN identity i ON i.account = r.account AND i.provider = 'tg'").toArray();
+    return items.map((it) => {
+      const rs = results.filter((r) => r.item === it.id);
+      return {
+        id: it.id, text: it.text,
+        ok: rs.filter((r) => r.state === 'ok').length, bug: rs.filter((r) => r.state === 'bug').length,
+        mine: account ? rs.find((r) => r.account === account)?.state : undefined,
+        answers: account ? undefined : rs.map((r) => ({ who: r.who ?? '—', state: r.state, note: r.note ?? undefined, ts: r.ts })),
+      };
+    });
+  }
+
+  /** a tester's answer on one item; returns the item text (for the owner's message) or null */
+  checkAnswer(account: string, item: string, state: 'ok' | 'bug', note?: string) {
+    const it = this.sql.exec<{ text: string }>('SELECT text FROM check_item WHERE id = ?', item).toArray()[0];
+    if (!it) return null;
+    this.sql.exec('INSERT INTO check_result (item, account, state, note, ts) VALUES (?, ?, ?, ?, ?) ON CONFLICT(item, account) DO UPDATE SET state = excluded.state, note = excluded.note, ts = excluded.ts',
+      item, account, state, note ?? null, Date.now());
+    return it.text;
+  }
+
+  /** owner: add an item, remove one (with its answers), or clear the list for a new version */
+  editChecks(action: 'add' | 'remove' | 'clear', text?: string, id?: string) {
+    if (action === 'add') {
+      const t = (text ?? '').replace(/\s+/g, ' ').trim().slice(0, 200);
+      if (!t) return false;
+      const ord = (this.sql.exec<{ m: number | null }>('SELECT MAX(ord) AS m FROM check_item').one().m ?? 0) + 1;
+      this.sql.exec('INSERT INTO check_item (id, text, ord, created) VALUES (?, ?, ?, ?)', crypto.randomUUID().slice(0, 8), t, ord, Date.now());
+    } else if (action === 'remove') {
+      this.sql.exec('DELETE FROM check_item WHERE id = ?', id ?? '');
+      this.sql.exec('DELETE FROM check_result WHERE item = ?', id ?? '');
+    } else {
+      this.sql.exec('DELETE FROM check_item');
+      this.sql.exec('DELETE FROM check_result');
+    }
+    return true;
   }
 
   async alarm() {

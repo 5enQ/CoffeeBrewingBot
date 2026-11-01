@@ -36,8 +36,11 @@ Server (Cloudflare Worker) locally: `cd worker && npm i && echo 'BOT_TOKEN="123:
 
 ## Branches, releases and versions
 
-- Day-to-day work goes to the **`dev`** branch. Pushing to `dev` deploys nothing.
-- A release is a merge of `dev` into **`main`**, without `ROADMAP.md`: it stays in `dev` only (`git merge --no-ff --no-commit dev && git rm -q --cached ROADMAP.md 2>/dev/null; rm -f ROADMAP.md && git commit`). Pushing `main` deploys the app (GitHub Pages) and, if server code changed, the server (Cloudflare). After the deploy, CI tags the commit **`vX.Y.Z`**.
+- Three branches, changes go one way only: **`dev`** → **`test`** → **`main`**.
+  - **`dev`** — day-to-day work. Pushing to `dev` deploys nothing.
+  - **`test`** — the version under test. A set of changes from `dev` is merged here when it is ready for testers, without `ROADMAP.md` (it stays in `dev` only): `git checkout test && git merge --no-ff --no-commit dev && git rm -q --cached ROADMAP.md 2>/dev/null; rm -f ROADMAP.md && git commit`. Pushing `test` runs the checks (types, unit tests, build) and deploys nothing yet; a separate test build for testers can be added later. Fixes found in testing are made in `dev` and merged into `test` again.
+  - **`main`** — production. A release is a merge of `test` into `main`. Pushing `main` deploys the app (GitHub Pages) and, if server code changed, the server (Cloudflare). After the deploy, CI tags the commit **`vX.Y.Z`**.
+  - Never merge back (`main` → `test` → `dev`): `ROADMAP.md` would be deleted in `dev`.
 - Before merging: set `"version"` in `package.json` (semantic versioning: `X` — major changes or data format breaks, `Y` — new features, `Z` — fixes only) and turn **Unreleased** in [`CHANGELOG.md`](CHANGELOG.md) into `## vX.Y.Z — Title (YYYY-MM-DD)`. The title is used as the release name everywhere (`scripts/release-info.mjs`).
 - The running versions are visible in the app (Profile → "О приложении": app and server versions), at `https://brewbook-ratings.brewbook.workers.dev/version`, and in the Cloudflare dashboard (Workers → brewbook-ratings → Deployments: tag `v1.1.0` with the release title).
 - Before a release the change set is tested: unit tests (parser, scales), browser end-to-end tests on mobile/desktop and light/dark themes, a two-device sync simulation, backup round trip, a local server run and a live check of the roaster-page parser.

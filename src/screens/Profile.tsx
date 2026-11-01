@@ -14,6 +14,8 @@ import { useBackGuard, useRouter, useSelected } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { Button, Chips, Field, Row, SampleTag, Screen, Section, Segmented } from '../ui/kit';
 import { DESKTOP_MIN, useLayoutMode } from '../layout';
+import { Panel, OwnerChecks, TesterPanel } from './TesterPanel';
+import { useStats } from '../data/stats';
 import { explainRefusal, remindersAvailable, testReminder } from '../data/remind';
 import { adminCall, type AdminData, type CrawlUsage, type GrantInfo, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
@@ -189,6 +191,7 @@ export function Profile() {
         {remindersAvailable() && <BotCheckRow />}
       </Section>
 
+      <TesterTools />
       <OwnerTools />
     </Screen>
   );
@@ -224,11 +227,23 @@ function BotCheckRow() {
   );
 }
 
+/** the testers' panel: shown with the «Тестировщик» grant (the owner has it automatically) */
+function TesterTools() {
+  const { grants } = useStats();
+  return grants.includes('beta') && platform.initData() ? <TesterPanel /> : null;
+}
+
 function OwnerTools() {
   const [data, setData] = useState<AdminData | null>(null);
   useEffect(() => { if (myTelegramId()) adminCall().then(setData); }, []);
   if (!data) return null;
-  return <><RoasterSites sites={data.sites} crawl={data.crawl} onChange={setData} /><DevGrants grants={data.grants} onChange={setData} /></>;
+  return (
+    <Panel kind="owner" title="Панель владельца" hint="Видна только вам: сайты обжарщиков, права людей и список проверок для тестировщиков.">
+      <RoasterSites sites={data.sites} crawl={data.crawl} onChange={setData} />
+      <DevGrants grants={data.grants} onChange={setData} />
+      <OwnerChecks checks={data.checks} onChange={setData} />
+    </Panel>
+  );
 }
 
 const GRANTS = [

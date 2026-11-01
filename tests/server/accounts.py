@@ -84,6 +84,33 @@ ok(get(f'/cards/{cid4}')['card']['theme'] == {'special': 'beta'}, 'the testers c
 g = post('/admin', {'initData': A, 'action': 'revoke', 'tg': '444', 'what': 'beta'})
 ok(any(x['tg'] == '444' and x['grants'] == [] for x in g['grants']), 'a signed person stays in the list after their grants are taken away')
 
+# testers: the checklist, answers, reports
+post('/admin', {'initData': A, 'action': 'grant', 'tg': '444', 'what': 'beta'})
+ok(post('/tester', {'initData': C, 'action': 'checks'}).get('status') == 403, 'the tester panel needs the testers grant')
+g = post('/admin', {'initData': A, 'action': 'check_add', 'note': 'Колд брю: бот пишет, когда время вышло'})
+post('/admin', {'initData': A, 'action': 'check_add', 'note': 'Замки кофе/воды/пропорции'})
+ok([c['text'] for c in g.get('checks', [])] == ['Колд брю: бот пишет, когда время вышло'], 'the owner adds an item to check')
+ch = post('/tester', {'initData': D, 'action': 'checks'})['checks']
+ok(len(ch) == 2 and ch[0].get('mine') is None and 'answers' not in ch[0], 'the tester sees the list without others\' answers')
+r = post('/tester', {'initData': D, 'action': 'answer', 'item': ch[0]['id'], 'state': 'ok', 'context': 'Приложение: 1.3.4'})
+ok(r['checks'][0]['mine'] == 'ok' and r['checks'][0]['ok'] == 1, 'the tester marks it as working')
+r = post('/tester', {'initData': D, 'action': 'answer', 'item': ch[1]['id'], 'state': 'bug', 'text': 'Замок воды не держится после перезапуска'})
+ok(r['checks'][1]['mine'] == 'bug' and r['checks'][1]['bug'] == 1, 'and reports a problem on another')
+oc = post('/admin', {'initData': A, 'action': 'list'})['checks']
+ok(oc[1]['answers'][0]['note'] == 'Замок воды не держится после перезапуска' and oc[1]['answers'][0]['who'] == 'Аня, бариста из Kojo', f'the owner sees who answered what ({oc[1]["answers"]})')
+ok(post('/tester', {'initData': D, 'action': 'report', 'text': ''}).get('status') == 400, 'an empty report is refused')
+rep = post('/tester', {'initData': D, 'action': 'report', 'text': 'Падает экран', 'image': 'data:image/png;base64,iVBORw0KGgo='})
+ok(rep.get('status') == 502, 'a report goes to the owner through the bot (refused here: fake token)')
+g = post('/admin', {'initData': A, 'action': 'check_remove', 'what': ch[0]['id']})
+ok(len(g['checks']) == 1, 'the owner removes an item')
+g = post('/admin', {'initData': A, 'action': 'check_clear'})
+ok(g['checks'] == [], 'and clears the list for the next version')
+n = 0
+for _ in range(32):
+    if post('/tester', {'initData': D, 'action': 'report', 'text': 'спам'}).get('status') == 429: break
+    n += 1
+ok(n < 32, f'reports are capped per day ({n} more went through)')
+
 # bot reminders
 LINK = 'https://t.me/CoffeeBrewingBot?startapp=timer'
 now = int(time.time() * 1000)

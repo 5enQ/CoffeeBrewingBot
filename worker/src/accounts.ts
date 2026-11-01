@@ -7,7 +7,7 @@
  *  - the profile card. Levels on a shared card always come from this count, never from the client.
  */
 import { DurableObject } from 'cloudflare:workers';
-import { countStats, earnedLevels, givesBackground, LITER_LEVELS, METHOD_LEVELS, type BrewStat, type Level, type Stats, type Tier } from '../../src/data/levels.ts';
+import { countStats, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, type BrewStat, type Level, type Stats, type Tier } from '../../src/data/levels.ts';
 import type { Env } from './index';
 
 export interface AccountStats extends Stats { account: string; at: number; diamondNo?: number; grants: string[] }
@@ -15,10 +15,14 @@ export interface AccountStats extends Stats { account: string; at: number; diamo
 /**
  * Grants only the owner can give, each separately:
  *  dev    — the developers' card background;
+ *  beta   — the testers' card background (people who test new versions);
  *  tester — every background at every level, for testing; such accounts never take a real diamond number (they show № 0).
  * Owners (OWNER_IDS) have both automatically.
  */
-export const SPECIAL = ['dev', 'tester'] as const;
+export const SPECIAL = ['dev', 'beta', 'tester'] as const;
+
+/** what Telegram tells about the person on each sign-in (kept so the owner sees who is who) */
+export interface Who { username?: string; name?: string }
 const TEST_NO = 0;
 
 const KEY = /^(method:[a-z0-9_-]{1,40}|liters|ratings)$/i;
@@ -46,11 +50,24 @@ export class Accounts extends DurableObject<Env> {
     // one pending "your brew is ready" message per account; the alarm fires at the earliest one
     sql.exec(`CREATE TABLE IF NOT EXISTS reminder (account TEXT PRIMARY KEY, chat TEXT NOT NULL, at INTEGER NOT NULL, title TEXT NOT NULL, link TEXT NOT NULL)`);
     sql.exec('CREATE INDEX IF NOT EXISTS reminder_at ON reminder (at)');
+    // what happened to each person's last reminder (scheduled / cancelled / sent / failed + Telegram's answer)
+    // testers: what to check in this version, each tester's answer, and a daily cap on reports
+    sql.exec(`CREATE TABLE IF NOT EXISTS check_item (id TEXT PRIMARY KEY, text TEXT NOT NULL, ord INTEGER NOT NULL, created INTEGER NOT NULL)`);
+    sql.exec(`CREATE TABLE IF NOT EXISTS check_result (item TEXT NOT NULL, account TEXT NOT NULL, state TEXT NOT NULL, note TEXT, ts INTEGER NOT NULL, PRIMARY KEY (item, account))`);
+    sql.exec(`CREATE TABLE IF NOT EXISTS feedback_day (account TEXT NOT NULL, day TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (account, day))`);
+    sql.exec(`CREATE TABLE IF NOT EXISTS reminder_log (account TEXT PRIMARY KEY, at INTEGER NOT NULL, state TEXT NOT NULL, detail TEXT, ts INTEGER NOT NULL)`);
     // one-time migrations, gated by the schema version (the object wakes up often; see CoffeeCatalog)
     sql.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
     if (!sql.exec("SELECT 1 FROM meta WHERE key = 'schema'").toArray().length) {
       try { sql.exec("ALTER TABLE account ADD COLUMN grants TEXT NOT NULL DEFAULT '[]'"); } catch { /* already there */ }
       sql.exec("INSERT INTO meta (key, value) VALUES ('schema', '1')");
+    }
+    // v2: the owner's note on a person, the Telegram username and name (for links in the owner's list)
+    if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 2) {
+      for (const q of ['ALTER TABLE account ADD COLUMN note TEXT', 'ALTER TABLE identity ADD COLUMN username TEXT', 'ALTER TABLE identity ADD COLUMN name TEXT']) {
+        try { sql.exec(q); } catch { /* already there */ }
+      }
+      sql.exec("UPDATE meta SET value = '2' WHERE key = 'schema'");
     }
   }
 
@@ -73,21 +90,38 @@ export class Accounts extends DurableObject<Env> {
     return true;
   }
 
-  /** Owner: everyone with a special background */
+  /** Owner: everyone with a special background or a note */
   grantList() {
-    return this.sql.exec<{ id: string; grants: string; subject: string | null }>(
-      "SELECT a.id, a.grants, i.subject FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.grants <> '[]'").toArray()
-      .map((r) => ({ account: r.id, tg: r.subject, grants: JSON.parse(r.grants) as string[] }));
+    return this.sql.exec<{ id: string; grants: string; note: string | null; subject: string | null; username: string | null; name: string | null }>(
+      "SELECT a.id, a.grants, a.note, i.subject, i.username, i.name FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.grants <> '[]' OR a.note IS NOT NULL").toArray()
+      .map((r) => ({ account: r.id, tg: r.subject, grants: JSON.parse(r.grants) as string[], note: r.note ?? undefined, username: r.username ?? undefined, name: r.name ?? undefined }));
+  }
+
+  /** Owner: a note on a person ("Аня, бариста из Kojo"), and their @username if they never opened the app yet */
+  setNote(tg: string, note: string, username?: string) {
+    if (!/^\d{1,20}$/.test(tg)) return false;
+    const acc = this.resolve('tg', tg);
+    const n = note.replace(/\s+/g, ' ').trim().slice(0, 80);
+    this.sql.exec('UPDATE account SET note = ? WHERE id = ?', n || null, acc.id);
+    const u = (username ?? '').replace(/^@/, '').trim();
+    if (/^[A-Za-z0-9_]{4,32}$/.test(u)) this.sql.exec("UPDATE identity SET username = ? WHERE provider = 'tg' AND subject = ?", u, tg);
+    return true;
   }
 
   /** The account of a sign-in identity; created on first sign-in */
-  private resolve(provider: string, subject: string): { id: string; created: number } {
-    const row = this.sql.exec<{ id: string; created: number }>(
-      'SELECT a.id, a.created FROM identity i JOIN account a ON a.id = i.account WHERE i.provider = ? AND i.subject = ?', provider, subject).toArray()[0];
-    if (row) return row;
+  private resolve(provider: string, subject: string, who?: Who): { id: string; created: number } {
+    const row = this.sql.exec<{ id: string; created: number; username: string | null; name: string | null }>(
+      'SELECT a.id, a.created, i.username, i.name FROM identity i JOIN account a ON a.id = i.account WHERE i.provider = ? AND i.subject = ?', provider, subject).toArray()[0];
+    if (row) {
+      // the username can change in Telegram: written only when it did (no row written on an ordinary start)
+      if (who && ((who.username ?? null) !== row.username || (who.name ?? null) !== row.name) && (who.username || who.name)) {
+        this.sql.exec('UPDATE identity SET username = ?, name = ? WHERE provider = ? AND subject = ?', who.username ?? null, who.name ?? null, provider, subject);
+      }
+      return { id: row.id, created: row.created };
+    }
     const acc = { id: id(12), created: Date.now() };
     this.sql.exec('INSERT INTO account (id, created) VALUES (?, ?)', acc.id, acc.created);
-    this.sql.exec('INSERT INTO identity (provider, subject, account) VALUES (?, ?, ?)', provider, subject, acc.id);
+    this.sql.exec('INSERT INTO identity (provider, subject, account, username, name) VALUES (?, ?, ?, ?, ?)', provider, subject, acc.id, who?.username ?? null, who?.name ?? null);
     return acc;
   }
 
@@ -121,8 +155,8 @@ export class Accounts extends DurableObject<Env> {
    * Called on every app start: answer from the stored count (the brew log is read only when brews arrive —
    * the free tier limits rows read per day). Ratings and grants are cheap and always fresh.
    */
-  async me(provider: string, subject: string): Promise<AccountStats> {
-    const acc = this.resolve(provider, subject);
+  async me(provider: string, subject: string, who?: Who): Promise<AccountStats> {
+    const acc = this.resolve(provider, subject, who);
     const ratings = await this.ratings(acc.id);
     const row = this.sql.exec<{ stats: string | null }>('SELECT stats FROM account WHERE id = ?', acc.id).one();
     if (!row.stats) return this.recount(acc, ratings);
@@ -165,9 +199,9 @@ export class Accounts extends DurableObject<Env> {
     let theme = card.theme as { ach?: string; tier?: Tier; base?: string; special?: string } | undefined;
     const grants = this.grantsOf(row.account);
     const tester = grants.includes('tester');
-    // a tester picks any level of any background; everyone else gets the level they earned
+    // a tester picks any level of any background; everyone else the level they earned or a lower one
     const testLevel = tester && theme?.ach && theme.tier ? testerLevel(theme.ach, theme.tier) : null;
-    const themeLevel = testLevel ?? (theme?.ach ? levels[theme.ach] : undefined);
+    const themeLevel = testLevel ?? (theme?.ach ? levelUpTo(theme.ach === 'liters' ? LITER_LEVELS : METHOD_LEVELS, levels[theme.ach], theme.tier) : undefined);
     if (theme?.ach && !(themeLevel && givesBackground(theme.ach, themeLevel.tier))) theme = { base: 'paper' };
     if (theme?.special && !grants.includes(theme.special)) theme = { base: 'paper' };
     const badges = (Array.isArray(card.badges) ? card.badges : []).filter((b: { kind?: string }) => b?.kind !== 'achieve');
@@ -176,7 +210,7 @@ export class Accounts extends DurableObject<Env> {
     return {
       ...card, ach, theme: theme?.ach ? { ach: theme.ach } : theme, badges, earned,
       granted: theme?.special ? [theme.special] : [],
-      no: theme?.ach === 'liters' ? (tester ? TEST_NO : acc.diamond_no ?? undefined) : undefined,
+      no: theme?.ach === 'liters' && themeLevel?.tier === 'diamond' ? (tester ? TEST_NO : acc.diamond_no ?? undefined) : undefined,
     };
   }
 
@@ -189,13 +223,32 @@ export class Accounts extends DurableObject<Env> {
     if (!chat) return false;
     this.sql.exec('INSERT INTO reminder (account, chat, at, title, link) VALUES (?, ?, ?, ?, ?) ON CONFLICT(account) DO UPDATE SET chat = excluded.chat, at = excluded.at, title = excluded.title, link = excluded.link',
       acc.id, chat, at, title, link);
+    this.log(acc.id, at, 'scheduled');
     await this.nextAlarm();
+    console.log('reminder scheduled', acc.id, new Date(at).toISOString());
     return true;
+  }
+
+  private log(account: string, at: number, state: string, detail: string | null = null) {
+    this.sql.exec('INSERT INTO reminder_log (account, at, state, detail, ts) VALUES (?, ?, ?, ?, ?) ON CONFLICT(account) DO UPDATE SET at = excluded.at, state = excluded.state, detail = excluded.detail, ts = excluded.ts',
+      account, at, state, detail, Date.now());
+  }
+
+  /** the pending reminder and what happened to the last one */
+  reminderStatus(provider: string, subject: string) {
+    const row = this.sql.exec<{ account: string }>('SELECT account FROM identity WHERE provider = ? AND subject = ?', provider, subject).toArray()[0];
+    if (!row) return { pending: null, last: null };
+    const pending = this.sql.exec<{ at: number; title: string }>('SELECT at, title FROM reminder WHERE account = ?', row.account).toArray()[0] ?? null;
+    const last = this.sql.exec<{ at: number; state: string; detail: string | null; ts: number }>('SELECT at, state, detail, ts FROM reminder_log WHERE account = ?', row.account).toArray()[0] ?? null;
+    return { pending, last };
   }
 
   async cancelReminder(provider: string, subject: string) {
     const row = this.sql.exec<{ account: string }>('SELECT account FROM identity WHERE provider = ? AND subject = ?', provider, subject).toArray()[0];
-    if (row) this.sql.exec('DELETE FROM reminder WHERE account = ?', row.account);
+    if (row) {
+      const had = this.sql.exec<{ at: number }>('SELECT at FROM reminder WHERE account = ?', row.account).toArray()[0];
+      if (had) { this.sql.exec('DELETE FROM reminder WHERE account = ?', row.account); this.log(row.account, had.at, 'cancelled'); }
+    }
     await this.nextAlarm();
     return true;
   }
@@ -206,20 +259,83 @@ export class Accounts extends DurableObject<Env> {
     else await this.ctx.storage.setAlarm(Math.max(next, Date.now() + 1000));
   }
 
+  /* ---------- testers ---------- */
+
+  /** who this person is, for the owner's messages: note, name, @username, Telegram id; null — not a tester */
+  tester(provider: string, subject: string): { account: string; tg: string; label: string } | null {
+    const acc = this.resolve(provider, subject);
+    if (!this.grantsOf(acc.id).includes('beta')) return null;
+    const r = this.sql.exec<{ note: string | null; username: string | null; name: string | null }>(
+      "SELECT a.note, i.username, i.name FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.id = ?", acc.id).toArray()[0];
+    const parts = [r?.note || r?.name || 'Тестировщик', r?.username ? '@' + r.username : null, `ID ${subject}`].filter(Boolean);
+    return { account: acc.id, tg: subject, label: parts.join(' · ') };
+  }
+
+  /** a report counts toward a daily cap (a stuck button must not flood the owner's chat) */
+  spendReport(account: string, cap = 30): boolean {
+    const day = new Date().toISOString().slice(0, 10);
+    const n = this.sql.exec<{ n: number }>('SELECT n FROM feedback_day WHERE account = ? AND day = ?', account, day).toArray()[0]?.n ?? 0;
+    if (n >= cap) return false;
+    this.sql.exec('INSERT INTO feedback_day (account, day, n) VALUES (?, ?, 1) ON CONFLICT(account, day) DO UPDATE SET n = n + 1', account, day);
+    return true;
+  }
+
+  /** the checklist; with `account` — this tester's answers; for the owner — counts and who answered */
+  checks(account?: string) {
+    const items = this.sql.exec<{ id: string; text: string }>('SELECT id, text FROM check_item ORDER BY ord, created').toArray();
+    const results = this.sql.exec<{ item: string; account: string; state: string; note: string | null; ts: number; who: string | null }>(
+      "SELECT r.item, r.account, r.state, r.note, r.ts, COALESCE(a.note, i.name, i.username) AS who FROM check_result r LEFT JOIN account a ON a.id = r.account LEFT JOIN identity i ON i.account = r.account AND i.provider = 'tg'").toArray();
+    return items.map((it) => {
+      const rs = results.filter((r) => r.item === it.id);
+      return {
+        id: it.id, text: it.text,
+        ok: rs.filter((r) => r.state === 'ok').length, bug: rs.filter((r) => r.state === 'bug').length,
+        mine: account ? rs.find((r) => r.account === account)?.state : undefined,
+        answers: account ? undefined : rs.map((r) => ({ who: r.who ?? '—', state: r.state, note: r.note ?? undefined, ts: r.ts })),
+      };
+    });
+  }
+
+  /** a tester's answer on one item; returns the item text (for the owner's message) or null */
+  checkAnswer(account: string, item: string, state: 'ok' | 'bug', note?: string) {
+    const it = this.sql.exec<{ text: string }>('SELECT text FROM check_item WHERE id = ?', item).toArray()[0];
+    if (!it) return null;
+    this.sql.exec('INSERT INTO check_result (item, account, state, note, ts) VALUES (?, ?, ?, ?, ?) ON CONFLICT(item, account) DO UPDATE SET state = excluded.state, note = excluded.note, ts = excluded.ts',
+      item, account, state, note ?? null, Date.now());
+    return it.text;
+  }
+
+  /** owner: add an item, remove one (with its answers), or clear the list for a new version */
+  editChecks(action: 'add' | 'remove' | 'clear', text?: string, id?: string) {
+    if (action === 'add') {
+      const t = (text ?? '').replace(/\s+/g, ' ').trim().slice(0, 200);
+      if (!t) return false;
+      const ord = (this.sql.exec<{ m: number | null }>('SELECT MAX(ord) AS m FROM check_item').one().m ?? 0) + 1;
+      this.sql.exec('INSERT INTO check_item (id, text, ord, created) VALUES (?, ?, ?, ?)', crypto.randomUUID().slice(0, 8), t, ord, Date.now());
+    } else if (action === 'remove') {
+      this.sql.exec('DELETE FROM check_item WHERE id = ?', id ?? '');
+      this.sql.exec('DELETE FROM check_result WHERE item = ?', id ?? '');
+    } else {
+      this.sql.exec('DELETE FROM check_item');
+      this.sql.exec('DELETE FROM check_result');
+    }
+    return true;
+  }
+
   async alarm() {
     const due = this.sql.exec<{ account: string; chat: string; title: string; link: string; at: number }>(
       'SELECT account, chat, title, link, at FROM reminder WHERE at <= ? ORDER BY at LIMIT 50', Date.now() + 5000).toArray();
     for (const r of due) {
       this.sql.exec('DELETE FROM reminder WHERE account = ? AND at = ?', r.account, r.at);
-      await sendReminder(this.env.BOT_TOKEN, r.chat, r.title, r.link);
+      const res = await sendReminder(this.env.BOT_TOKEN, r.chat, r.title, r.link);
+      this.log(r.account, r.at, res.ok ? 'sent' : 'failed', res.error ?? null);
     }
     await this.nextAlarm();
   }
 }
 
 /** the bot's message with a button back into the timer */
-export async function sendReminder(token: string, chat: string, title: string, link: string) {
-  const text = `☕ ${title}: время вышло!\nПора процедить и записать заварку.`;
+export async function sendReminder(token: string, chat: string, title: string, link: string, text = `☕ ${title}: время вышло!\nПора процедить и записать заварку.`): Promise<{ ok: boolean; error?: string }> {
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -227,6 +343,7 @@ export async function sendReminder(token: string, chat: string, title: string, l
     });
     const j = await r.json<{ ok: boolean; description?: string }>();
     if (!j.ok) console.log('reminder not sent:', j.description);
-    return j.ok;
-  } catch (e) { console.log('reminder error', e); return false; }
+    else console.log('reminder sent');
+    return { ok: j.ok, error: j.ok ? undefined : j.description ?? `HTTP ${r.status}` };
+  } catch (e) { console.log('reminder error', e); return { ok: false, error: String(e) }; }
 }

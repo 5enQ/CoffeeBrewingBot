@@ -9,7 +9,7 @@ import { Button, Screen } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { LONG_TIMER, clearTimer, elapsedOf, loadTimer, onTimerChange, saveTimer } from '../data/timer';
 import { toast } from '../ui/toast';
-import { cancelReminder, remindersAvailable, scheduleReminder } from '../data/remind';
+import { cancelReminder, explainRefusal, reminderStatus, remindersAvailable, scheduleReminder } from '../data/remind';
 
 let audio: AudioContext | null = null;
 function beep(freq = 880, ms = 140) {
@@ -40,6 +40,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   const [running, setRunning] = useState(() => stored?.startedAt != null);
   const [sound, setSound] = useState(true);
   const [remind, setRemind] = useState<RemindState>(stored?.remind ? 'on' : 'off');
+  const [remindNote, setRemindNote] = useState('');
   const base = useRef(stored?.base ?? 0);       // seconds accumulated before the last start
   const startedAt = useRef(stored?.startedAt ?? 0); // epoch ms of the last start
   const lastStep = useRef(stored ? plan.steps.reduce((acc, s, i) => (s.at <= elapsedOf(stored) ? i : acc), -1) : -1);
@@ -75,7 +76,22 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     setRemind(ok ? 'on' : 'fail');
     if (loadTimer()?.draft.id === draft.id) persist(true, ok ? 'on' : 'fail');
   };
-  const dropReminder = () => { if (remind === 'on' || remind === 'pending') { void cancelReminder(); setRemind('off'); } };
+  // the reminder may have been set on another device: cancel on the server whatever this screen thinks
+  const dropReminder = () => { if (long && remindersAvailable()) void cancelReminder(); setRemind('off'); };
+
+  // opening a running long timer: ask the server what it holds; nothing there — set it again (self-repair)
+  useEffect(() => {
+    if (!long || !running || !remindersAvailable()) return;
+    let gone = false;
+    reminderStatus().then((st) => {
+      if (gone || !st) return;
+      const end = startedAt.current + (plan.total - base.current) * 1000;
+      if (st.pending && Math.abs(st.pending.at - end) < 120_000) { setRemind('on'); return; }
+      if (st.last?.state === 'failed' && Math.abs(st.last.at - end) < 120_000) { setRemind('fail'); setRemindNote(explainRefusal(st.last.detail)); return; }
+      if (end - Date.now() > 60_000) void armReminder();
+    });
+    return () => { gone = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // the same timer changed on another device (paused, resumed, reset or finished there): follow it
   useEffect(() => onTimerChange((remote) => {
@@ -227,9 +243,9 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
       {long && (
         <div className="timer-long">
           <p>Таймер идёт и без приложения — его можно закрыть, время не собьётся.</p>
-          {remind === 'on' && <p className="ok">Бот пришлёт сообщение в Telegram, когда время выйдет.</p>}
+          {remind === 'on' && <p className="ok">Бот пришлёт сообщение в Telegram в {new Date(startedAt.current + (plan.total - base.current) * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}.</p>}
           {remind === 'pending' && <p>Ставим напоминание…</p>}
-          {remind === 'fail' && <p className="warn">Не получилось поставить напоминание в Telegram{platform.kind === 'telegram' ? ' — разрешите боту писать вам и нажмите «Пауза» и «Продолжить»' : ''}.</p>}
+          {remind === 'fail' && <p className="warn">{remindNote ? `Бот не смог написать: ${remindNote}.` : `Не получилось поставить напоминание в Telegram${platform.kind === 'telegram' ? ' — разрешите боту писать вам и нажмите «Пауза» и «Продолжить»' : ''}.`}</p>}
           {remind === 'off' && running && !remindersAvailable() && <p>Напоминание от бота работает в Telegram.</p>}
           {elapsed > 0 && <Button kind="secondary" onClick={() => { setTab('brew'); home(); }}>Свернуть</Button>}
         </div>

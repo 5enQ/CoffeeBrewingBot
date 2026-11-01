@@ -26,7 +26,7 @@ async def main():
 
         # "close the app" for 3 hours: move the start back and reload
         await pg.evaluate("""() => { const t = JSON.parse(localStorage.getItem('brewbook.timer')); t.startedAt -= 3 * 3600 * 1000; localStorage.setItem('brewbook.timer', JSON.stringify(t)); }""")
-        await pg.reload(); await pg.wait_for_timeout(700)
+        await pg.reload(); await pg.locator('.timer-banner:visible').wait_for(timeout=5000)
         banner = (await V('.timer-banner').inner_text()) if await V('.timer-banner').count() else ''
         check('3:00:0' in banner and ('осталось 8:59:' in banner or 'осталось 9:00:' in banner), f'after reopening the banner shows the real time ({banner!r})')
         await pg.screenshot(path='out/timer-banner.png', full_page=True)

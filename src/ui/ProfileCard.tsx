@@ -2,7 +2,7 @@
  * Profile card. Base themes are flat colors; bronze / silver / gold are brushed metal with a sheen that follows the tilt;
  * diamond is a faceted, iridescent 3D card that turns with the device (or the mouse on a computer).
  */
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cardView, type CardData } from '../data/card';
 import { catById } from '../data/gear';
 import type { IconKey } from '../data/methods';
@@ -16,45 +16,53 @@ const initials = (s: string) => s.replace(/^@/, '').split(/\s+/).map((w) => w[0]
 const clamp = (v: number, a = -1, b = 1) => Math.max(a, Math.min(b, v));
 
 /**
- * Tilt in -1..1 on both axes. Sources: device sensors, then the pointer over the card;
- * without either the card sways slowly by itself so the effect is still visible.
+ * Raw tilt input in -1..1 on both axes. Sources: device sensors, then the pointer over the element;
+ * without either it sways slowly by itself (idle) so the effect is still visible.
+ * read(now) gives the current target; no smoothing, no React state.
  */
+export function tiltInput(el: HTMLElement | null) {
+  let target = { x: 0, y: 0 };
+  let base: { b: number; g: number } | null = null;
+  let lastInput = 0;
+  // the first reading is "level": tilting from how the phone is held, not from flat on a table
+  const off = platform.onTilt((beta, gamma) => {
+    if (!base) base = { b: beta, g: gamma };
+    target = { x: clamp((gamma - base.g) / 25), y: clamp((beta - base.b) / 25) };
+    lastInput = performance.now();
+  });
+  const move = (e: PointerEvent) => {
+    const r = el!.getBoundingClientRect();
+    target = { x: clamp(((e.clientX - r.left) / r.width) * 2 - 1), y: clamp(((e.clientY - r.top) / r.height) * 2 - 1) };
+    lastInput = performance.now();
+  };
+  el?.addEventListener('pointermove', move);
+  return {
+    read(now: number) {
+      if (now - lastInput > 2500) target = { x: Math.sin(now / 1700) * 0.4, y: Math.cos(now / 2300) * 0.3 };
+      return target;
+    },
+    stop() { off(); el?.removeEventListener('pointermove', move); },
+  };
+}
+
+/** Smoothed tilt as React state, for cards whose look is styled from it (metals, diamond, volume, special) */
 export function useTilt(active: boolean, ref: React.RefObject<HTMLElement | null>) {
   const [t, setT] = useState({ x: 0, y: 0 });
-  const target = useRef({ x: 0, y: 0 });
-  const base = useRef<{ b: number; g: number } | null>(null);
-  const lastInput = useRef(0);
-
   useEffect(() => {
     if (!active || reduceMotion()) return;
-    // the first reading is "level": tilting from how the phone is held, not from flat on a table
-    const off = platform.onTilt((beta, gamma) => {
-      if (!base.current) base.current = { b: beta, g: gamma };
-      target.current = { x: clamp((gamma - base.current.g) / 25), y: clamp((beta - base.current.b) / 25) };
-      lastInput.current = performance.now();
-    });
-    const el = ref.current;
-    const move = (e: PointerEvent) => {
-      const r = el!.getBoundingClientRect();
-      target.current = { x: clamp(((e.clientX - r.left) / r.width) * 2 - 1), y: clamp(((e.clientY - r.top) / r.height) * 2 - 1) };
-      lastInput.current = performance.now();
-    };
-    el?.addEventListener('pointermove', move);
+    const input = tiltInput(ref.current);
     let raf = 0;
     const tick = (now: number) => {
-      if (now - lastInput.current > 2500) {
-        // idle sway
-        target.current = { x: Math.sin(now / 1700) * 0.4, y: Math.cos(now / 2300) * 0.3 };
-      }
+      const target = input.read(now);
       setT((cur) => {
-        const nx = cur.x + (target.current.x - cur.x) * 0.12, ny = cur.y + (target.current.y - cur.y) * 0.12;
+        const nx = cur.x + (target.x - cur.x) * 0.12, ny = cur.y + (target.y - cur.y) * 0.12;
         // tiny steps are not worth a repaint
         return Math.abs(nx - cur.x) < 0.004 && Math.abs(ny - cur.y) < 0.004 ? cur : { x: nx, y: ny };
       });
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => { off(); el?.removeEventListener('pointermove', move); cancelAnimationFrame(raf); };
+    return () => { input.stop(); cancelAnimationFrame(raf); };
   }, [active, ref]);
   return t;
 }
@@ -139,21 +147,157 @@ function Glints({ x, y }: { x: number; y: number }) {
 
 /* ---------- volume tier: an extruded method icon ---------- */
 
-/** The method icon stacked in depth: back layers dark, the front one bright, so turning the card shows its thickness */
-function VolumeIcon({ icon, x, y }: { icon: IconKey; x: number; y: number }) {
-  const depth = 12;
-  // a resting three-quarter turn, so the depth is visible even when the phone is level
-  const ry = x * 32 - 24, rx = -y * 24 + 12;
+/* ---------- volume tier: the night sky with the method as a constellation ---------- */
+
+/** seeded random, so the sky is the same on every render and every device */
+const seeded = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
+/** paint stars into a canvas sized to its box; `pick` decides which of the seeded stars go into this layer */
+function paintStars(c: HTMLCanvasElement, seed: number, density: number, size: [number, number], bright: number) {
+  const r = c.getBoundingClientRect();
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
+  const ctx = c.getContext('2d');
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const rnd = seeded(seed);
+  const n = Math.round((r.width * r.height) / density);
+  for (let k = 0; k < n; k++) {
+    const x = rnd() * r.width, y = rnd() * r.height, a = (0.3 + rnd() * 0.7) * bright;
+    const rad = size[0] + rnd() * (size[1] - size[0]);
+    const tint = rnd() < 0.18 ? '255,228,196' : rnd() < 0.3 ? '196,214,255' : '255,255,255';
+    if (rad > 0.9) {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, rad * 4);
+      g.addColorStop(0, `rgba(${tint},${a * 0.45})`); g.addColorStop(1, `rgba(${tint},0)`);
+      ctx.fillStyle = g; ctx.fillRect(x - rad * 4, y - rad * 4, rad * 8, rad * 8);
+    }
+    ctx.fillStyle = `rgba(${tint},${a})`;
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+/** a canvas of stars that repaints only when its size changes */
+function StarLayer({ className, seed, density, size, bright = 1 }: { className: string; seed: number; density: number; size: [number, number]; bright?: number }) {
+  const cv = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = cv.current;
+    if (!c) return;
+    const paint = () => paintStars(c, seed, density, size, bright);
+    paint();
+    const ro = new ResizeObserver(paint);
+    ro.observe(c);
+    return () => ro.disconnect();
+  }, [seed, density, size[0], size[1], bright]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <canvas ref={cv} className={className} />;
+}
+
+/**
+ * The card as a window into space. The layers sit at different depths and shift against the tilt —
+ * far stars the most, the constellation less — so it looks like looking *through* the card into a deep sky,
+ * not at a picture on it. The rim is darkened from inside, like the edge of a portal.
+ * Everything is painted once; per frame only transforms change (compositor), plus a CSS twinkle.
+ */
+function SpacePortal({ icon }: { icon: IconKey | null }) {
   return (
-    <div className="pcard-volume" aria-hidden="true">
-      <div className="pcard-volume-rot" style={{ transform: `rotateY(${ry.toFixed(2)}deg) rotateX(${rx.toFixed(2)}deg)` }}>
-        {Array.from({ length: depth }, (_, i) => (
-          <span key={i} className="pcard-volume-layer" style={{ transform: `translateZ(${((i - depth) * 1.7).toFixed(1)}px)`, color: `hsl(222 14% ${20 + (i / depth) * 22}%)` }}>
-            <MethodIcon icon={icon} size={104} />
-          </span>
-        ))}
-        <span className="pcard-volume-layer front"><MethodIcon icon={icon} size={104} /></span>
+    <div className="pcard-portal" aria-hidden="true">
+      <div className="portal-layer depth-far"><StarLayer className="sky" seed={11} density={260} size={[0.25, 0.6]} bright={0.75} /></div>
+      <div className="portal-layer depth-nebula"><div className="nebula" /></div>
+      <div className="portal-layer depth-mid">
+        <StarLayer className="sky" seed={23} density={1400} size={[0.4, 1.3]} />
+        <StarLayer className="sky tw a" seed={37} density={2600} size={[0.5, 1.5]} />
+        <StarLayer className="sky tw b" seed={41} density={2600} size={[0.5, 1.4]} />
       </div>
+      {icon && <div className="portal-layer depth-figure"><Constellation icon={icon} /></div>}
+      <div className="portal-rim" />
+    </div>
+  );
+}
+
+type CStar = { x: number; y: number; r: number; tw: number; deg: number };
+
+/**
+ * The method as a constellation drawn the way star charts do: a faint glowing figure (the icon's own drawing),
+ * a few bright stars at its key points — corners, ends, junctions — and straight lines between them.
+ * Key points are found on the real icon geometry: where a line turns sharply, where it ends, rectangle corners.
+ */
+function Constellation({ icon }: { icon: IconKey }) {
+  const probe = useRef<HTMLDivElement>(null);
+  const [sky, setSky] = useState<{ stars: CStar[]; lines: [CStar, CStar][] }>({ stars: [], lines: [] });
+  useLayoutEffect(() => {
+    const svg = probe.current?.querySelector('svg');
+    if (!svg) return;
+    const rnd = seeded(icon.length * 131 + icon.charCodeAt(0) * 7);
+    const stars: CStar[] = [];
+    const lines: [CStar, CStar][] = [];
+    const starAt = (x: number, y: number) => {
+      const near = stars.find((q) => Math.hypot(q.x - x, q.y - y) < 3.2);
+      if (near) return near;
+      const st = { x, y, r: 0, tw: rnd() < 0.3 ? 1 + Math.floor(rnd() * 2) : 0, deg: 0 };
+      stars.push(st);
+      return st;
+    };
+    const link = (a: CStar, b: CStar) => {
+      if (a === b || lines.some(([p, q]) => (p === a && q === b) || (p === b && q === a))) return;
+      lines.push([a, b]); a.deg++; b.deg++;
+    };
+    svg.querySelectorAll<SVGGeometryElement>('path, rect, circle, ellipse, line, polyline, polygon').forEach((g) => {
+      let keys: { x: number; y: number }[] = [];
+      let closed = false;
+      if (g instanceof SVGRectElement) {
+        const x = g.x.baseVal.value, y = g.y.baseVal.value, w = g.width.baseVal.value, h = g.height.baseVal.value;
+        keys = w < 3 || h < 3 ? [{ x, y: y + h / 2 }, { x: x + w, y: y + h / 2 }] : [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
+        closed = keys.length === 4;
+      } else if (g instanceof SVGCircleElement) {
+        const cx = g.cx.baseVal.value, cy = g.cy.baseVal.value, rr = g.r.baseVal.value;
+        const n = rr < 2.5 ? 1 : 5;
+        keys = Array.from({ length: n }, (_, k) => ({ x: cx + rr * Math.cos(k / n * Math.PI * 2 - Math.PI / 2), y: cy + rr * Math.sin(k / n * Math.PI * 2 - Math.PI / 2) }));
+        closed = n > 1;
+      } else {
+        let len = 0;
+        try { len = g.getTotalLength(); } catch { return; }
+        if (!len) return;
+        const N = Math.max(8, Math.round(len * 2));
+        const pts = Array.from({ length: N + 1 }, (_, k) => g.getPointAtLength((k / N) * len));
+        closed = Math.hypot(pts[0].x - pts[N].x, pts[0].y - pts[N].y) < 0.5;
+        keys.push(pts[0]);
+        const W = Math.max(2, Math.round(N / 24));
+        let lastKey = 0;
+        for (let k = W; k <= N - W; k++) {
+          const a = Math.atan2(pts[k].y - pts[k - W].y, pts[k].x - pts[k - W].x), b = Math.atan2(pts[k + W].y - pts[k].y, pts[k + W].x - pts[k].x);
+          let turn = Math.abs(b - a); if (turn > Math.PI) turn = 2 * Math.PI - turn;
+          // a sharp turn is a corner; along a long smooth curve put a star every ~9 units so it keeps its shape
+          const along = ((k - lastKey) / N) * len;
+          if ((turn > 0.6 && along > 2.5) || along > 9) { keys.push(pts[k]); lastKey = k; }
+        }
+        if (!closed) keys.push(pts[N]);
+      }
+      const st = keys.map((p) => starAt(p.x, p.y));
+      for (let k = 1; k < st.length; k++) link(st[k - 1], st[k]);
+      if (closed && st.length > 2) link(st[st.length - 1], st[0]);
+    });
+    // junctions shine brighter: the more lines meet at a star, the bigger it is
+    for (const st of stars) st.r = 0.55 + Math.min(3, st.deg) * 0.17 + rnd() * 0.25;
+    setSky({ stars, lines });
+  }, [icon]);
+  const sparkle = (p: CStar) => p.r > 1.05;
+  return (
+    <div className="pcard-constellation" aria-hidden="true">
+      <div className="probe" ref={probe}><MethodIcon icon={icon} size={32} /></div>
+      {/* the figure itself, faint, like the drawing on a star chart */}
+      <div className="const-figure"><MethodIcon icon={icon} size={32} /></div>
+      <svg viewBox="-2 -2 36 36" className="const-lines">
+        {sky.lines.map(([a, b], i) => <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />)}
+      </svg>
+      {[0, 1, 2].map((layer) => (
+        <svg key={layer} viewBox="-2 -2 36 36" className={'const-stars' + (layer ? ` tw t${layer}` : '')}>
+          {sky.stars.filter((p) => p.tw === layer).map((p, i) => (
+            <g key={i}>
+              <circle cx={p.x} cy={p.y} r={p.r} />
+              {sparkle(p) && <path className="flare" d={`M${p.x - p.r * 2.6} ${p.y}H${p.x + p.r * 2.6}M${p.x} ${p.y - p.r * 2.6}V${p.y + p.r * 2.6}`} />}
+            </g>
+          ))}
+        </svg>
+      ))}
     </div>
   );
 }
@@ -186,34 +330,188 @@ function DevLayer() {
   );
 }
 
+/* ---------- glass of black coffee ---------- */
+
+/**
+ * The card is a glass box with black coffee in it, seen slightly from above.
+ *  - sideways tilt (roll) tips the surface: it stays level while the glass turns;
+ *  - toward/away tilt (pitch) shows the top of the liquid: a lit plane between the front and the back edge;
+ *  - quick moves make it slosh: two damped springs (roll and pitch) overshoot and settle, and kick a wave.
+ * A sharp tilt swings the pitch spring past the target, so the surface opens up for a moment, then calms down.
+ * Its own animation loop on a canvas: no React renders per frame, nothing drawn while still or off screen.
+ */
+function GlassLayer({ host, still }: { host: React.RefObject<HTMLElement | null>; still?: boolean }) {
+  const cv = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = cv.current, card = host.current;
+    if (!c || !card) return;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+    const calm = still || reduceMotion();
+    const input = calm ? null : tiltInput(card);
+    let w = 0, h = 0, raf = 0, visible = true, dirty = true;
+    const size = () => {
+      const r = c.getBoundingClientRect();
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1); // soft gradients: 1.5× is enough and saves fill rate
+      w = r.width; h = r.height;
+      c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      dirty = true;
+    };
+    size();
+    const ro = new ResizeObserver(size);
+    ro.observe(c);
+    const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; });
+    io.observe(c);
+
+    // springs: roll (surface angle, rad) and pitch (how much of the top is seen, 0..1)
+    let roll = 0, rollV = 0, pitch = 0.1, pitchV = 0, amp = 0, phase = 0, last = performance.now();
+    let sx = 0, sy = 0; // smoothed input
+    const N = 24;       // points along the surface: enough for smooth waves, cheap to fill
+    const front = new Float32Array(N + 1), back = new Float32Array(N + 1);
+
+    const step = (now: number) => {
+      raf = requestAnimationFrame(step);
+      const dt = Math.min(0.033, (now - last) / 1000); last = now;
+      if (!visible || document.hidden) return;
+      const t = input ? input.read(now) : { x: 0, y: 0 };
+      const px0 = sx, py0 = sy;
+      sx += (t.x - sx) * Math.min(1, dt * 14); sy += (t.y - sy) * Math.min(1, dt * 14);
+      card.style.setProperty('--tx', sx.toFixed(3));
+      const rollT = -sx * 0.42, pitchT = 0.1 + Math.max(0, sy) * 0.32 + Math.max(0, -sy) * 0.1;
+      const aR = -(roll - rollT) * 42 - rollV * 3.4;            // water: stiff and lively
+      const aP = -(pitch - pitchT) * 48 - pitchV * 2.6;         // underdamped: a sharp tilt overshoots and opens the surface
+      // a quick move throws the liquid: the faster the tilt changed, the harder the kick
+      rollV += -(sx - px0) * 9; pitchV += Math.abs(sy - py0) * 7;
+      rollV += aR * dt; roll += rollV * dt;
+      pitchV += aP * dt; pitch += pitchV * dt;
+      amp = Math.min(12, amp * Math.exp(-1.7 * dt) + (Math.abs(rollV) + Math.abs(pitchV) * 1.5) * dt * 30);
+      phase += dt * 7;
+      const moving = amp > 0.15 || Math.abs(rollV) > 0.002 || Math.abs(pitchV) > 0.002;
+      if (!moving && !dirty) return; // settled: the last frame stays on the canvas
+      dirty = false;
+      draw();
+    };
+
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      const level = h * 0.56;
+      const slope = Math.tan(roll);
+      // the top plane's height on screen (a short card still shows a proper surface)
+      const depth = Math.max(2, Math.min(level - 6, Math.min(0.62, pitch) * Math.max(h, 190) * 0.55));
+      for (let i = 0; i <= N; i++) {
+        const px = (i / N) * w, u = i / N;
+        const tilt = level + (px - w / 2) * slope;
+        // standing waves: the back edge moves against the front one (front-to-back slosh)
+        const wave = Math.sin(u * Math.PI * 2 + phase) * amp * 0.45 + Math.sin(u * Math.PI * 5 - phase * 1.4) * amp * 0.15;
+        const slosh = Math.sin(phase * 0.9) * amp * 0.5;
+        front[i] = tilt + wave + slosh * 0.5;
+        back[i] = tilt - depth + wave * 0.6 - slosh * 0.5;
+      }
+      const path = (ys: Float32Array, rev = false) => {
+        if (!rev) for (let i = 0; i <= N; i++) ctx.lineTo((i / N) * w, ys[i]);
+        else for (let i = N; i >= 0; i--) ctx.lineTo((i / N) * w, ys[i]);
+      };
+      // body: almost black, brown where light comes through near the top
+      const top = Math.min(...front);
+      ctx.beginPath(); ctx.moveTo(0, h); path(front); ctx.lineTo(w, h); ctx.closePath();
+      const g = ctx.createLinearGradient(0, top, 0, h);
+      g.addColorStop(0, 'rgba(96,54,26,0.96)'); g.addColorStop(0.16, 'rgba(36,19,10,0.97)'); g.addColorStop(1, 'rgba(10,6,4,0.98)');
+      ctx.fillStyle = g; ctx.fill();
+      // the back wall below the surface: the far side of the liquid, seen through the top
+      // top plane: dark glossy coffee reflecting the room; lighter toward the front edge
+      ctx.beginPath(); ctx.moveTo(0, back[0]); path(back); path(front, true); ctx.closePath();
+      const sg = ctx.createLinearGradient(0, Math.min(...back), 0, top + 4);
+      sg.addColorStop(0, 'rgba(22,12,7,0.97)'); sg.addColorStop(0.55, 'rgba(58,32,16,0.97)'); sg.addColorStop(1, 'rgba(128,78,40,0.95)');
+      ctx.fillStyle = sg; ctx.fill();
+      if (depth > 8) {
+        // reflection of a window on the surface: a soft highlight that slides with the roll
+        ctx.save();
+        ctx.beginPath(); ctx.moveTo(0, back[0]); path(back); path(front, true); ctx.closePath(); ctx.clip();
+        const cx = w * (0.62 - roll * 0.9), cy = (back[N >> 1] + front[N >> 1]) / 2;
+        const hg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(30, depth * 1.4));
+        hg.addColorStop(0, 'rgba(255,236,210,0.32)'); hg.addColorStop(1, 'rgba(255,236,210,0)');
+        ctx.fillStyle = hg; ctx.fillRect(0, 0, w, h);
+        // a few ripple lines across the plane
+        ctx.strokeStyle = 'rgba(255,225,190,0.10)'; ctx.lineWidth = 1;
+        for (let k = 1; k <= 3; k++) {
+          const f = k / 4;
+          ctx.beginPath();
+          for (let i = 0; i <= N; i++) ctx.lineTo((i / N) * w, back[i] + (front[i] - back[i]) * f + Math.sin(i * 0.9 + phase * 1.6 + k) * amp * 0.12);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // edges catching the light: the back line where liquid meets the far glass, the bright front meniscus
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,214,170,0.22)'; ctx.beginPath(); path(back); ctx.stroke();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(255,220,175,0.6)'; ctx.beginPath(); path(front); ctx.stroke();
+    };
+    raf = requestAnimationFrame(step);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); input?.stop(); };
+  }, [host, still]);
+  return (
+    <>
+      <canvas ref={cv} className="pcard-coffee" aria-hidden="true" />
+      <div className="pcard-glass" aria-hidden="true" />
+    </>
+  );
+}
+
+/* ---------- testers' background ---------- */
+
+/** Lab blueprint: a measuring grid that drifts with the tilt, a "BETA" ribbon and a glowing flask in the corner */
+function BetaLayer() {
+  return (
+    <>
+      <div className="pcard-blueprint" aria-hidden="true" />
+      <div className="pcard-ribbon" aria-hidden="true"><span>BETA</span></div>
+      <div className="pcard-corner pcard-beta-mark" aria-hidden="true">
+        <svg width="56" height="56" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 4h8M13.5 4v8.5L6.8 24.2A2.4 2.4 0 0 0 8.9 28h14.2a2.4 2.4 0 0 0 2.1-3.8L18.5 12.5V4" />
+          <path d="M9.5 19.5h13" />
+          <circle cx="14" cy="23.5" r="1.1" fill="currentColor" stroke="none" /><circle cx="18.5" cy="22" r="0.8" fill="currentColor" stroke="none" />
+        </svg>
+      </div>
+    </>
+  );
+}
+
 /* ---------- card ---------- */
 
 export function ProfileCard({ card, live = true }: { card: CardData; live?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const view = cardView(card);
   const tier = 'tier' in view.theme ? view.theme.tier : null;
-  const t = useTilt(live && (!!tier || 'special' in view.theme), ref);
+  const t = useTilt(live && ((!!tier && !('look' in view.theme && view.theme.look === 'glass')) || 'special' in view.theme), ref);
   const [photoOk, setPhotoOk] = useState(true);
   const icon = 'tier' in view.theme ? view.theme.icon : null;
 
   // diamond and volume cards turn in 3D; the diamond only slightly (its shine does the work)
-  const turn = tier === 'diamond' ? [5, 4] : tier === 'volume' ? [10, 8] : null;
+  // the diamond turns a little; the volume card stays put — its depth is inside, the card is a window
+  const turn = tier === 'diamond' ? [5, 4] : null;
   const style = {
     '--tx': t.x.toFixed(3), '--ty': t.y.toFixed(3),
     ...(turn ? { transform: `perspective(800px) rotateY(${(t.x * turn[0]).toFixed(2)}deg) rotateX(${(-t.y * turn[1]).toFixed(2)}deg)` } : {}),
   } as React.CSSProperties;
   const volume = tier === 'volume' && icon && icon !== 'star';
+  // «Стакан» (500 L) is an achievement background drawn as the glass, not as a metal
+  const glass = 'tier' in view.theme && view.theme.look === 'glass';
+  const metal = tier && !glass;
 
   return (
-    <div ref={ref} className={`pcard ${'tier' in view.theme ? `tier tier-${view.theme.tier}` : 'special' in view.theme ? `special special-${view.theme.special}` : `base-${view.theme.base}`}`} style={style}
-      onClick={turn ? () => requestTiltPermission() : undefined}>
+    <div ref={ref} className={`pcard ${glass ? 'tier tier-glass base-glass' : 'tier' in view.theme ? `tier tier-${view.theme.tier}` : 'special' in view.theme ? `special special-${view.theme.special}` : `base-${view.theme.base}`}`} style={style}
+      onClick={turn || glass ? () => requestTiltPermission() : undefined}>
       {tier === 'diamond' && <><Facets x={t.x} y={t.y} /><div className="pcard-iris" aria-hidden="true" /><div className="pcard-film" aria-hidden="true" /><div className="pcard-edge" aria-hidden="true" /></>}
-      {tier && <div className="pcard-sheen" aria-hidden="true" />}
-      {tier && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
-      {volume && <VolumeIcon icon={icon as IconKey} x={t.x} y={t.y} />}
+      {metal && <div className="pcard-sheen" aria-hidden="true" />}
+      {metal && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
+      {glass && <GlassLayer host={ref} still={!live} />}
+      {tier === 'volume' && <SpacePortal icon={volume ? icon as IconKey : null} />}
       {'special' in view.theme && view.theme.special === 'dev' && <DevLayer />}
+      {'special' in view.theme && view.theme.special === 'beta' && <BetaLayer />}
       {tier === 'diamond' && card.no !== undefined && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}
-      {icon && !volume && (
+      {icon && !volume && !glass && (
         <div className="pcard-corner" aria-hidden="true">
           {icon === 'star' ? <Icon name="star" size={64} filled /> : <MethodIcon icon={icon as IconKey} size={72} />}
         </div>

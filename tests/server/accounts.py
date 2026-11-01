@@ -66,6 +66,62 @@ post('/admin', {'initData': A, 'action': 'revoke', 'tg': '333', 'what': 'dev'})
 ok(get(f'/cards/{cid3}')['card']['theme'] == {'base': 'paper'}, 'taken away → the card falls back to the default')
 ok('tester' in post('/me', {'initData': C})['grants'], 'taking dev away keeps the separate tester grant')
 
+# testers' background and the owner's notes
+ok('beta' in sa['grants'], 'the owner has the testers background too')
+g = post('/admin', {'initData': A, 'action': 'grant', 'tg': '444', 'what': 'beta'})
+p444 = next((x for x in g.get('grants', []) if x['tg'] == '444'), None)
+ok(p444 and p444['grants'] == ['beta'] and not p444.get('username'), 'testers background given to someone who never opened the app')
+g = post('/admin', {'initData': A, 'action': 'note', 'tg': '444', 'note': '  Аня,   бариста из Kojo ', 'username': '@anya_tests'})
+p444 = next(x for x in g['grants'] if x['tg'] == '444')
+ok(p444.get('note') == 'Аня, бариста из Kojo' and p444.get('username') == 'anya_tests', f'the owner signs a person and adds their @username ({p444})')
+ok(post('/admin', {'initData': C, 'action': 'note', 'tg': '444', 'note': 'x'}).get('status') == 403, 'only the owner signs people')
+D = sign(444, username='anya_real', first_name='Анна')
+ok('beta' in post('/me', {'initData': D})['grants'], 'the tester sees the background in their numbers')
+p444 = next(x for x in post('/admin', {'initData': A, 'action': 'list'})['grants'] if x['tg'] == '444')
+ok(p444.get('username') == 'anya_real' and p444.get('name') == 'Анна' and p444.get('note') == 'Аня, бариста из Kojo', f'opening the app fills the real @username and name, the note stays ({p444})')
+cid4 = post('/cards', {'initData': D, 'card': {'name': 'Аня', 'theme': {'special': 'beta'}, 'ach': [], 'granted': ['beta']}})['id']
+ok(get(f'/cards/{cid4}')['card']['theme'] == {'special': 'beta'}, 'the testers card is shown')
+g = post('/admin', {'initData': A, 'action': 'revoke', 'tg': '444', 'what': 'beta'})
+ok(any(x['tg'] == '444' and x['grants'] == [] for x in g['grants']), 'a signed person stays in the list after their grants are taken away')
+
+# «Стакан» for 500 liters
+E = sign(557)
+hist = [{'id': f'w{i}', 'm': 'batch', 'w': 3000, 't': T0 + (i // 2) * DAY + (i % 2) * 3600_000} for i in range(170)]
+se = post('/brews', {'initData': E, 'brews': hist})
+ok(500 <= se['liters'] < 1000, f'500+ liters counted ({se["liters"]})')
+cid5 = post('/cards', {'initData': E, 'card': {'name': 'Стакан', 'theme': {'ach': 'liters', 'tier': 'gold'}, 'ach': []}})['id']
+c5 = get(f'/cards/{cid5}')['card']
+ok(c5['theme'] == {'ach': 'liters'} and c5['earned']['liters']['tier'] == 'gold' and 'no' not in c5, f'500 L: the glass background is shown, no diamond number ({c5["earned"]})')
+cid6 = post('/cards', {'initData': E, 'card': {'name': 'Стакан', 'theme': {'ach': 'liters', 'tier': 'diamond'}, 'ach': []}})['id']
+ok(get(f'/cards/{cid6}')['card']['theme'] == {'base': 'paper'}, 'a level above the one earned is refused')
+
+# testers: the checklist, answers, reports
+post('/admin', {'initData': A, 'action': 'grant', 'tg': '444', 'what': 'beta'})
+ok(post('/tester', {'initData': C, 'action': 'checks'}).get('status') == 403, 'the tester panel needs the testers grant')
+g = post('/admin', {'initData': A, 'action': 'check_add', 'note': 'Колд брю: бот пишет, когда время вышло'})
+post('/admin', {'initData': A, 'action': 'check_add', 'note': 'Замки кофе/воды/пропорции'})
+ok([c['text'] for c in g.get('checks', [])] == ['Колд брю: бот пишет, когда время вышло'], 'the owner adds an item to check')
+ch = post('/tester', {'initData': D, 'action': 'checks'})['checks']
+ok(len(ch) == 2 and ch[0].get('mine') is None and 'answers' not in ch[0], 'the tester sees the list without others\' answers')
+r = post('/tester', {'initData': D, 'action': 'answer', 'item': ch[0]['id'], 'state': 'ok', 'context': 'Приложение: 1.3.4'})
+ok(r['checks'][0]['mine'] == 'ok' and r['checks'][0]['ok'] == 1, 'the tester marks it as working')
+r = post('/tester', {'initData': D, 'action': 'answer', 'item': ch[1]['id'], 'state': 'bug', 'text': 'Замок воды не держится после перезапуска'})
+ok(r['checks'][1]['mine'] == 'bug' and r['checks'][1]['bug'] == 1, 'and reports a problem on another')
+oc = post('/admin', {'initData': A, 'action': 'list'})['checks']
+ok(oc[1]['answers'][0]['note'] == 'Замок воды не держится после перезапуска' and oc[1]['answers'][0]['who'] == 'Аня, бариста из Kojo', f'the owner sees who answered what ({oc[1]["answers"]})')
+ok(post('/tester', {'initData': D, 'action': 'report', 'text': ''}).get('status') == 400, 'an empty report is refused')
+rep = post('/tester', {'initData': D, 'action': 'report', 'text': 'Падает экран', 'image': 'data:image/png;base64,iVBORw0KGgo='})
+ok(rep.get('status') == 502, 'a report goes to the owner through the bot (refused here: fake token)')
+g = post('/admin', {'initData': A, 'action': 'check_remove', 'what': ch[0]['id']})
+ok(len(g['checks']) == 1, 'the owner removes an item')
+g = post('/admin', {'initData': A, 'action': 'check_clear'})
+ok(g['checks'] == [], 'and clears the list for the next version')
+n = 0
+for _ in range(32):
+    if post('/tester', {'initData': D, 'action': 'report', 'text': 'спам'}).get('status') == 429: break
+    n += 1
+ok(n < 32, f'reports are capped per day ({n} more went through)')
+
 # bot reminders
 LINK = 'https://t.me/CoffeeBrewingBot?startapp=timer'
 now = int(time.time() * 1000)
@@ -74,17 +130,22 @@ ok(post('/reminders', {'initData': A, 'at': now + 73 * 3600_000, 'title': 'x', '
 ok(post('/reminders', {'initData': A, 'at': now + 5000, 'title': 'x', 'link': LINK}).get('status') == 400, 'less than 30 s ahead is refused')
 ok(post('/reminders', {'initData': A, 'at': now + 3600_000, 'title': 'x', 'link': 'https://evil.example/?startapp=timer'}).get('status') == 400, 'only a t.me timer link is accepted')
 ok(post('/reminders', {'initData': 'forged', 'at': now + 3600_000, 'link': LINK}).get('status') == 401, 'unsigned requests are refused')
+st = post('/reminders', {'initData': A, 'status': True})
+ok(st.get('pending') and st['pending']['title'] == 'Колд брю' and st['last']['state'] == 'scheduled', f'status shows the pending reminder ({st})')
 ok(post('/reminders', {'initData': A, 'cancel': True}).get('ok') is True, 'reminder cancelled')
+st = post('/reminders', {'initData': A, 'status': True})
+ok(st.get('pending') is None and st['last']['state'] == 'cancelled', 'status after cancel: nothing pending, last one cancelled')
+t = post('/reminders', {'initData': A, 'test': True, 'link': LINK})
+ok(t.get('ok') is False and t.get('error'), f'a test message reports Telegram\'s answer (fake token here: {t.get("error")})')
 # a real one fires: the local token is fake, so Telegram refuses — the log shows the alarm ran
 ok(post('/reminders', {'initData': B, 'at': int(time.time() * 1000) + 31_000, 'title': 'Колд брю', 'link': LINK}).get('ok') is True, 'short reminder scheduled')
-log = os.environ.get('WRANGLER_LOG')
-if log:
-    fired = False
-    for _ in range(25):
-        time.sleep(2)
-        txt = open(log, encoding='utf-8', errors='replace').read()
-        if 'reminder not sent' in txt or 'reminder error' in txt: fired = True; break
-    ok(fired, 'the alarm sends the bot message when the time comes')
+st = None
+for _ in range(25):
+    time.sleep(2)
+    st = post('/reminders', {'initData': B, 'status': True})
+    if st.get('last', {}).get('state') != 'scheduled': break
+ok(st.get('pending') is None and st['last']['state'] in ('sent', 'failed'), f'the alarm tries to send the bot message when the time comes ({st["last"]["state"]})')
+ok(st['last']['state'] == 'failed' and st['last']['detail'], f'the result is kept with Telegram\'s reason (fake token here: {st["last"]["detail"]})')
 
 print('\n' + (f'{len(FAILS)} check(s) failed' if FAILS else 'all checks passed'))
 sys.exit(1 if FAILS else 0)

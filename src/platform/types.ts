@@ -70,6 +70,9 @@ export interface Platform {
   /** Signed Telegram launch data (initData) — to verify the user on the server */
   initData(): string | null;
 
+  /** "android · Telegram 11.2" — for bug reports */
+  clientInfo?: () => string;
+
   /** Let the bot write to the user (Telegram 6.9+, WebApp.requestWriteAccess). Absent outside Telegram */
   requestWriteAccess?: () => Promise<boolean>;
 

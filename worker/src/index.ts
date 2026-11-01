@@ -38,6 +38,10 @@ export interface Env {
   CRAWL_STEP_MS?: string;
   /** local tests only: crawler daily budget "reads,writes" instead of 70% of the free tier */
   CRAWL_BUDGET?: string;
+  /** optional: a GitHub token with Issues read/write on the repository — enables «Передать на исправление» */
+  GH_ISSUES_TOKEN?: string;
+  /** owner/repo for those issues */
+  GH_REPO?: string;
 }
 
 const enc = new TextEncoder();
@@ -281,13 +285,18 @@ export default {
         if (!(await acc.spendReport(me.account))) return json({ error: 'too many' }, 429, h);
         const item = await acc.checkAnswer(me.account, String(body.item ?? ''), state, text || undefined);
         if (!item) return json({ error: 'no such item' }, 404, h);
-        await toOwners(env, `${state === 'ok' ? '✅' : '⚠️'} ${me.label}\n«${item}» — ${state === 'ok' ? 'работает' : 'есть проблема'}${text ? `\n\n${text}` : ''}${context ? `\n\n— ${context}` : ''}`, decodeImage(body.image));
+        const image = decodeImage(body.image);
+        // a problem can be handed over for fixing, like a bug report
+        const rid = state === 'bug' ? await acc.saveReport(me.account, 'check', text || '(без описания)', context, !!image, item) : null;
+        await toOwners(env, `${state === 'ok' ? '✅' : '⚠️'} ${me.label}\n«${item}» — ${state === 'ok' ? 'работает' : 'есть проблема'}${text ? `\n\n${text}` : ''}${context ? `\n\n— ${context}` : ''}`, image, rid);
         return json({ checks: await acc.checks(me.account) }, 200, h);
       }
       if (body.action === 'report') {
         if (!text) return json({ error: 'empty' }, 400, h);
         if (!(await acc.spendReport(me.account))) return json({ error: 'too many' }, 429, h);
-        const sent = await toOwners(env, `🐞 Ошибка · ${me.label}\n\n${text}${context ? `\n\n— ${context}` : ''}`, decodeImage(body.image));
+        const image = decodeImage(body.image);
+        const rid = await acc.saveReport(me.account, 'bug', text, context, !!image);
+        const sent = await toOwners(env, `🐞 Ошибка · ${me.label}\n\n${text}${context ? `\n\n— ${context}` : ''}`, image, rid);
         return sent ? json({ ok: true }, 200, h) : json({ error: 'telegram refused' }, 502, h);
       }
       return json({ checks: await acc.checks(me.account) }, 200, h);
@@ -322,6 +331,8 @@ export default {
       return data ? json({ card: data }, 200, { ...h, 'Cache-Control': 'max-age=60' }) : json({ error: 'not found' }, 404, h);
     }
 
+    if (req.method === 'POST' && url.pathname === '/tg') return telegramUpdate(req, env);
+
     if (req.method === 'POST' && url.pathname === '/admin') {
       let body: { initData?: string; action?: string; host?: string; roaster?: string; tg?: string; what?: string; note?: string; username?: string };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
@@ -341,6 +352,7 @@ export default {
       } else if (body.action === 'note') {
         if (!(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).setNote(String(body.tg ?? ''), String(body.note ?? ''), body.username ? String(body.username) : undefined))) return json({ error: 'bad note' }, 400, h);
       } else if (body.action !== 'list') return json({ error: 'bad action' }, 400, h);
+      ctx.waitUntil(ensureWebhook(env, url.origin));
       const accs = env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all'));
       return json({ sites: await catalog.sites(), crawl: await catalog.usage(), grants: await accs.grantList(), checks: await accs.checks() }, 200, h);
     }
@@ -401,12 +413,14 @@ function decodeImage(data?: string): { bytes: Uint8Array; type: string } | null 
 }
 
 /** A message (and a screenshot) from the bot to the owner(s). true — Telegram took it for at least one owner */
-async function toOwners(env: Env, text: string, image: { bytes: Uint8Array; type: string } | null): Promise<boolean> {
+async function toOwners(env: Env, text: string, image: { bytes: Uint8Array; type: string } | null, reportId?: string | null): Promise<boolean> {
   const api = `https://api.telegram.org/bot${env.BOT_TOKEN}`;
+  // «hand over for fixing»: the owner's button turns the report into a GitHub issue (only when the token is set)
+  const markup = reportId && env.GH_ISSUES_TOKEN ? { reply_markup: { inline_keyboard: [[{ text: '🛠 Передать на исправление', callback_data: `fix:${reportId}` }]] } } : {};
   const res = await Promise.all(owners(env).map(async (id) => {
     try {
       const r = await fetch(`${api}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: Number(id), text: text.slice(0, 4000), link_preview_options: { is_disabled: true } }) });
+        body: JSON.stringify({ chat_id: Number(id), text: text.slice(0, 4000), link_preview_options: { is_disabled: true }, ...markup }) });
       const ok = ((await r.json()) as { ok: boolean }).ok;
       if (image) {
         const form = new FormData();
@@ -418,6 +432,76 @@ async function toOwners(env: Env, text: string, image: { bytes: Uint8Array; type
     } catch { return false; }
   }));
   return res.some(Boolean);
+}
+
+/* ---------- bug reports → GitHub issues ---------- */
+
+/** the secret Telegram sends with every webhook call: derived from the bot token, so nothing extra to configure */
+async function webhookSecret(env: Env) {
+  const d = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode('brewbook-webhook:' + env.BOT_TOKEN)));
+  return hex(d).slice(0, 48);
+}
+
+/** point the bot's webhook at this worker (button presses come here); called when the owner opens their panel */
+async function ensureWebhook(env: Env, origin: string) {
+  if (!env.GH_ISSUES_TOKEN) return;
+  const api = `https://api.telegram.org/bot${env.BOT_TOKEN}`;
+  try {
+    const info = await (await fetch(`${api}/getWebhookInfo`)).json() as { result?: { url?: string } };
+    const url = `${origin}/tg`;
+    if (info.result?.url === url) return;
+    await fetch(`${api}/setWebhook`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, secret_token: await webhookSecret(env), allowed_updates: ['callback_query'] }) });
+  } catch (e) { console.log('webhook setup failed', e); }
+}
+
+/** the owner pressed «Передать на исправление»: open a GitHub issue with the report (no personal data — the repo is public) */
+async function handOver(env: Env, rid: string): Promise<{ url?: string; error?: string }> {
+  if (!env.GH_ISSUES_TOKEN || !env.GH_REPO) return { error: 'не настроен GitHub-токен' };
+  const acc = env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all'));
+  const r = await acc.report(rid);
+  if (!r) return { error: 'отчёт не найден' };
+  if (r.issue) return { url: r.issue };
+  const first = r.text.split('\n')[0].slice(0, 70);
+  const title = r.kind === 'check' ? `Проверка «${(r.item ?? '').slice(0, 50)}»: ${first}` : `Ошибка от тестировщика: ${first}`;
+  const body = [
+    r.kind === 'check' ? `**Пункт проверки:** ${r.item}\n\n**Что не так:**` : '**Что случилось:**',
+    r.text,
+    '',
+    `**Диагностика:** ${r.context || '—'}`,
+    `**Тестировщик:** ${r.tester} · ${new Date(r.ts).toISOString().slice(0, 16).replace('T', ' ')} UTC`,
+    r.photo ? '**Скриншот:** приложен к сообщению у владельца в Telegram.' : '',
+    '',
+    '_Отчёт передан владельцем из Telegram. Исправление собирается в ветке `dev`._',
+  ].filter((x) => x !== '').join('\n');
+  const res = await fetch(`https://api.github.com/repos/${env.GH_REPO}/issues`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.GH_ISSUES_TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'brewbook-worker', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, body, labels: ['tester-bug'] }),
+  });
+  const j = await res.json() as { html_url?: string; message?: string };
+  if (!res.ok || !j.html_url) { console.log('issue failed', res.status, j.message); return { error: j.message ?? `GitHub ${res.status}` }; }
+  await acc.setReportIssue(rid, j.html_url);
+  return { url: j.html_url };
+}
+
+/** Telegram webhook: only button presses of the owner are handled */
+async function telegramUpdate(req: Request, env: Env): Promise<Response> {
+  if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== await webhookSecret(env)) return new Response('forbidden', { status: 403 });
+  const u = await req.json().catch(() => null) as { callback_query?: { id: string; data?: string; from: { id: number }; message?: { chat: { id: number }; message_id: number } } } | null;
+  const q = u?.callback_query;
+  if (!q) return new Response('ok');
+  const api = `https://api.telegram.org/bot${env.BOT_TOKEN}`;
+  const answer = (text: string) => fetch(`${api}/answerCallbackQuery`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callback_query_id: q.id, text, show_alert: false }) }).catch(() => null);
+  if (!owners(env).includes(String(q.from.id)) || !q.data?.startsWith('fix:')) { await answer('Недоступно'); return new Response('ok'); }
+  const r = await handOver(env, q.data.slice(4));
+  if (r.url && q.message) {
+    const n = r.url.split('/').pop();
+    await fetch(`${api}/editMessageReplyMarkup`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: q.message.chat.id, message_id: q.message.message_id, reply_markup: { inline_keyboard: [[{ text: `✅ Передано · задача #${n}`, url: r.url }]] } }) }).catch(() => null);
+  }
+  await answer(r.url ? 'Передано: задача создана' : `Не получилось: ${r.error}`);
+  return new Response('ok');
 }
 
 /** Tell the owner that a scan hit a site that is not connected yet */

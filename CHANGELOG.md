@@ -5,7 +5,11 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Added
+- Bug reports can be handed over for fixing: with the optional GitHub secret `GH_ISSUES_TOKEN`, every bug report (and «есть проблема» answer) in the owner's chat has a button «🛠 Передать на исправление» that opens a GitHub issue `tester-bug` with the text and diagnostics (the tester is anonymous there, screenshots stay in Telegram); the button then turns into a link to the issue.
+
 ### Changed
+- The owner's and the testers' panels fold to their heading (closed by default, remembered on the device); the folded heading shows a summary («Проверить: 2 из 3», «новых сайтов: 1 · людей с правами: 4»). Inside: a cleaner heading with the role color, the usual spacing between sections, smaller buttons and readable text sizes.
 - Testers' diagnostics: no «Таймер» line, and instead of the long browser string a short «Система» line («Android 14 · WebView 130», «iOS 17.5»), which now also goes into the report sent to the owner.
 
 ## v1.4.0 — Testers Update (2026-11-01)

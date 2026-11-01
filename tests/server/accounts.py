@@ -112,6 +112,17 @@ ok(oc[1]['answers'][0]['note'] == 'Замок воды не держится п�
 ok(post('/tester', {'initData': D, 'action': 'report', 'text': ''}).get('status') == 400, 'an empty report is refused')
 rep = post('/tester', {'initData': D, 'action': 'report', 'text': 'Падает экран', 'image': 'data:image/png;base64,iVBORw0KGgo='})
 ok(rep.get('status') == 502, 'a report goes to the owner through the bot (refused here: fake token)')
+# the bot webhook (button «Передать на исправление»): only Telegram with the derived secret gets in
+import hashlib
+def tg(update, secret):
+    req = urllib.request.Request('http://localhost:8799/tg', data=json.dumps(update).encode(), headers={'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': secret})
+    try: return urllib.request.urlopen(req).status
+    except urllib.error.HTTPError as e: return e.code
+SECRET = hashlib.sha256(b'brewbook-webhook:123:TEST').hexdigest()[:48]
+ok(tg({'callback_query': {'id': '1', 'data': 'fix:x', 'from': {'id': 111}}}, 'wrong') == 403, 'the webhook refuses calls without the secret')
+ok(tg({'callback_query': {'id': '1', 'data': 'fix:x', 'from': {'id': 111}}}, SECRET) == 200, 'the webhook takes Telegram button presses (no GitHub token here: answered with an error, nothing created)')
+ok(tg({'callback_query': {'id': '2', 'data': 'fix:x', 'from': {'id': 999}}}, SECRET) == 200, 'a press from someone who is not the owner is ignored')
+
 g = post('/admin', {'initData': A, 'action': 'check_remove', 'what': ch[0]['id']})
 ok(len(g['checks']) == 1, 'the owner removes an item')
 g = post('/admin', {'initData': A, 'action': 'check_clear'})

@@ -54,6 +54,8 @@ export class Accounts extends DurableObject<Env> {
     // testers: what to check in this version, each tester's answer, and a daily cap on reports
     sql.exec(`CREATE TABLE IF NOT EXISTS check_item (id TEXT PRIMARY KEY, text TEXT NOT NULL, ord INTEGER NOT NULL, created INTEGER NOT NULL)`);
     sql.exec(`CREATE TABLE IF NOT EXISTS check_result (item TEXT NOT NULL, account TEXT NOT NULL, state TEXT NOT NULL, note TEXT, ts INTEGER NOT NULL, PRIMARY KEY (item, account))`);
+    // bug reports (and «есть проблема» answers), kept so the owner can hand one over for fixing (a GitHub issue)
+    sql.exec(`CREATE TABLE IF NOT EXISTS report (id TEXT PRIMARY KEY, account TEXT NOT NULL, kind TEXT NOT NULL, item TEXT, text TEXT NOT NULL, context TEXT, photo INTEGER NOT NULL DEFAULT 0, ts INTEGER NOT NULL, issue TEXT)`);
     sql.exec(`CREATE TABLE IF NOT EXISTS feedback_day (account TEXT NOT NULL, day TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (account, day))`);
     sql.exec(`CREATE TABLE IF NOT EXISTS reminder_log (account TEXT PRIMARY KEY, at INTEGER NOT NULL, state TEXT NOT NULL, detail TEXT, ts INTEGER NOT NULL)`);
     // one-time migrations, gated by the schema version (the object wakes up often; see CoffeeCatalog)
@@ -304,6 +306,25 @@ export class Accounts extends DurableObject<Env> {
       item, account, state, note ?? null, Date.now());
     return it.text;
   }
+
+  /** keep a report; returns its id (the button in the owner's message refers to it) */
+  saveReport(account: string, kind: 'bug' | 'check', text: string, context: string, photo: boolean, item?: string) {
+    const rid = id(10);
+    this.sql.exec('INSERT INTO report (id, account, kind, item, text, context, photo, ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', rid, account, kind, item ?? null, text, context, photo ? 1 : 0, Date.now());
+    return rid;
+  }
+
+  /** a report for the issue: the tester is named only by a short anonymous code (the repository is public) */
+  report(rid: string) {
+    const r = this.sql.exec<{ account: string; kind: string; item: string | null; text: string; context: string | null; photo: number; ts: number; issue: string | null }>(
+      'SELECT account, kind, item, text, context, photo, ts, issue FROM report WHERE id = ?', rid).toArray()[0];
+    if (!r) return null;
+    let h = 0;
+    for (const ch of r.account) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return { ...r, tester: 'T-' + h.toString(36).slice(0, 5).toUpperCase() };
+  }
+
+  setReportIssue(rid: string, url: string) { this.sql.exec('UPDATE report SET issue = ? WHERE id = ?', url, rid); }
 
   /** owner: add an item, remove one (with its answers), or clear the list for a new version */
   editChecks(action: 'add' | 'remove' | 'clear', text?: string, id?: string) {

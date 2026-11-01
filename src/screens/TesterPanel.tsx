@@ -10,14 +10,29 @@ import { adminCall, type AdminData } from '../data/lookup';
 import { answerCheck, diagnostics, diagText, loadChecks, sendReport, setDiagExtra, shrinkImage, type CheckItem } from '../data/tester';
 import { platform } from '../platform';
 import { Button, Section } from '../ui/kit';
+import { Icon } from '../ui/icons';
 import { copyText, toast } from '../ui/toast';
 
-/** a colored frame with a heading: who the panel is for */
-export function Panel({ kind, title, hint, children }: { kind: 'owner' | 'tester'; title: string; hint: string; children: ReactNode }) {
+const OPEN_KEY = (kind: string) => `brewbook.panel.${kind}`;
+
+/**
+ * A colored frame with a heading: who the panel is for. Folds to its heading (closed by default,
+ * the choice is remembered on the device); a short summary is shown while it is folded.
+ */
+export function Panel({ kind, title, hint, summary, children }: { kind: 'owner' | 'tester'; title: string; hint: string; summary?: string; children: ReactNode }) {
+  const [open, setOpen] = useState(() => { try { return localStorage.getItem(OPEN_KEY(kind)) === '1'; } catch { return false; } });
+  const toggle = () => {
+    platform.haptic('select');
+    setOpen((o) => { try { localStorage.setItem(OPEN_KEY(kind), o ? '0' : '1'); } catch { /* no storage */ } return !o; });
+  };
   return (
-    <div className={`role-panel role-${kind}`}>
-      <div className="role-panel-head"><b>{title}</b><span>{hint}</span></div>
-      {children}
+    <div className={`role-panel role-${kind}` + (open ? ' open' : '')}>
+      <button type="button" className="role-panel-head" aria-expanded={open} onClick={toggle}>
+        <span className="role-dot" aria-hidden="true" />
+        <span className="role-titles"><b>{title}</b><span>{open ? hint : summary || hint}</span></span>
+        <Icon name="chevron" size={18} />
+      </button>
+      {open && <div className="role-panel-body">{children}</div>}
     </div>
   );
 }
@@ -83,7 +98,8 @@ export function TesterPanel() {
   };
 
   return (
-    <Panel kind="tester" title="Панель тестировщика" hint="Видна тестировщикам. Всё, что вы отправите, придёт разработчику в Telegram вместе с версией и устройством.">
+    <Panel kind="tester" title="Панель тестировщика" hint="Всё, что вы отправите, придёт разработчику в Telegram вместе с версией и устройством."
+      summary={checks?.length ? `Проверить: ${checks.filter((c) => !c.mine).length} из ${checks.length}` : 'Сообщить об ошибке, диагностика'}>
       <Section title="Что проверить">
         {checks === null && <p className="muted pad">Загружаем…</p>}
         {checks?.length === 0 && <p className="muted pad">Сейчас проверять нечего — когда появится новая версия, здесь будет список.</p>}

@@ -15,7 +15,7 @@ _Nothing right now._ Unreleased work is in the changelog.
 
 ## Next
 
-_Nothing agreed yet._
+- **Bug reports → fixes.** Code is in dev: the owner's «Передать на исправление» button opens a GitHub issue (`tester-bug`). Needs: the GitHub secret `GH_ISSUES_TOKEN` (fine-grained, this repo, Issues read/write), a release, then a regular Claude check of open `tester-bug` issues that fixes them in `dev` (a scheduled task — to be set up once the token exists).
 
 ## Ideas
 

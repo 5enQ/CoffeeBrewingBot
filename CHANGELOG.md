@@ -3,6 +3,11 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
+## Unreleased
+
+### Fixed
+- «Передать на исправление» did nothing: the bot's webhook was never registered (it was set only when the owner opened their panel). The worker now makes sure the webhook is there before it sends a report with the button, and logs whether Telegram accepted it.
+
 ## v1.5.0 — Holidays & Hand-over (2026-11-01)
 
 ### Added

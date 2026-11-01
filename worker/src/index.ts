@@ -42,6 +42,8 @@ export interface Env {
   GH_ISSUES_TOKEN?: string;
   /** owner/repo for those issues */
   GH_REPO?: string;
+  /** this worker's own origin, taken from the request (the webhook points here) */
+  WORKER_ORIGIN?: string;
 }
 
 const enc = new TextEncoder();
@@ -155,6 +157,7 @@ export default {
 
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const h = cors(env, req);
+    env.WORKER_ORIGIN ??= new URL(req.url).origin;
     if (req.method === 'OPTIONS') return new Response(null, { headers: h });
     const url = new URL(req.url);
 
@@ -418,6 +421,7 @@ function decodeImage(data?: string): { bytes: Uint8Array; type: string } | null 
 async function toOwners(env: Env, text: string, image: { bytes: Uint8Array; type: string } | null, reportId?: string | null): Promise<boolean> {
   const api = `https://api.telegram.org/bot${env.BOT_TOKEN}`;
   // «hand over for fixing»: the owner's button turns the report into a GitHub issue (only when the token is set)
+  if (reportId && env.GH_ISSUES_TOKEN && env.WORKER_ORIGIN) await ensureWebhook(env, env.WORKER_ORIGIN);
   const markup = reportId && env.GH_ISSUES_TOKEN ? { reply_markup: { inline_keyboard: [[{ text: '🛠 Передать на исправление', callback_data: `fix:${reportId}` }]] } } : {};
   const res = await Promise.all(owners(env).map(async (id) => {
     try {
@@ -452,8 +456,9 @@ async function ensureWebhook(env: Env, origin: string) {
     const info = await (await fetch(`${api}/getWebhookInfo`)).json() as { result?: { url?: string } };
     const url = `${origin}/tg`;
     if (info.result?.url === url) return;
-    await fetch(`${api}/setWebhook`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, secret_token: await webhookSecret(env), allowed_updates: ['callback_query'] }) });
+    const res = await (await fetch(`${api}/setWebhook`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, secret_token: await webhookSecret(env), allowed_updates: ['callback_query'] }) })).json() as { ok: boolean; description?: string };
+    console.log('webhook', res.ok ? 'set' : `not set: ${res.description}`, url);
   } catch (e) { console.log('webhook setup failed', e); }
 }
 

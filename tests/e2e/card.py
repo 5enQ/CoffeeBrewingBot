@@ -137,7 +137,7 @@ async def main():
         n_icons = await pt.locator('.icon-pick:visible').count()
         check(n_icons >= 10, f'tester: every method icon inside a tier ({n_icons})')
         await pt.locator('.icon-pick:visible[aria-label*="Аэропресс"]').click(); await pt.wait_for_timeout(300)
-        check(await pt.locator('.pcard.tier-volume .pcard-volume').count() >= 1, 'tester: «Объёмный» Аэропресс on the card')
+        check(await pt.locator('.pcard.tier-volume .pcard-constellation').count() >= 1, 'tester: «Объёмный» Аэропресс on the card')
         await pt.locator('.theme-pick:visible:has-text("Бриллиант")').click(); await pt.wait_for_timeout(300)
         SERVER['diamondNo'] = 0
         check(await pt.locator('.pcard.tier-diamond').count() >= 1, 'tester: diamond card')
@@ -202,7 +202,10 @@ async def main():
                         await tilt(pv, 0, 0); await pv.wait_for_timeout(50)
                         await tilt(pv, be, ga); await pv.wait_for_timeout(700)
                         await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-volume-{i}.png'))
-                    check(await pv.locator('.pcard-volume-layer').count() > 10, 'volume card: the method icon is extruded')
+                    nstars = await pv.locator('.pcard-constellation .const-stars circle').count()
+                    nlines = await pv.locator('.pcard-constellation .const-lines polyline').count()
+                    check(nstars >= 15 and nlines >= 3, f'volume card: the method is a constellation ({nstars} stars, {nlines} lines)')
+                    check(await pv.locator('.pcard-sky canvas').count() == 4 and await pv.locator('.pcard-sky .sky-tw').first.evaluate("e => getComputedStyle(e).animationName") == 'twinkle', 'volume card: a starry sky that twinkles')
                 elif k == 'diamond1':
                     check((await pv.locator('.pcard-no').inner_text()).replace('\n', '') == '№7', 'diamond shows the holder number')
                     for i, (be, ga) in enumerate([(0, 0), (8, -18), (-10, 20)]):

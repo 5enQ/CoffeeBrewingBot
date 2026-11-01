@@ -7,7 +7,7 @@
  *  - the profile card. Levels on a shared card always come from this count, never from the client.
  */
 import { DurableObject } from 'cloudflare:workers';
-import { countStats, earnedLevels, givesBackground, LITER_LEVELS, METHOD_LEVELS, type BrewStat, type Level, type Stats, type Tier } from '../../src/data/levels.ts';
+import { countStats, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, type BrewStat, type Level, type Stats, type Tier } from '../../src/data/levels.ts';
 import type { Env } from './index';
 
 export interface AccountStats extends Stats { account: string; at: number; diamondNo?: number; grants: string[] }
@@ -199,9 +199,9 @@ export class Accounts extends DurableObject<Env> {
     let theme = card.theme as { ach?: string; tier?: Tier; base?: string; special?: string } | undefined;
     const grants = this.grantsOf(row.account);
     const tester = grants.includes('tester');
-    // a tester picks any level of any background; everyone else gets the level they earned
+    // a tester picks any level of any background; everyone else the level they earned or a lower one
     const testLevel = tester && theme?.ach && theme.tier ? testerLevel(theme.ach, theme.tier) : null;
-    const themeLevel = testLevel ?? (theme?.ach ? levels[theme.ach] : undefined);
+    const themeLevel = testLevel ?? (theme?.ach ? levelUpTo(theme.ach === 'liters' ? LITER_LEVELS : METHOD_LEVELS, levels[theme.ach], theme.tier) : undefined);
     if (theme?.ach && !(themeLevel && givesBackground(theme.ach, themeLevel.tier))) theme = { base: 'paper' };
     if (theme?.special && !grants.includes(theme.special)) theme = { base: 'paper' };
     const badges = (Array.isArray(card.badges) ? card.badges : []).filter((b: { kind?: string }) => b?.kind !== 'achieve');
@@ -210,7 +210,7 @@ export class Accounts extends DurableObject<Env> {
     return {
       ...card, ach, theme: theme?.ach ? { ach: theme.ach } : theme, badges, earned,
       granted: theme?.special ? [theme.special] : [],
-      no: theme?.ach === 'liters' ? (tester ? TEST_NO : acc.diamond_no ?? undefined) : undefined,
+      no: theme?.ach === 'liters' && themeLevel?.tier === 'diamond' ? (tester ? TEST_NO : acc.diamond_no ?? undefined) : undefined,
     };
   }
 

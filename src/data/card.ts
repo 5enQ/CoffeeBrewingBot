@@ -10,7 +10,7 @@ import { platform } from '../platform';
 import { achievementBadge } from './achievements';
 import { sortBadges, type BadgeLite } from './badges';
 import { catById, GEAR_CATS, type Gear, type GearCat } from './gear';
-import { earnedLevels, givesBackground, LITER_LEVELS, METHOD_LEVELS, TIER_ORDER, type Level, type Stats, type Tier } from './levels';
+import { backgroundLook, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, TIER_ORDER, type Level, type Stats, type Tier } from './levels';
 import { allMethods, methodById } from './methods';
 import type { Profile } from './store';
 
@@ -27,10 +27,9 @@ export const BASE_THEMES = [
   { id: 'espresso', label: 'Эспрессо' },
   { id: 'cascara', label: 'Каскара' },
   { id: 'ristretto', label: 'Ристретто' },
-  { id: 'glass', label: 'Стакан' },
 ] as const;
 /** retired backgrounds → the ones that took their place (cards saved before keep a look close to the old one) */
-const RENAMED: Record<string, string> = { ocean: 'cascara', graphite: 'ristretto' };
+const RENAMED: Record<string, string> = { ocean: 'cascara', graphite: 'ristretto', glass: 'paper' };
 const baseOf = (id?: string) => (BASE_THEMES.find((t) => t.id === (id && RENAMED[id] ? RENAMED[id] : id))?.id ?? 'paper') as BaseTheme;
 export type BaseTheme = typeof BASE_THEMES[number]['id'];
 
@@ -63,14 +62,14 @@ export interface CardData {
 }
 
 /** What is painted: a base color, a metal tier with the achievement's icon, or a special background */
-export type CardTheme = { base: BaseTheme } | { tier: Tier; icon: string; title: string } | { special: SpecialTheme; title: string };
+export type CardTheme = { base: BaseTheme } | { tier: Tier; icon: string; title: string; look?: 'glass' } | { special: SpecialTheme; title: string };
 
 export const MAX_SETUP = 6;
 
 /** Icon of an achievement: the method's icon, a drop for liters, a star for ratings */
 export const achievementIcon = (key: string) => (key.startsWith('method:') ? methodById(key.slice(7)).icon : key === 'ratings' ? 'star' : 'drop');
 
-export interface UnlockedTheme { key: string; ach: string; tier: Tier; icon: string; label: string }
+export interface UnlockedTheme { key: string; ach: string; tier: Tier; icon: string; label: string; look?: 'glass' }
 
 /**
  * Metal backgrounds the numbers allow, best tier first. key 'ach:<achievement key>' is stored in the profile.
@@ -80,11 +79,14 @@ export function unlockedThemes(stats: Stats, tester = false): UnlockedTheme[] {
   const list: UnlockedTheme[] = tester
     ? [
       ...allMethods().filter((m) => !m.custom).flatMap((m) => METHOD_LEVELS.map((l) => ({ key: `ach:method:${m.id}@${l.tier}`, ach: `method:${m.id}`, tier: l.tier, icon: m.icon as string, label: achievementBadge(`method:${m.id}`, l.tier, l.at).title }))),
-      ...LITER_LEVELS.filter((l) => l.tier === 'diamond').map((l) => ({ key: `ach:liters@${l.tier}`, ach: 'liters', tier: l.tier, icon: 'drop', label: achievementBadge('liters', l.tier, l.at).title })),
+      ...LITER_LEVELS.filter((l) => givesBackground('liters', l.tier)).map((l) => ({ key: `ach:liters@${l.tier}`, ach: 'liters', tier: l.tier, icon: 'drop', label: achievementBadge('liters', l.tier, l.at).title, look: backgroundLook('liters', l.tier) })),
     ]
-    : Object.entries(earnedLevels(stats))
-      .filter(([k, l]) => givesBackground(k, l.tier))
-      .map(([k, l]) => ({ key: `ach:${k}`, ach: k, tier: l.tier, icon: achievementIcon(k), label: achievementBadge(k, l.tier, l.at).title }));
+    : Object.entries(earnedLevels(stats)).flatMap(([k, l]): UnlockedTheme[] => {
+      // liters: every background up to the level reached (1000 L opens the glass as well as the diamond)
+      if (k === 'liters') return LITER_LEVELS.filter((x) => x.at <= l.at && givesBackground(k, x.tier))
+        .map((x) => ({ key: x.tier === l.tier ? `ach:${k}` : `ach:${k}@${x.tier}`, ach: k, tier: x.tier, icon: 'drop', label: achievementBadge(k, x.tier, x.at).title, look: backgroundLook(k, x.tier) }));
+      return givesBackground(k, l.tier) ? [{ key: `ach:${k}`, ach: k, tier: l.tier, icon: achievementIcon(k), label: achievementBadge(k, l.tier, l.at).title }] : [];
+    });
   return list.sort((x, y) => TIER_ORDER.indexOf(y.tier) - TIER_ORDER.indexOf(x.tier));
 }
 
@@ -101,7 +103,7 @@ export function cardView(c: CardData): { theme: CardTheme; badges: BadgeLite[] }
     if (sp && c.granted?.includes(sp.id)) theme = { special: sp.id, title: sp.title };
   } else {
     const l = earned[c.theme.ach];
-    if (l && givesBackground(c.theme.ach, l.tier)) theme = { tier: l.tier, icon: achievementIcon(c.theme.ach), title: achievementBadge(c.theme.ach, l.tier, l.at).title };
+    if (l && givesBackground(c.theme.ach, l.tier)) theme = { tier: l.tier, icon: achievementIcon(c.theme.ach), title: achievementBadge(c.theme.ach, l.tier, l.at).title, look: backgroundLook(c.theme.ach, l.tier) };
   }
   const ach = c.ach.filter((k) => earned[k]).map((k) => achievementBadge(k, earned[k].tier, earned[k].at));
   return { theme, badges: sortBadges([...ach, ...c.badges]).slice(0, 3) };
@@ -127,9 +129,11 @@ export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite 
   const [chosen, chosenTier] = p.cardTheme?.startsWith('ach:') ? p.cardTheme.slice(4).split('@') as [string, Tier | undefined] : [null, undefined];
   const special = p.cardTheme?.startsWith('special:') ? SPECIAL_THEMES.find((x) => `special:${x.id}` === p.cardTheme && grants.includes(x.id)) : undefined;
   const test = chosen && chosenTier && grants.includes('tester') ? testLevel(chosen, chosenTier) : undefined;
-  const themeLevel = test ?? (chosen ? levels[chosen] : undefined);
+  // a lower level than the one earned may be chosen (liters: the glass at 500 L while having 1000 L)
+  const lower = chosen && !test ? levelUpTo(chosen === 'liters' ? LITER_LEVELS : METHOD_LEVELS, levels[chosen], chosenTier) : undefined;
+  const themeLevel = test ?? lower;
   const theme: CardData['theme'] = special ? { special: special.id }
-    : chosen && themeLevel && givesBackground(chosen, themeLevel.tier) ? (test ? { ach: chosen, tier: test.tier } : { ach: chosen })
+    : chosen && themeLevel && givesBackground(chosen, themeLevel.tier) ? (chosenTier ? { ach: chosen, tier: themeLevel.tier } : { ach: chosen })
     : { base: baseOf(p.cardTheme) };
   const earned: Record<string, Level> = Object.fromEntries(ach.map((k) => [k, levels[k]]));
   if ('ach' in theme && themeLevel) earned[theme.ach] = themeLevel;
@@ -145,7 +149,7 @@ export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite 
     setup: cardSetup(gear, p.cardGear),
     theme,
     earned,
-    no: 'ach' in theme && theme.ach === 'liters' ? diamondNo : undefined,
+    no: 'ach' in theme && theme.ach === 'liters' && themeLevel?.tier === 'diamond' ? diamondNo : undefined,
     granted: special ? [special.id] : [],
   };
 }

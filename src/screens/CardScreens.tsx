@@ -35,7 +35,7 @@ const plural = (n: number, f: [string, string, string]) => {
   return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2];
 };
 
-const swatchClass = (t: { tier: Tier } | { base: string }) => ('tier' in t ? `tier tier-${t.tier}` : `base-${t.base}`);
+const swatchClass = (t: { tier: Tier; look?: string } | { base: string }) => ('tier' in t ? (t.look === 'glass' ? 'base-glass' : `tier tier-${t.tier}`) : `base-${t.base}`);
 
 /** Profile tab: the card itself, with "Поделиться" and "Настроить" */
 export function MyCardBlock() {
@@ -65,9 +65,12 @@ export function CardEditScreen() {
   const myGear = gear.filter((g) => offered.has(g.cat));
   const chosenIds = profile.cardGear ?? GEAR_CATS.map((c) => myGear.find((g) => g.cat === c.id)?.id).filter(Boolean) as string[];
   const current = profile.cardTheme ?? 'paper';
-  // metal themes grouped by tier: bronze, silver, gold, volume, diamond
-  const tiers = TIERS.map((tier) => [tier, unlocked.filter((u) => u.tier === tier)] as const).filter(([, l]) => l.length);
-  const currentTier = unlocked.find((u) => u.key === current)?.tier ?? null;
+  // achievement backgrounds grouped by look: bronze, silver, gold, «Стакан», volume, diamond
+  const groupOf = (u: UnlockedTheme) => u.look ?? u.tier;
+  const GROUPS = [...TIERS.slice(0, 3), 'glass', ...TIERS.slice(3)] as const;
+  const tiers = GROUPS.map((g) => [g, unlocked.filter((u) => groupOf(u) === g)] as const).filter(([, l]) => l.length);
+  const found = unlocked.find((u) => u.key === current);
+  const currentTier = found ? groupOf(found) : null;
   const chosenGroup = currentTier ? tiers.find(([t]) => t === currentTier)?.[1] : null;
 
   const toggleGear = (id: string) => {
@@ -145,7 +148,7 @@ export function CardEditScreen() {
           {tiers.map(([tier, list]) => (
             <button type="button" key={tier} className={'theme-pick ' + swatchClass(list[0]) + (currentTier === tier ? ' on' : '')} aria-pressed={currentTier === tier}
               onClick={() => { platform.haptic('select'); if (currentTier !== tier) saveProfile({ ...profile, cardTheme: list[0].key }); }}>
-              <span>{TIER_LABEL[tier]}</span><small>{list.length > 1 ? `${list.length} ${plural(list.length, ['значок', 'значка', 'значков'])}` : list[0].label}</small>
+              <span>{tier === 'glass' ? 'Стакан' : TIER_LABEL[tier]}</span><small>{list.length > 1 ? `${list.length} ${plural(list.length, ['значок', 'значка', 'значков'])}` : list[0].label}</small>
             </button>
           ))}
         </div>

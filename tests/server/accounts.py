@@ -84,6 +84,17 @@ ok(get(f'/cards/{cid4}')['card']['theme'] == {'special': 'beta'}, 'the testers c
 g = post('/admin', {'initData': A, 'action': 'revoke', 'tg': '444', 'what': 'beta'})
 ok(any(x['tg'] == '444' and x['grants'] == [] for x in g['grants']), 'a signed person stays in the list after their grants are taken away')
 
+# «Стакан» for 500 liters
+E = sign(557)
+hist = [{'id': f'w{i}', 'm': 'batch', 'w': 3000, 't': T0 + (i // 2) * DAY + (i % 2) * 3600_000} for i in range(170)]
+se = post('/brews', {'initData': E, 'brews': hist})
+ok(500 <= se['liters'] < 1000, f'500+ liters counted ({se["liters"]})')
+cid5 = post('/cards', {'initData': E, 'card': {'name': 'Стакан', 'theme': {'ach': 'liters', 'tier': 'gold'}, 'ach': []}})['id']
+c5 = get(f'/cards/{cid5}')['card']
+ok(c5['theme'] == {'ach': 'liters'} and c5['earned']['liters']['tier'] == 'gold' and 'no' not in c5, f'500 L: the glass background is shown, no diamond number ({c5["earned"]})')
+cid6 = post('/cards', {'initData': E, 'card': {'name': 'Стакан', 'theme': {'ach': 'liters', 'tier': 'diamond'}, 'ach': []}})['id']
+ok(get(f'/cards/{cid6}')['card']['theme'] == {'base': 'paper'}, 'a level above the one earned is refused')
+
 # testers: the checklist, answers, reports
 post('/admin', {'initData': A, 'action': 'grant', 'tg': '444', 'what': 'beta'})
 ok(post('/tester', {'initData': C, 'action': 'checks'}).get('status') == 403, 'the tester panel needs the testers grant')

@@ -3,7 +3,9 @@ import asyncio
 from common import async_playwright, check, done, page
 
 DB = {'v': 1, 'seeded': True, 'gearSeeded': True, 'recipes': {}, 'brews': [], 'gear': [], 'beans': [],
-      'profile': {'name': 'Аня Кофеман', 'about': 'Пуроверы по утрам', 'telegram': 'anya', 'badges': [], 'shareTelegram': True, 'shareBadges': True, 'cardTheme': 'glass'}}
+      'profile': {'name': 'Аня Кофеман', 'about': 'Пуроверы по утрам', 'telegram': 'anya', 'badges': [], 'shareTelegram': True, 'shareBadges': True, 'cardTheme': 'ach:liters',
+                  # the glass is the 500-liter background: the numbers come from the server's cache
+                  'serverStats': {'methods': {}, 'liters': 620, 'ratings': 0, 'at': 1, 'account': 'acc', 'grants': []}}}
 SURFACE = '''() => { const c = document.querySelector('.pcard-coffee'); const g = c.getContext('2d');
   const col = (x) => { const d = g.getImageData(x, 0, 1, c.height).data; for (let y = 0; y < c.height; y++) if (d[y * 4 + 3] > 200) return y; return -1; };
   return [col(4), col(c.width >> 1), col(c.width - 5)]; }'''
@@ -18,7 +20,7 @@ async def main():
         pg, errors = await page(b, db=DB)
         await pg.click('.tabbar >> text=Профиль'); await pg.wait_for_timeout(600)
         card = pg.locator('.pcard.base-glass:visible').first
-        check(await card.count() == 1, 'the profile card is a glass')
+        check(await card.count() == 1, 'with 500+ liters the profile card can be the glass')
         await tilt(pg, 0, 0); await pg.wait_for_timeout(50); await tilt(pg, 0, 0); await pg.wait_for_timeout(1800)
         flat = await pg.evaluate(SURFACE)
         check(flat[0] > 0 and abs(flat[0] - flat[2]) < 12, f'level phone: the coffee is level ({flat})')

@@ -2,7 +2,7 @@
  * Profile card. Base themes are flat colors; bronze / silver / gold are brushed metal with a sheen that follows the tilt;
  * diamond is a faceted, iridescent 3D card that turns with the device (or the mouse on a computer).
  */
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cardView, type CardData } from '../data/card';
 import { catById } from '../data/gear';
 import type { IconKey } from '../data/methods';
@@ -147,21 +147,100 @@ function Glints({ x, y }: { x: number; y: number }) {
 
 /* ---------- volume tier: an extruded method icon ---------- */
 
-/** The method icon stacked in depth: back layers dark, the front one bright, so turning the card shows its thickness */
-function VolumeIcon({ icon, x, y }: { icon: IconKey; x: number; y: number }) {
-  const depth = 12;
-  // a resting three-quarter turn, so the depth is visible even when the phone is level
-  const ry = x * 32 - 24, rx = -y * 24 + 12;
+/* ---------- volume tier: the night sky with the method as a constellation ---------- */
+
+/** seeded random, so the sky is the same on every render and every device */
+const seeded = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
+/**
+ * A starry sky painted once into four canvases: the still stars and three twinkle layers whose opacity is animated
+ * by CSS (compositor only — no repaint per frame). Layers drift a little with the tilt for depth.
+ */
+function NightSky() {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const paint = () => {
+      const r = el.getBoundingClientRect();
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const rnd = seeded(11);
+      const layers = Array.from(el.querySelectorAll('canvas'));
+      const ctxs = layers.map((c) => {
+        c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
+        const x = c.getContext('2d')!; x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, r.width, r.height); return x;
+      });
+      const n = Math.round((r.width * r.height) / 900);
+      for (let k = 0; k < n; k++) {
+        const x = rnd() * r.width, y = rnd() * r.height, big = rnd() < 0.12, a = 0.35 + rnd() * 0.65;
+        const layer = rnd() < 0.55 ? 0 : 1 + Math.floor(rnd() * 3);
+        const ctx = ctxs[layer];
+        const rad = big ? 1.1 + rnd() * 0.6 : 0.35 + rnd() * 0.5;
+        const tint = rnd() < 0.2 ? '255,226,190' : rnd() < 0.3 ? '190,210,255' : '255,255,255';
+        if (big) {
+          const g = ctx.createRadialGradient(x, y, 0, x, y, rad * 4);
+          g.addColorStop(0, `rgba(${tint},${a * 0.5})`); g.addColorStop(1, `rgba(${tint},0)`);
+          ctx.fillStyle = g; ctx.fillRect(x - rad * 4, y - rad * 4, rad * 8, rad * 8);
+        }
+        ctx.fillStyle = `rgba(${tint},${a})`;
+        ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+      }
+    };
+    paint();
+    const ro = new ResizeObserver(paint);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div className="pcard-volume" aria-hidden="true">
-      <div className="pcard-volume-rot" style={{ transform: `rotateY(${ry.toFixed(2)}deg) rotateX(${rx.toFixed(2)}deg)` }}>
-        {Array.from({ length: depth }, (_, i) => (
-          <span key={i} className="pcard-volume-layer" style={{ transform: `translateZ(${((i - depth) * 1.7).toFixed(1)}px)`, color: `hsl(222 14% ${20 + (i / depth) * 22}%)` }}>
-            <MethodIcon icon={icon} size={104} />
-          </span>
-        ))}
-        <span className="pcard-volume-layer front"><MethodIcon icon={icon} size={104} /></span>
-      </div>
+    <div className="pcard-sky" ref={box} aria-hidden="true">
+      <canvas className="sky-still" /><canvas className="sky-tw a" /><canvas className="sky-tw b" /><canvas className="sky-tw c" />
+    </div>
+  );
+}
+
+/**
+ * The method icon as a constellation: stars sampled along its lines (measured from the real icon),
+ * joined by faint lines; a few stars twinkle. Shown in the corner like the old extruded icon.
+ */
+function Constellation({ icon }: { icon: IconKey }) {
+  const probe = useRef<HTMLDivElement>(null);
+  type Star = { x: number; y: number; r: number; tw: number };
+  const [sky, setSky] = useState<{ stars: Star[]; lines: Star[][] }>({ stars: [], lines: [] });
+  useLayoutEffect(() => {
+    const svg = probe.current?.querySelector('svg');
+    if (!svg) return;
+    const rnd = seeded(icon.length * 97 + icon.charCodeAt(0));
+    const stars: Star[] = [];
+    const lines: Star[][] = [];
+    // a star near an existing one is that star (shapes share corners): lines join instead of doubling stars
+    const starAt = (x: number, y: number) => stars.find((q) => Math.hypot(q.x - x, q.y - y) < 3.6)
+      ?? (stars.push({ x, y, r: rnd() < 0.3 ? 1.25 : 0.7 + rnd() * 0.3, tw: rnd() < 0.35 ? 1 + Math.floor(rnd() * 3) : 0 }), stars[stars.length - 1]);
+    svg.querySelectorAll<SVGGeometryElement>('path, rect, circle, ellipse, line, polyline, polygon').forEach((g) => {
+      let len = 0;
+      try { len = g.getTotalLength(); } catch { return; }
+      if (!len) return;
+      const n = Math.max(1, Math.round(len / 6.5)); // a constellation is sparse: a star every ~6 units
+      const run: Star[] = [];
+      for (let k = 0; k <= n; k++) {
+        const p = g.getPointAtLength((k / n) * len);
+        const st = starAt(p.x, p.y);
+        if (run[run.length - 1] !== st) run.push(st);
+      }
+      if (run.length > 1) lines.push(run);
+    });
+    setSky({ stars, lines });
+  }, [icon]);
+  return (
+    <div className="pcard-constellation" aria-hidden="true">
+      <div className="probe" ref={probe}><MethodIcon icon={icon} size={32} /></div>
+      <svg viewBox="-1 -1 34 34" className="const-lines">
+        {sky.lines.map((run, i) => <polyline key={i} points={run.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ')} />)}
+      </svg>
+      {[0, 1, 2, 3].map((layer) => (
+        <svg key={layer} viewBox="-1 -1 34 34" className={'const-stars' + (layer ? ` tw t${layer}` : '')}>
+          {sky.stars.filter((p) => p.tw === layer).map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={p.r} />)}
+        </svg>
+      ))}
     </div>
   );
 }
@@ -348,30 +427,34 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
   const ref = useRef<HTMLDivElement>(null);
   const view = cardView(card);
   const tier = 'tier' in view.theme ? view.theme.tier : null;
-  const t = useTilt(live && (!!tier || 'special' in view.theme), ref);
+  const t = useTilt(live && ((!!tier && !('look' in view.theme && view.theme.look === 'glass')) || 'special' in view.theme), ref);
   const [photoOk, setPhotoOk] = useState(true);
   const icon = 'tier' in view.theme ? view.theme.icon : null;
 
   // diamond and volume cards turn in 3D; the diamond only slightly (its shine does the work)
-  const turn = tier === 'diamond' ? [5, 4] : tier === 'volume' ? [10, 8] : null;
+  const turn = tier === 'diamond' ? [5, 4] : tier === 'volume' ? [6, 5] : null;
   const style = {
     '--tx': t.x.toFixed(3), '--ty': t.y.toFixed(3),
     ...(turn ? { transform: `perspective(800px) rotateY(${(t.x * turn[0]).toFixed(2)}deg) rotateX(${(-t.y * turn[1]).toFixed(2)}deg)` } : {}),
   } as React.CSSProperties;
   const volume = tier === 'volume' && icon && icon !== 'star';
+  // «Стакан» (500 L) is an achievement background drawn as the glass, not as a metal
+  const glass = 'tier' in view.theme && view.theme.look === 'glass';
+  const metal = tier && !glass;
 
   return (
-    <div ref={ref} className={`pcard ${'tier' in view.theme ? `tier tier-${view.theme.tier}` : 'special' in view.theme ? `special special-${view.theme.special}` : `base-${view.theme.base}`}`} style={style}
-      onClick={turn || ('base' in view.theme && view.theme.base === 'glass') ? () => requestTiltPermission() : undefined}>
+    <div ref={ref} className={`pcard ${glass ? 'tier tier-glass base-glass' : 'tier' in view.theme ? `tier tier-${view.theme.tier}` : 'special' in view.theme ? `special special-${view.theme.special}` : `base-${view.theme.base}`}`} style={style}
+      onClick={turn || glass ? () => requestTiltPermission() : undefined}>
       {tier === 'diamond' && <><Facets x={t.x} y={t.y} /><div className="pcard-iris" aria-hidden="true" /><div className="pcard-film" aria-hidden="true" /><div className="pcard-edge" aria-hidden="true" /></>}
-      {tier && <div className="pcard-sheen" aria-hidden="true" />}
-      {tier && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
-      {volume && <VolumeIcon icon={icon as IconKey} x={t.x} y={t.y} />}
-      {'base' in view.theme && view.theme.base === 'glass' && <GlassLayer host={ref} still={!live} />}
+      {metal && <div className="pcard-sheen" aria-hidden="true" />}
+      {metal && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
+      {glass && <GlassLayer host={ref} still={!live} />}
+      {tier === 'volume' && <NightSky />}
+      {volume && <Constellation icon={icon as IconKey} />}
       {'special' in view.theme && view.theme.special === 'dev' && <DevLayer />}
       {'special' in view.theme && view.theme.special === 'beta' && <BetaLayer />}
       {tier === 'diamond' && card.no !== undefined && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}
-      {icon && !volume && (
+      {icon && !volume && !glass && (
         <div className="pcard-corner" aria-hidden="true">
           {icon === 'star' ? <Icon name="star" size={64} filled /> : <MethodIcon icon={icon as IconKey} size={72} />}
         </div>

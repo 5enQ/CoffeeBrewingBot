@@ -15,6 +15,7 @@ CARDS = {
     'diamond0': card({'ach': 'liters'}, {'liters': {'tier': 'diamond', 'at': 1000}}, no=0),
     'volume1': card({'ach': 'method:aeropress'}, {'method:aeropress': {'tier': 'volume', 'at': 1000}}),
     'espresso1': card({'base': 'espresso'}),
+    'paper1': card({'base': 'paper'}),
     'dev1': {**card({'special': 'dev'}), 'granted': ['dev']},
     'devfake': {**card({'special': 'dev'}), 'granted': []},
     'beta1': {**card({'special': 'beta'}), 'granted': ['beta']},
@@ -145,7 +146,7 @@ async def main():
         # shared cards: silver, gold, diamond (light and dark), espresso
         for dark in (False, True):
             for k in CARDS:
-                if dark and k != 'diamond1': continue
+                if dark and k not in ('diamond1', 'paper1'): continue
                 pv, err = await page(b, init=f"location.hash = '#r=p{k}';", dark=dark)
                 await mock(pv, [])
                 await pv.reload(); await pv.wait_for_timeout(900)
@@ -173,6 +174,10 @@ async def main():
                     await pv.locator('.pcard:visible').screenshot(path=str(OUT / 'card-beta.png'))
                 elif k == 'betafake':
                     check(await pv.locator('.pcard.special-beta').count() == 0, 'testers background without the server grant is not shown')
+                elif k == 'paper1':
+                    bg = await pv.locator('.pcard:visible').evaluate("e => getComputedStyle(e).color")
+                    check(bg.replace(' ', '') == 'rgb(47,42,35)', f'«Фильтр» is light paper with dark text in any app theme{" (dark)" if dark else ""} ({bg})')
+                    await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-paper{"-dark" if dark else ""}.png'))
                 elif k == 'empty1':
                     h = (await pv.locator('.pcard:visible').bounding_box())['height']
                     check(h < 130, f'an empty card shrinks to its content ({h:.0f}px)')

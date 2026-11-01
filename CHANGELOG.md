@@ -6,6 +6,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Fixed
+- «Фильтр» card background is light filter paper (warm off-white with a faint crepe texture) in any app theme; it used to follow the app card color and was dark in a dark Telegram theme.
 - Bot reminder for long timers: the app no longer waits forever when Telegram does not answer the «allow messages» request (some clients stay silent if access was given before) — after 8 s it schedules the reminder anyway. Opening a running cold brew asks the server whether the reminder is there and sets it again if not; pausing on any device cancels it even if it was set on another one.
 
 ### Added

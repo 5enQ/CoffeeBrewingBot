@@ -1089,7 +1089,9 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .pcard-corner { position: absolute; z-index: 2; top: 10px; right: 10px; color: var(--pc-fg); opacity: 0.55; filter: drop-shadow(0 1px 0 rgba(255,255,255,0.35)) drop-shadow(0 -1px 0 rgba(0,0,0,0.25)); }
 
 /* base themes */
-.pcard.base-paper { background: radial-gradient(120% 90% at 0% 0%, var(--accent-soft), transparent 60%), var(--card); }
+/* filter paper: always light, whatever the app theme, with a faint crepe texture */
+.pcard.base-paper { --pc-fg: #2f2a23; --pc-muted: #7b7163; --pc-line: rgba(47,42,35,0.12); --pc-chip: rgba(47,42,35,0.06);
+  background: repeating-linear-gradient(115deg, rgba(120,100,70,0.035) 0 2px, transparent 2px 7px), radial-gradient(110% 90% at 0% 0%, #fffdf8, transparent 65%), linear-gradient(160deg, #f7f1e6, #ece3d3); }
 .pcard.base-latte { --pc-fg: #3b2a1e; --pc-muted: #7b6250; --pc-line: rgba(59,42,30,0.15); background: linear-gradient(140deg, #f1e4d1, #d8bf9e); }
 .pcard.base-espresso { --pc-fg: #f5e9de; --pc-muted: #c4a994; --pc-line: rgba(255,255,255,0.14); background: radial-gradient(90% 70% at 100% 0%, #6b4836, transparent 60%), linear-gradient(150deg, #2a1d17, #46302a); }
 .pcard.base-matcha { --pc-fg: #f3f8ec; --pc-muted: #cfdfbd; --pc-line: rgba(255,255,255,0.18); background: linear-gradient(145deg, #4d6942, #86a26a); }
@@ -1187,7 +1189,8 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .theme-pick span { position: relative; font-size: 13px; font-weight: 700; }
 .theme-pick small { position: relative; font-size: 10px; opacity: 0.8; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .theme-pick.on { box-shadow: 0 0 0 2.5px var(--accent); }
-.theme-pick.base-paper { background: radial-gradient(120% 90% at 0% 0%, var(--accent-soft), transparent 60%), var(--card); }
+.theme-pick.base-paper { --pc-fg: #2f2a23; --pc-muted: #7b7163; --pc-line: rgba(47,42,35,0.12); --pc-chip: rgba(47,42,35,0.06);
+  background: repeating-linear-gradient(115deg, rgba(120,100,70,0.035) 0 2px, transparent 2px 7px), radial-gradient(110% 90% at 0% 0%, #fffdf8, transparent 65%), linear-gradient(160deg, #f7f1e6, #ece3d3); }
 .theme-pick.base-latte { --pc-fg: #3b2a1e; background: linear-gradient(140deg, #f1e4d1, #d8bf9e); }
 .theme-pick.base-espresso { --pc-fg: #f5e9de; background: linear-gradient(150deg, #2a1d17, #5a3d31); }
 .theme-pick.base-matcha { --pc-fg: #f3f8ec; background: linear-gradient(145deg, #4d6942, #86a26a); }

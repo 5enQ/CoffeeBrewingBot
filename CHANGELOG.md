@@ -3,6 +3,11 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
+## Unreleased
+
+### Changed
+- Testers' diagnostics: no «Таймер» line, and instead of the long browser string a short «Система» line («Android 14 · WebView 130», «iOS 17.5»), which now also goes into the report sent to the owner.
+
 ## v1.4.0 — Testers Update (2026-11-01)
 
 ### Fixed

@@ -11,7 +11,7 @@ How to use this file:
 
 ## In progress
 
-_Nothing right now._ Unreleased work for 1.3.3 is in the changelog.
+_Nothing right now._ Unreleased work is in the changelog.
 
 ## Next
 

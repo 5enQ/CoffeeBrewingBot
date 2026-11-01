@@ -17,6 +17,8 @@ CARDS = {
     'espresso1': card({'base': 'espresso'}),
     'dev1': {**card({'special': 'dev'}), 'granted': ['dev']},
     'devfake': {**card({'special': 'dev'}), 'granted': []},
+    'beta1': {**card({'special': 'beta'}), 'granted': ['beta']},
+    'betafake': {**card({'special': 'beta'}), 'granted': []},
     # a card whose owner faked a background: no levels from the server → plain card
     'fake1': {**card({'ach': 'method:espresso'}), 'earned': {}},
     # just a name: the card is as small as its content
@@ -166,6 +168,11 @@ async def main():
                     for i, ga in enumerate((-20, 20)):
                         await tilt(pv, 0, 0); await pv.wait_for_timeout(50); await tilt(pv, 0, ga); await pv.wait_for_timeout(600)
                         await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-dev-{i}.png'))
+                elif k == 'beta1':
+                    check(await pv.locator('.pcard.special-beta .pcard-ribbon').count() == 1, 'testers background with its ribbon')
+                    await pv.locator('.pcard:visible').screenshot(path=str(OUT / 'card-beta.png'))
+                elif k == 'betafake':
+                    check(await pv.locator('.pcard.special-beta').count() == 0, 'testers background without the server grant is not shown')
                 elif k == 'empty1':
                     h = (await pv.locator('.pcard:visible').bounding_box())['height']
                     check(h < 130, f'an empty card shrinks to its content ({h:.0f}px)')

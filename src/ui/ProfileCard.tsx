@@ -186,6 +186,25 @@ function DevLayer() {
   );
 }
 
+/* ---------- testers' background ---------- */
+
+/** Lab blueprint: a measuring grid that drifts with the tilt, a "BETA" ribbon and a glowing flask in the corner */
+function BetaLayer() {
+  return (
+    <>
+      <div className="pcard-blueprint" aria-hidden="true" />
+      <div className="pcard-ribbon" aria-hidden="true"><span>BETA</span></div>
+      <div className="pcard-corner pcard-beta-mark" aria-hidden="true">
+        <svg width="56" height="56" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 4h8M13.5 4v8.5L6.8 24.2A2.4 2.4 0 0 0 8.9 28h14.2a2.4 2.4 0 0 0 2.1-3.8L18.5 12.5V4" />
+          <path d="M9.5 19.5h13" />
+          <circle cx="14" cy="23.5" r="1.1" fill="currentColor" stroke="none" /><circle cx="18.5" cy="22" r="0.8" fill="currentColor" stroke="none" />
+        </svg>
+      </div>
+    </>
+  );
+}
+
 /* ---------- card ---------- */
 
 export function ProfileCard({ card, live = true }: { card: CardData; live?: boolean }) {
@@ -212,6 +231,7 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
       {tier && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
       {volume && <VolumeIcon icon={icon as IconKey} x={t.x} y={t.y} />}
       {'special' in view.theme && view.theme.special === 'dev' && <DevLayer />}
+      {'special' in view.theme && view.theme.special === 'beta' && <BetaLayer />}
       {tier === 'diamond' && card.no !== undefined && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}
       {icon && !volume && (
         <div className="pcard-corner" aria-hidden="true">

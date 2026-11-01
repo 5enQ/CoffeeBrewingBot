@@ -15,10 +15,14 @@ export interface AccountStats extends Stats { account: string; at: number; diamo
 /**
  * Grants only the owner can give, each separately:
  *  dev    — the developers' card background;
+ *  beta   — the testers' card background (people who test new versions);
  *  tester — every background at every level, for testing; such accounts never take a real diamond number (they show № 0).
  * Owners (OWNER_IDS) have both automatically.
  */
-export const SPECIAL = ['dev', 'tester'] as const;
+export const SPECIAL = ['dev', 'beta', 'tester'] as const;
+
+/** what Telegram tells about the person on each sign-in (kept so the owner sees who is who) */
+export interface Who { username?: string; name?: string }
 const TEST_NO = 0;
 
 const KEY = /^(method:[a-z0-9_-]{1,40}|liters|ratings)$/i;
@@ -54,6 +58,13 @@ export class Accounts extends DurableObject<Env> {
       try { sql.exec("ALTER TABLE account ADD COLUMN grants TEXT NOT NULL DEFAULT '[]'"); } catch { /* already there */ }
       sql.exec("INSERT INTO meta (key, value) VALUES ('schema', '1')");
     }
+    // v2: the owner's note on a person, the Telegram username and name (for links in the owner's list)
+    if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 2) {
+      for (const q of ['ALTER TABLE account ADD COLUMN note TEXT', 'ALTER TABLE identity ADD COLUMN username TEXT', 'ALTER TABLE identity ADD COLUMN name TEXT']) {
+        try { sql.exec(q); } catch { /* already there */ }
+      }
+      sql.exec("UPDATE meta SET value = '2' WHERE key = 'schema'");
+    }
   }
 
   private grantsOf(account: string): string[] {
@@ -75,21 +86,38 @@ export class Accounts extends DurableObject<Env> {
     return true;
   }
 
-  /** Owner: everyone with a special background */
+  /** Owner: everyone with a special background or a note */
   grantList() {
-    return this.sql.exec<{ id: string; grants: string; subject: string | null }>(
-      "SELECT a.id, a.grants, i.subject FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.grants <> '[]'").toArray()
-      .map((r) => ({ account: r.id, tg: r.subject, grants: JSON.parse(r.grants) as string[] }));
+    return this.sql.exec<{ id: string; grants: string; note: string | null; subject: string | null; username: string | null; name: string | null }>(
+      "SELECT a.id, a.grants, a.note, i.subject, i.username, i.name FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.grants <> '[]' OR a.note IS NOT NULL").toArray()
+      .map((r) => ({ account: r.id, tg: r.subject, grants: JSON.parse(r.grants) as string[], note: r.note ?? undefined, username: r.username ?? undefined, name: r.name ?? undefined }));
+  }
+
+  /** Owner: a note on a person ("Аня, бариста из Kojo"), and their @username if they never opened the app yet */
+  setNote(tg: string, note: string, username?: string) {
+    if (!/^\d{1,20}$/.test(tg)) return false;
+    const acc = this.resolve('tg', tg);
+    const n = note.replace(/\s+/g, ' ').trim().slice(0, 80);
+    this.sql.exec('UPDATE account SET note = ? WHERE id = ?', n || null, acc.id);
+    const u = (username ?? '').replace(/^@/, '').trim();
+    if (/^[A-Za-z0-9_]{4,32}$/.test(u)) this.sql.exec("UPDATE identity SET username = ? WHERE provider = 'tg' AND subject = ?", u, tg);
+    return true;
   }
 
   /** The account of a sign-in identity; created on first sign-in */
-  private resolve(provider: string, subject: string): { id: string; created: number } {
-    const row = this.sql.exec<{ id: string; created: number }>(
-      'SELECT a.id, a.created FROM identity i JOIN account a ON a.id = i.account WHERE i.provider = ? AND i.subject = ?', provider, subject).toArray()[0];
-    if (row) return row;
+  private resolve(provider: string, subject: string, who?: Who): { id: string; created: number } {
+    const row = this.sql.exec<{ id: string; created: number; username: string | null; name: string | null }>(
+      'SELECT a.id, a.created, i.username, i.name FROM identity i JOIN account a ON a.id = i.account WHERE i.provider = ? AND i.subject = ?', provider, subject).toArray()[0];
+    if (row) {
+      // the username can change in Telegram: written only when it did (no row written on an ordinary start)
+      if (who && ((who.username ?? null) !== row.username || (who.name ?? null) !== row.name) && (who.username || who.name)) {
+        this.sql.exec('UPDATE identity SET username = ?, name = ? WHERE provider = ? AND subject = ?', who.username ?? null, who.name ?? null, provider, subject);
+      }
+      return { id: row.id, created: row.created };
+    }
     const acc = { id: id(12), created: Date.now() };
     this.sql.exec('INSERT INTO account (id, created) VALUES (?, ?)', acc.id, acc.created);
-    this.sql.exec('INSERT INTO identity (provider, subject, account) VALUES (?, ?, ?)', provider, subject, acc.id);
+    this.sql.exec('INSERT INTO identity (provider, subject, account, username, name) VALUES (?, ?, ?, ?, ?)', provider, subject, acc.id, who?.username ?? null, who?.name ?? null);
     return acc;
   }
 
@@ -123,8 +151,8 @@ export class Accounts extends DurableObject<Env> {
    * Called on every app start: answer from the stored count (the brew log is read only when brews arrive —
    * the free tier limits rows read per day). Ratings and grants are cheap and always fresh.
    */
-  async me(provider: string, subject: string): Promise<AccountStats> {
-    const acc = this.resolve(provider, subject);
+  async me(provider: string, subject: string, who?: Who): Promise<AccountStats> {
+    const acc = this.resolve(provider, subject, who);
     const ratings = await this.ratings(acc.id);
     const row = this.sql.exec<{ stats: string | null }>('SELECT stats FROM account WHERE id = ?', acc.id).one();
     if (!row.stats) return this.recount(acc, ratings);

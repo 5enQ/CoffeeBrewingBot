@@ -66,6 +66,24 @@ post('/admin', {'initData': A, 'action': 'revoke', 'tg': '333', 'what': 'dev'})
 ok(get(f'/cards/{cid3}')['card']['theme'] == {'base': 'paper'}, 'taken away → the card falls back to the default')
 ok('tester' in post('/me', {'initData': C})['grants'], 'taking dev away keeps the separate tester grant')
 
+# testers' background and the owner's notes
+ok('beta' in sa['grants'], 'the owner has the testers background too')
+g = post('/admin', {'initData': A, 'action': 'grant', 'tg': '444', 'what': 'beta'})
+p444 = next((x for x in g.get('grants', []) if x['tg'] == '444'), None)
+ok(p444 and p444['grants'] == ['beta'] and not p444.get('username'), 'testers background given to someone who never opened the app')
+g = post('/admin', {'initData': A, 'action': 'note', 'tg': '444', 'note': '  Аня,   бариста из Kojo ', 'username': '@anya_tests'})
+p444 = next(x for x in g['grants'] if x['tg'] == '444')
+ok(p444.get('note') == 'Аня, бариста из Kojo' and p444.get('username') == 'anya_tests', f'the owner signs a person and adds their @username ({p444})')
+ok(post('/admin', {'initData': C, 'action': 'note', 'tg': '444', 'note': 'x'}).get('status') == 403, 'only the owner signs people')
+D = sign(444, username='anya_real', first_name='Анна')
+ok('beta' in post('/me', {'initData': D})['grants'], 'the tester sees the background in their numbers')
+p444 = next(x for x in post('/admin', {'initData': A, 'action': 'list'})['grants'] if x['tg'] == '444')
+ok(p444.get('username') == 'anya_real' and p444.get('name') == 'Анна' and p444.get('note') == 'Аня, бариста из Kojo', f'opening the app fills the real @username and name, the note stays ({p444})')
+cid4 = post('/cards', {'initData': D, 'card': {'name': 'Аня', 'theme': {'special': 'beta'}, 'ach': [], 'granted': ['beta']}})['id']
+ok(get(f'/cards/{cid4}')['card']['theme'] == {'special': 'beta'}, 'the testers card is shown')
+g = post('/admin', {'initData': A, 'action': 'revoke', 'tg': '444', 'what': 'beta'})
+ok(any(x['tg'] == '444' and x['grants'] == [] for x in g['grants']), 'a signed person stays in the list after their grants are taken away')
+
 # bot reminders
 LINK = 'https://t.me/CoffeeBrewingBot?startapp=timer'
 now = int(time.time() * 1000)

@@ -26,7 +26,10 @@ export const BASE_THEMES = [
 export type BaseTheme = typeof BASE_THEMES[number]['id'];
 
 /** Backgrounds the owner gives by hand (Profile → owner tools); the server checks them on every shared card */
-export const SPECIAL_THEMES = [{ id: 'dev', label: 'Разработчик', title: 'Команда Brewbook' }] as const;
+export const SPECIAL_THEMES = [
+  { id: 'dev', label: 'Разработчик', title: 'Команда Brewbook' },
+  { id: 'beta', label: 'Тестировщик', title: 'Бета-тестер Brewbook' },
+] as const;
 export type SpecialTheme = typeof SPECIAL_THEMES[number]['id'];
 
 export interface CardData {

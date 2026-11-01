@@ -10,6 +10,8 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ### Added
 - The server keeps what happened to each reminder (scheduled, cancelled, sent, or refused with Telegram's reason). The timer screen shows the time the bot will write («в 00:25») or why it could not («бот ещё не может вам писать — откройте чат с ботом и нажмите «Старт»»).
+- Testers' card background «Тестировщик»: a lab blueprint — dark teal with a measuring grid that drifts with the tilt, an amber «BETA» ribbon in the corner, a glowing flask, «β Бета-тестер Brewbook». The owner gives it by Telegram ID like the developers' one (the grants are now «Тестировщик», «Разработчик» and «Все фоны (тест)», each separate).
+- The owner's list of people with grants: a note on each person («Аня, бариста из Kojo», can be typed together with the grant), their Telegram name and an active @username link — filled in by itself when the person opens the app, or typed by the owner if they have not yet. A signed person stays in the list after their grants are taken away.
 - Profile → «О приложении» → «Сообщения от бота»: sends a test message right now and shows whether it arrived or why Telegram refused.
 
 ## v1.3.3 — Locks & Water (2026-10-31)

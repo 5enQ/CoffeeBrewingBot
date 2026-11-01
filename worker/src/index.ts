@@ -62,7 +62,9 @@ export async function verifyInitData(initData: string, botToken: string, maxAgeS
   if (!authDate || Date.now() / 1000 - authDate > maxAgeSec) return null;
   try {
     const user = JSON.parse(params.get('user') ?? 'null');
-    return user && user.id ? { id: String(user.id) } : null;
+    if (!user || !user.id) return null;
+    const name = [user.first_name, user.last_name].filter(Boolean).join(' ').slice(0, 64);
+    return { id: String(user.id), username: typeof user.username === 'string' ? user.username : undefined, name: name || undefined };
   } catch { return null; }
 }
 
@@ -249,7 +251,7 @@ export default {
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
-      if (url.pathname === '/me') return json(await accounts().me('tg', user.id), 200, h);
+      if (url.pathname === '/me') return json(await accounts().me('tg', user.id, { username: user.username, name: user.name }), 200, h);
       if (url.pathname === '/brews') {
         const list = Array.isArray(body.brews) ? body.brews.slice(0, 500) : [];
         const brews = list.map((b: Record<string, unknown>) => ({ id: String(b?.id ?? '').slice(0, 40), m: String(b?.m ?? '').slice(0, 40), w: Number(b?.w) || 0, t: Number(b?.t) || 0 }))
@@ -292,7 +294,7 @@ export default {
     }
 
     if (req.method === 'POST' && url.pathname === '/admin') {
-      let body: { initData?: string; action?: string; host?: string; roaster?: string; tg?: string; what?: string };
+      let body: { initData?: string; action?: string; host?: string; roaster?: string; tg?: string; what?: string; note?: string; username?: string };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
@@ -305,6 +307,8 @@ export default {
       } else if (body.action === 'recrawl') await catalog.recrawl(host);
       else if (body.action === 'grant' || body.action === 'revoke') {
         if (!(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grant(String(body.tg ?? ''), String(body.what ?? ''), body.action === 'grant'))) return json({ error: 'bad grant' }, 400, h);
+      } else if (body.action === 'note') {
+        if (!(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).setNote(String(body.tg ?? ''), String(body.note ?? ''), body.username ? String(body.username) : undefined))) return json({ error: 'bad note' }, 400, h);
       } else if (body.action !== 'list') return json({ error: 'bad action' }, 400, h);
       return json({ sites: await catalog.sites(), crawl: await catalog.usage(), grants: await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grantList() }, 200, h);
     }

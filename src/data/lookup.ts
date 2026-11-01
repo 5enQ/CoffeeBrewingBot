@@ -218,13 +218,14 @@ export interface SiteInfo {
   crawled: number | null; crawling: boolean; pages: Record<string, number>; lots: Record<string, number>;
 }
 
-export interface GrantInfo { account: string; tg: string | null; grants: string[] }
+/** a person the owner gave something to: grants, the owner's note, what Telegram says about them */
+export interface GrantInfo { account: string; tg: string | null; grants: string[]; note?: string; username?: string; name?: string }
 /** what the crawler spent today (UTC day) out of its budget — 70% of the Cloudflare free tier */
 export interface CrawlUsage { day: string; reads: number; writes: number; maxReads: number; maxWrites: number; paused: boolean }
 export interface AdminData { sites: SiteInfo[]; grants: GrantInfo[]; crawl?: CrawlUsage }
 
 /** Owner-only tools: roaster sites and special backgrounds. null — not the owner or no connection. */
-export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 'recrawl' | 'grant' | 'revoke'; host?: string; roaster?: string; tg?: string; what?: string } = { action: 'list' }): Promise<AdminData | null> {
+export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 'recrawl' | 'grant' | 'revoke' | 'note'; host?: string; roaster?: string; tg?: string; what?: string; note?: string; username?: string } = { action: 'list' }): Promise<AdminData | null> {
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return null;
   try {

@@ -232,45 +232,86 @@ function OwnerTools() {
 }
 
 const GRANTS = [
-  { id: 'dev', label: 'Фон разработчика', hint: 'особый фон «Разработчик»' },
+  { id: 'beta', label: 'Тестировщик', hint: 'особый фон «Тестировщик» для тех, кто тестирует новые версии' },
+  { id: 'dev', label: 'Разработчик', hint: 'особый фон «Разработчик»' },
   { id: 'tester', label: 'Все фоны (тест)', hint: 'любой фон любого уровня; бриллиант с № 0, настоящие номера не занимает' },
 ] as const;
 
-/** Give or take away special grants by Telegram id, each separately */
+/** a person's Telegram link: by @username when known (the person opened the app, or the owner typed it) */
+const tgLink = (g: GrantInfo) => (g.username ? `https://t.me/${g.username}` : null);
+
+/** Give or take away special grants by Telegram id, each separately; sign people with a note */
 function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: AdminData): void }) {
   const [tg, setTg] = useState('');
+  const [newNote, setNewNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [note, setNote] = useState('');
+  const [nick, setNick] = useState('');
   const me = myTelegramId();
   const act = async (action: 'grant' | 'revoke', id: string, what: string) => {
     const label = GRANTS.find((g) => g.id === what)!.label.toLowerCase();
-    if (action === 'revoke' && !(await platform.confirm(`Забрать «${label}» у ${id}?`))) return;
+    const who = grants.find((g) => g.tg === id);
+    if (action === 'revoke' && !(await platform.confirm(`Забрать «${label}» у ${who?.note || who?.name || id}?`))) return;
     setBusy(true);
-    const next = await adminCall({ action, tg: id, what });
+    let next = await adminCall({ action, tg: id, what });
+    if (next && action === 'grant' && newNote.trim() && id === tg) next = await adminCall({ action: 'note', tg: id, note: newNote.trim() });
     setBusy(false);
-    if (next) { onChange(next); if (action === 'grant') setTg(''); platform.haptic('success'); toast(action === 'grant' ? 'Выдано — появится у человека в карточке' : 'Забрано'); }
+    if (next) { onChange(next); if (action === 'grant' && id === tg) { setTg(''); setNewNote(''); } platform.haptic('success'); toast(action === 'grant' ? 'Выдано — появится у человека в карточке' : 'Забрано'); }
     else toast('Не получилось — проверьте ID');
   };
+  const saveNote = async (id: string) => {
+    setBusy(true);
+    const next = await adminCall({ action: 'note', tg: id, note, username: nick.trim() || undefined });
+    setBusy(false);
+    if (next) { onChange(next); setEditing(null); platform.haptic('success'); toast('Подпись сохранена'); }
+    else toast('Не получилось сохранить');
+  };
+  const people = grants.filter((g) => g.tg !== me);
   return (
     <Section title="Разработчики и тестировщики">
-      <p className="muted pad small-note">Выдаётся по Telegram ID, каждое право отдельно. ID человек видит у себя: Профиль → «О приложении». У вас как у владельца оба права есть всегда.</p>
-      {grants.filter((g) => g.tg !== me).map((g) => (
-        <div key={g.account} className="grant-row">
-          <span className="row-label">Telegram {g.tg ?? '—'}</span>
-          <div className="chips">
-            {GRANTS.map((x) => {
-              const on = g.grants.includes(x.id);
-              return <button type="button" key={x.id} className={'chip' + (on ? ' on' : '')} aria-pressed={on} disabled={busy || !g.tg}
-                onClick={() => act(on ? 'revoke' : 'grant', g.tg!, x.id)}>{x.label}</button>;
-            })}
+      <p className="muted pad small-note">Выдаётся по Telegram ID, каждое право отдельно. ID человек видит у себя: Профиль → «О приложении». У вас как у владельца все права есть всегда.</p>
+      {people.map((g) => {
+        const link = tgLink(g);
+        const title = g.note || g.name || (g.username ? '@' + g.username : `Telegram ${g.tg ?? '—'}`);
+        return (
+          <div key={g.account} className="grant-row">
+            <div className="grant-who">
+              <b>{title}</b>
+              <span className="muted">
+                {link
+                  ? <a href={link} target="_blank" rel="noreferrer" onClick={(e) => { e.preventDefault(); platform.openLink(link); }}>@{g.username}</a>
+                  : <button type="button" className="link-btn" onClick={async () => { if (g.tg && await copyText(g.tg)) toast('ID скопирован — ника нет, найдите человека по ID'); }}>ID {g.tg}</button>}
+                {g.note && g.name ? ` · ${g.name}` : ''}
+              </span>
+              <button type="button" className="link-btn grant-sign" onClick={() => { setEditing(editing === g.account ? null : g.account); setNote(g.note ?? ''); setNick(g.username ?? ''); }}>
+                {g.note ? 'Изменить подпись' : 'Подписать'}
+              </button>
+            </div>
+            {editing === g.account && g.tg && (
+              <div className="grant-edit">
+                <Field label="Подпись" id={`grant-note-${g.tg}`} placeholder="например, Аня, бариста из Kojo" value={note} maxLength={80} onChange={(e) => setNote(e.target.value)} />
+                {!g.name && <Field label="Ник в Telegram (если человек ещё не открывал приложение)" id={`grant-nick-${g.tg}`} placeholder="@username" value={nick} onChange={(e) => setNick(e.target.value)} />}
+                <div className="site-actions"><Button icon="check" disabled={busy} onClick={() => saveNote(g.tg!)}>Сохранить</Button></div>
+              </div>
+            )}
+            <div className="chips">
+              {GRANTS.map((x) => {
+                const on = g.grants.includes(x.id);
+                return <button type="button" key={x.id} className={'chip' + (on ? ' on' : '')} aria-pressed={on} disabled={busy || !g.tg}
+                  onClick={() => act(on ? 'revoke' : 'grant', g.tg!, x.id)}>{x.label}</button>;
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       <Field label="Telegram ID" id="dev-grant-id" inputMode="numeric" placeholder="например, 123456789" value={tg}
         onChange={(e) => setTg(e.target.value.replace(/\D/g, '').slice(0, 20))} />
+      <Field label="Подпись (необязательно)" id="dev-grant-note" placeholder="кто это, чтобы не забыть" value={newNote} maxLength={80} onChange={(e) => setNewNote(e.target.value)} />
       <div className="site-actions">
-        {GRANTS.map((x) => <Button key={x.id} kind={x.id === 'dev' ? 'primary' : 'secondary'} icon="plus" disabled={busy || tg.length < 4} onClick={() => act('grant', tg, x.id)}>{x.label}</Button>)}
+        {GRANTS.map((x) => <Button key={x.id} kind={x.id === 'beta' ? 'primary' : 'secondary'} icon="plus" disabled={busy || tg.length < 4} onClick={() => act('grant', tg, x.id)}>{x.label}</Button>)}
       </div>
-      <p className="muted pad small-note">{GRANTS.map((x) => `${x.label}: ${x.hint}`).join('. ')}.</p>
+      <p className="muted pad small-note">{GRANTS.map((x) => `${x.label}: ${x.hint}`).join('. ')}. Ник подставляется сам, когда человек откроет приложение.</p>
     </Section>
   );
 }

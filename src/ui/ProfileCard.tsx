@@ -152,93 +152,150 @@ function Glints({ x, y }: { x: number; y: number }) {
 /** seeded random, so the sky is the same on every render and every device */
 const seeded = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 
-/**
- * A starry sky painted once into four canvases: the still stars and three twinkle layers whose opacity is animated
- * by CSS (compositor only — no repaint per frame). Layers drift a little with the tilt for depth.
- */
-function NightSky() {
-  const box = useRef<HTMLDivElement>(null);
+/** paint stars into a canvas sized to its box; `pick` decides which of the seeded stars go into this layer */
+function paintStars(c: HTMLCanvasElement, seed: number, density: number, size: [number, number], bright: number) {
+  const r = c.getBoundingClientRect();
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
+  const ctx = c.getContext('2d');
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const rnd = seeded(seed);
+  const n = Math.round((r.width * r.height) / density);
+  for (let k = 0; k < n; k++) {
+    const x = rnd() * r.width, y = rnd() * r.height, a = (0.3 + rnd() * 0.7) * bright;
+    const rad = size[0] + rnd() * (size[1] - size[0]);
+    const tint = rnd() < 0.18 ? '255,228,196' : rnd() < 0.3 ? '196,214,255' : '255,255,255';
+    if (rad > 0.9) {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, rad * 4);
+      g.addColorStop(0, `rgba(${tint},${a * 0.45})`); g.addColorStop(1, `rgba(${tint},0)`);
+      ctx.fillStyle = g; ctx.fillRect(x - rad * 4, y - rad * 4, rad * 8, rad * 8);
+    }
+    ctx.fillStyle = `rgba(${tint},${a})`;
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+/** a canvas of stars that repaints only when its size changes */
+function StarLayer({ className, seed, density, size, bright = 1 }: { className: string; seed: number; density: number; size: [number, number]; bright?: number }) {
+  const cv = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const paint = () => {
-      const r = el.getBoundingClientRect();
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const rnd = seeded(11);
-      const layers = Array.from(el.querySelectorAll('canvas'));
-      const ctxs = layers.map((c) => {
-        c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
-        const x = c.getContext('2d')!; x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, r.width, r.height); return x;
-      });
-      const n = Math.round((r.width * r.height) / 900);
-      for (let k = 0; k < n; k++) {
-        const x = rnd() * r.width, y = rnd() * r.height, big = rnd() < 0.12, a = 0.35 + rnd() * 0.65;
-        const layer = rnd() < 0.55 ? 0 : 1 + Math.floor(rnd() * 3);
-        const ctx = ctxs[layer];
-        const rad = big ? 1.1 + rnd() * 0.6 : 0.35 + rnd() * 0.5;
-        const tint = rnd() < 0.2 ? '255,226,190' : rnd() < 0.3 ? '190,210,255' : '255,255,255';
-        if (big) {
-          const g = ctx.createRadialGradient(x, y, 0, x, y, rad * 4);
-          g.addColorStop(0, `rgba(${tint},${a * 0.5})`); g.addColorStop(1, `rgba(${tint},0)`);
-          ctx.fillStyle = g; ctx.fillRect(x - rad * 4, y - rad * 4, rad * 8, rad * 8);
-        }
-        ctx.fillStyle = `rgba(${tint},${a})`;
-        ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
-      }
-    };
+    const c = cv.current;
+    if (!c) return;
+    const paint = () => paintStars(c, seed, density, size, bright);
     paint();
     const ro = new ResizeObserver(paint);
-    ro.observe(el);
+    ro.observe(c);
     return () => ro.disconnect();
-  }, []);
+  }, [seed, density, size[0], size[1], bright]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <canvas ref={cv} className={className} />;
+}
+
+/**
+ * The card as a window into space. The layers sit at different depths and shift against the tilt —
+ * far stars the most, the constellation less — so it looks like looking *through* the card into a deep sky,
+ * not at a picture on it. The rim is darkened from inside, like the edge of a portal.
+ * Everything is painted once; per frame only transforms change (compositor), plus a CSS twinkle.
+ */
+function SpacePortal({ icon }: { icon: IconKey | null }) {
   return (
-    <div className="pcard-sky" ref={box} aria-hidden="true">
-      <canvas className="sky-still" /><canvas className="sky-tw a" /><canvas className="sky-tw b" /><canvas className="sky-tw c" />
+    <div className="pcard-portal" aria-hidden="true">
+      <div className="portal-layer depth-far"><StarLayer className="sky" seed={11} density={260} size={[0.25, 0.6]} bright={0.75} /></div>
+      <div className="portal-layer depth-nebula"><div className="nebula" /></div>
+      <div className="portal-layer depth-mid">
+        <StarLayer className="sky" seed={23} density={1400} size={[0.4, 1.3]} />
+        <StarLayer className="sky tw a" seed={37} density={2600} size={[0.5, 1.5]} />
+        <StarLayer className="sky tw b" seed={41} density={2600} size={[0.5, 1.4]} />
+      </div>
+      {icon && <div className="portal-layer depth-figure"><Constellation icon={icon} /></div>}
+      <div className="portal-rim" />
     </div>
   );
 }
 
+type CStar = { x: number; y: number; r: number; tw: number; deg: number };
+
 /**
- * The method icon as a constellation: stars sampled along its lines (measured from the real icon),
- * joined by faint lines; a few stars twinkle. Shown in the corner like the old extruded icon.
+ * The method as a constellation drawn the way star charts do: a faint glowing figure (the icon's own drawing),
+ * a few bright stars at its key points — corners, ends, junctions — and straight lines between them.
+ * Key points are found on the real icon geometry: where a line turns sharply, where it ends, rectangle corners.
  */
 function Constellation({ icon }: { icon: IconKey }) {
   const probe = useRef<HTMLDivElement>(null);
-  type Star = { x: number; y: number; r: number; tw: number };
-  const [sky, setSky] = useState<{ stars: Star[]; lines: Star[][] }>({ stars: [], lines: [] });
+  const [sky, setSky] = useState<{ stars: CStar[]; lines: [CStar, CStar][] }>({ stars: [], lines: [] });
   useLayoutEffect(() => {
     const svg = probe.current?.querySelector('svg');
     if (!svg) return;
-    const rnd = seeded(icon.length * 97 + icon.charCodeAt(0));
-    const stars: Star[] = [];
-    const lines: Star[][] = [];
-    // a star near an existing one is that star (shapes share corners): lines join instead of doubling stars
-    const starAt = (x: number, y: number) => stars.find((q) => Math.hypot(q.x - x, q.y - y) < 3.6)
-      ?? (stars.push({ x, y, r: rnd() < 0.3 ? 1.25 : 0.7 + rnd() * 0.3, tw: rnd() < 0.35 ? 1 + Math.floor(rnd() * 3) : 0 }), stars[stars.length - 1]);
+    const rnd = seeded(icon.length * 131 + icon.charCodeAt(0) * 7);
+    const stars: CStar[] = [];
+    const lines: [CStar, CStar][] = [];
+    const starAt = (x: number, y: number) => {
+      const near = stars.find((q) => Math.hypot(q.x - x, q.y - y) < 3.2);
+      if (near) return near;
+      const st = { x, y, r: 0, tw: rnd() < 0.3 ? 1 + Math.floor(rnd() * 2) : 0, deg: 0 };
+      stars.push(st);
+      return st;
+    };
+    const link = (a: CStar, b: CStar) => {
+      if (a === b || lines.some(([p, q]) => (p === a && q === b) || (p === b && q === a))) return;
+      lines.push([a, b]); a.deg++; b.deg++;
+    };
     svg.querySelectorAll<SVGGeometryElement>('path, rect, circle, ellipse, line, polyline, polygon').forEach((g) => {
-      let len = 0;
-      try { len = g.getTotalLength(); } catch { return; }
-      if (!len) return;
-      const n = Math.max(1, Math.round(len / 6.5)); // a constellation is sparse: a star every ~6 units
-      const run: Star[] = [];
-      for (let k = 0; k <= n; k++) {
-        const p = g.getPointAtLength((k / n) * len);
-        const st = starAt(p.x, p.y);
-        if (run[run.length - 1] !== st) run.push(st);
+      let keys: { x: number; y: number }[] = [];
+      let closed = false;
+      if (g instanceof SVGRectElement) {
+        const x = g.x.baseVal.value, y = g.y.baseVal.value, w = g.width.baseVal.value, h = g.height.baseVal.value;
+        keys = w < 3 || h < 3 ? [{ x, y: y + h / 2 }, { x: x + w, y: y + h / 2 }] : [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
+        closed = keys.length === 4;
+      } else if (g instanceof SVGCircleElement) {
+        const cx = g.cx.baseVal.value, cy = g.cy.baseVal.value, rr = g.r.baseVal.value;
+        const n = rr < 2.5 ? 1 : 5;
+        keys = Array.from({ length: n }, (_, k) => ({ x: cx + rr * Math.cos(k / n * Math.PI * 2 - Math.PI / 2), y: cy + rr * Math.sin(k / n * Math.PI * 2 - Math.PI / 2) }));
+        closed = n > 1;
+      } else {
+        let len = 0;
+        try { len = g.getTotalLength(); } catch { return; }
+        if (!len) return;
+        const N = Math.max(8, Math.round(len * 2));
+        const pts = Array.from({ length: N + 1 }, (_, k) => g.getPointAtLength((k / N) * len));
+        closed = Math.hypot(pts[0].x - pts[N].x, pts[0].y - pts[N].y) < 0.5;
+        keys.push(pts[0]);
+        const W = Math.max(2, Math.round(N / 24));
+        let lastKey = 0;
+        for (let k = W; k <= N - W; k++) {
+          const a = Math.atan2(pts[k].y - pts[k - W].y, pts[k].x - pts[k - W].x), b = Math.atan2(pts[k + W].y - pts[k].y, pts[k + W].x - pts[k].x);
+          let turn = Math.abs(b - a); if (turn > Math.PI) turn = 2 * Math.PI - turn;
+          // a sharp turn is a corner; along a long smooth curve put a star every ~9 units so it keeps its shape
+          const along = ((k - lastKey) / N) * len;
+          if ((turn > 0.6 && along > 2.5) || along > 9) { keys.push(pts[k]); lastKey = k; }
+        }
+        if (!closed) keys.push(pts[N]);
       }
-      if (run.length > 1) lines.push(run);
+      const st = keys.map((p) => starAt(p.x, p.y));
+      for (let k = 1; k < st.length; k++) link(st[k - 1], st[k]);
+      if (closed && st.length > 2) link(st[st.length - 1], st[0]);
     });
+    // junctions shine brighter: the more lines meet at a star, the bigger it is
+    for (const st of stars) st.r = 0.55 + Math.min(3, st.deg) * 0.17 + rnd() * 0.25;
     setSky({ stars, lines });
   }, [icon]);
+  const sparkle = (p: CStar) => p.r > 1.05;
   return (
     <div className="pcard-constellation" aria-hidden="true">
       <div className="probe" ref={probe}><MethodIcon icon={icon} size={32} /></div>
-      <svg viewBox="-1 -1 34 34" className="const-lines">
-        {sky.lines.map((run, i) => <polyline key={i} points={run.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ')} />)}
+      {/* the figure itself, faint, like the drawing on a star chart */}
+      <div className="const-figure"><MethodIcon icon={icon} size={32} /></div>
+      <svg viewBox="-2 -2 36 36" className="const-lines">
+        {sky.lines.map(([a, b], i) => <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />)}
       </svg>
-      {[0, 1, 2, 3].map((layer) => (
-        <svg key={layer} viewBox="-1 -1 34 34" className={'const-stars' + (layer ? ` tw t${layer}` : '')}>
-          {sky.stars.filter((p) => p.tw === layer).map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={p.r} />)}
+      {[0, 1, 2].map((layer) => (
+        <svg key={layer} viewBox="-2 -2 36 36" className={'const-stars' + (layer ? ` tw t${layer}` : '')}>
+          {sky.stars.filter((p) => p.tw === layer).map((p, i) => (
+            <g key={i}>
+              <circle cx={p.x} cy={p.y} r={p.r} />
+              {sparkle(p) && <path className="flare" d={`M${p.x - p.r * 2.6} ${p.y}H${p.x + p.r * 2.6}M${p.x} ${p.y - p.r * 2.6}V${p.y + p.r * 2.6}`} />}
+            </g>
+          ))}
         </svg>
       ))}
     </div>
@@ -432,7 +489,8 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
   const icon = 'tier' in view.theme ? view.theme.icon : null;
 
   // diamond and volume cards turn in 3D; the diamond only slightly (its shine does the work)
-  const turn = tier === 'diamond' ? [5, 4] : tier === 'volume' ? [6, 5] : null;
+  // the diamond turns a little; the volume card stays put — its depth is inside, the card is a window
+  const turn = tier === 'diamond' ? [5, 4] : null;
   const style = {
     '--tx': t.x.toFixed(3), '--ty': t.y.toFixed(3),
     ...(turn ? { transform: `perspective(800px) rotateY(${(t.x * turn[0]).toFixed(2)}deg) rotateX(${(-t.y * turn[1]).toFixed(2)}deg)` } : {}),
@@ -449,8 +507,7 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
       {metal && <div className="pcard-sheen" aria-hidden="true" />}
       {metal && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
       {glass && <GlassLayer host={ref} still={!live} />}
-      {tier === 'volume' && <NightSky />}
-      {volume && <Constellation icon={icon as IconKey} />}
+      {tier === 'volume' && <SpacePortal icon={volume ? icon as IconKey : null} />}
       {'special' in view.theme && view.theme.special === 'dev' && <DevLayer />}
       {'special' in view.theme && view.theme.special === 'beta' && <BetaLayer />}
       {tier === 'diamond' && card.no !== undefined && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}

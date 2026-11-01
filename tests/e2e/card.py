@@ -203,9 +203,15 @@ async def main():
                         await tilt(pv, be, ga); await pv.wait_for_timeout(700)
                         await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-volume-{i}.png'))
                     nstars = await pv.locator('.pcard-constellation .const-stars circle').count()
-                    nlines = await pv.locator('.pcard-constellation .const-lines polyline').count()
-                    check(nstars >= 15 and nlines >= 3, f'volume card: the method is a constellation ({nstars} stars, {nlines} lines)')
-                    check(await pv.locator('.pcard-sky canvas').count() == 4 and await pv.locator('.pcard-sky .sky-tw').first.evaluate("e => getComputedStyle(e).animationName") == 'twinkle', 'volume card: a starry sky that twinkles')
+                    nlines = await pv.locator('.pcard-constellation .const-lines line').count()
+                    check(6 <= nstars <= 40 and nlines >= nstars - 3, f'volume card: the method is a constellation of key stars joined by lines ({nstars} stars, {nlines} lines)')
+                    check(await pv.locator('.pcard-portal canvas').count() == 4 and await pv.locator('.pcard-portal .sky.tw').first.evaluate("e => getComputedStyle(e).animationName") == 'twinkle', 'volume card: a starry sky that twinkles')
+                    # a window, not a picture: far layers shift more than near ones when the phone tilts
+                    await tilt(pv, 0, 0); await pv.wait_for_timeout(50); await tilt(pv, 0, 25); await pv.wait_for_timeout(900)
+                    far = await pv.locator('.depth-far').evaluate('e => new DOMMatrix(getComputedStyle(e).transform).m41')
+                    fig = await pv.locator('.depth-figure').evaluate('e => new DOMMatrix(getComputedStyle(e).transform).m41')
+                    check(far < fig < 0 and abs(far) > 1.8 * abs(fig), f'volume card: depth parallax — far stars move {far:.1f}px, the constellation {fig:.1f}px')
+                    await pv.locator('.pcard:visible').screenshot(path=str(OUT / 'card-volume-portal.png'))
                 elif k == 'diamond1':
                     check((await pv.locator('.pcard-no').inner_text()).replace('\n', '') == '№7', 'diamond shows the holder number')
                     for i, (be, ga) in enumerate([(0, 0), (8, -18), (-10, 20)]):

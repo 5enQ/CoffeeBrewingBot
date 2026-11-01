@@ -74,17 +74,22 @@ ok(post('/reminders', {'initData': A, 'at': now + 73 * 3600_000, 'title': 'x', '
 ok(post('/reminders', {'initData': A, 'at': now + 5000, 'title': 'x', 'link': LINK}).get('status') == 400, 'less than 30 s ahead is refused')
 ok(post('/reminders', {'initData': A, 'at': now + 3600_000, 'title': 'x', 'link': 'https://evil.example/?startapp=timer'}).get('status') == 400, 'only a t.me timer link is accepted')
 ok(post('/reminders', {'initData': 'forged', 'at': now + 3600_000, 'link': LINK}).get('status') == 401, 'unsigned requests are refused')
+st = post('/reminders', {'initData': A, 'status': True})
+ok(st.get('pending') and st['pending']['title'] == 'Колд брю' and st['last']['state'] == 'scheduled', f'status shows the pending reminder ({st})')
 ok(post('/reminders', {'initData': A, 'cancel': True}).get('ok') is True, 'reminder cancelled')
+st = post('/reminders', {'initData': A, 'status': True})
+ok(st.get('pending') is None and st['last']['state'] == 'cancelled', 'status after cancel: nothing pending, last one cancelled')
+t = post('/reminders', {'initData': A, 'test': True, 'link': LINK})
+ok(t.get('ok') is False and t.get('error'), f'a test message reports Telegram\'s answer (fake token here: {t.get("error")})')
 # a real one fires: the local token is fake, so Telegram refuses — the log shows the alarm ran
 ok(post('/reminders', {'initData': B, 'at': int(time.time() * 1000) + 31_000, 'title': 'Колд брю', 'link': LINK}).get('ok') is True, 'short reminder scheduled')
-log = os.environ.get('WRANGLER_LOG')
-if log:
-    fired = False
-    for _ in range(25):
-        time.sleep(2)
-        txt = open(log, encoding='utf-8', errors='replace').read()
-        if 'reminder not sent' in txt or 'reminder error' in txt: fired = True; break
-    ok(fired, 'the alarm sends the bot message when the time comes')
+st = None
+for _ in range(25):
+    time.sleep(2)
+    st = post('/reminders', {'initData': B, 'status': True})
+    if st.get('last', {}).get('state') != 'scheduled': break
+ok(st.get('pending') is None and st['last']['state'] in ('sent', 'failed'), f'the alarm tries to send the bot message when the time comes ({st["last"]["state"]})')
+ok(st['last']['state'] == 'failed' and st['last']['detail'], f'the result is kept with Telegram\'s reason (fake token here: {st["last"]["detail"]})')
 
 print('\n' + (f'{len(FAILS)} check(s) failed' if FAILS else 'all checks passed'))
 sys.exit(1 if FAILS else 0)

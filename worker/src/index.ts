@@ -14,7 +14,7 @@
  * so a rating "on someone else's behalf" cannot be forged, and a repeated rating replaces the previous one.
  */
 import { DurableObject } from 'cloudflare:workers';
-import { Accounts } from './accounts';
+import { Accounts, sendReminder } from './accounts';
 import { CoffeeCatalog, cleanCoffee, keysFor, type Found, type SiteStatus } from './catalog';
 import { fetchPage } from './fetch';
 import { PARSER_VERSION, parsePage } from './parse';
@@ -264,11 +264,19 @@ export default {
 
     // ---- bot reminder when a long timer ends ----
     if (req.method === 'POST' && url.pathname === '/reminders') {
-      let body: { initData?: string; at?: unknown; title?: unknown; link?: unknown; cancel?: unknown };
+      let body: { initData?: string; at?: unknown; title?: unknown; link?: unknown; cancel?: unknown; status?: unknown; test?: unknown };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
       if (body.cancel) return json({ ok: await accounts().cancelReminder('tg', user.id) }, 200, h);
+      if (body.status) return json({ ok: true, ...(await accounts().reminderStatus('tg', user.id)) }, 200, h);
+      // "can the bot write to me?": a message right away, Telegram's answer comes back as is
+      if (body.test) {
+        const link = String(body.link ?? '');
+        if (!/^https:\/\/t\.me\/[A-Za-z0-9_]+(\/[A-Za-z0-9_]+)?\?startapp=timer$/.test(link)) return json({ error: 'bad link' }, 400, h);
+        const res = await sendReminder(env.BOT_TOKEN, user.id, '', link, '☕ Проверка: так бот напишет, когда долгий таймер (колд брю) закончится.');
+        return json(res, 200, h);
+      }
       const at = Number(body.at), now = Date.now();
       const title = String(body.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Заварка';
       const link = String(body.link ?? '');

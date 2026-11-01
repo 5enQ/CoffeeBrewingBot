@@ -14,6 +14,7 @@ import { useBackGuard, useRouter, useSelected } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { Button, Chips, Field, Row, SampleTag, Screen, Section, Segmented } from '../ui/kit';
 import { DESKTOP_MIN, useLayoutMode } from '../layout';
+import { explainRefusal, remindersAvailable, testReminder } from '../data/remind';
 import { adminCall, type AdminData, type CrawlUsage, type GrantInfo, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
 import { MyCardBlock } from './CardScreens';
@@ -185,6 +186,7 @@ export function Profile() {
           <Row label="Ваш Telegram ID" value={myTelegramId()} hint="Нажмите, чтобы скопировать"
             onClick={async () => { if (await copyText(myTelegramId()!)) toast('Скопировано'); }} chevron={false} />
         )}
+        {remindersAvailable() && <BotCheckRow />}
       </Section>
 
       <OwnerTools />
@@ -203,6 +205,25 @@ const SITE_STATUS: Record<SiteInfo['status'], string> = { approved: 'подкл�
 
 /** Owner only: roaster sites for the shared catalog. Invisible to everyone else (the server answers 403). */
 /** Owner only (the server answers 403 to everyone else): roaster sites and the developers' background */
+/** "Can the bot write to me?" — a test message right now, with Telegram's answer if it refuses */
+function BotCheckRow() {
+  const [state, setState] = useState<'idle' | 'busy' | 'ok' | string>('idle');
+  const run = async () => {
+    setState('busy');
+    const r = await testReminder();
+    setState(r.ok ? 'ok' : explainRefusal(r.error));
+    platform.haptic(r.ok ? 'success' : 'error');
+  };
+  return (
+    <Row label="Сообщения от бота" onClick={state === 'busy' ? undefined : run}
+      hint={state === 'idle' ? 'Бот пишет, когда долгий таймер закончится. Нажмите, чтобы проверить'
+        : state === 'busy' ? 'Отправляем тестовое сообщение…'
+        : state === 'ok' ? 'Работает: бот прислал тестовое сообщение в чат'
+        : `Не работает: ${state}`}
+      value={state === 'ok' ? '✓' : undefined} />
+  );
+}
+
 function OwnerTools() {
   const [data, setData] = useState<AdminData | null>(null);
   useEffect(() => { if (myTelegramId()) adminCall().then(setData); }, []);

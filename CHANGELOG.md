@@ -3,6 +3,15 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
+## Unreleased
+
+### Fixed
+- Bot reminder for long timers: the app no longer waits forever when Telegram does not answer the «allow messages» request (some clients stay silent if access was given before) — after 8 s it schedules the reminder anyway. Opening a running cold brew asks the server whether the reminder is there and sets it again if not; pausing on any device cancels it even if it was set on another one.
+
+### Added
+- The server keeps what happened to each reminder (scheduled, cancelled, sent, or refused with Telegram's reason). The timer screen shows the time the bot will write («в 00:25») or why it could not («бот ещё не может вам писать — откройте чат с ботом и нажмите «Старт»»).
+- Profile → «О приложении» → «Сообщения от бота»: sends a test message right now and shows whether it arrived or why Telegram refused.
+
 ## v1.3.3 — Locks & Water (2026-10-31)
 
 ### Added

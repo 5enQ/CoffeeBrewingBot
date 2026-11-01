@@ -46,6 +46,8 @@ export class Accounts extends DurableObject<Env> {
     // one pending "your brew is ready" message per account; the alarm fires at the earliest one
     sql.exec(`CREATE TABLE IF NOT EXISTS reminder (account TEXT PRIMARY KEY, chat TEXT NOT NULL, at INTEGER NOT NULL, title TEXT NOT NULL, link TEXT NOT NULL)`);
     sql.exec('CREATE INDEX IF NOT EXISTS reminder_at ON reminder (at)');
+    // what happened to each person's last reminder (scheduled / cancelled / sent / failed + Telegram's answer)
+    sql.exec(`CREATE TABLE IF NOT EXISTS reminder_log (account TEXT PRIMARY KEY, at INTEGER NOT NULL, state TEXT NOT NULL, detail TEXT, ts INTEGER NOT NULL)`);
     // one-time migrations, gated by the schema version (the object wakes up often; see CoffeeCatalog)
     sql.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
     if (!sql.exec("SELECT 1 FROM meta WHERE key = 'schema'").toArray().length) {
@@ -189,13 +191,32 @@ export class Accounts extends DurableObject<Env> {
     if (!chat) return false;
     this.sql.exec('INSERT INTO reminder (account, chat, at, title, link) VALUES (?, ?, ?, ?, ?) ON CONFLICT(account) DO UPDATE SET chat = excluded.chat, at = excluded.at, title = excluded.title, link = excluded.link',
       acc.id, chat, at, title, link);
+    this.log(acc.id, at, 'scheduled');
     await this.nextAlarm();
+    console.log('reminder scheduled', acc.id, new Date(at).toISOString());
     return true;
+  }
+
+  private log(account: string, at: number, state: string, detail: string | null = null) {
+    this.sql.exec('INSERT INTO reminder_log (account, at, state, detail, ts) VALUES (?, ?, ?, ?, ?) ON CONFLICT(account) DO UPDATE SET at = excluded.at, state = excluded.state, detail = excluded.detail, ts = excluded.ts',
+      account, at, state, detail, Date.now());
+  }
+
+  /** the pending reminder and what happened to the last one */
+  reminderStatus(provider: string, subject: string) {
+    const row = this.sql.exec<{ account: string }>('SELECT account FROM identity WHERE provider = ? AND subject = ?', provider, subject).toArray()[0];
+    if (!row) return { pending: null, last: null };
+    const pending = this.sql.exec<{ at: number; title: string }>('SELECT at, title FROM reminder WHERE account = ?', row.account).toArray()[0] ?? null;
+    const last = this.sql.exec<{ at: number; state: string; detail: string | null; ts: number }>('SELECT at, state, detail, ts FROM reminder_log WHERE account = ?', row.account).toArray()[0] ?? null;
+    return { pending, last };
   }
 
   async cancelReminder(provider: string, subject: string) {
     const row = this.sql.exec<{ account: string }>('SELECT account FROM identity WHERE provider = ? AND subject = ?', provider, subject).toArray()[0];
-    if (row) this.sql.exec('DELETE FROM reminder WHERE account = ?', row.account);
+    if (row) {
+      const had = this.sql.exec<{ at: number }>('SELECT at FROM reminder WHERE account = ?', row.account).toArray()[0];
+      if (had) { this.sql.exec('DELETE FROM reminder WHERE account = ?', row.account); this.log(row.account, had.at, 'cancelled'); }
+    }
     await this.nextAlarm();
     return true;
   }
@@ -211,15 +232,15 @@ export class Accounts extends DurableObject<Env> {
       'SELECT account, chat, title, link, at FROM reminder WHERE at <= ? ORDER BY at LIMIT 50', Date.now() + 5000).toArray();
     for (const r of due) {
       this.sql.exec('DELETE FROM reminder WHERE account = ? AND at = ?', r.account, r.at);
-      await sendReminder(this.env.BOT_TOKEN, r.chat, r.title, r.link);
+      const res = await sendReminder(this.env.BOT_TOKEN, r.chat, r.title, r.link);
+      this.log(r.account, r.at, res.ok ? 'sent' : 'failed', res.error ?? null);
     }
     await this.nextAlarm();
   }
 }
 
 /** the bot's message with a button back into the timer */
-export async function sendReminder(token: string, chat: string, title: string, link: string) {
-  const text = `☕ ${title}: время вышло!\nПора процедить и записать заварку.`;
+export async function sendReminder(token: string, chat: string, title: string, link: string, text = `☕ ${title}: время вышло!\nПора процедить и записать заварку.`): Promise<{ ok: boolean; error?: string }> {
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -227,6 +248,7 @@ export async function sendReminder(token: string, chat: string, title: string, l
     });
     const j = await r.json<{ ok: boolean; description?: string }>();
     if (!j.ok) console.log('reminder not sent:', j.description);
-    return j.ok;
-  } catch (e) { console.log('reminder error', e); return false; }
+    else console.log('reminder sent');
+    return { ok: j.ok, error: j.ok ? undefined : j.description ?? `HTTP ${r.status}` };
+  } catch (e) { console.log('reminder error', e); return { ok: false, error: String(e) }; }
 }

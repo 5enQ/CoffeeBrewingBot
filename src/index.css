@@ -1330,3 +1330,4 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .pcard.base-glass .pcard-body { text-shadow: 0 1px 2px rgba(0,0,0,0.55); }
 .theme-pick.base-glass { --pc-fg: #f4ece3; background: linear-gradient(180deg, #3a3631 0 52%, #5c3418 52% 55%, #1a0e07 55%); }
 .pcard.tier-volume .pcard-body { text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+.grant-who .grant-forget { justify-self: start; font-size: 13px; padding: 2px 0; }

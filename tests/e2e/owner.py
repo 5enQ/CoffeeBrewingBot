@@ -31,6 +31,8 @@ async def mock(pg, admin_log=None):
                 cur = next((g for g in GRANTS if g['tg'] == req['tg']), None)
                 if cur: cur['grants'].append(req['what'])
                 else: GRANTS.append({'account': 'x' + req['tg'], 'tg': req['tg'], 'grants': [req['what']]})
+            if req.get('action') == 'forget':
+                GRANTS[:] = [g for g in GRANTS if g['tg'] != req['tg']]
             if req.get('action') == 'note':
                 cur = next((g for g in GRANTS if g['tg'] == req['tg']), None)
                 if cur:
@@ -120,6 +122,10 @@ async def main():
         await row.locator('.chip:has-text("Все фоны")').click(); await pg2.wait_for_timeout(400)
         check(any(x.get('action') == 'grant' and x.get('what') == 'tester' for x in log), 'testers grant given separately')
         await dev.screenshot(path='out/owner-dev.png')
+        pg2.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
+        await row.locator('button:has-text("Убрать из списка")').click(); await pg2.wait_for_timeout(300)
+        if await pg2.locator('.dialog:visible').count(): await pg2.locator('.dialog:visible .btn-primary').first.click(); await pg2.wait_for_timeout(400)
+        check(any(x.get('action') == 'forget' and x.get('tg') == '555666' for x in log) and await dev.locator('.grant-row:has-text("Аня")').count() == 0, 'the owner removes a person from the list')
 
         # the owner's panel is framed and colored; the checklist for testers lives in it
         check(await pg2.locator('.role-panel.role-owner .section:has(h2:text("Сайты обжарщиков"))').count() == 1, 'owner tools sit in the colored owner panel')

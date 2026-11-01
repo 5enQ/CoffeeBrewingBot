@@ -6,6 +6,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Added
+- Owner: «Убрать из списка» next to each person in «Разработчики и тестировщики» removes them from the list (all grants and the note go; their brews, card and numbers stay).
 - Bug reports can be handed over for fixing: with the optional GitHub secret `GH_ISSUES_TOKEN`, every bug report (and «есть проблема» answer) in the owner's chat has a button «🛠 Передать на исправление» that opens a GitHub issue `tester-bug` with the text and diagnostics (the tester is anonymous there, screenshots stay in Telegram); the button then turns into a link to the issue.
 
 ### Changed

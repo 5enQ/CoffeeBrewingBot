@@ -349,6 +349,8 @@ export default {
         if (!(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grant(String(body.tg ?? ''), String(body.what ?? ''), body.action === 'grant'))) return json({ error: 'bad grant' }, 400, h);
       } else if (body.action === 'check_add' || body.action === 'check_remove' || body.action === 'check_clear') {
         await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).editChecks(body.action.slice(6) as 'add' | 'remove' | 'clear', body.note, body.what);
+      } else if (body.action === 'forget') {
+        if (!(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).forget(String(body.tg ?? '')))) return json({ error: 'bad id' }, 400, h);
       } else if (body.action === 'note') {
         if (!(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).setNote(String(body.tg ?? ''), String(body.note ?? ''), body.username ? String(body.username) : undefined))) return json({ error: 'bad note' }, 400, h);
       } else if (body.action !== 'list') return json({ error: 'bad action' }, 400, h);

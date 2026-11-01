@@ -277,6 +277,14 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
     if (next) { onChange(next); if (action === 'grant' && id === tg) { setTg(''); setNewNote(''); } platform.haptic('success'); toast(action === 'grant' ? 'Выдано — появится у человека в карточке' : 'Забрано'); }
     else toast('Не получилось — проверьте ID');
   };
+  const forget = async (g: GrantInfo) => {
+    if (!g.tg || !(await platform.confirm(`Убрать ${g.note || g.name || (g.username ? '@' + g.username : g.tg)} из списка? Права и подпись удалятся, заварки и карточка человека останутся.`))) return;
+    setBusy(true);
+    const next = await adminCall({ action: 'forget', tg: g.tg });
+    setBusy(false);
+    if (next) { onChange(next); setEditing(null); platform.haptic('success'); toast('Убрано из списка'); }
+    else toast('Не получилось — нет связи с сервером');
+  };
   const saveNote = async (id: string) => {
     setBusy(true);
     const next = await adminCall({ action: 'note', tg: id, note, username: nick.trim() || undefined });
@@ -304,6 +312,7 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
               <button type="button" className="link-btn grant-sign" onClick={() => { setEditing(editing === g.account ? null : g.account); setNote(g.note ?? ''); setNick(g.username ?? ''); }}>
                 {g.note ? 'Изменить подпись' : 'Подписать'}
               </button>
+              <button type="button" className="link-btn danger grant-forget" disabled={busy} onClick={() => forget(g)}>Убрать из списка</button>
             </div>
             {editing === g.account && g.tg && (
               <div className="grant-edit">

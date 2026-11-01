@@ -83,6 +83,10 @@ cid4 = post('/cards', {'initData': D, 'card': {'name': 'Аня', 'theme': {'spec
 ok(get(f'/cards/{cid4}')['card']['theme'] == {'special': 'beta'}, 'the testers card is shown')
 g = post('/admin', {'initData': A, 'action': 'revoke', 'tg': '444', 'what': 'beta'})
 ok(any(x['tg'] == '444' and x['grants'] == [] for x in g['grants']), 'a signed person stays in the list after their grants are taken away')
+ok(post('/admin', {'initData': C, 'action': 'forget', 'tg': '444'}).get('status') == 403, 'only the owner removes people from the list')
+g = post('/admin', {'initData': A, 'action': 'forget', 'tg': '444'})
+ok(not any(x['tg'] == '444' for x in g['grants']), 'the owner removes a person from the list')
+ok(get(f'/cards/{cid4}').get('card') is not None, 'their card stays (only grants and the note are gone)')
 
 # «Стакан» for 500 liters
 E = sign(557)
@@ -97,6 +101,7 @@ ok(get(f'/cards/{cid6}')['card']['theme'] == {'base': 'paper'}, 'a level above t
 
 # testers: the checklist, answers, reports
 post('/admin', {'initData': A, 'action': 'grant', 'tg': '444', 'what': 'beta'})
+post('/admin', {'initData': A, 'action': 'note', 'tg': '444', 'note': 'Аня, бариста из Kojo'})
 ok(post('/tester', {'initData': C, 'action': 'checks'}).get('status') == 403, 'the tester panel needs the testers grant')
 g = post('/admin', {'initData': A, 'action': 'check_add', 'note': 'Колд брю: бот пишет, когда время вышло'})
 post('/admin', {'initData': A, 'action': 'check_add', 'note': 'Замки кофе/воды/пропорции'})

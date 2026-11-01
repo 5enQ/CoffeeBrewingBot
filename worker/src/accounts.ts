@@ -99,6 +99,14 @@ export class Accounts extends DurableObject<Env> {
       .map((r) => ({ account: r.id, tg: r.subject, grants: JSON.parse(r.grants) as string[], note: r.note ?? undefined, username: r.username ?? undefined, name: r.name ?? undefined }));
   }
 
+  /** Owner: remove a person from the list — all grants and the note go; their brews, card and numbers stay */
+  forget(tg: string) {
+    if (!/^\d{1,20}$/.test(tg)) return false;
+    const row = this.sql.exec<{ account: string }>("SELECT account FROM identity WHERE provider = 'tg' AND subject = ?", tg).toArray()[0];
+    if (row) this.sql.exec("UPDATE account SET grants = '[]', note = NULL WHERE id = ?", row.account);
+    return true;
+  }
+
   /** Owner: a note on a person ("Аня, бариста из Kojo"), and their @username if they never opened the app yet */
   setNote(tg: string, note: string, username?: string) {
     if (!/^\d{1,20}$/.test(tg)) return false;

@@ -3,7 +3,7 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
-## Unreleased
+## v1.4.0 — Testers Update (2026-11-01)
 
 ### Fixed
 - «Фильтр» card background is light filter paper (warm off-white with a faint crepe texture) in any app theme; it used to follow the app card color and was dark in a dark Telegram theme.

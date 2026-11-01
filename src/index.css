@@ -15,6 +15,7 @@
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-num: "SF Pro Display", -apple-system, "Segoe UI", Roboto, sans-serif;
   --r: 14px;
+  --tabbar-h: 66px;
   --inset-top: calc(max(env(safe-area-inset-top, 0px), var(--tg-safe-area-inset-top, 0px)) + var(--tg-content-safe-area-inset-top, 0px));
   --inset-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-safe-area-inset-bottom, 0px));
   --gutter-l: max(16px, env(safe-area-inset-left, 0px));
@@ -1333,12 +1334,13 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .grant-who .grant-forget { justify-self: start; font-size: 13px; padding: 2px 0; }
 
 /* ---------- holiday looks ---------- */
-.holiday-layer, .holiday-snow, .holiday-fireworks { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+.holiday-snow, .holiday-fireworks { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
 .holiday-snow, .holiday-fireworks { width: 100vw; height: 100vh; }
 .holiday-fireworks { z-index: 70; animation: fw-dim 5.2s ease forwards; }
 /* the screen dims a little so the fireworks shine on a light theme too */
 @keyframes fw-dim { 0% { background: rgba(4,8,22,0); } 10%, 75% { background: rgba(4,8,22,0.5); } 100% { background: rgba(4,8,22,0); } }
-.holiday-top { inset: var(--inset-top) 0 auto; height: 96px; overflow: hidden; }
+/* the top decoration is the first block of a page: 34px of its own, the rest hangs down over the title and scrolls away with the page */
+.holiday-top { position: relative; z-index: 21; height: 34px; flex: none; pointer-events: none; overflow-x: clip; overflow-y: visible; }
 .cobweb { position: absolute; top: 0; color: var(--fg); opacity: 0.32; }
 .cobweb line, .cobweb path { stroke: currentColor; stroke-width: 0.9; fill: none; }
 .cobweb.web-l { left: 0; }
@@ -1359,9 +1361,9 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .coffee-branch.branch-m { left: 50%; margin-left: -52px; animation-delay: -4s; }
 @keyframes branch-sway { 0%, 100% { rotate: 0deg; } 50% { rotate: 2.2deg; } }
 
-/* the ground: rests on the top edge of the bottom bar (mobile) or on the window's bottom edge (desktop) */
-.holiday-ground { position: absolute; left: 0; right: 0; bottom: 100%; height: 58px; pointer-events: none; z-index: 0; }
-.holiday-ground.fixed { position: fixed; bottom: 0; z-index: 24; }
+/* the ground: the last block of a tab page; pulled up into the page's bottom padding, rests on the bottom bar when scrolled to the end */
+.holiday-ground { position: relative; height: 58px; flex: none; margin: -108px 0 calc(var(--tabbar-h) + var(--inset-bottom)); pointer-events: none; overflow-x: clip; container-type: inline-size; }
+:root[data-layout="desktop"] .holiday-ground { margin-bottom: 0; }
 .holiday-ground > div { position: absolute; bottom: -1px; display: flex; align-items: flex-end; gap: 2px; }
 .ground-l { left: 10px; }
 .ground-r { right: 10px; }
@@ -1389,16 +1391,10 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .walker .leg { transform-box: view-box; animation: step 0.6s ease-in-out infinite; }
 .walker .l1 { transform-origin: 17px 40px; } .walker .l2 { transform-origin: 23px 40px; animation-delay: -0.3s; }
 .walker .swing { transform-box: view-box; transform-origin: 26px 22px; animation: step 0.6s ease-in-out infinite reverse; }
-@keyframes walk { from { transform: translateX(-60px); } to { transform: translateX(calc(100vw + 20px)); } }
+@keyframes walk { from { transform: translateX(-60px); } to { transform: translateX(calc(100cqw + 20px)); } }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
 @keyframes step { 0%, 100% { transform: rotate(-16deg); } 50% { transform: rotate(16deg); } }
-/* the page leaves room for what hangs at the top and lies at the bottom */
-html[data-holiday] .topbar { padding-top: 34px; }
-html[data-holiday] .content { padding-bottom: 178px; }
-.holiday-ground::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, var(--bg) 8%, color-mix(in srgb, var(--bg) 70%, transparent) 45%, transparent); }
-.holiday-ground.fixed::before { display: none; }
-/* desktop: the decorations keep clear of the sidebar (logo at the top, profile at the bottom) */
-html[data-layout="desktop"] .holiday-top, .holiday-ground.fixed { left: 232px; }
+
 .holiday-card { position: relative; display: grid; gap: 4px; margin: 0 0 14px; padding: 12px 14px 14px; border-radius: 18px; background: var(--card); overflow: hidden; }
 .holiday-card .holiday-text { display: grid; gap: 3px; }
 .holiday-card .holiday-text b { font-size: 16px; }

@@ -1,9 +1,9 @@
 /**
- * Holiday looks (see data/holidays.ts): decorations hanging from the top edge (cobwebs, a garland, coffee branches),
- * lying at the bottom (pumpkins, snowmen, coffee farmers), snow and fireworks over the app, and a greeting card on the brew tab. Nothing takes taps (pointer-events: none) except the card's close button.
+ * Holiday looks (see data/holidays.ts): decorations hanging from the top of each page (cobwebs, a garland, coffee branches)
+ * and lying at the end of each tab page (pumpkins, snowmen, coffee farmers) — they scroll with the page —, snow and fireworks over the app, and a greeting card on the brew tab. Nothing takes taps (pointer-events: none) except the card's close button.
  * All motion stops when the system asks for reduced motion; canvases pause while the app is hidden.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { activeHoliday, bannerHidden, fireworksDue, fireworksShown, hideBanner, type Holiday } from '../data/holidays';
 import { reduceMotion } from './motion';
 import { toast } from './toast';
@@ -41,45 +41,56 @@ export function HolidayLayer() {
   }, [h]);
   return (
     <>
-      {h && <HolidayTop h={h} />}
       {h === 'newyear' && <Snow />}
       {boom && <Fireworks onDone={() => { setBoom(false); toast('С Новым годом! Пусть каждая чашка удаётся ☕'); }} />}
     </>
   );
 }
 
-function useWidth() {
-  const [w, setW] = useState(() => innerWidth);
+/** the width of an element, followed as it changes */
+function useWidth(ref: RefObject<HTMLElement | null>) {
+  const [w, setW] = useState(0);
   useEffect(() => {
-    const on = () => setW(innerWidth);
-    addEventListener('resize', on);
-    return () => removeEventListener('resize', on);
-  }, []);
+    const el = ref.current;
+    if (!el) return;
+    setW(el.clientWidth);
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setW(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
   return w;
 }
 
-/** what hangs from the top edge of the screen (under the Telegram header); fixed, so it stays while the page scrolls */
-function HolidayTop({ h }: { h: Holiday }) {
-  const w = useWidth();
+/**
+ * What hangs from the top of a page (cobwebs, a garland, coffee branches). It is part of the page:
+ * it scrolls away with the content, like the title would without the sticky bar.
+ */
+export function HolidayTop() {
+  const h = useHoliday();
+  const ref = useRef<HTMLDivElement>(null);
+  const w = useWidth(ref);
+  if (!h) return null;
   return (
-    <div className={`holiday-layer holiday-top ${h}`} aria-hidden="true">
-      {h === 'halloween' && <><WebDrape w={w} /><Cobweb className="web-l" /><Cobweb className="web-r" /><Spider /></>}
-      {h === 'newyear' && <TopGarland w={w} />}
+    <div ref={ref} className={`holiday-top ${h}`} aria-hidden="true">
+      {w > 0 && h === 'halloween' && <><WebDrape w={w} /><Cobweb className="web-l" /><Cobweb className="web-r" /><Spider /></>}
+      {w > 0 && h === 'newyear' && <TopGarland w={w} />}
       {h === 'coffeeday' && <><CoffeeBranch className="branch-l" /><CoffeeBranch className="branch-r" flip />{w > 520 && <CoffeeBranch className="branch-m" small />}</>}
     </div>
   );
 }
 
 /**
- * What lies at the bottom of the page: on the bottom bar on the tab pages (mobile), at the window's bottom edge
- * on the desktop. Pumpkins, snowmen, farmers picking coffee.
+ * What lies at the very end of a tab page (pumpkins, snowmen, coffee farmers). Part of the page too: it is seen
+ * when the page is scrolled to the end (or right away on a short page), resting on the bottom bar.
  */
-export function HolidayGround({ fixed = false }: { fixed?: boolean }) {
+export function HolidayGround() {
   const h = useHoliday();
-  const w = useWidth();
+  const ref = useRef<HTMLDivElement>(null);
+  const w = useWidth(ref);
   if (!h) return null;
   return (
-    <div className={`holiday-ground ${h}` + (fixed ? ' fixed' : '')} aria-hidden="true">
+    <div ref={ref} className={`holiday-ground ${h}`} aria-hidden="true">
       {h === 'halloween' && <>
         <div className="ground-l"><Pumpkin size={46} /><Pumpkin size={30} face={false} /><Leaf c="#c8641e" r={-30} /></div>
         {w > 420 && <div className="ground-m"><Leaf c="#a8431c" r={40} /><Pumpkin size={26} face={false} /></div>}

@@ -1,5 +1,5 @@
 import { loadTimer, useTimerSync } from './data/timer';
-import { HolidayGround, HolidayLayer } from './ui/Holiday';
+import { HolidayLayer } from './ui/Holiday';
 import { TabPages, useTabPill } from './ui/motion';
 import { CuppingSetup } from './screens/CuppingSetup';
 import { StoreProvider, useStore } from './data/store';
@@ -134,7 +134,6 @@ function Shell() {
             {stackScreens}
           </section>
         </div>
-        <HolidayGround fixed />
         {overlays}
       </LayoutCtx.Provider>
     );
@@ -146,7 +145,6 @@ function Shell() {
       {stackScreens}
       {top === 0 && (
         <nav className="tabbar" ref={navRef}>
-          <HolidayGround />
           <span className="tab-pill" ref={pillRef} aria-hidden="true" />
           {TABS.map((t) => (
             <button key={t.id} type="button" className={t.id === tab ? 'on' : ''} onClick={() => setTab(t.id)} aria-current={t.id === tab ? 'page' : undefined}>

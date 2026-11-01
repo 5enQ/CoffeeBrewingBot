@@ -16,9 +16,21 @@ describe('card backgrounds', () => {
     expect(tierOf(1000)).toMatchObject({ tier: 'volume', icon: 'v60' });
   });
 
-  it('diamond only for 1000 liters; lower liters tiers and ratings give no background', () => {
-    expect(unlockedThemes(stats({}, 999, 50000)).length).toBe(0);
-    expect(unlockedThemes(stats({}, 1000))[0]).toMatchObject({ key: 'ach:liters', tier: 'diamond', icon: 'drop' });
+  it('liters: «Стакан» at 500 L, the diamond at 1000 L (which also keeps the glass); ratings give no background', () => {
+    expect(unlockedThemes(stats({}, 499, 50000)).length).toBe(0);
+    expect(unlockedThemes(stats({}, 500))).toMatchObject([{ key: 'ach:liters', tier: 'gold', look: 'glass' }]);
+    const both = unlockedThemes(stats({}, 1000));
+    expect(both[0]).toMatchObject({ key: 'ach:liters', tier: 'diamond', icon: 'drop' });
+    expect(both[1]).toMatchObject({ key: 'ach:liters@gold', look: 'glass' });
+  });
+
+  it('the glass chosen with 1000 L: the card shows the glass and no diamond number', () => {
+    const c = buildCard({ ...EMPTY.profile, name: 'Аня', cardTheme: 'ach:liters@gold' }, [], [], stats({}, 1000), 7);
+    expect(c.theme).toEqual({ ach: 'liters', tier: 'gold' });
+    expect(c.no).toBeUndefined();
+    expect(cardView(c).theme).toMatchObject({ tier: 'gold', look: 'glass' });
+    const d = buildCard({ ...EMPTY.profile, name: 'Аня', cardTheme: 'ach:liters' }, [], [], stats({}, 1000), 7);
+    expect(d.no).toBe(7);
   });
 
   it('keeps the achievement of a retired method', () => {

@@ -3,6 +3,24 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
+## v1.4.0 — Testers Update (2026-11-01)
+
+### Fixed
+- «Фильтр» card background is light filter paper (warm off-white with a faint crepe texture) in any app theme; it used to follow the app card color and was dark in a dark Telegram theme.
+- Bot reminder for long timers: the app no longer waits forever when Telegram does not answer the «allow messages» request (some clients stay silent if access was given before) — after 8 s it schedules the reminder anyway. Opening a running cold brew asks the server whether the reminder is there and sets it again if not; pausing on any device cancels it even if it was set on another one.
+
+### Added
+- «Объёмный» (1000 brews of a method) is now a window into space: the card is a portal, and behind it lie layers at different depths — far stars, a nebula, nearer twinkling stars and the constellation — that shift against the tilt (far ones the most), with the rim darkened from inside like the edge of a portal; the card itself no longer turns. The method is drawn as on a star chart: the faint glowing figure of its icon, bright stars at its key points (corners, ends, junctions; bigger where more lines meet, the brightest with small flares) joined by straight lines. Painted once; per frame only transforms and a CSS twinkle change.
+- Card backgrounds rearranged into a 3×3 set with coffee names: light — «Бумажный фильтр» (renamed from «Фильтр»), «Латте», «Цитрус» (new: pale lemon to peach); middle — «Матча», «Ягоды», «Жасмин» (new: cream white with lilac); dark — «Эспрессо», «Каскара» (new: the dried coffee cherry husk, wine red-brown), «Ристретто» (new: near black with a gold crema glow). «Океан» and «Графит» are retired; cards that used them show «Каскара» and «Ристретто».
+- «Стакан» — the achievement background for 500 liters of coffee: the card is a smoky glass with black coffee in it, drawn in volume. Tilting the phone sideways tips the surface (it stays level); tilting it toward you shows the top of the coffee — a glossy plane with a window reflection and ripples; a sharp move throws the liquid (it overshoots, opens the surface and settles). Its own canvas loop: no React renders per frame, nothing drawn while still or off screen, 60 fps in tests. With 1000 liters both the glass and the diamond can be chosen (a lower earned level can be chosen in general); the diamond number shows only on the diamond.
+- The server keeps what happened to each reminder (scheduled, cancelled, sent, or refused with Telegram's reason). The timer screen shows the time the bot will write («в 00:25») or why it could not («бот ещё не может вам писать — откройте чат с ботом и нажмите «Старт»»).
+- Testers' card background «Тестировщик»: a lab blueprint — dark teal with a measuring grid that drifts with the tilt, an amber «BETA» ribbon in the corner, a glowing flask, «β Бета-тестер Brewbook». The owner gives it by Telegram ID like the developers' one (the grants are now «Тестировщик», «Разработчик» and «Все фоны (тест)», each separate).
+- The owner's list of people with grants: a note on each person («Аня, бариста из Kojo», can be typed together with the grant), their Telegram name and an active @username link — filled in by itself when the person opens the app, or typed by the owner if they have not yet. A signed person stays in the list after their grants are taken away.
+- Profile panels framed in color: «Панель владельца» (amber — roaster sites, people and grants, the testers' checklist) and «Панель тестировщика» (teal — for people with the «Тестировщик» grant; the owner has it too).
+- Testers' panel: «Что проверить» — the owner's list for the version under test, each item answered «✓ Работает» or «⚠ Есть проблема» (with a description and a screenshot); «Сообщить об ошибке» — text and a screenshot; «Диагностика» — app and server versions, platform and Telegram version, screen, sync, timer, with «Скопировать отчёт». Everything reaches the owner as a bot message with the tester's name, @username link and the diagnostics line. At most 30 messages a tester a day.
+- Owner: «Что проверить тестировщикам» — add and remove items, see ✓/⚠ counts and who answered what, clear the list for the next version.
+- Profile → «О приложении» → «Сообщения от бота»: sends a test message right now and shows whether it arrived or why Telegram refused.
+
 ## v1.3.3 — Locks & Water (2026-10-31)
 
 ### Added

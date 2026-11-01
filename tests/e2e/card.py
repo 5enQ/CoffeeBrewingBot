@@ -15,12 +15,17 @@ CARDS = {
     'diamond0': card({'ach': 'liters'}, {'liters': {'tier': 'diamond', 'at': 1000}}, no=0),
     'volume1': card({'ach': 'method:aeropress'}, {'method:aeropress': {'tier': 'volume', 'at': 1000}}),
     'espresso1': card({'base': 'espresso'}),
+    'paper1': card({'base': 'paper'}),
     'dev1': {**card({'special': 'dev'}), 'granted': ['dev']},
     'devfake': {**card({'special': 'dev'}), 'granted': []},
+    'beta1': {**card({'special': 'beta'}), 'granted': ['beta']},
+    'betafake': {**card({'special': 'beta'}), 'granted': []},
     # a card whose owner faked a background: no levels from the server → plain card
     'fake1': {**card({'ach': 'method:espresso'}), 'earned': {}},
     # just a name: the card is as small as its content
-    'empty1': {'v': 2, 'name': 'Ilja', 'username': 'memoSintiq', 'badges': [], 'ach': [], 'setup': [], 'theme': {'base': 'graphite'}},
+    'empty1': {'v': 2, 'name': 'Ilja', 'username': 'memoSintiq', 'badges': [], 'ach': [], 'setup': [], 'theme': {'base': 'ristretto'}},
+    # a card saved with a retired background shows the one that replaced it
+    'old1': card({'base': 'ocean'}),
 }
 # what the server counted (it differs from the device on purpose: the app must show the server's numbers)
 SERVER = {'account': 'acc1', 'methods': {'v60': 60, 'kalita': 100}, 'liters': 40, 'ratings': 0, 'at': 1}
@@ -113,8 +118,8 @@ async def main():
         check(any('startapp%3Dp' in s or 'startapp=p' in s or '%23r%3Dp' in s for s in shared), f'share opens Telegram with the card link ({shared[:1]})')
         await pg.evaluate('window.__tgBack()'); await pg.wait_for_timeout(300)
         await V('.my-card-actions button:has-text("Настроить")').click(); await pg.wait_for_timeout(500)
-        for t in ('espresso', 'latte', 'ocean'):
-            await V(f'.theme-pick:has-text("{ {"espresso": "Эспрессо", "latte": "Латте", "ocean": "Океан"}[t] }")').click(); await pg.wait_for_timeout(200)
+        for t in ('espresso', 'latte', 'cascara'):
+            await V(f'.theme-pick:has-text("{ {"espresso": "Эспрессо", "latte": "Латте", "cascara": "Каскара"}[t] }")').click(); await pg.wait_for_timeout(200)
             await pg.evaluate('window.scrollTo(0, 0)'); await pg.wait_for_timeout(150)
             await V('.pcard').first.screenshot(path=str(OUT / f'card-{t}.png'))
         check(not errors, f'no page errors: {errors[:3]}')
@@ -132,7 +137,7 @@ async def main():
         n_icons = await pt.locator('.icon-pick:visible').count()
         check(n_icons >= 10, f'tester: every method icon inside a tier ({n_icons})')
         await pt.locator('.icon-pick:visible[aria-label*="Аэропресс"]').click(); await pt.wait_for_timeout(300)
-        check(await pt.locator('.pcard.tier-volume .pcard-volume').count() >= 1, 'tester: «Объёмный» Аэропресс on the card')
+        check(await pt.locator('.pcard.tier-volume .pcard-constellation').count() >= 1, 'tester: «Объёмный» Аэропресс on the card')
         await pt.locator('.theme-pick:visible:has-text("Бриллиант")').click(); await pt.wait_for_timeout(300)
         SERVER['diamondNo'] = 0
         check(await pt.locator('.pcard.tier-diamond').count() >= 1, 'tester: diamond card')
@@ -143,7 +148,7 @@ async def main():
         # shared cards: silver, gold, diamond (light and dark), espresso
         for dark in (False, True):
             for k in CARDS:
-                if dark and k != 'diamond1': continue
+                if dark and k not in ('diamond1', 'paper1'): continue
                 pv, err = await page(b, init=f"location.hash = '#r=p{k}';", dark=dark)
                 await mock(pv, [])
                 await pv.reload(); await pv.wait_for_timeout(900)
@@ -166,6 +171,17 @@ async def main():
                     for i, ga in enumerate((-20, 20)):
                         await tilt(pv, 0, 0); await pv.wait_for_timeout(50); await tilt(pv, 0, ga); await pv.wait_for_timeout(600)
                         await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-dev-{i}.png'))
+                elif k == 'beta1':
+                    check(await pv.locator('.pcard.special-beta .pcard-ribbon').count() == 1, 'testers background with its ribbon')
+                    await pv.locator('.pcard:visible').screenshot(path=str(OUT / 'card-beta.png'))
+                elif k == 'betafake':
+                    check(await pv.locator('.pcard.special-beta').count() == 0, 'testers background without the server grant is not shown')
+                elif k == 'paper1':
+                    bg = await pv.locator('.pcard:visible').evaluate("e => getComputedStyle(e).color")
+                    check(bg.replace(' ', '') == 'rgb(47,42,35)', f'«Фильтр» is light paper with dark text in any app theme{" (dark)" if dark else ""} ({bg})')
+                    await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-paper{"-dark" if dark else ""}.png'))
+                elif k == 'old1':
+                    check(await pv.locator('.pcard.base-cascara').count() == 1, 'a card saved with «Океан» shows «Каскара»')
                 elif k == 'empty1':
                     h = (await pv.locator('.pcard:visible').bounding_box())['height']
                     check(h < 130, f'an empty card shrinks to its content ({h:.0f}px)')
@@ -186,7 +202,16 @@ async def main():
                         await tilt(pv, 0, 0); await pv.wait_for_timeout(50)
                         await tilt(pv, be, ga); await pv.wait_for_timeout(700)
                         await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-volume-{i}.png'))
-                    check(await pv.locator('.pcard-volume-layer').count() > 10, 'volume card: the method icon is extruded')
+                    nstars = await pv.locator('.pcard-constellation .const-stars circle').count()
+                    nlines = await pv.locator('.pcard-constellation .const-lines line').count()
+                    check(6 <= nstars <= 40 and nlines >= nstars - 3, f'volume card: the method is a constellation of key stars joined by lines ({nstars} stars, {nlines} lines)')
+                    check(await pv.locator('.pcard-portal canvas').count() == 4 and await pv.locator('.pcard-portal .sky.tw').first.evaluate("e => getComputedStyle(e).animationName") == 'twinkle', 'volume card: a starry sky that twinkles')
+                    # a window, not a picture: far layers shift more than near ones when the phone tilts
+                    await tilt(pv, 0, 0); await pv.wait_for_timeout(50); await tilt(pv, 0, 25); await pv.wait_for_timeout(900)
+                    far = await pv.locator('.depth-far').evaluate('e => new DOMMatrix(getComputedStyle(e).transform).m41')
+                    fig = await pv.locator('.depth-figure').evaluate('e => new DOMMatrix(getComputedStyle(e).transform).m41')
+                    check(far < fig < 0 and abs(far) > 1.8 * abs(fig), f'volume card: depth parallax — far stars move {far:.1f}px, the constellation {fig:.1f}px')
+                    await pv.locator('.pcard:visible').screenshot(path=str(OUT / 'card-volume-portal.png'))
                 elif k == 'diamond1':
                     check((await pv.locator('.pcard-no').inner_text()).replace('\n', '') == '№7', 'diamond shows the holder number')
                     for i, (be, ga) in enumerate([(0, 0), (8, -18), (-10, 20)]):

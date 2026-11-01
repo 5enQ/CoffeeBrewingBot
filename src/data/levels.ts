@@ -32,7 +32,17 @@ export function earnedLevels(s: Stats): Record<string, Level> {
 }
 
 /** Card backgrounds: every method tier, and diamond for liters. Other achievements are badges only. */
-export const givesBackground = (key: string, tier: Tier) => key.startsWith('method:') || (key === 'liters' && tier === 'diamond');
+/** liters give two backgrounds: «Стакан» (a glass of black coffee) at 500 L and the diamond at 1000 L */
+export const givesBackground = (key: string, tier: Tier) => key.startsWith('method:') || (key === 'liters' && (tier === 'gold' || tier === 'diamond'));
+/** how a background looks when it is not the plain metal of its tier */
+export const backgroundLook = (key: string, tier: Tier): 'glass' | undefined => (key === 'liters' && tier === 'gold' ? 'glass' : undefined);
+/** a background of a lower level than the one earned may be chosen too (1000 L also opens the glass) */
+export const levelUpTo = (levels: Level[], earned: Level | undefined, tier: Tier | undefined): Level | undefined => {
+  if (!earned) return undefined;
+  if (!tier) return earned;
+  const l = levels.find((x) => x.tier === tier);
+  return l && l.at <= earned.at ? l : undefined;
+};
 
 /* ---------- counting rules (the server applies them; the app uses them for its offline estimate) ---------- */
 

@@ -9,6 +9,8 @@ SITES = [
     {'host': 'newroaster.ru', 'roaster': '', 'status': 'pending', 'added': 0, 'requests': 3, 'sample': 'https://newroaster.ru/coffee/kenya', 'crawled': None, 'crawling': False, 'pages': {}, 'lots': {}},
 ]
 GRANTS = []
+CHECKS = []
+TESTER_LOG = []
 TG = """window.Telegram = { WebApp: {
   initData: 'query_id=x&user=%7B%22id%22%3A111%7D&auth_date=1&hash=abc', initDataUnsafe: { user: { id: 111, first_name: 'Owner', username: 'owner' } },
   version: '6.0', platform: 'tdesktop', colorScheme: 'light', themeParams: {}, isVersionAtLeast: (v) => parseFloat(v) <= 6.0,
@@ -29,7 +31,21 @@ async def mock(pg, admin_log=None):
                 cur = next((g for g in GRANTS if g['tg'] == req['tg']), None)
                 if cur: cur['grants'].append(req['what'])
                 else: GRANTS.append({'account': 'x' + req['tg'], 'tg': req['tg'], 'grants': [req['what']]})
-            body = {'sites': SITES, 'grants': GRANTS}
+            if req.get('action') == 'note':
+                cur = next((g for g in GRANTS if g['tg'] == req['tg']), None)
+                if cur:
+                    cur['note'] = req.get('note') or None
+                    if req.get('username'): cur['username'] = req['username'].lstrip('@')
+            if req.get('action') == 'check_add': CHECKS.append({'id': f'c{len(CHECKS)}', 'text': req['note'], 'ok': 0, 'bug': 0, 'answers': []})
+            body = {'sites': SITES, 'grants': GRANTS, 'checks': CHECKS}
+        elif '/me' in u or '/brews' in u:
+            body = {'account': 'acc', 'at': 1, 'methods': {}, 'liters': 0, 'ratings': 0, 'grants': ['dev', 'beta', 'tester']}
+        elif '/tester' in u:
+            req = json.loads(route.request.post_data or '{}'); TESTER_LOG.append(req)
+            if req.get('action') == 'answer':
+                for c in CHECKS:
+                    if c['id'] == req['item']: c['mine'] = req['state']; c[req['state']] += 1
+            body = {'ok': True} if req.get('action') == 'report' else {'checks': [{k: v for k, v in c.items() if k != 'answers'} for c in CHECKS]}
         else: return await route.continue_()
         await route.fulfill(status=200, content_type='application/json', body=json.dumps(body))
     await pg.route('**/*', handle)
@@ -82,13 +98,47 @@ async def main():
         check(await dev.count() == 1, 'owner sees the developers and testers section')
         await pg2.fill('#dev-grant-id', '55 5x666')
         check(await pg2.input_value('#dev-grant-id') == '555666', 'only digits in the Telegram ID field')
-        await dev.locator('.site-actions button:has-text("Фон разработчика")').click(); await pg2.wait_for_timeout(400)
+        await pg2.fill('#dev-grant-note', 'Аня, бариста')
+        await dev.locator('.site-actions button:has-text("Разработчик")').click(); await pg2.wait_for_timeout(500)
         check(any(x.get('action') == 'grant' and x.get('tg') == '555666' and x.get('what') == 'dev' for x in log), 'developers background granted on its own')
         row = dev.locator('.grant-row:has-text("555666")')
-        check(await row.count() == 1 and await row.locator('.chip.on').all_inner_texts() == ['Фон разработчика'], 'the person appears with only that grant')
+        check(await row.count() == 1 and await row.locator('.chip.on').all_inner_texts() == ['Разработчик'], 'the person appears with only that grant')
+        check(any(x.get('action') == 'note' and x.get('tg') == '555666' and x.get('note') == 'Аня, бариста' for x in log), 'the note typed with the grant is saved')
+        check('Аня, бариста' in await row.locator('.grant-who b').inner_text(), 'the person is shown by the note')
+        await row.locator('button:has-text("Изменить подпись")').click(); await pg2.wait_for_timeout(200)
+        await pg2.fill('#grant-note-555666', 'Аня, бариста из Kojo'); await pg2.fill('#grant-nick-555666', '@anya_k')
+        await row.locator('.grant-edit button:has-text("Сохранить")').click(); await pg2.wait_for_timeout(400)
+        row = dev.locator('.grant-row:has-text("Аня, бариста из Kojo")')
+        link = row.locator('.grant-who a')
+        check(await link.count() == 1 and await link.get_attribute('href') == 'https://t.me/anya_k', 'with a @username the person has an active Telegram link')
+        await row.locator('.chip:has-text("Тестировщик")').click(); await pg2.wait_for_timeout(400)
+        check(any(x.get('action') == 'grant' and x.get('what') == 'beta' for x in log), 'testers background given')
         await row.locator('.chip:has-text("Все фоны")').click(); await pg2.wait_for_timeout(400)
         check(any(x.get('action') == 'grant' and x.get('what') == 'tester' for x in log), 'testers grant given separately')
         await dev.screenshot(path='out/owner-dev.png')
+
+        # the owner's panel is framed and colored; the checklist for testers lives in it
+        check(await pg2.locator('.role-panel.role-owner .section:has(h2:text("Сайты обжарщиков"))').count() == 1, 'owner tools sit in the colored owner panel')
+        await pg2.fill('#check-new', 'Колд брю: бот пишет, когда время вышло')
+        await pg2.locator('button:has-text("Добавить пункт")').click(); await pg2.wait_for_timeout(400)
+        check(any(x.get('action') == 'check_add' for x in log), 'the owner adds an item for testers')
+        # the tester panel (the owner has the testers grant too): reload so it fetches the list
+        await pg2.reload(); await pg2.wait_for_timeout(800)
+        await pg2.click('.tabbar >> text=Профиль'); await pg2.wait_for_timeout(800)
+        tp = pg2.locator('.role-panel.role-tester')
+        check(await tp.count() == 1, 'the tester panel is shown with the testers grant')
+        row = tp.locator('.check-row:has-text("Колд брю")')
+        await row.locator('button:has-text("Работает")').click(); await pg2.wait_for_timeout(400)
+        a = next((x for x in TESTER_LOG if x.get('action') == 'answer'), {})
+        check(a.get('state') == 'ok' and 'Приложение' in a.get('context', ''), 'the tester marks it working; the report carries diagnostics')
+        check(await row.locator('.chip.on:has-text("Работает")').count() == 1, 'the answer is shown as chosen')
+        await pg2.fill('#bug-report', 'Кнопка «Свернуть» не видна на маленьком экране')
+        await tp.locator('.section:has(h2:text("Сообщить об ошибке")) button:has-text("Отправить")').click(); await pg2.wait_for_timeout(400)
+        check(any(x.get('action') == 'report' and 'Свернуть' in x.get('text', '') for x in TESTER_LOG), 'a bug report is sent')
+        diag = await tp.locator('.diag').inner_text()
+        check('Платформа' in diag and 'tdesktop' in diag and 'Приложение' in diag, 'diagnostics show the platform and versions')
+        await tp.screenshot(path='out/tester-panel.png')
+        await pg2.locator('.role-panel.role-owner').screenshot(path='out/owner-panel.png')
         check(any(x.get('action') == 'approve' and x.get('host') == 'newroaster.ru' and x.get('roaster') == 'Новый обжарщик' for x in log), 'approve request sent with the roaster name')
         check(not errors2, f'no page errors in Telegram mode: {errors2[:3]}')
         await b.close()

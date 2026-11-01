@@ -14,7 +14,7 @@
  * so a rating "on someone else's behalf" cannot be forged, and a repeated rating replaces the previous one.
  */
 import { DurableObject } from 'cloudflare:workers';
-import { Accounts } from './accounts';
+import { Accounts, sendReminder } from './accounts';
 import { CoffeeCatalog, cleanCoffee, keysFor, type Found, type SiteStatus } from './catalog';
 import { fetchPage } from './fetch';
 import { PARSER_VERSION, parsePage } from './parse';
@@ -62,7 +62,9 @@ export async function verifyInitData(initData: string, botToken: string, maxAgeS
   if (!authDate || Date.now() / 1000 - authDate > maxAgeSec) return null;
   try {
     const user = JSON.parse(params.get('user') ?? 'null');
-    return user && user.id ? { id: String(user.id) } : null;
+    if (!user || !user.id) return null;
+    const name = [user.first_name, user.last_name].filter(Boolean).join(' ').slice(0, 64);
+    return { id: String(user.id), username: typeof user.username === 'string' ? user.username : undefined, name: name || undefined };
   } catch { return null; }
 }
 
@@ -249,7 +251,7 @@ export default {
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
-      if (url.pathname === '/me') return json(await accounts().me('tg', user.id), 200, h);
+      if (url.pathname === '/me') return json(await accounts().me('tg', user.id, { username: user.username, name: user.name }), 200, h);
       if (url.pathname === '/brews') {
         const list = Array.isArray(body.brews) ? body.brews.slice(0, 500) : [];
         const brews = list.map((b: Record<string, unknown>) => ({ id: String(b?.id ?? '').slice(0, 40), m: String(b?.m ?? '').slice(0, 40), w: Number(b?.w) || 0, t: Number(b?.t) || 0 }))
@@ -262,13 +264,50 @@ export default {
       return json({ id: await accounts().putCard('tg', user.id, data) }, 200, h);
     }
 
+    // ---- testers: the checklist, answers on it, bug reports to the owner ----
+    if (req.method === 'POST' && url.pathname === '/tester') {
+      let body: { initData?: string; action?: string; item?: string; state?: string; text?: string; image?: string; context?: string };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      const acc = accounts();
+      const me = await acc.tester('tg', user.id);
+      if (!me) return json({ error: 'forbidden' }, 403, h);
+      const context = String(body.context ?? '').slice(0, 800);
+      const text = String(body.text ?? '').trim().slice(0, 3000);
+      if (body.action === 'answer') {
+        const state = body.state === 'ok' ? 'ok' : body.state === 'bug' ? 'bug' : null;
+        if (!state) return json({ error: 'bad state' }, 400, h);
+        if (!(await acc.spendReport(me.account))) return json({ error: 'too many' }, 429, h);
+        const item = await acc.checkAnswer(me.account, String(body.item ?? ''), state, text || undefined);
+        if (!item) return json({ error: 'no such item' }, 404, h);
+        await toOwners(env, `${state === 'ok' ? '✅' : '⚠️'} ${me.label}\n«${item}» — ${state === 'ok' ? 'работает' : 'есть проблема'}${text ? `\n\n${text}` : ''}${context ? `\n\n— ${context}` : ''}`, decodeImage(body.image));
+        return json({ checks: await acc.checks(me.account) }, 200, h);
+      }
+      if (body.action === 'report') {
+        if (!text) return json({ error: 'empty' }, 400, h);
+        if (!(await acc.spendReport(me.account))) return json({ error: 'too many' }, 429, h);
+        const sent = await toOwners(env, `🐞 Ошибка · ${me.label}\n\n${text}${context ? `\n\n— ${context}` : ''}`, decodeImage(body.image));
+        return sent ? json({ ok: true }, 200, h) : json({ error: 'telegram refused' }, 502, h);
+      }
+      return json({ checks: await acc.checks(me.account) }, 200, h);
+    }
+
     // ---- bot reminder when a long timer ends ----
     if (req.method === 'POST' && url.pathname === '/reminders') {
-      let body: { initData?: string; at?: unknown; title?: unknown; link?: unknown; cancel?: unknown };
+      let body: { initData?: string; at?: unknown; title?: unknown; link?: unknown; cancel?: unknown; status?: unknown; test?: unknown };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
       if (body.cancel) return json({ ok: await accounts().cancelReminder('tg', user.id) }, 200, h);
+      if (body.status) return json({ ok: true, ...(await accounts().reminderStatus('tg', user.id)) }, 200, h);
+      // "can the bot write to me?": a message right away, Telegram's answer comes back as is
+      if (body.test) {
+        const link = String(body.link ?? '');
+        if (!/^https:\/\/t\.me\/[A-Za-z0-9_]+(\/[A-Za-z0-9_]+)?\?startapp=timer$/.test(link)) return json({ error: 'bad link' }, 400, h);
+        const res = await sendReminder(env.BOT_TOKEN, user.id, '', link, '☕ Проверка: так бот напишет, когда долгий таймер (колд брю) закончится.');
+        return json(res, 200, h);
+      }
       const at = Number(body.at), now = Date.now();
       const title = String(body.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Заварка';
       const link = String(body.link ?? '');
@@ -284,7 +323,7 @@ export default {
     }
 
     if (req.method === 'POST' && url.pathname === '/admin') {
-      let body: { initData?: string; action?: string; host?: string; roaster?: string; tg?: string; what?: string };
+      let body: { initData?: string; action?: string; host?: string; roaster?: string; tg?: string; what?: string; note?: string; username?: string };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
@@ -297,8 +336,13 @@ export default {
       } else if (body.action === 'recrawl') await catalog.recrawl(host);
       else if (body.action === 'grant' || body.action === 'revoke') {
         if (!(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grant(String(body.tg ?? ''), String(body.what ?? ''), body.action === 'grant'))) return json({ error: 'bad grant' }, 400, h);
+      } else if (body.action === 'check_add' || body.action === 'check_remove' || body.action === 'check_clear') {
+        await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).editChecks(body.action.slice(6) as 'add' | 'remove' | 'clear', body.note, body.what);
+      } else if (body.action === 'note') {
+        if (!(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).setNote(String(body.tg ?? ''), String(body.note ?? ''), body.username ? String(body.username) : undefined))) return json({ error: 'bad note' }, 400, h);
       } else if (body.action !== 'list') return json({ error: 'bad action' }, 400, h);
-      return json({ sites: await catalog.sites(), crawl: await catalog.usage(), grants: await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).grantList() }, 200, h);
+      const accs = env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all'));
+      return json({ sites: await catalog.sites(), crawl: await catalog.usage(), grants: await accs.grantList(), checks: await accs.checks() }, 200, h);
     }
 
     if (req.method === 'POST' && url.pathname === '/share') {
@@ -345,6 +389,36 @@ async function prepareMessage(token: string, userId: string, title: string, text
 const publicFound = (f: Found) => ({ source: 'catalog', id: f.id, coffee: f.coffee, confirms: f.confirms, state: f.state, link: f.url });
 
 const owners = (env: Env) => (env.OWNER_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+
+/** a screenshot sent as a data URL (jpeg/png, at most ~3 MB) */
+function decodeImage(data?: string): { bytes: Uint8Array; type: string } | null {
+  const m = (data ?? '').match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+  if (!m || m[2].length > 4_200_000) return null;
+  const bin = atob(m[2]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { bytes, type: m[1] };
+}
+
+/** A message (and a screenshot) from the bot to the owner(s). true — Telegram took it for at least one owner */
+async function toOwners(env: Env, text: string, image: { bytes: Uint8Array; type: string } | null): Promise<boolean> {
+  const api = `https://api.telegram.org/bot${env.BOT_TOKEN}`;
+  const res = await Promise.all(owners(env).map(async (id) => {
+    try {
+      const r = await fetch(`${api}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: Number(id), text: text.slice(0, 4000), link_preview_options: { is_disabled: true } }) });
+      const ok = ((await r.json()) as { ok: boolean }).ok;
+      if (image) {
+        const form = new FormData();
+        form.set('chat_id', id);
+        form.set('photo', new Blob([image.bytes], { type: image.type }), 'screenshot.' + image.type.split('/')[1]);
+        await fetch(`${api}/sendPhoto`, { method: 'POST', body: form }).catch(() => null);
+      }
+      return ok;
+    } catch { return false; }
+  }));
+  return res.some(Boolean);
+}
 
 /** Tell the owner that a scan hit a site that is not connected yet */
 async function notifyOwners(env: Env, url: string) {

@@ -1,0 +1,23 @@
+name: Test branch checks
+
+# The version under test: types, unit tests and a build. Deploys nothing (see README → Branches, releases and versions).
+on:
+  push:
+    branches: [test]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -b
+      - run: npm test
+      - run: npm run build
+      - name: Server types
+        working-directory: worker
+        run: npm ci && npm run typecheck

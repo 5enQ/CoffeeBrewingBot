@@ -19,11 +19,51 @@ async function call(body: Record<string, unknown>): Promise<boolean> {
 }
 
 let asked: boolean | null = null;
-/** ask once per session whether the bot may write (Telegram shows its own dialog only if it has to) */
+/**
+ * Ask once per session whether the bot may write (Telegram shows its own dialog only if it has to).
+ * Some clients never answer when access was given before: after 8 s we go on — the server reports
+ * a refusal from Telegram anyway (see reminderStatus).
+ */
 async function writeAccess(): Promise<boolean> {
   if (asked !== null) return asked;
-  asked = platform.requestWriteAccess ? await platform.requestWriteAccess() : false;
+  if (!platform.requestWriteAccess) return (asked = false);
+  const answer = await Promise.race([platform.requestWriteAccess(), new Promise<null>((r) => setTimeout(() => r(null), 8000))]);
+  asked = answer !== false; // null (no answer) — try anyway
   return asked;
+}
+
+export interface ReminderStatus {
+  pending: { at: number; title: string } | null;
+  last: { at: number; state: 'scheduled' | 'cancelled' | 'sent' | 'failed'; detail: string | null; ts: number } | null;
+}
+
+/** what the server holds: the pending reminder and what happened to the last one */
+export async function reminderStatus(): Promise<ReminderStatus | null> {
+  const initData = platform.initData();
+  if (!RATINGS_API || !initData) return null;
+  try {
+    const r = await fetch(`${RATINGS_API}/reminders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, status: true }) });
+    return r.ok ? await r.json() as ReminderStatus : null;
+  } catch { return null; }
+}
+
+/** a test message from the bot right now; error — Telegram's answer ("bot was blocked by the user"…) */
+export async function testReminder(): Promise<{ ok: boolean; error?: string }> {
+  const initData = platform.initData();
+  if (!RATINGS_API || !initData) return { ok: false, error: 'Работает только в Telegram' };
+  await writeAccess();
+  try {
+    const r = await fetch(`${RATINGS_API}/reminders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, test: true, link: timerLink() }) });
+    return r.ok ? await r.json() : { ok: false, error: `сервер ответил ${r.status}` };
+  } catch { return { ok: false, error: 'нет связи с сервером' }; }
+}
+
+/** a Telegram refusal in words a person understands */
+export function explainRefusal(detail?: string | null): string {
+  const d = (detail ?? '').toLowerCase();
+  if (d.includes('blocked')) return 'бот заблокирован — разблокируйте его в чате с ботом';
+  if (d.includes("can't initiate") || d.includes('chat not found') || d.includes('forbidden')) return 'бот ещё не может вам писать — откройте чат с ботом и нажмите «Старт»';
+  return detail || 'Telegram не принял сообщение';
 }
 
 /** schedule "your brew is ready" at epoch ms `at` */

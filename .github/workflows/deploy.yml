@@ -69,3 +69,23 @@ jobs:
           git config user.name "release-bot"; git config user.email "release-bot@users.noreply.github.com"
           git tag -a "$V" -m "$TITLE"
           git push origin "$V"
+
+  # Bugs fixed in dev (label claude-fixed in the private bug repository) are closed once the release is out
+  close-fixed-bugs:
+    needs: deploy
+    runs-on: ubuntu-latest
+    env:
+      GH_ISSUES_TOKEN: ${{ secrets.GH_ISSUES_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Close the released bug reports
+        if: env.GH_ISSUES_TOKEN != ''
+        run: |
+          V=$(node scripts/release-info.mjs version)
+          REPO=5enQ/brewbook-bugs
+          H=(-H "Authorization: Bearer $GH_ISSUES_TOKEN" -H "Accept: application/vnd.github+json")
+          for n in $(curl -sS "${H[@]}" "https://api.github.com/repos/$REPO/issues?state=open&labels=claude-fixed&per_page=100" | jq -r '.[] | select(.pull_request | not) | .number'); do
+            curl -sS "${H[@]}" -X POST "https://api.github.com/repos/$REPO/issues/$n/comments" -d "{\"body\":\"Исправление вышло в версии v$V.\"}" > /dev/null
+            curl -sS "${H[@]}" -X PATCH "https://api.github.com/repos/$REPO/issues/$n" -d '{"state":"closed","state_reason":"completed"}' > /dev/null
+            echo "closed #$n"
+          done

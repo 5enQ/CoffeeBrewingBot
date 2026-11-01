@@ -432,7 +432,9 @@ async function toOwners(env: Env, text: string, image: { bytes: Uint8Array; type
         const form = new FormData();
         form.set('chat_id', id);
         form.set('photo', new Blob([image.bytes], { type: image.type }), 'screenshot.' + image.type.split('/')[1]);
-        await fetch(`${api}/sendPhoto`, { method: 'POST', body: form }).catch(() => null);
+        const sent = await fetch(`${api}/sendPhoto`, { method: 'POST', body: form }).then((x) => x.json() as Promise<{ ok: boolean; result?: { photo?: { file_id: string }[] } }>).catch(() => null);
+        const fileId = sent?.result?.photo?.at(-1)?.file_id;
+        if (fileId && reportId) await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).setReportPhoto(reportId, fileId);
       }
       return ok;
     } catch { return false; }
@@ -462,30 +464,47 @@ async function ensureWebhook(env: Env, origin: string) {
   } catch (e) { console.log('webhook setup failed', e); }
 }
 
-/** the owner pressed «Передать на исправление»: open a GitHub issue with the report (no personal data — the repo is public) */
+/** the screenshot from Telegram, saved as a file in the private bug repository; returns its link for the issue */
+async function saveScreenshot(env: Env, rid: string, fileId: string): Promise<string | null> {
+  try {
+    const f = await (await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}`)).json() as { result?: { file_path?: string } };
+    if (!f.result?.file_path) return null;
+    const bytes = new Uint8Array(await (await fetch(`https://api.telegram.org/file/bot${env.BOT_TOKEN}/${f.result.file_path}`)).arrayBuffer());
+    let bin = '';
+    for (let k = 0; k < bytes.length; k += 0x8000) bin += String.fromCharCode(...bytes.subarray(k, k + 0x8000));
+    const path = `screenshots/${new Date().toISOString().slice(0, 10)}-${rid}.jpg`;
+    const res = await fetch(`https://api.github.com/repos/${env.GH_REPO}/contents/${path}`, {
+      method: 'PUT', headers: gh(env),
+      body: JSON.stringify({ message: `Screenshot for report ${rid}`, content: btoa(bin) }),
+    });
+    if (!res.ok) { console.log('screenshot not saved', res.status, await res.text()); return null; }
+    return `https://github.com/${env.GH_REPO}/blob/HEAD/${path}?raw=true`;
+  } catch (e) { console.log('screenshot error', e); return null; }
+}
+
+const gh = (env: Env) => ({ Authorization: `Bearer ${env.GH_ISSUES_TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'brewbook-worker', 'Content-Type': 'application/json' });
+
+/** the owner pressed «Передать на исправление»: open an issue in the private bug repository */
 async function handOver(env: Env, rid: string): Promise<{ url?: string; error?: string }> {
   if (!env.GH_ISSUES_TOKEN || !env.GH_REPO) return { error: 'не настроен GitHub-токен' };
   const acc = env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all'));
   const r = await acc.report(rid);
   if (!r) return { error: 'отчёт не найден' };
   if (r.issue) return { url: r.issue };
+  const shot = r.photo_id ? await saveScreenshot(env, rid, r.photo_id) : null;
   const first = r.text.split('\n')[0].slice(0, 70);
-  const title = r.kind === 'check' ? `Проверка «${(r.item ?? '').slice(0, 50)}»: ${first}` : `Ошибка от тестировщика: ${first}`;
+  const title = r.kind === 'check' ? `Проверка «${(r.item ?? '').slice(0, 50)}»: ${first}` : `Ошибка: ${first}`;
   const body = [
     r.kind === 'check' ? `**Пункт проверки:** ${r.item}\n\n**Что не так:**` : '**Что случилось:**',
     r.text,
     '',
     `**Диагностика:** ${r.context || '—'}`,
     `**Тестировщик:** ${r.tester} · ${new Date(r.ts).toISOString().slice(0, 16).replace('T', ' ')} UTC`,
-    r.photo ? '**Скриншот:** приложен к сообщению у владельца в Telegram.' : '',
+    shot ? `\n**Скриншот:**\n\n![скриншот](${shot})` : r.photo ? '**Скриншот:** был приложен, но не сохранился — он есть у владельца в Telegram.' : '',
     '',
-    '_Отчёт передан владельцем из Telegram. Исправление собирается в ветке `dev`._',
+    '_Передано владельцем из Telegram. Исправление собирается в ветке `dev` репозитория CoffeeBrewingBot._',
   ].filter((x) => x !== '').join('\n');
-  const res = await fetch(`https://api.github.com/repos/${env.GH_REPO}/issues`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${env.GH_ISSUES_TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'brewbook-worker', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, body, labels: ['tester-bug'] }),
-  });
+  const res = await fetch(`https://api.github.com/repos/${env.GH_REPO}/issues`, { method: 'POST', headers: gh(env), body: JSON.stringify({ title, body, labels: ['tester-bug'] }) });
   const j = await res.json() as { html_url?: string; message?: string };
   if (!res.ok || !j.html_url) { console.log('issue failed', res.status, j.message); return { error: j.message ?? `GitHub ${res.status}` }; }
   await acc.setReportIssue(rid, j.html_url);

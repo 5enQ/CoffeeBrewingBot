@@ -15,7 +15,7 @@ _Nothing right now._ Unreleased work is in the changelog.
 
 ## Next
 
-- **Bug reports → fixes.** In dev, not released yet: the owner's «Передать на исправление» button opens a GitHub issue (`tester-bug`). The token `GH_ISSUES_TOKEN` is set. A daily scheduled check (20:34 MSK) fixes open `tester-bug` issues in `dev`, labels them `claude-fixed` or `needs-owner` and reports to the owner; until the release there are no issues to pick up.
+- **Bug reports → fixes.** In dev, not released yet: the button opens issues in the private `5enQ/brewbook-bugs` (names and screenshots inside); the webhook is registered before a report with the button is sent (the first try failed: it was never registered). A daily scheduled check (20:34 MSK) fixes `tester-bug` issues in `dev`; the release closes the `claude-fixed` ones. After the release: send a test report, press the button, see the issue appear with the screenshot.
 
 ## Ideas
 

@@ -103,6 +103,12 @@ async def main():
         check('Comandante C40 Nitro' in [g['name'] for g in lb['gear']], 'gear rename synced')
         names = {g['name'] for x in lb['brews'] if x['id'].startswith('brew') for g in (x.get('gear') or []) if g['id'] == 'g0'}
         check(names == {'Comandante C40'}, f'old brews keep the gear name they were brewed with ({names})')
+        # "sync now" is a real button and reports how it ended (issue #2)
+        await B.click('.tabbar >> text=Профиль'); await B.wait_for_timeout(300)
+        btn = B.locator('button.btn:visible:has-text("Синхронизировать сейчас")')
+        check(await btn.count() == 1, '"sync now" is a button')
+        await btn.click(); await B.wait_for_timeout(1500)
+        check(await B.locator('.snack:has-text("Синхронизировано")').count() == 1, '"sync now" shows the result')
         check(not ea and not eb, f'no page errors: {(ea + eb)[:3]}')
         await b.close()
     done()

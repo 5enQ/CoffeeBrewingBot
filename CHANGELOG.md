@@ -7,6 +7,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ### Fixed
 - «Передать на исправление» did nothing: the bot's webhook was never registered (it was set only when the owner opened their panel). The worker now makes sure the webhook is there before it sends a report with the button, and logs whether Telegram accepted it.
+- Sync could hang in «Синхронизация…» for good (seen on Telegram Desktop for macOS): a CloudStorage call whose callback never came back blocked every later sync. Each cloud call now gives up after 20 s, the sync ends with an error and is retried later. «Синхронизировать сейчас» is a real button now: it shows «Синхронизация…» while working and a toast with the result when done.
 
 ## v1.5.0 — Holidays & Hand-over (2026-11-01)
 

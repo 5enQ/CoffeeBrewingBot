@@ -412,6 +412,16 @@ function ServerVersionRow() {
 /** Sync between devices via Telegram's cloud */
 function SyncSection() {
   const { sync, syncNow } = useStore();
+  // pressed by hand — say how it ended
+  const [asked, setAsked] = useState(false);
+  const busy = sync.state === 'syncing';
+  useEffect(() => {
+    if (!asked || busy) return;
+    setAsked(false);
+    if (sync.state === 'idle') { platform.haptic('success'); toast('Синхронизировано'); }
+    else if (sync.state === 'error') { platform.haptic('error'); toast(sync.error ?? 'Не удалось синхронизировать'); }
+  }, [asked, busy, sync.state, sync.error]);
+  const now = () => { platform.haptic('light'); setAsked(true); syncNow(); };
   if (sync.state === 'off') {
     if (platform.kind !== 'telegram') return null;
     return (
@@ -434,7 +444,9 @@ function SyncSection() {
           <small>Занято {kb(sync.usage.chars)} из {kb(CLOUD_LIMITS.keys * CLOUD_LIMITS.value)} КБ · ключей {sync.usage.keys} из {CLOUD_LIMITS.keys}</small>
         </div>
       )}
-      <Row label="Синхронизировать сейчас" onClick={sync.state === 'syncing' ? undefined : syncNow} chevron={false} />
+      <div className="site-actions">
+        <Button kind="secondary" icon="reset" disabled={busy} onClick={now}>{busy ? 'Синхронизация…' : 'Синхронизировать сейчас'}</Button>
+      </div>
     </Section>
   );
 }

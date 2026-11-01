@@ -32,6 +32,30 @@ interface LocalState { applied: Record<string, string>; usage?: SyncUsage; at?: 
 
 export class CloudFullError extends Error {}
 
+/** A single cloud call may take this long. Some clients (seen on Telegram Desktop for macOS) never call
+ *  the CloudStorage callback back — without a limit the sync would hang in «syncing» forever. */
+export const CALL_TIMEOUT = 20_000;
+
+export class CloudTimeoutError extends Error {}
+
+/** Reject if the promise is not settled within `ms` */
+export function withTimeout<T>(p: Promise<T>, ms = CALL_TIMEOUT): Promise<T> {
+  return new Promise<T>((res, rej) => {
+    const t = setTimeout(() => rej(new CloudTimeoutError(`cloud call timed out after ${ms} ms`)), ms);
+    p.then((v) => { clearTimeout(t); res(v); }, (e) => { clearTimeout(t); rej(e); });
+  });
+}
+
+/** The same storage, but every call gives up after `ms` */
+export function timed(cloud: CloudKV, ms = CALL_TIMEOUT): CloudKV {
+  return {
+    getItems: (keys) => withTimeout(cloud.getItems(keys), ms),
+    setItem: (key, value) => withTimeout(cloud.setItem(key, value), ms),
+    removeItems: (keys) => withTimeout(cloud.removeItems(keys), ms),
+    getKeys: () => withTimeout(cloud.getKeys(), ms),
+  };
+}
+
 const partKey = (name: string, i: number) => `${name}_${i}`;
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 const split = (s: string, n: number) => range(Math.ceil(s.length / n) || 1).map((i) => s.slice(i * n, (i + 1) * n));
@@ -43,9 +67,9 @@ export class CloudSync {
   private cloud: CloudKV;
   private local: { get(k: string): Promise<string | null>; set(k: string, v: string): Promise<void> };
 
-  constructor(cloud: CloudKV, local: { get(k: string): Promise<string | null>; set(k: string, v: string): Promise<void> }) {
-    this.cloud = cloud;
-    this.local = local;
+  constructor(cloud: CloudKV, local: { get(k: string): Promise<string | null>; set(k: string, v: string): Promise<void> }, ms = CALL_TIMEOUT) {
+    this.cloud = timed(cloud, ms);
+    this.local = { get: (k) => withTimeout(local.get(k), ms), set: (k, v) => withTimeout(local.set(k, v), ms) };
   }
 
   async init() {

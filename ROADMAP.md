@@ -27,7 +27,7 @@ _Nothing agreed yet._
 
 ## To check
 
-- **Bot reminder when a cold brew ends** — never seen live yet: start a cold brew in Telegram, allow messages from the bot, wait for the message (or pause/resume to re-arm it).
+- **Bot reminder when a cold brew ends** — did not arrive on 2026-11-01 (the server never had it scheduled: no alarm ran). Fixed in dev (no hang on the write-access request, self-repair, status on the server). After the release: Profile → «О приложении» → «Сообщения от бота» must say «Работает», then a real cold brew must bring the message.
 - **Rockets (rockets.coffee) crawl rules** — the site could not be opened from the build environment; check the lot count in Profile → «Сайты обжарщиков» and adjust the rules if pages are missing or merch slipped in.
 - **Owner tools** need the GitHub secret `OWNER_TELEGRAM_ID`; confirm it is set (Profile shows «Сайты обжарщиков» and «Разработчики и тестировщики» only to the owner).
 

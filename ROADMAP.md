@@ -15,7 +15,7 @@ _Nothing right now._ Unreleased work is in the changelog.
 
 ## Next
 
-- **Bug reports → fixes.** Code is in dev: the owner's «Передать на исправление» button opens a GitHub issue (`tester-bug`). Needs: the GitHub secret `GH_ISSUES_TOKEN` (fine-grained, this repo, Issues read/write), a release, then a regular Claude check of open `tester-bug` issues that fixes them in `dev` (a scheduled task — to be set up once the token exists).
+- **Bug reports → fixes.** In dev, not released yet: the owner's «Передать на исправление» button opens a GitHub issue (`tester-bug`). The token `GH_ISSUES_TOKEN` is set. A daily scheduled check (20:34 MSK) fixes open `tester-bug` issues in `dev`, labels them `claude-fixed` or `needs-owner` and reports to the owner; until the release there are no issues to pick up.
 
 ## Ideas
 

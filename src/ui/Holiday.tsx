@@ -3,7 +3,7 @@
  * and lying at the end of each tab page (pumpkins, snowmen, coffee farmers) — they scroll with the page —, snow and fireworks over the app, and a greeting card on the brew tab. Nothing takes taps (pointer-events: none) except the card's close button.
  * All motion stops when the system asks for reduced motion; canvases pause while the app is hidden.
  */
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
 import { activeHoliday, bannerHidden, fireworksDue, fireworksShown, hideBanner, type Holiday } from '../data/holidays';
 import { reduceMotion } from './motion';
 import { toast } from './toast';
@@ -144,22 +144,79 @@ function TopGarland({ w }: { w: number }) {
   );
 }
 
-/** a coffee branch growing from the top edge: leaves in pairs and clusters of cherries, swaying a little */
-function CoffeeBranch({ className, small = false, flip = false }: { className: string; small?: boolean; flip?: boolean }) {
-  const nodes = [[30, 8], [64, 15], [98, 21], [130, 25]];
+/* ---------- coffee plant parts, shared by the branches, the shrubs and the card ---------- */
+
+const LEAF = ['#2f6b3d', '#3d8049', '#357443'];
+
+/** a coffee leaf: glossy, pointed, with a pale midrib; it grows from (x, y) in the direction a (degrees) */
+function leaf(x: number, y: number, a: number, len: number, key: string | number, shade = 0) {
+  const w = len * 0.28;
   return (
-    <svg className={'coffee-branch ' + className} viewBox="0 0 160 52" width={small ? 104 : 160} height={small ? 34 : 52}>
-      <g transform={flip ? 'matrix(-1 0 0 1 160 0)' : undefined}>
-      <path d="M0 2 C40 6 90 18 156 27" stroke="#6b4a2b" strokeWidth="2.6" fill="none" strokeLinecap="round" />
-      {nodes.map(([x, y], i) => (
+    <g key={key} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${a.toFixed(1)})`}>
+      <path d={`M0 0 C${len * 0.22} ${-w} ${len * 0.68} ${-w} ${len} 0 C${len * 0.68} ${w} ${len * 0.22} ${w} 0 0 Z`} fill={LEAF[shade % 3]} />
+      <path d={`M${len * 0.06} 0 L${len * 0.86} 0`} stroke="#9cc79a" strokeWidth={0.3 + len / 40} opacity="0.55" />
+    </g>
+  );
+}
+
+/** a cluster of cherries right on the branch, in the leaf axils (as coffee grows); one in four is still yellow */
+function cherries(x: number, y: number, r: number, key: string | number, n = 4) {
+  const at = [[0, 0], [r * 1.6, r * 0.5], [-r * 1.5, r * 0.6], [r * 0.4, r * 1.7], [-r * 1.0, r * 1.9]].slice(0, n);
+  return (
+    <g key={key}>
+      {at.map(([dx, dy], i) => (
         <g key={i}>
-          <ellipse cx={x - 4} cy={y - 6} rx="12" ry="4.6" transform={`rotate(${-18 + i * 4} ${x - 4} ${y - 6})`} fill={i % 2 ? '#2f6b3d' : '#3d8049'} />
-          <ellipse cx={x + 3} cy={y + 9} rx="13" ry="4.8" transform={`rotate(${30 - i * 4} ${x + 3} ${y + 9})`} fill={i % 2 ? '#3d8049' : '#2f6b3d'} />
-          {i > 0 && [[-1, 3], [4, 5], [-5, 6], [1, 8]].map(([dx, dy], k) => (
-            <circle key={k} cx={x + dx} cy={y + dy} r="3.1" fill={(i + k) % 4 === 3 ? '#e8a23a' : '#c7332b'} stroke="#8e2019" strokeWidth="0.6" />
-          ))}
+          <circle cx={x + dx} cy={y + dy} r={r} fill={i === 2 ? '#e8a23a' : '#c7332b'} stroke={i === 2 ? '#b8781f' : '#8e2019'} strokeWidth="0.5" />
+          <circle cx={x + dx - r * 0.35} cy={y + dy - r * 0.35} r={r * 0.3} fill="#fff" opacity="0.35" />
         </g>
       ))}
+    </g>
+  );
+}
+
+/** a coffee shrub standing at (x, y) (the foot of the trunk), h tall: opposite side branches that droop a little, leaves in pairs, cherries along the branches */
+function Shrub({ x, y, h }: { x: number; y: number; h: number }) {
+  const out: ReactElement[] = [], fruit: ReactElement[] = [];
+  const L = h * 0.2;
+  for (let i = 0; i < 4; i++) {
+    const py = y - h * (0.28 + i * 0.19), len = h * (0.4 - i * 0.065);
+    for (const side of [-1, 1]) {
+      const ex = x + side * len, ey = py + len * 0.22, th = (Math.atan2(ey - py, ex - x) * 180) / Math.PI;
+      out.push(<path key={`b${i}${side}`} d={`M${x} ${py} Q${x + side * len * 0.5} ${py - 1} ${ex} ${ey}`} stroke="#6b4a2b" strokeWidth={Math.max(1, h / 45)} fill="none" strokeLinecap="round" />);
+      for (const t of [0.45, 1]) {
+        const lx = x + (ex - x) * t, ly = py + (ey - py) * t;
+        out.push(leaf(lx, ly, th - 42, L * (t === 1 ? 0.9 : 1), `l${i}${side}${t}a`, i + 1));
+        out.push(leaf(lx, ly, th + 42, L * (t === 1 ? 0.85 : 1), `l${i}${side}${t}b`, i));
+      }
+      if (i < 3) fruit.push(cherries(x + (ex - x) * 0.45, py + (ey - py) * 0.45 + h * 0.03, h * 0.04, `c${i}${side}`, i === 0 ? 5 : 4));
+    }
+  }
+  const top = y - h;
+  out.push(leaf(x, top + 2, -62, L * 0.9, 'ta', 1), leaf(x, top + 2, -118, L * 0.9, 'tb', 0));
+  return (
+    <g>
+      <path d={`M${x} ${y} L${x} ${top + 2}`} stroke="#6b4a2b" strokeWidth={Math.max(1.6, h / 24)} strokeLinecap="round" />
+      {out}{fruit}
+    </g>
+  );
+}
+
+/** a coffee branch growing from the top edge: leaves in pairs at the nodes, cherries hanging in clusters under them, swaying a little */
+function CoffeeBranch({ className, small = false, flip = false }: { className: string; small?: boolean; flip?: boolean }) {
+  // the branch is the curve (0,3) → (156,28) with the control point (70,6)
+  const at = (t: number) => {
+    const x = 2 * (1 - t) * t * 70 + t * t * 156, y = (1 - t) * (1 - t) * 3 + 2 * (1 - t) * t * 6 + t * t * 28;
+    const dx = 2 * (1 - t) * 70 + 2 * t * (156 - 70), dy = 2 * (1 - t) * (6 - 3) + 2 * t * (28 - 6);
+    return { x, y, a: (Math.atan2(dy, dx) * 180) / Math.PI };
+  };
+  const nodes = [0.24, 0.46, 0.68, 0.87].map(at), tip = at(1);
+  return (
+    <svg className={'coffee-branch ' + className} viewBox="0 0 176 64" width={small ? 114 : 176} height={small ? 41 : 64}>
+      <g transform={flip ? 'matrix(-1 0 0 1 176 0)' : undefined}>
+        <path d="M0 3 Q70 6 156 28" stroke="#6b4a2b" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+        {nodes.map((n, i) => [leaf(n.x, n.y, n.a - 40, 24 - i, `u${i}`, i), leaf(n.x, n.y, n.a + 44, 26 - i, `d${i}`, i + 1)])}
+        {leaf(tip.x, tip.y, tip.a - 20, 17, 'tu', 1)}{leaf(tip.x, tip.y, tip.a + 24, 15, 'td', 0)}
+        {nodes.map((n, i) => cherries(n.x, n.y + 3.2, 3, `c${i}`, i === 0 ? 3 : i === 3 ? 4 : 5))}
       </g>
     </svg>
   );
@@ -199,26 +256,23 @@ function Gift() {
   );
 }
 
-/** a farmer at a coffee shrub: the arm goes up to the cherries and back down to the basket */
+/** a farmer at a coffee shrub: the arm goes up into the shrub for a cherry and down to the basket at the waist */
 function Picker({ flip = false }: { flip?: boolean }) {
   return (
-    <svg className={'picker' + (flip ? ' flip' : '')} viewBox="0 0 90 64" width="79" height="56">
-      {/* the shrub */}
-      <path d="M66 64 C66 52 67 40 65 26" stroke="#6b4a2b" strokeWidth="3" fill="none" />
-      {[[58, 26, -30], [72, 22, 30], [56, 38, -40], [76, 36, 35], [60, 50, -25], [74, 50, 30], [66, 16, 0]].map(([x, y, a], i) => (
-        <ellipse key={i} cx={x} cy={y} rx="9" ry="4" transform={`rotate(${a} ${x} ${y})`} fill={i % 2 ? '#2f6b3d' : '#3d8049'} />
-      ))}
-      {[[62, 30], [70, 28], [60, 42], [72, 42], [66, 34], [64, 54]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="2.6" fill={i % 3 === 2 ? '#e8a23a' : '#c7332b'} />)}
-      {/* the farmer */}
-      <g transform="translate(28 0)">
-        <path d="M-6 44 l-3 20 M6 44 l3 20" stroke="#4a3b2a" strokeWidth="5" strokeLinecap="round" />
-        <path d="M-10 22 Q0 17 10 22 L12 46 L-12 46 Z" fill="#3f7cac" />
-        <path d="M-9 26 Q-17 34 -12 42" stroke="#3f7cac" strokeWidth="5" fill="none" strokeLinecap="round" />
-        <path d="M-22 36 h15 l-2 12 h-11 z" fill="#a8743d" /><path d="M-20 40 h11" stroke="#7d5229" strokeWidth="1" />
-        <circle cx="-17" cy="36" r="2" fill="#c7332b" /><circle cx="-13" cy="35.5" r="2" fill="#c7332b" />
-        <g className="pick-arm"><path d="M8 25 Q20 22 28 26" stroke="#3f7cac" strokeWidth="5" fill="none" strokeLinecap="round" /><circle cx="30" cy="26" r="3" fill="#c4875a" /></g>
-        <circle cx="0" cy="13" r="6.5" fill="#c4875a" />
-        <ellipse cx="0" cy="7" rx="15" ry="3.6" fill="#e6c27a" /><path d="M-8 6.5 Q0 -4 8 6.5 Z" fill="#d4ad5f" /><path d="M-8 6 h16" stroke="#9a3b2a" strokeWidth="1.6" />
+    <svg className={'picker' + (flip ? ' flip' : '')} viewBox="0 0 112 64" width="98" height="56">
+      <Shrub x={76} y={64} h={56} />
+      <path d="M22 44 L20 62 M30 44 L32 62" stroke="#4a3b2a" strokeWidth="5" strokeLinecap="round" />
+      <path d="M17 22 Q26 18 35 22 L36 46 L16 46 Z" fill="#3f7cac" />
+      <path d="M17 24 Q13 34 18 42" stroke="#3f7cac" strokeWidth="4.6" fill="none" strokeLinecap="round" />
+      <circle cx="19" cy="43" r="2.5" fill="#c4875a" />
+      <path d="M30 21 L41 34" stroke="#7d5229" strokeWidth="1.4" />
+      <path d="M31 33 h14 l-2 12 h-10 z" fill="#a8743d" /><path d="M32 37 h12 M32.6 41 h10.8" stroke="#7d5229" strokeWidth="0.9" />
+      {[[34, 32.4], [37.6, 31.8], [41.2, 32.4]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="2" fill={i === 1 ? '#e8a23a' : '#c7332b'} />)}
+      <circle cx="26" cy="13.5" r="6.5" fill="#c4875a" />
+      <ellipse cx="26" cy="8.6" rx="14" ry="3" fill="#e6c27a" /><path d="M19 8.4 Q26 -2 33 8.4 Z" fill="#d4ad5f" /><path d="M19.6 7.4 h12.8" stroke="#9a3b2a" strokeWidth="1.5" />
+      <g className="pick-arm">
+        <path d="M31 24 L48 24" stroke="#3f7cac" strokeWidth="4.6" strokeLinecap="round" />
+        <circle cx="50.5" cy="24" r="2.7" fill="#c4875a" />
       </g>
     </svg>
   );
@@ -240,14 +294,15 @@ function Walker() {
   return (
     <div className="walker">
       <svg viewBox="0 0 40 60" width="34" height="51">
-        <path className="leg l1" d="M17 40 l-2 19" stroke="#3b3b4a" strokeWidth="4.5" strokeLinecap="round" />
-        <path className="leg l2" d="M23 40 l2 19" stroke="#3b3b4a" strokeWidth="4.5" strokeLinecap="round" />
-        <rect x="4" y="18" width="12" height="16" rx="2" fill="#9a6a3a" /><path d="M5 23 h10 M5 28 h10" stroke="#7d5229" strokeWidth="1" />
-        <circle cx="7" cy="17" r="2.2" fill="#c7332b" /><circle cx="11" cy="16" r="2.2" fill="#c7332b" /><circle cx="14" cy="17.5" r="2.2" fill="#e8a23a" />
-        <path d="M12 18 h14 l3 24 h-20 z" fill="#c9503b" />
-        <path className="swing" d="M26 22 q4 8 2 14" stroke="#c9503b" strokeWidth="4.5" fill="none" strokeLinecap="round" />
-        <circle cx="21" cy="11" r="6" fill="#b97a4e" />
-        <ellipse cx="21" cy="5.5" rx="12" ry="3" fill="#d9b268" /><path d="M15 5 Q21 -4 27 5 Z" fill="#c9a055" />
+        <path className="leg l1" d="M18 40 L17 58" stroke="#3b3b4a" strokeWidth="4.5" strokeLinecap="round" />
+        <path className="leg l2" d="M24 40 L25 58" stroke="#3b3b4a" strokeWidth="4.5" strokeLinecap="round" />
+        <path d="M4 19 h12 l-1.5 17 h-9 z" fill="#9a6a3a" /><path d="M4.6 25 h11 M5.2 30.5 h9.8" stroke="#7d5229" strokeWidth="0.9" />
+        {[[6.8, 18], [10.2, 17.2], [13.6, 18]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="2" fill={i === 1 ? '#e8a23a' : '#c7332b'} />)}
+        <path d="M13 18 Q21 14 29 18 L29.5 41 L12.5 41 Z" fill="#c9503b" />
+        <path d="M15 19 L23 29" stroke="#7d5229" strokeWidth="1.4" />
+        <g className="swing"><path d="M25.5 21 L27.5 33" stroke="#c9503b" strokeWidth="4.4" strokeLinecap="round" /><circle cx="27.8" cy="35" r="2.3" fill="#b97a4e" /></g>
+        <circle cx="22" cy="11" r="6" fill="#b97a4e" />
+        <ellipse cx="22" cy="6.4" rx="12.5" ry="2.8" fill="#d9b268" /><path d="M16 6.2 Q22 -3 28 6.2 Z" fill="#c9a055" /><path d="M16.6 5.3 h10.8" stroke="#8a3b2a" strokeWidth="1.3" />
       </svg>
     </div>
   );
@@ -449,8 +504,6 @@ function Garland() {
  * between them the coffee travels as a trail of beans.
  */
 export function CoffeeDayScene() {
-  const cherries = [[96, 52], [104, 60], [88, 66], [112, 48], [100, 74], [118, 64], [84, 54], [108, 80]];
-  const leaves = [[92, 46, -30], [110, 42, 25], [80, 60, -50], [120, 56, 40], [96, 70, -20], [114, 74, 30], [86, 80, -40], [104, 88, 10], [124, 84, 50]];
   return (
     <svg viewBox="0 0 340 140" className="coffee-scene" role="img" aria-label="Фермер собирает кофе, бариста варит кофе">
       <defs>
@@ -461,7 +514,7 @@ export function CoffeeDayScene() {
       <circle cx="54" cy="30" r="14" fill="#ffd98a" opacity="0.8" />
       {/* hills of the farm */}
       <path d="M0 98 C40 70 90 74 140 90 C170 98 190 104 200 110 L200 140 L0 140 Z" fill="#9cc27f" />
-      <path d="M0 112 C50 92 110 96 170 116 L170 140 L0 140 Z" fill="#7aa964" />
+      <path d="M0 112 C50 92 110 96 170 110 C184 113 194 116 200 118 L200 140 L0 140 Z" fill="#7aa964" />
       {/* the second farmer on the hill, with a basket on the back */}
       <g transform="translate(150 78) scale(0.55)">
         <ellipse cx="0" cy="-30" rx="13" ry="3.5" fill="#d9b268" /><path d="M-7 -31 Q0 -42 7 -31 Z" fill="#c9a055" />
@@ -471,9 +524,7 @@ export function CoffeeDayScene() {
         <path d="M-6 5 l-2 16 M6 5 l2 16" stroke="#3b3b4a" strokeWidth="5" strokeLinecap="round" />
       </g>
       {/* coffee shrub with ripe cherries */}
-      <path d="M102 112 C100 96 103 80 100 60" stroke="#6b4a2b" strokeWidth="4" fill="none" strokeLinecap="round" />
-      {leaves.map(([x, y, a], i) => <ellipse key={i} cx={x} cy={y} rx="9" ry="4.2" transform={`rotate(${a} ${x} ${y})`} fill={i % 2 ? '#2f6b3d' : '#3d8049'} />)}
-      {cherries.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="3.3" fill={i % 4 === 3 ? '#e8a23a' : '#c7332b'} stroke="#8e2019" strokeWidth="0.6" />)}
+      <Shrub x={104} y={114} h={70} />
       {/* the farmer: straw hat, reaching for the shrub, basket on the hip */}
       <g transform="translate(52 64)">
         <ellipse cx="0" cy="-14" rx="20" ry="5" fill="#e6c27a" /><path d="M-10 -15 Q0 -30 10 -15 Z" fill="#d4ad5f" /><path d="M-10 -16 h20" stroke="#9a3b2a" strokeWidth="2" />
@@ -499,14 +550,18 @@ export function CoffeeDayScene() {
         <circle cx="0" cy="-10" r="8" fill="#e0b08a" />
         <path d="M-13 0 Q0 -6 13 0 L15 46 L-15 46 Z" fill="#f4f1ea" />
         <path d="M-10 6 h20 l2 40 h-24 z" fill="#2c6a4c" /><path d="M-7 6 v-8 M7 6 v-8" stroke="#2c6a4c" strokeWidth="2" />
-        <path d="M-12 6 Q-28 10 -34 0" stroke="#f4f1ea" strokeWidth="7" fill="none" strokeLinecap="round" />
-        {/* kettle */}
-        <path d="M-50 -10 h16 v14 a4 4 0 0 1 -4 4 h-8 a4 4 0 0 1 -4 -4 z" fill="#c9d1d6" />
-        <path d="M-50 -6 Q-60 -8 -62 -18" stroke="#c9d1d6" strokeWidth="2.4" fill="none" strokeLinecap="round" />
-        <path d="M-34 -6 q6 0 6 6" stroke="#8a969c" strokeWidth="2" fill="none" />
+        <path d="M-12 6 Q-18 6 -21 1" stroke="#f4f1ea" strokeWidth="7" fill="none" strokeLinecap="round" />
       </g>
+      {/* the gooseneck kettle in the barista's hand: the handle on the right, the long thin spout rises from the bottom
+          of the body and bends down; the stream falls from its tip straight into the dripper */}
+      <path d="M266 53 C274 52 275 65 267 66" stroke="#5f6a70" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+      <path d="M246 53 h20 l1.6 13 a3 3 0 0 1 -3 3.4 h-17.2 a3 3 0 0 1 -3 -3.4 z" fill="#c9d1d6" />
+      <path d="M246.6 57 h19.4" stroke="#aeb8be" strokeWidth="0.8" />
+      <ellipse cx="256" cy="53" rx="10.5" ry="2" fill="#b4bec4" /><circle cx="256" cy="50.4" r="1.7" fill="#5f6a70" />
+      <path d="M246 65 C240 64.5 238.5 56 237.5 49 C236.8 44 233.4 43.6 232.8 47.6" stroke="#c9d1d6" strokeWidth="2.3" fill="none" strokeLinecap="round" />
+      <circle cx="271" cy="60" r="3.4" fill="#e0b08a" />
       {/* dripper over a glass server, the stream and steam */}
-      <path d="M232 46 C231 56 232 66 233 72" stroke="#8a5a36" strokeWidth="1.2" fill="none" />
+      <path d="M232.9 49 L233 72" stroke="#8a5a36" strokeWidth="1.1" fill="none" strokeLinecap="round" />
       <path d="M220 72 h26 l-9 14 h-8 z" fill="#efe8dc" stroke="#cbbfae" strokeWidth="1" />
       <path d="M223 88 h20 v18 a3 3 0 0 1 -3 3 h-14 a3 3 0 0 1 -3 -3 z" fill="#dfe9ee" opacity="0.8" stroke="#b9c8cf" strokeWidth="1" />
       <path d="M224 96 h18 v10 a2 2 0 0 1 -2 2 h-14 a2 2 0 0 1 -2 -2 z" fill="url(#cd-cup)" />

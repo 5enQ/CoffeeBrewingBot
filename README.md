@@ -131,6 +131,11 @@ Achievements, card backgrounds and diamond numbers are decided on the server, so
 - **Grants** are given by hand, each separately: `dev` — the developers' background «Разработчик»; `tester` — every background at every level for testing (diamond shows № 0, real numbers are not taken). The owner gives or takes them away by Telegram ID in Profile → «Разработчики и тестировщики» (`POST /admin` actions `grant` / `revoke` with `what`). Accounts whose Telegram ID is in `OWNER_TELEGRAM_ID` have both automatically. A shared card shows a grant-only background only if the account has the grant.
 - Outside Telegram (no account) the app shows its own estimate with the same rules; such a card cannot be shared.
 
+## Testers and bug reports
+
+- The «Тестировщик» grant opens the testers' panel in Profile: the owner's checklist («✓ Работает» / «⚠ Есть проблема»), «Сообщить об ошибке» with a screenshot, and diagnostics (app/server/Telegram versions, platform, system, screen, sync). Reports reach the owner as bot messages (`POST /tester`), at most 30 a tester a day.
+- **Hand-over for fixing (optional).** With the GitHub secret `GH_ISSUES_TOKEN` (a fine-grained token for this repository only, permission *Issues: read and write*) the worker deploy stores it as a worker secret, and each bug report in the owner's chat gets a button «🛠 Передать на исправление». Pressing it opens a GitHub issue labelled `tester-bug` with the report and diagnostics; the tester is named only by an anonymous code (the repository is public), screenshots stay in Telegram. The bot webhook (`POST /tg`, verified by a secret derived from the bot token, button presses only) is registered automatically the next time the owner opens their panel. The fixes are made in `dev` and released with the next version.
+
 ## Coffee catalog
 
 A shared catalog of coffee lots on the server — the basis for a future global coffee rating.

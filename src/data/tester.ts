@@ -4,7 +4,6 @@
  */
 import { RATINGS_API } from '../config';
 import { platform } from '../platform';
-import { loadTimer, elapsedOf } from './timer';
 
 export interface CheckItem {
   id: string; text: string; ok: number; bug: number;
@@ -40,16 +39,30 @@ export interface Diag { label: string; value: string }
 
 /** what a tester's report carries, and what the diagnostics block shows */
 export function diagnostics(extra: { server?: string; sync?: string } = {}): Diag[] {
-  const t = loadTimer();
   return [
     { label: 'Приложение', value: appVersion() },
     { label: 'Сервер', value: extra.server ?? '…' },
     { label: 'Платформа', value: platform.clientInfo?.() ?? platform.kind },
     { label: 'Экран', value: `${window.innerWidth}×${window.innerHeight} · ${Math.round(devicePixelRatio * 10) / 10}x · ${matchMedia('(prefers-color-scheme: dark)').matches ? 'тёмная тема' : 'светлая тема'}` },
+    { label: 'Система', value: systemOf(navigator.userAgent) },
     { label: 'Синхронизация', value: extra.sync ?? '—' },
-    { label: 'Таймер', value: t ? `${t.draft.methodId} · ${Math.round(elapsedOf(t) / 60)} из ${Math.round(t.total / 60)} мин${t.startedAt === null ? ' · пауза' : ''}${t.remind ? ' · напоминание' : ''}` : 'нет' },
-    { label: 'Браузер', value: navigator.userAgent.replace(/\s*\([^)]*\)\s*/g, ' ').slice(0, 120) },
   ];
+}
+
+/**
+ * The system and the built-in browser the app runs in, short: «Android 14 · WebView 130», «iOS 17.5», «Windows · Chrome 130».
+ * Useful when something looks wrong only on some phones; nothing personal is in it.
+ */
+export function systemOf(ua: string): string {
+  const android = ua.match(/Android (\d+(?:\.\d+)?)/);
+  const ios = ua.match(/(?:iPhone|iPad|iPod).*? OS (\d+)[_.](\d+)/) ?? (/Macintosh/.test(ua) && /Mobile\//.test(ua) ? ua.match(/Version\/(\d+)\.(\d+)/) : null);
+  const chrome = ua.match(/Chrome\/(\d+)/);
+  if (android) return `Android ${android[1]}${chrome ? ` · ${/; wv\)|Version\/\d/.test(ua) ? 'WebView' : 'Chrome'} ${chrome[1]}` : ''}`;
+  if (ios) return `iOS ${ios[1]}.${ios[2]}`;
+  const os = /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'другая система';
+  const browser = ua.match(/(Edg|Firefox|Chrome|Version)\/(\d+)/);
+  const name = browser ? ({ Edg: 'Edge', Firefox: 'Firefox', Chrome: 'Chrome', Version: 'Safari' } as Record<string, string>)[browser[1]] : '';
+  return browser ? `${os} · ${name} ${browser[2]}` : os;
 }
 
 let server = '';
@@ -59,7 +72,7 @@ export function setDiagExtra(v: { server?: string; sync?: string }) { if (v.serv
 
 /** one line for the owner's message */
 export function diagLine() {
-  return diagnostics({ server, sync }).filter((d) => d.label !== 'Браузер').map((d) => `${d.label}: ${d.value}`).join(' · ');
+  return diagnostics({ server, sync }).map((d) => `${d.label}: ${d.value}`).join(' · ');
 }
 
 export const diagText = () => diagnostics({ server, sync }).map((d) => `${d.label}: ${d.value}`).join('\n');

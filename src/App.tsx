@@ -1,4 +1,5 @@
 import { loadTimer, useTimerSync } from './data/timer';
+import { HolidayLayer } from './ui/Holiday';
 import { TabPages, useTabPill } from './ui/motion';
 import { CuppingSetup } from './screens/CuppingSetup';
 import { StoreProvider, useStore } from './data/store';
@@ -105,7 +106,7 @@ function Shell() {
       <DepthCtx.Provider value={i + 1}>{renderRoute(r)}</DepthCtx.Provider>
     </div>
   ));
-  const overlays = <><DialogHost /><AchievementToast /><ToastHost /></>;
+  const overlays = <><HolidayLayer /><DialogHost /><AchievementToast /><ToastHost /></>;
 
   if (mode === 'desktop') {
     return (

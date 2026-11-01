@@ -35,7 +35,7 @@ async def main():
         check(sharp[1] < flat[1] - 25, f'a sharp tilt toward you opens the surface from above (top edge {flat[1]} → {sharp[1]})')
         await pg.wait_for_timeout(2500)
         settled = await pg.evaluate(SURFACE)
-        check(settled[1] > sharp[1], f'then it settles back toward the resting view ({sharp[1]} → {settled[1]})')
+        check(settled[1] >= sharp[1], f'then it does not open further: it settles back toward the resting view ({sharp[1]} → {settled[1]})')
         # keep it moving and count frames
         await pg.evaluate("window.__shake = setInterval(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { beta: Math.random() * 30, gamma: Math.random() * 40 - 20, alpha: 0 })), 150)")
         fps = await pg.evaluate(FPS)

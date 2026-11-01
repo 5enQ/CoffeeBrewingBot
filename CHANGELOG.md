@@ -6,6 +6,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Changed
+- Holiday looks dress the whole screen: decorations hang from the top edge (under the Telegram header) and lie on the bottom bar, and both stay in place while the page scrolls. Halloween — cobwebs across the top with the spider, jack-o'-lanterns with flickering candles and fallen leaves at the bottom; New Year — a garland of blinking lights across the top, snowmen on a snowdrift (one waves) and a gift at the bottom, snow keeps falling; Coffee Day — coffee branches with leaves and red and yellow cherries swaying at the top, farmers picking cherries into baskets, another walking across with a full basket and sacks of coffee at the bottom. The page leaves room for them, so nothing is hidden for good; on the desktop they keep clear of the sidebar.
 - Handed-over bug reports go to the private repository `brewbook-bugs`: the issue names the tester (note, name, @username) and shows the screenshot, which is copied there from Telegram. After a release the deploy closes the fixed ones («Исправление вышло в версии vX»).
 - A report with a screenshot comes as one message: the photo with the report as its caption and «Передать на исправление» under it (a report longer than a caption goes as text first). Before, the screenshot came separately and could not be handed over with the report (brewbook-bugs: CoffeeBrewingBot#3).
 

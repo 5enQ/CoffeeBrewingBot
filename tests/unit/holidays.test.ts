@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { activeHoliday, fireworksDue, fireworksShown, holidayOn, setPreview } from '../../src/data/holidays';
+import { activeHoliday, bannerHidden, fireworksDue, fireworksShown, hideBanner, holidayOn, setPreview } from '../../src/data/holidays';
 
 const d = (m: number, day: number, y = 2026, h = 12) => new Date(y, m - 1, day, h);
 
@@ -35,5 +35,12 @@ describe('holiday windows: a couple of days before and after', () => {
     expect(activeHoliday(d(10, 31))).toBeNull();
     setPreview('auto');
     expect(activeHoliday(d(10, 31))).toBe('halloween');
+  });
+  it('a closed greeting stays closed for this holiday this year, and comes back next year', () => {
+    expect(bannerHidden('newyear', d(12, 31, 2026))).toBe(false);
+    hideBanner('newyear', d(12, 31, 2026));
+    expect(bannerHidden('newyear', d(1, 2, 2027))).toBe(true);    // the same New Year window
+    expect(bannerHidden('newyear', d(12, 31, 2027))).toBe(false); // the next one
+    expect(bannerHidden('halloween', d(10, 31, 2026))).toBe(false);
   });
 });

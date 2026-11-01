@@ -1,6 +1,6 @@
 /**
- * Holiday looks (see data/holidays.ts): a light overlay over the whole app (cobwebs, snow, fireworks)
- * and a greeting card on the brew tab. Nothing takes taps (pointer-events: none) except the card's close button.
+ * Holiday looks (see data/holidays.ts): decorations hanging from the top edge (cobwebs, a garland, coffee branches),
+ * lying at the bottom (pumpkins, snowmen, coffee farmers), snow and fireworks over the app, and a greeting card on the brew tab. Nothing takes taps (pointer-events: none) except the card's close button.
  * All motion stops when the system asks for reduced motion; canvases pause while the app is hidden.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -33,12 +33,212 @@ export function HolidayLayer() {
     window.addEventListener('brewbook-fireworks', on);
     return () => window.removeEventListener('brewbook-fireworks', on);
   }, [h]);
+  // the page gets room at the bottom so the last rows are not hidden behind the ground decoration
+  useEffect(() => {
+    const root = document.documentElement;
+    if (h) root.dataset.holiday = h; else delete root.dataset.holiday;
+    return () => { delete root.dataset.holiday; };
+  }, [h]);
   return (
     <>
-      {h === 'halloween' && <div className="holiday-layer halloween" aria-hidden="true"><Cobweb className="web-l" /><Cobweb className="web-r" /><Spider /></div>}
+      {h && <HolidayTop h={h} />}
       {h === 'newyear' && <Snow />}
       {boom && <Fireworks onDone={() => { setBoom(false); toast('С Новым годом! Пусть каждая чашка удаётся ☕'); }} />}
     </>
+  );
+}
+
+function useWidth() {
+  const [w, setW] = useState(() => innerWidth);
+  useEffect(() => {
+    const on = () => setW(innerWidth);
+    addEventListener('resize', on);
+    return () => removeEventListener('resize', on);
+  }, []);
+  return w;
+}
+
+/** what hangs from the top edge of the screen (under the Telegram header); fixed, so it stays while the page scrolls */
+function HolidayTop({ h }: { h: Holiday }) {
+  const w = useWidth();
+  return (
+    <div className={`holiday-layer holiday-top ${h}`} aria-hidden="true">
+      {h === 'halloween' && <><WebDrape w={w} /><Cobweb className="web-l" /><Cobweb className="web-r" /><Spider /></>}
+      {h === 'newyear' && <TopGarland w={w} />}
+      {h === 'coffeeday' && <><CoffeeBranch className="branch-l" /><CoffeeBranch className="branch-r" flip />{w > 520 && <CoffeeBranch className="branch-m" small />}</>}
+    </div>
+  );
+}
+
+/**
+ * What lies at the bottom of the page: on the bottom bar on the tab pages (mobile), at the window's bottom edge
+ * on the desktop. Pumpkins, snowmen, farmers picking coffee.
+ */
+export function HolidayGround({ fixed = false }: { fixed?: boolean }) {
+  const h = useHoliday();
+  const w = useWidth();
+  if (!h) return null;
+  return (
+    <div className={`holiday-ground ${h}` + (fixed ? ' fixed' : '')} aria-hidden="true">
+      {h === 'halloween' && <>
+        <div className="ground-l"><Pumpkin size={46} /><Pumpkin size={30} face={false} /><Leaf c="#c8641e" r={-30} /></div>
+        {w > 420 && <div className="ground-m"><Leaf c="#a8431c" r={40} /><Pumpkin size={26} face={false} /></div>}
+        <div className="ground-r"><Leaf c="#e0a02a" r={15} /><Pumpkin size={34} face={false} /><Pumpkin size={52} /></div>
+      </>}
+      {h === 'newyear' && <>
+        <svg className="drift" viewBox="0 0 100 14" preserveAspectRatio="none"><path d="M0 14 L0 9 C8 3 16 4 24 8 C34 12 42 5 52 6 C62 7 70 11 80 7 C88 4 95 6 100 9 L100 14 Z" /></svg>
+        <div className="ground-l"><Snowman size={64} wave /><Snowman size={40} hat={false} /></div>
+        <div className="ground-r"><Gift /><Snowman size={56} scarf="#3f7cac" /></div>
+      </>}
+      {h === 'coffeeday' && <>
+        <div className="ground-l"><Picker /></div>
+        <Walker />
+        <div className="ground-r"><Sacks /><Picker flip /></div>
+      </>}
+    </div>
+  );
+}
+
+/** threads of an old cobweb sagging along the top edge between the two corner webs */
+function WebDrape({ w }: { w: number }) {
+  const a = 96, b = w - 80;
+  if (b - a < 60) return null;
+  const n = Math.max(2, Math.round((b - a) / 110)), s = (b - a) / n;
+  const swag = (sag: number, dy = 0) => Array.from({ length: n }, (_, i) => `${i ? '' : `M${a} ${2 + dy}`} Q${(a + s * (i + 0.5)).toFixed(1)} ${sag + dy} ${(a + s * (i + 1)).toFixed(1)} ${2 + dy}`).join(' ');
+  return (
+    <svg className="web-drape" width={w} height="44" viewBox={`0 0 ${w} 44`}>
+      <path d={swag(30)} /><path d={swag(18, 1)} />
+      {Array.from({ length: n }, (_, i) => { const x = a + s * (i + 0.5); return <path key={i} d={`M${x} 17 L${x - 2} 30 M${x - 2} 30 l-1 9`} className="strand" />; })}
+    </svg>
+  );
+}
+
+/** the garland across the whole top: wire swags between hooks, bulbs that blink in turn */
+function TopGarland({ w }: { w: number }) {
+  const colors = ['#ff5d5d', '#ffd45c', '#5dc8ff', '#7dff8a', '#ff8de0'];
+  const n = Math.max(2, Math.round(w / 120)), s = w / n, sag = 14;
+  const wire = Array.from({ length: n }, (_, i) => `${i ? '' : 'M0 2'} Q${(s * (i + 0.5)).toFixed(1)} ${2 + sag * 2} ${(s * (i + 1)).toFixed(1)} 2`).join(' ');
+  // a point on swag i at t: the quadratic curve from (x0, 2) to (x0 + s, 2) with the control point 2*sag below
+  const bulbs = Array.from({ length: n }, (_, i) => [0.2, 0.5, 0.8].map((t) => ({ x: s * (i + t), y: 2 + 2 * sag * 2 * t * (1 - t) }))).flat();
+  return (
+    <svg className="garland top-garland" width={w} height="40" viewBox={`0 0 ${w} 40`}>
+      <path d={wire} fill="none" stroke="#3d5a3f" strokeWidth="1.6" />
+      {bulbs.map((p, i) => (
+        <g key={i} className={`bulb b${i % 3}`} transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`}>
+          <rect x="-2.5" y="-1" width="5" height="4" rx="1" fill="#6b7a6c" />
+          <ellipse cx="0" cy="8" rx="4.6" ry="6.4" fill={colors[i % colors.length]} />
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+/** a coffee branch growing from the top edge: leaves in pairs and clusters of cherries, swaying a little */
+function CoffeeBranch({ className, small = false, flip = false }: { className: string; small?: boolean; flip?: boolean }) {
+  const nodes = [[30, 8], [64, 15], [98, 21], [130, 25]];
+  return (
+    <svg className={'coffee-branch ' + className} viewBox="0 0 160 52" width={small ? 104 : 160} height={small ? 34 : 52}>
+      <g transform={flip ? 'matrix(-1 0 0 1 160 0)' : undefined}>
+      <path d="M0 2 C40 6 90 18 156 27" stroke="#6b4a2b" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      {nodes.map(([x, y], i) => (
+        <g key={i}>
+          <ellipse cx={x - 4} cy={y - 6} rx="12" ry="4.6" transform={`rotate(${-18 + i * 4} ${x - 4} ${y - 6})`} fill={i % 2 ? '#2f6b3d' : '#3d8049'} />
+          <ellipse cx={x + 3} cy={y + 9} rx="13" ry="4.8" transform={`rotate(${30 - i * 4} ${x + 3} ${y + 9})`} fill={i % 2 ? '#3d8049' : '#2f6b3d'} />
+          {i > 0 && [[-1, 3], [4, 5], [-5, 6], [1, 8]].map(([dx, dy], k) => (
+            <circle key={k} cx={x + dx} cy={y + dy} r="3.1" fill={(i + k) % 4 === 3 ? '#e8a23a' : '#c7332b'} stroke="#8e2019" strokeWidth="0.6" />
+          ))}
+        </g>
+      ))}
+      </g>
+    </svg>
+  );
+}
+
+/** a fallen leaf */
+function Leaf({ c, r }: { c: string; r: number }) {
+  return (
+    <svg className="leaf" viewBox="0 0 24 14" width="22" height="13" style={{ transform: `rotate(${r}deg)` }}>
+      <path d="M1 7 C6 0 16 0 23 7 C16 14 6 14 1 7 Z" fill={c} /><path d="M2 7 H21" stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" />
+    </svg>
+  );
+}
+
+/** a snowman; one of them waves */
+function Snowman({ size, wave = false, hat = true, scarf = '#d6453a' }: { size: number; wave?: boolean; hat?: boolean; scarf?: string }) {
+  return (
+    <svg className={'snowman' + (wave ? ' waving' : '')} viewBox="0 0 60 72" width={size * 60 / 72} height={size}>
+      <path d="M12 40 L1 30 M4 33 l-3 -1 M4 33 l0 -4" className="arm" />
+      <g className={wave ? 'arm-wave' : ''}><path d="M48 40 L58 28 M55 31.5 l3 0 M55 31.5 l-1 -3" className="arm" /></g>
+      <circle cx="30" cy="56" r="15" className="snow" /><circle cx="30" cy="33" r="11" className="snow" /><circle cx="30" cy="15" r="8.5" className="snow" />
+      <circle cx="30" cy="31" r="1.3" fill="#2a2a30" /><circle cx="30" cy="37" r="1.3" fill="#2a2a30" /><circle cx="30" cy="52" r="1.4" fill="#2a2a30" />
+      <circle cx="27" cy="13.5" r="1.2" fill="#2a2a30" /><circle cx="33" cy="13.5" r="1.2" fill="#2a2a30" />
+      <path d="M30 16 l8 2 l-8 1.4 z" fill="#f08a26" />
+      <path d="M21 23 Q30 27 39 23 L39 26 Q30 30 21 26 Z" fill={scarf} /><path d="M35 26 l3 9 l-4 0 l-1 -8 z" fill={scarf} />
+      {hat && <><rect x="21" y="5" width="18" height="2.6" rx="1" fill="#2a2a30" /><rect x="24" y="-4" width="12" height="10" rx="1.5" fill="#2a2a30" /><rect x="24" y="2" width="12" height="2" fill="#c7332b" /></>}
+    </svg>
+  );
+}
+
+function Gift() {
+  return (
+    <svg className="gift" viewBox="0 0 30 28" width="26" height="24">
+      <rect x="2" y="9" width="26" height="18" rx="2" fill="#c7332b" /><rect x="0" y="6" width="30" height="6" rx="1.5" fill="#e04a3f" />
+      <rect x="13" y="6" width="4" height="21" fill="#ffd45c" /><path d="M15 6 C10 0 5 3 9 6 Z M15 6 C20 0 25 3 21 6 Z" fill="#ffd45c" />
+    </svg>
+  );
+}
+
+/** a farmer at a coffee shrub: the arm goes up to the cherries and back down to the basket */
+function Picker({ flip = false }: { flip?: boolean }) {
+  return (
+    <svg className={'picker' + (flip ? ' flip' : '')} viewBox="0 0 90 64" width="79" height="56">
+      {/* the shrub */}
+      <path d="M66 64 C66 52 67 40 65 26" stroke="#6b4a2b" strokeWidth="3" fill="none" />
+      {[[58, 26, -30], [72, 22, 30], [56, 38, -40], [76, 36, 35], [60, 50, -25], [74, 50, 30], [66, 16, 0]].map(([x, y, a], i) => (
+        <ellipse key={i} cx={x} cy={y} rx="9" ry="4" transform={`rotate(${a} ${x} ${y})`} fill={i % 2 ? '#2f6b3d' : '#3d8049'} />
+      ))}
+      {[[62, 30], [70, 28], [60, 42], [72, 42], [66, 34], [64, 54]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="2.6" fill={i % 3 === 2 ? '#e8a23a' : '#c7332b'} />)}
+      {/* the farmer */}
+      <g transform="translate(28 0)">
+        <path d="M-6 44 l-3 20 M6 44 l3 20" stroke="#4a3b2a" strokeWidth="5" strokeLinecap="round" />
+        <path d="M-10 22 Q0 17 10 22 L12 46 L-12 46 Z" fill="#3f7cac" />
+        <path d="M-9 26 Q-17 34 -12 42" stroke="#3f7cac" strokeWidth="5" fill="none" strokeLinecap="round" />
+        <path d="M-22 36 h15 l-2 12 h-11 z" fill="#a8743d" /><path d="M-20 40 h11" stroke="#7d5229" strokeWidth="1" />
+        <circle cx="-17" cy="36" r="2" fill="#c7332b" /><circle cx="-13" cy="35.5" r="2" fill="#c7332b" />
+        <g className="pick-arm"><path d="M8 25 Q20 22 28 26" stroke="#3f7cac" strokeWidth="5" fill="none" strokeLinecap="round" /><circle cx="30" cy="26" r="3" fill="#c4875a" /></g>
+        <circle cx="0" cy="13" r="6.5" fill="#c4875a" />
+        <ellipse cx="0" cy="7" rx="15" ry="3.6" fill="#e6c27a" /><path d="M-8 6.5 Q0 -4 8 6.5 Z" fill="#d4ad5f" /><path d="M-8 6 h16" stroke="#9a3b2a" strokeWidth="1.6" />
+      </g>
+    </svg>
+  );
+}
+
+/** sacks of green coffee */
+function Sacks() {
+  return (
+    <svg className="sacks" viewBox="0 0 50 36" width="46" height="33">
+      <path d="M4 36 C2 24 4 14 10 10 L22 10 C28 14 30 24 28 36 Z" fill="#c9a874" /><path d="M10 10 q6 -5 12 0" stroke="#9a7a48" strokeWidth="2" fill="none" />
+      <path d="M22 36 C20 26 22 18 28 15 L40 15 C46 18 48 26 46 36 Z" fill="#b8955e" /><path d="M28 15 q6 -5 12 0" stroke="#8a6a3a" strokeWidth="2" fill="none" />
+      <text x="34" y="30" textAnchor="middle" fontSize="7" fontWeight="700" fill="#6b4a2b">CAFÉ</text>
+    </svg>
+  );
+}
+
+/** a farmer walking across with a full basket on the back */
+function Walker() {
+  return (
+    <div className="walker">
+      <svg viewBox="0 0 40 60" width="34" height="51">
+        <path className="leg l1" d="M17 40 l-2 19" stroke="#3b3b4a" strokeWidth="4.5" strokeLinecap="round" />
+        <path className="leg l2" d="M23 40 l2 19" stroke="#3b3b4a" strokeWidth="4.5" strokeLinecap="round" />
+        <rect x="4" y="18" width="12" height="16" rx="2" fill="#9a6a3a" /><path d="M5 23 h10 M5 28 h10" stroke="#7d5229" strokeWidth="1" />
+        <circle cx="7" cy="17" r="2.2" fill="#c7332b" /><circle cx="11" cy="16" r="2.2" fill="#c7332b" /><circle cx="14" cy="17.5" r="2.2" fill="#e8a23a" />
+        <path d="M12 18 h14 l3 24 h-20 z" fill="#c9503b" />
+        <path className="swing" d="M26 22 q4 8 2 14" stroke="#c9503b" strokeWidth="4.5" fill="none" strokeLinecap="round" />
+        <circle cx="21" cy="11" r="6" fill="#b97a4e" />
+        <ellipse cx="21" cy="5.5" rx="12" ry="3" fill="#d9b268" /><path d="M15 5 Q21 -4 27 5 Z" fill="#c9a055" />
+      </svg>
+    </div>
   );
 }
 
@@ -90,11 +290,11 @@ export function Pumpkin({ size = 56, face = true }: { size?: number; face?: bool
       <ellipse cx="32" cy="35" rx="14" ry="21.5" fill="#f08a26" />
       <path d="M24 17c-4 10-4 26 0 37M40 17c4 10 4 26 0 37" stroke="#c45512" strokeWidth="1.4" fill="none" opacity="0.7" />
       <path d="M12 22c-3 6-3 20 1 27" stroke="#ffb35c" strokeWidth="2" fill="none" opacity="0.45" strokeLinecap="round" />
-      {face && <>
+      {face && <g className="face">
         <path d="M18 30l6-6 4 7z M46 30l-6-6-4 7z" fill="#ffd45c" />
         <path d="M31 34l2.5 4h-5z" fill="#ffd45c" />
         <path d="M16 40c5 6 27 6 32 0l-3 1-2 3-3-2-3 3-3-3-3 3-3-3-3 2-2-3z" fill="#ffd45c" />
-      </>}
+      </g>}
     </svg>
   );
 }

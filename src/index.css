@@ -1338,16 +1338,67 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .holiday-fireworks { z-index: 70; animation: fw-dim 5.2s ease forwards; }
 /* the screen dims a little so the fireworks shine on a light theme too */
 @keyframes fw-dim { 0% { background: rgba(4,8,22,0); } 10%, 75% { background: rgba(4,8,22,0.5); } 100% { background: rgba(4,8,22,0); } }
+.holiday-top { inset: var(--inset-top) 0 auto; height: 96px; overflow: hidden; }
 .cobweb { position: absolute; top: 0; color: var(--fg); opacity: 0.32; }
 .cobweb line, .cobweb path { stroke: currentColor; stroke-width: 0.9; fill: none; }
 .cobweb.web-l { left: 0; }
 .cobweb.web-r { right: 0; transform: scaleX(-1); width: 96px; height: 96px; }
+.web-drape { position: absolute; top: 0; left: 0; color: var(--fg); opacity: 0.26; }
+.web-drape path { stroke: currentColor; stroke-width: 0.8; fill: none; }
 .spider { position: absolute; top: 0; right: 54px; transform-origin: 20px 0; animation: spider-swing 5.5s ease-in-out infinite; }
 .spider .thread { stroke: var(--fg); stroke-width: 0.6; opacity: 0.35; }
 .spider-body path { stroke: #1b1b1f; stroke-width: 1.3; fill: none; stroke-linecap: round; }
 .spider .abdomen, .spider .head { fill: #1b1b1f; }
 .spider .eye { fill: #ffcf5c; }
 @keyframes spider-swing { 0%, 100% { transform: rotate(-4deg) translateY(-6px); } 50% { transform: rotate(4deg) translateY(10px); } }
+.top-garland { position: absolute; top: 0; left: 0; height: 40px; }
+.coffee-branch { position: absolute; top: 0; transform-origin: 0 0; animation: branch-sway 7s ease-in-out infinite; }
+.coffee-branch.branch-l { left: -6px; }
+.coffee-branch.branch-r { right: -6px; transform-origin: 100% 0; animation-name: branch-sway-r; animation-delay: -2.5s; }
+@keyframes branch-sway-r { 0%, 100% { rotate: 0deg; } 50% { rotate: -2.2deg; } }
+.coffee-branch.branch-m { left: 50%; margin-left: -52px; animation-delay: -4s; }
+@keyframes branch-sway { 0%, 100% { rotate: 0deg; } 50% { rotate: 2.2deg; } }
+
+/* the ground: rests on the top edge of the bottom bar (mobile) or on the window's bottom edge (desktop) */
+.holiday-ground { position: absolute; left: 0; right: 0; bottom: 100%; height: 58px; pointer-events: none; z-index: 0; }
+.holiday-ground.fixed { position: fixed; bottom: 0; z-index: 24; }
+.holiday-ground > div { position: absolute; bottom: -1px; display: flex; align-items: flex-end; gap: 2px; }
+.ground-l { left: 10px; }
+.ground-r { right: 10px; }
+.ground-m { left: 50%; transform: translateX(-50%); }
+.holiday-ground .leaf { margin-bottom: 1px; }
+.holiday-ground .pumpkin { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.18)); }
+.holiday-ground .pumpkin .face { animation: candle 2.6s ease-in-out infinite; }
+.holiday-ground .ground-r .pumpkin .face { animation-delay: -1.1s; }
+@keyframes candle { 0%, 100% { opacity: 1; } 40% { opacity: 0.7; } 55% { opacity: 0.95; } 70% { opacity: 0.6; } }
+.holiday-ground .drift { position: absolute; left: 0; right: 0; bottom: -1px; width: 100%; height: 14px; }
+.holiday-ground .drift path { fill: #fbfdff; stroke: #d5e2ee; stroke-width: 0.4; vector-effect: non-scaling-stroke; }
+.holiday-ground.newyear > div { bottom: 3px; }
+.snowman .snow { fill: #fbfdff; stroke: #c9d8e6; stroke-width: 1; }
+.snowman .arm { stroke: #6b4a2b; stroke-width: 2; fill: none; stroke-linecap: round; }
+.snowman { overflow: visible; display: block; }
+.snowman .arm-wave { transform-box: view-box; transform-origin: 48px 40px; animation: wave 1.6s ease-in-out infinite; }
+@keyframes wave { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-24deg); } }
+.picker { display: block; }
+.picker.flip { transform: scaleX(-1); }
+.picker .pick-arm { transform-box: view-box; transform-origin: 36px 25px; animation: pick 2.4s ease-in-out infinite; }
+.picker.flip .pick-arm { animation-delay: -1.2s; }
+@keyframes pick { 0%, 100% { transform: rotate(-8deg); } 45%, 55% { transform: rotate(14deg); } 75% { transform: rotate(70deg); } }
+.holiday-ground .walker { left: 0; bottom: -1px; animation: walk 28s linear infinite; }
+.walker svg { display: block; animation: bob 0.6s ease-in-out infinite; }
+.walker .leg { transform-box: view-box; animation: step 0.6s ease-in-out infinite; }
+.walker .l1 { transform-origin: 17px 40px; } .walker .l2 { transform-origin: 23px 40px; animation-delay: -0.3s; }
+.walker .swing { transform-box: view-box; transform-origin: 26px 22px; animation: step 0.6s ease-in-out infinite reverse; }
+@keyframes walk { from { transform: translateX(-60px); } to { transform: translateX(calc(100vw + 20px)); } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+@keyframes step { 0%, 100% { transform: rotate(-16deg); } 50% { transform: rotate(16deg); } }
+/* the page leaves room for what hangs at the top and lies at the bottom */
+html[data-holiday] .topbar { padding-top: 34px; }
+html[data-holiday] .content { padding-bottom: 178px; }
+.holiday-ground::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, var(--bg) 8%, color-mix(in srgb, var(--bg) 70%, transparent) 45%, transparent); }
+.holiday-ground.fixed::before { display: none; }
+/* desktop: the decorations keep clear of the sidebar (logo at the top, profile at the bottom) */
+html[data-layout="desktop"] .holiday-top, .holiday-ground.fixed { left: 232px; }
 .holiday-card { position: relative; display: grid; gap: 4px; margin: 0 0 14px; padding: 12px 14px 14px; border-radius: 18px; background: var(--card); overflow: hidden; }
 .holiday-card .holiday-text { display: grid; gap: 3px; }
 .holiday-card .holiday-text b { font-size: 16px; }
@@ -1370,4 +1421,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .coffee-scene .steam { animation: steam 3s ease-in-out infinite; }
 @keyframes steam { 0%, 100% { opacity: 0.25; transform: translateY(2px); } 50% { opacity: 0.8; transform: translateY(-2px); } }
 .holiday-picks { flex-wrap: wrap; }
-@media (prefers-reduced-motion: reduce) { .spider, .garland .bulb ellipse, .coffee-scene .steam { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .spider, .garland .bulb ellipse, .coffee-scene .steam, .coffee-branch, .holiday-ground *, .holiday-ground .walker { animation: none !important; }
+  .holiday-ground .walker { display: none; }
+}

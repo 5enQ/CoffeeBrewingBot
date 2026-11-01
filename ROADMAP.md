@@ -15,7 +15,7 @@ _Nothing right now._ Unreleased work is in the changelog.
 
 ## Next
 
-- **Bug reports → fixes.** In dev, not released yet: the button opens issues in the private `5enQ/brewbook-bugs` (names and screenshots inside); the webhook is registered before a report with the button is sent (the first try failed: it was never registered). A daily scheduled check (20:34 MSK) fixes `tester-bug` issues in `dev`; the release closes the `claude-fixed` ones. After the release: send a test report, press the button, see the issue appear with the screenshot.
+- **Bug reports → fixes.** Works in production since 2026-11-01 (after the webhook was set by hand): the first reports became CoffeeBrewingBot#1–#3, #2 was fixed by the daily check. In dev, not released yet: reports go to the private `5enQ/brewbook-bugs` with names and screenshots, one Telegram message per report with a screenshot, the webhook is registered before a report with the button is sent, the release closes `claude-fixed` issues in both repositories. After the release: send a report with a screenshot, press the button, the issue must appear in brewbook-bugs with the picture.
 
 ## Ideas
 

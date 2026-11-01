@@ -16,6 +16,7 @@ CARDS = {
     'volume1': card({'ach': 'method:aeropress'}, {'method:aeropress': {'tier': 'volume', 'at': 1000}}),
     'espresso1': card({'base': 'espresso'}),
     'paper1': card({'base': 'paper'}),
+    'glass1': card({'base': 'glass'}),
     'dev1': {**card({'special': 'dev'}), 'granted': ['dev']},
     'devfake': {**card({'special': 'dev'}), 'granted': []},
     'beta1': {**card({'special': 'beta'}), 'granted': ['beta']},
@@ -174,6 +175,20 @@ async def main():
                     await pv.locator('.pcard:visible').screenshot(path=str(OUT / 'card-beta.png'))
                 elif k == 'betafake':
                     check(await pv.locator('.pcard.special-beta').count() == 0, 'testers background without the server grant is not shown')
+                elif k == 'glass1':
+                    # where the coffee surface is on the left and right edges (first dark row from the top)
+                    surface = '''() => { const c = document.querySelector('.pcard-coffee'); const g = c.getContext('2d');
+                      const col = (x) => { const d = g.getImageData(x, 0, 1, c.height).data; for (let y = 0; y < c.height; y++) if (d[y * 4 + 3] > 200) return y; return -1; };
+                      return [col(4), col(c.width - 5)]; }'''
+                    await tilt(pv, 0, 0); await pv.wait_for_timeout(50); await tilt(pv, 0, 0); await pv.wait_for_timeout(1500)
+                    lvl = await pv.evaluate(surface)
+                    await tilt(pv, 0, 20); await pv.wait_for_timeout(1500)
+                    right = await pv.evaluate(surface)
+                    check(lvl[0] > 0 and abs(lvl[0] - lvl[1]) < 0.12 * lvl[0] + 20, f'glass: the coffee is level when the phone is level ({lvl})')
+                    check((right[0] - right[1]) * 1 != 0 and abs((right[0] - right[1]) - (lvl[0] - lvl[1])) > 20, f'glass: tilting sideways tips the surface ({lvl} → {right})')
+                    await pv.locator('.pcard:visible').screenshot(path=str(OUT / 'card-glass-tilt.png'))
+                    await tilt(pv, 0, -20); await pv.wait_for_timeout(250)
+                    await pv.locator('.pcard:visible').screenshot(path=str(OUT / 'card-glass-slosh.png'))
                 elif k == 'paper1':
                     bg = await pv.locator('.pcard:visible').evaluate("e => getComputedStyle(e).color")
                     check(bg.replace(' ', '') == 'rgb(47,42,35)', f'«Фильтр» is light paper with dark text in any app theme{" (dark)" if dark else ""} ({bg})')

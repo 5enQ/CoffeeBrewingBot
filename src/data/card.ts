@@ -22,6 +22,7 @@ export const BASE_THEMES = [
   { id: 'berry', label: 'Ягоды' },
   { id: 'ocean', label: 'Океан' },
   { id: 'graphite', label: 'Графит' },
+  { id: 'glass', label: 'Стакан' },
 ] as const;
 export type BaseTheme = typeof BASE_THEMES[number]['id'];
 

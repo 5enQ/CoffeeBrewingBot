@@ -186,6 +186,95 @@ function DevLayer() {
   );
 }
 
+/* ---------- glass of black coffee ---------- */
+
+/**
+ * The card is a glass with black coffee in it. Tilting the phone sideways tips the surface (it stays level
+ * to gravity), tilting it toward you or away shows more or less of the surface from above; quick moves make it
+ * slosh — a damped spring on the surface angle plus a wave that is kicked by the change and dies down.
+ * Drawn on a canvas in its own animation loop (no React renders per frame).
+ */
+function GlassLayer({ tilt }: { tilt: { x: number; y: number } }) {
+  const cv = useRef<HTMLCanvasElement>(null);
+  const tiltRef = useRef(tilt);
+  tiltRef.current = tilt;
+  useEffect(() => {
+    const c = cv.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+    const calm = reduceMotion();
+    let w = 0, h = 0, raf = 0;
+    const size = () => {
+      const r = c.getBoundingClientRect();
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      w = r.width; h = r.height;
+      c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    size();
+    const ro = new ResizeObserver(size);
+    ro.observe(c);
+    // state: surface angle (rad) and its speed; slosh wave amplitude and phase; how much of the top is seen
+    let ang = 0, vel = 0, amp = 0, phase = 0, top = 0.2, last = performance.now(), prevTarget = 0;
+    const frame = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const { x, y } = tiltRef.current;
+      const target = calm ? 0 : -x * 0.42;           // the surface stays level while the glass turns
+      const k = 38, damp = 3.2;                        // spring stiffness and damping: water, not honey
+      vel += (-(ang - target) * k - vel * damp) * dt;
+      ang += vel * dt;
+      amp = Math.min(14, amp * Math.exp(-1.6 * dt) + Math.abs(target - prevTarget) * 90 + Math.abs(vel) * dt * 6);
+      prevTarget = target;
+      phase += dt * 7.5;
+      top += ((0.12 + Math.abs(y) * 0.55) - top) * Math.min(1, dt * 6);   // forward/back tilt shows the surface from above
+      draw(ang, amp, phase, top, y);
+      raf = requestAnimationFrame(frame);
+    };
+    const draw = (a: number, A: number, ph: number, tp: number, y: number) => {
+      ctx.clearRect(0, 0, w, h);
+      const level = h * (0.56 - y * 0.04);           // fill line; tipping toward you moves it a little
+      const slope = Math.tan(a);
+      const surf = (px: number) => level + (px - w / 2) * slope + Math.sin(px / w * Math.PI * 2 + ph) * A * 0.5 + Math.sin(px / w * Math.PI * 5 - ph * 1.3) * A * 0.18;
+      // the body of the coffee: almost black, a brown glow where light comes through near the surface
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      for (let px = 0; px <= w; px += 6) ctx.lineTo(px, surf(px));
+      ctx.lineTo(w, h); ctx.closePath();
+      const g = ctx.createLinearGradient(0, level - 30, 0, h);
+      g.addColorStop(0, 'rgba(92,52,24,0.96)'); g.addColorStop(0.18, 'rgba(38,20,10,0.97)'); g.addColorStop(1, 'rgba(10,6,4,0.98)');
+      ctx.fillStyle = g; ctx.fill();
+      // the surface seen from above: a band whose depth grows with the forward/back tilt
+      const band = 3 + tp * 26;
+      ctx.beginPath();
+      for (let px = 0; px <= w; px += 6) ctx.lineTo(px, surf(px) - band * 0.5);
+      for (let px = w; px >= 0; px -= 6) ctx.lineTo(px, surf(px) + band * 0.5);
+      ctx.closePath();
+      const sg = ctx.createLinearGradient(0, level - band, 0, level + band);
+      sg.addColorStop(0, 'rgba(160,100,50,0.55)'); sg.addColorStop(1, 'rgba(40,22,12,0.0)');
+      ctx.fillStyle = sg; ctx.fill();
+      // meniscus: the bright line where light catches the edge of the surface
+      ctx.beginPath();
+      for (let px = 0; px <= w; px += 6) ctx.lineTo(px, surf(px) - band * 0.5);
+      ctx.strokeStyle = 'rgba(255,214,160,0.55)'; ctx.lineWidth = 1.4; ctx.stroke();
+      // a few highlights riding on the waves
+      ctx.fillStyle = 'rgba(255,230,190,0.18)';
+      for (let i = 0; i < 3; i++) {
+        const px = ((i + 0.5) / 3) * w + Math.sin(ph * 0.6 + i * 2) * 18;
+        ctx.beginPath(); ctx.ellipse(px, surf(px) - band * 0.3, 16 + A, 1.6 + band * 0.12, a, 0, Math.PI * 2); ctx.fill();
+      }
+    };
+    raf = requestAnimationFrame(frame);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+  }, []);
+  return (
+    <>
+      <canvas ref={cv} className="pcard-coffee" aria-hidden="true" />
+      <div className="pcard-glass" aria-hidden="true" />
+    </>
+  );
+}
+
 /* ---------- testers' background ---------- */
 
 /** Lab blueprint: a measuring grid that drifts with the tilt, a "BETA" ribbon and a glowing flask in the corner */
@@ -211,7 +300,7 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
   const ref = useRef<HTMLDivElement>(null);
   const view = cardView(card);
   const tier = 'tier' in view.theme ? view.theme.tier : null;
-  const t = useTilt(live && (!!tier || 'special' in view.theme), ref);
+  const t = useTilt(live && (!!tier || 'special' in view.theme || ('base' in view.theme && view.theme.base === 'glass')), ref);
   const [photoOk, setPhotoOk] = useState(true);
   const icon = 'tier' in view.theme ? view.theme.icon : null;
 
@@ -225,11 +314,12 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
 
   return (
     <div ref={ref} className={`pcard ${'tier' in view.theme ? `tier tier-${view.theme.tier}` : 'special' in view.theme ? `special special-${view.theme.special}` : `base-${view.theme.base}`}`} style={style}
-      onClick={turn ? () => requestTiltPermission() : undefined}>
+      onClick={turn || ('base' in view.theme && view.theme.base === 'glass') ? () => requestTiltPermission() : undefined}>
       {tier === 'diamond' && <><Facets x={t.x} y={t.y} /><div className="pcard-iris" aria-hidden="true" /><div className="pcard-film" aria-hidden="true" /><div className="pcard-edge" aria-hidden="true" /></>}
       {tier && <div className="pcard-sheen" aria-hidden="true" />}
       {tier && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
       {volume && <VolumeIcon icon={icon as IconKey} x={t.x} y={t.y} />}
+      {'base' in view.theme && view.theme.base === 'glass' && <GlassLayer tilt={t} />}
       {'special' in view.theme && view.theme.special === 'dev' && <DevLayer />}
       {'special' in view.theme && view.theme.special === 'beta' && <BetaLayer />}
       {tier === 'diamond' && card.no !== undefined && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}

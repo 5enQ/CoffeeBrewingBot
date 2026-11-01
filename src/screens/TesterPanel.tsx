@@ -11,6 +11,8 @@ import { answerCheck, diagnostics, diagText, loadChecks, sendReport, setDiagExtr
 import { platform } from '../platform';
 import { Button, Section } from '../ui/kit';
 import { Icon } from '../ui/icons';
+import { HOLIDAYS, getPreview, setPreview, type HolidayPreview as HolidayPreviewValue } from '../data/holidays';
+import { playFireworks } from '../ui/Holiday';
 import { copyText, toast } from '../ui/toast';
 
 const OPEN_KEY = (kind: string) => `brewbook.panel.${kind}`;
@@ -128,6 +130,8 @@ export function TesterPanel() {
           }} />
       </Section>
 
+      <HolidayPreview />
+
       <Section title="Диагностика">
         <dl className="diag">
           {diagnostics({ server, sync: syncText }).map((d) => <div key={d.label}><dt>{d.label}</dt><dd>{d.value}</dd></div>)}
@@ -137,6 +141,23 @@ export function TesterPanel() {
         </div>
       </Section>
     </Panel>
+  );
+}
+
+/** holiday looks: see any of them now (on this device only) */
+function HolidayPreview() {
+  const [v, setV] = useState<HolidayPreviewValue>(getPreview);
+  const pick = (x: HolidayPreviewValue) => { platform.haptic('select'); setPreview(x); setV(x); };
+  return (
+    <Section title="Праздничное оформление">
+      <p className="muted pad small-note">Само включается за пару дней до праздника и держится пару дней после. Здесь можно посмотреть любое заранее — только на этом устройстве.</p>
+      <div className="chips pad holiday-picks">
+        {([['auto', 'По дате'], ...HOLIDAYS.map((h) => [h.id, h.label]), ['off', 'Выключить']] as [HolidayPreviewValue, string][]).map(([id, label]) => (
+          <button key={id} type="button" className={'chip' + (v === id ? ' on' : '')} aria-pressed={v === id} onClick={() => pick(id)}>{label}</button>
+        ))}
+      </div>
+      {v === 'newyear' && <div className="pad"><Button kind="secondary" onClick={playFireworks}>Запустить салют</Button></div>}
+    </Section>
   );
 }
 

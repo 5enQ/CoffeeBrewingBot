@@ -1331,3 +1331,43 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .theme-pick.base-glass { --pc-fg: #f4ece3; background: linear-gradient(180deg, #3a3631 0 52%, #5c3418 52% 55%, #1a0e07 55%); }
 .pcard.tier-volume .pcard-body { text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 .grant-who .grant-forget { justify-self: start; font-size: 13px; padding: 2px 0; }
+
+/* ---------- holiday looks ---------- */
+.holiday-layer, .holiday-snow, .holiday-fireworks { position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+.holiday-snow, .holiday-fireworks { width: 100vw; height: 100vh; }
+.holiday-fireworks { z-index: 70; animation: fw-dim 5.2s ease forwards; }
+/* the screen dims a little so the fireworks shine on a light theme too */
+@keyframes fw-dim { 0% { background: rgba(4,8,22,0); } 10%, 75% { background: rgba(4,8,22,0.5); } 100% { background: rgba(4,8,22,0); } }
+.cobweb { position: absolute; top: 0; color: var(--fg); opacity: 0.32; }
+.cobweb line, .cobweb path { stroke: currentColor; stroke-width: 0.9; fill: none; }
+.cobweb.web-l { left: 0; }
+.cobweb.web-r { right: 0; transform: scaleX(-1); width: 96px; height: 96px; }
+.spider { position: absolute; top: 0; right: 54px; transform-origin: 20px 0; animation: spider-swing 5.5s ease-in-out infinite; }
+.spider .thread { stroke: var(--fg); stroke-width: 0.6; opacity: 0.35; }
+.spider-body path { stroke: #1b1b1f; stroke-width: 1.3; fill: none; stroke-linecap: round; }
+.spider .abdomen, .spider .head { fill: #1b1b1f; }
+.spider .eye { fill: #ffcf5c; }
+@keyframes spider-swing { 0%, 100% { transform: rotate(-4deg) translateY(-6px); } 50% { transform: rotate(4deg) translateY(10px); } }
+.holiday-card { position: relative; display: grid; gap: 4px; margin: 0 0 14px; padding: 12px 14px 14px; border-radius: 18px; background: var(--card); overflow: hidden; }
+.holiday-card .holiday-text { display: grid; gap: 3px; }
+.holiday-card .holiday-text b { font-size: 16px; }
+.holiday-card .holiday-text span { color: var(--hint); font-size: 14px; line-height: 1.4; }
+.holiday-close { position: absolute; top: 6px; right: 8px; z-index: 2; width: 30px; height: 30px; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--card) 70%, transparent); color: var(--hint); font-size: 20px; line-height: 1; cursor: pointer; }
+.holiday-halloween { background: linear-gradient(160deg, #2a1838, #160f22); color: #f6ecff; }
+.holiday-halloween .holiday-text span { color: #c9b6dc; }
+.holiday-halloween .pumpkins { display: flex; align-items: flex-end; gap: 2px; height: 66px; }
+.holiday-halloween .pumpkin { filter: drop-shadow(0 0 10px rgba(255,170,60,0.35)); }
+.holiday-newyear { background: linear-gradient(160deg, #123a2c, #0c2219); color: #f1fff6; padding-top: 0; }
+.holiday-newyear .holiday-text span { color: #b9d8c6; }
+.holiday-newyear .holiday-close, .holiday-halloween .holiday-close { background: rgba(255,255,255,0.12); color: #fff; }
+.garland { width: 100%; height: 52px; display: block; }
+.garland .bulb ellipse { filter: drop-shadow(0 0 4px currentColor); animation: bulb 1.8s ease-in-out infinite; }
+.garland .bulb.b1 ellipse { animation-delay: -0.6s; } .garland .bulb.b2 ellipse { animation-delay: -1.2s; }
+@keyframes bulb { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.holiday-coffeeday { padding: 8px 8px 12px; }
+.holiday-coffeeday .holiday-text { padding: 2px 6px 0; }
+.coffee-scene { width: 100%; height: auto; display: block; }
+.coffee-scene .steam { animation: steam 3s ease-in-out infinite; }
+@keyframes steam { 0%, 100% { opacity: 0.25; transform: translateY(2px); } 50% { opacity: 0.8; transform: translateY(-2px); } }
+.holiday-picks { flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) { .spider, .garland .bulb ellipse, .coffee-scene .steam { animation: none; } }

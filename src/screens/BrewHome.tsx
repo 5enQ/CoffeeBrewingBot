@@ -14,6 +14,7 @@ import { useFlip } from '../ui/motion';
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import type { Method } from '../data/methods';
 import { elapsedOf, useActiveTimer } from '../data/timer';
+import { HolidayBanner } from '../ui/Holiday';
 import { fmtTime } from '../data/methods';
 import type { TileLayout } from '../data/store';
 
@@ -300,6 +301,7 @@ export function BrewHome() {
 
   return (
     <Screen title="Что завариваем?" root>
+      <HolidayBanner />
       <TimerBanner />
       {recent.length > 0 && (
         <Section title="Повторить">

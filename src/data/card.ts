@@ -15,15 +15,23 @@ import { allMethods, methodById } from './methods';
 import type { Profile } from './store';
 
 export const BASE_THEMES = [
-  { id: 'paper', label: 'Фильтр' },
+  // light
+  { id: 'paper', label: 'Бумажный фильтр' },
   { id: 'latte', label: 'Латте' },
-  { id: 'espresso', label: 'Эспрессо' },
+  { id: 'citrus', label: 'Цитрус' },
+  // middle
   { id: 'matcha', label: 'Матча' },
   { id: 'berry', label: 'Ягоды' },
-  { id: 'ocean', label: 'Океан' },
-  { id: 'graphite', label: 'Графит' },
+  { id: 'jasmine', label: 'Жасмин' },
+  // dark
+  { id: 'espresso', label: 'Эспрессо' },
+  { id: 'cascara', label: 'Каскара' },
+  { id: 'ristretto', label: 'Ристретто' },
   { id: 'glass', label: 'Стакан' },
 ] as const;
+/** retired backgrounds → the ones that took their place (cards saved before keep a look close to the old one) */
+const RENAMED: Record<string, string> = { ocean: 'cascara', graphite: 'ristretto' };
+const baseOf = (id?: string) => (BASE_THEMES.find((t) => t.id === (id && RENAMED[id] ? RENAMED[id] : id))?.id ?? 'paper') as BaseTheme;
 export type BaseTheme = typeof BASE_THEMES[number]['id'];
 
 /** Backgrounds the owner gives by hand (Profile → owner tools); the server checks them on every shared card */
@@ -122,7 +130,7 @@ export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite 
   const themeLevel = test ?? (chosen ? levels[chosen] : undefined);
   const theme: CardData['theme'] = special ? { special: special.id }
     : chosen && themeLevel && givesBackground(chosen, themeLevel.tier) ? (test ? { ach: chosen, tier: test.tier } : { ach: chosen })
-    : { base: (BASE_THEMES.find((t) => t.id === p.cardTheme)?.id ?? 'paper') as BaseTheme };
+    : { base: baseOf(p.cardTheme) };
   const earned: Record<string, Level> = Object.fromEntries(ach.map((k) => [k, levels[k]]));
   if ('ach' in theme && themeLevel) earned[theme.ach] = themeLevel;
   return {
@@ -154,7 +162,7 @@ export function cleanCard(raw: unknown): CardData | null {
   const t = (r.theme ?? {}) as Record<string, unknown>;
   const theme: CardData['theme'] = typeof t.ach === 'string' && KEY.test(t.ach) ? { ach: t.ach }
     : SPECIAL_THEMES.some((x) => x.id === t.special) ? { special: t.special as SpecialTheme }
-    : { base: (BASE_THEMES.find((x) => x.id === t.base)?.id ?? 'paper') as BaseTheme };
+    : { base: baseOf(t.base as string) };
   const badges = Array.isArray(r.badges) ? r.badges.slice(0, 3).map((b: Record<string, unknown>) => ({
     kind: str(b?.kind, 20) as BadgeLite['kind'], title: str(b?.title, 80), detail: str(b?.detail, 60), year: str(b?.year, 10),
   })).filter((b) => b.title && b.kind !== 'achieve') : [];

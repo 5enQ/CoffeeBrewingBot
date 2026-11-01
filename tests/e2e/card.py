@@ -23,7 +23,9 @@ CARDS = {
     # a card whose owner faked a background: no levels from the server → plain card
     'fake1': {**card({'ach': 'method:espresso'}), 'earned': {}},
     # just a name: the card is as small as its content
-    'empty1': {'v': 2, 'name': 'Ilja', 'username': 'memoSintiq', 'badges': [], 'ach': [], 'setup': [], 'theme': {'base': 'graphite'}},
+    'empty1': {'v': 2, 'name': 'Ilja', 'username': 'memoSintiq', 'badges': [], 'ach': [], 'setup': [], 'theme': {'base': 'ristretto'}},
+    # a card saved with a retired background shows the one that replaced it
+    'old1': card({'base': 'ocean'}),
 }
 # what the server counted (it differs from the device on purpose: the app must show the server's numbers)
 SERVER = {'account': 'acc1', 'methods': {'v60': 60, 'kalita': 100}, 'liters': 40, 'ratings': 0, 'at': 1}
@@ -116,8 +118,8 @@ async def main():
         check(any('startapp%3Dp' in s or 'startapp=p' in s or '%23r%3Dp' in s for s in shared), f'share opens Telegram with the card link ({shared[:1]})')
         await pg.evaluate('window.__tgBack()'); await pg.wait_for_timeout(300)
         await V('.my-card-actions button:has-text("Настроить")').click(); await pg.wait_for_timeout(500)
-        for t in ('espresso', 'latte', 'ocean'):
-            await V(f'.theme-pick:has-text("{ {"espresso": "Эспрессо", "latte": "Латте", "ocean": "Океан"}[t] }")').click(); await pg.wait_for_timeout(200)
+        for t in ('espresso', 'latte', 'cascara'):
+            await V(f'.theme-pick:has-text("{ {"espresso": "Эспрессо", "latte": "Латте", "cascara": "Каскара"}[t] }")').click(); await pg.wait_for_timeout(200)
             await pg.evaluate('window.scrollTo(0, 0)'); await pg.wait_for_timeout(150)
             await V('.pcard').first.screenshot(path=str(OUT / f'card-{t}.png'))
         check(not errors, f'no page errors: {errors[:3]}')
@@ -178,6 +180,8 @@ async def main():
                     bg = await pv.locator('.pcard:visible').evaluate("e => getComputedStyle(e).color")
                     check(bg.replace(' ', '') == 'rgb(47,42,35)', f'«Фильтр» is light paper with dark text in any app theme{" (dark)" if dark else ""} ({bg})')
                     await pv.locator('.pcard:visible').screenshot(path=str(OUT / f'card-paper{"-dark" if dark else ""}.png'))
+                elif k == 'old1':
+                    check(await pv.locator('.pcard.base-cascara').count() == 1, 'a card saved with «Океан» shows «Каскара»')
                 elif k == 'empty1':
                     h = (await pv.locator('.pcard:visible').bounding_box())['height']
                     check(h < 130, f'an empty card shrinks to its content ({h:.0f}px)')

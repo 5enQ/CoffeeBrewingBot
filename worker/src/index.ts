@@ -425,18 +425,25 @@ async function toOwners(env: Env, text: string, image: { bytes: Uint8Array; type
   const markup = reportId && env.GH_ISSUES_TOKEN ? { reply_markup: { inline_keyboard: [[{ text: '🛠 Передать на исправление', callback_data: `fix:${reportId}` }]] } } : {};
   const res = await Promise.all(owners(env).map(async (id) => {
     try {
-      const r = await fetch(`${api}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: Number(id), text: text.slice(0, 4000), link_preview_options: { is_disabled: true }, ...markup }) });
-      const ok = ((await r.json()) as { ok: boolean }).ok;
       if (image) {
+        // one message: the screenshot with the report as its caption and the button under it
+        // (a caption holds 1024 characters; a longer report goes as text first, then the photo with the button)
+        const fits = text.length <= 1000;
+        if (!fits) await fetch(`${api}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: Number(id), text: text.slice(0, 4000), link_preview_options: { is_disabled: true } }) });
         const form = new FormData();
         form.set('chat_id', id);
         form.set('photo', new Blob([image.bytes], { type: image.type }), 'screenshot.' + image.type.split('/')[1]);
+        form.set('caption', fits ? text : `${text.slice(0, 120)}… (полный текст выше)`);
+        if ('reply_markup' in markup) form.set('reply_markup', JSON.stringify(markup.reply_markup));
         const sent = await fetch(`${api}/sendPhoto`, { method: 'POST', body: form }).then((x) => x.json() as Promise<{ ok: boolean; result?: { photo?: { file_id: string }[] } }>).catch(() => null);
         const fileId = sent?.result?.photo?.at(-1)?.file_id;
         if (fileId && reportId) await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).setReportPhoto(reportId, fileId);
+        return !!sent?.ok;
       }
-      return ok;
+      const r = await fetch(`${api}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: Number(id), text: text.slice(0, 4000), link_preview_options: { is_disabled: true }, ...markup }) });
+      return ((await r.json()) as { ok: boolean }).ok;
     } catch { return false; }
   }));
   return res.some(Boolean);

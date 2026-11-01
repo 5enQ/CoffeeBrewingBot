@@ -82,10 +82,12 @@ jobs:
         if: env.GH_ISSUES_TOKEN != ''
         run: |
           V=$(node scripts/release-info.mjs version)
-          REPO=5enQ/brewbook-bugs
           H=(-H "Authorization: Bearer $GH_ISSUES_TOKEN" -H "Accept: application/vnd.github+json")
+          # the private bug repository; the first few reports went to the public one
+          for REPO in 5enQ/brewbook-bugs 5enQ/CoffeeBrewingBot; do
           for n in $(curl -sS "${H[@]}" "https://api.github.com/repos/$REPO/issues?state=open&labels=claude-fixed&per_page=100" | jq -r '.[] | select(.pull_request | not) | .number'); do
             curl -sS "${H[@]}" -X POST "https://api.github.com/repos/$REPO/issues/$n/comments" -d "{\"body\":\"Исправление вышло в версии v$V.\"}" > /dev/null
             curl -sS "${H[@]}" -X PATCH "https://api.github.com/repos/$REPO/issues/$n" -d '{"state":"closed","state_reason":"completed"}' > /dev/null
-            echo "closed #$n"
+            echo "closed $REPO#$n"
+          done
           done

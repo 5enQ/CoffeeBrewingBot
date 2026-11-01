@@ -7,6 +7,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ### Changed
 - Handed-over bug reports go to the private repository `brewbook-bugs`: the issue names the tester (note, name, @username) and shows the screenshot, which is copied there from Telegram. After a release the deploy closes the fixed ones («Исправление вышло в версии vX»).
+- A report with a screenshot comes as one message: the photo with the report as its caption and «Передать на исправление» under it (a report longer than a caption goes as text first). Before, the screenshot came separately and could not be handed over with the report (brewbook-bugs: CoffeeBrewingBot#3).
 
 ### Fixed
 - «Передать на исправление» did nothing: the bot's webhook was never registered (it was set only when the owner opened their panel). The worker now makes sure the webhook is there before it sends a report with the button, and logs whether Telegram accepted it.

@@ -83,6 +83,10 @@ cid4 = post('/cards', {'initData': D, 'card': {'name': 'Аня', 'theme': {'spec
 ok(get(f'/cards/{cid4}')['card']['theme'] == {'special': 'beta'}, 'the testers card is shown')
 g = post('/admin', {'initData': A, 'action': 'revoke', 'tg': '444', 'what': 'beta'})
 ok(any(x['tg'] == '444' and x['grants'] == [] for x in g['grants']), 'a signed person stays in the list after their grants are taken away')
+ok(post('/admin', {'initData': C, 'action': 'forget', 'tg': '444'}).get('status') == 403, 'only the owner removes people from the list')
+g = post('/admin', {'initData': A, 'action': 'forget', 'tg': '444'})
+ok(not any(x['tg'] == '444' for x in g['grants']), 'the owner removes a person from the list')
+ok(get(f'/cards/{cid4}').get('card') is not None, 'their card stays (only grants and the note are gone)')
 
 # «Стакан» for 500 liters
 E = sign(557)
@@ -97,6 +101,7 @@ ok(get(f'/cards/{cid6}')['card']['theme'] == {'base': 'paper'}, 'a level above t
 
 # testers: the checklist, answers, reports
 post('/admin', {'initData': A, 'action': 'grant', 'tg': '444', 'what': 'beta'})
+post('/admin', {'initData': A, 'action': 'note', 'tg': '444', 'note': 'Аня, бариста из Kojo'})
 ok(post('/tester', {'initData': C, 'action': 'checks'}).get('status') == 403, 'the tester panel needs the testers grant')
 g = post('/admin', {'initData': A, 'action': 'check_add', 'note': 'Колд брю: бот пишет, когда время вышло'})
 post('/admin', {'initData': A, 'action': 'check_add', 'note': 'Замки кофе/воды/пропорции'})
@@ -112,6 +117,17 @@ ok(oc[1]['answers'][0]['note'] == 'Замок воды не держится п�
 ok(post('/tester', {'initData': D, 'action': 'report', 'text': ''}).get('status') == 400, 'an empty report is refused')
 rep = post('/tester', {'initData': D, 'action': 'report', 'text': 'Падает экран', 'image': 'data:image/png;base64,iVBORw0KGgo='})
 ok(rep.get('status') == 502, 'a report goes to the owner through the bot (refused here: fake token)')
+# the bot webhook (button «Передать на исправление»): only Telegram with the derived secret gets in
+import hashlib
+def tg(update, secret):
+    req = urllib.request.Request('http://localhost:8799/tg', data=json.dumps(update).encode(), headers={'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': secret})
+    try: return urllib.request.urlopen(req).status
+    except urllib.error.HTTPError as e: return e.code
+SECRET = hashlib.sha256(b'brewbook-webhook:123:TEST').hexdigest()[:48]
+ok(tg({'callback_query': {'id': '1', 'data': 'fix:x', 'from': {'id': 111}}}, 'wrong') == 403, 'the webhook refuses calls without the secret')
+ok(tg({'callback_query': {'id': '1', 'data': 'fix:x', 'from': {'id': 111}}}, SECRET) == 200, 'the webhook takes Telegram button presses (no GitHub token here: answered with an error, nothing created)')
+ok(tg({'callback_query': {'id': '2', 'data': 'fix:x', 'from': {'id': 999}}}, SECRET) == 200, 'a press from someone who is not the owner is ignored')
+
 g = post('/admin', {'initData': A, 'action': 'check_remove', 'what': ch[0]['id']})
 ok(len(g['checks']) == 1, 'the owner removes an item')
 g = post('/admin', {'initData': A, 'action': 'check_clear'})

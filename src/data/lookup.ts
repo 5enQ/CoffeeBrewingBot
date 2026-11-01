@@ -225,7 +225,7 @@ export interface CrawlUsage { day: string; reads: number; writes: number; maxRea
 export interface AdminData { sites: SiteInfo[]; grants: GrantInfo[]; crawl?: CrawlUsage; checks?: import('./tester').CheckItem[] }
 
 /** Owner-only tools: roaster sites and special backgrounds. null — not the owner or no connection. */
-export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 'recrawl' | 'grant' | 'revoke' | 'note' | 'check_add' | 'check_remove' | 'check_clear'; host?: string; roaster?: string; tg?: string; what?: string; note?: string; username?: string } = { action: 'list' }): Promise<AdminData | null> {
+export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 'recrawl' | 'grant' | 'revoke' | 'note' | 'forget' | 'check_add' | 'check_remove' | 'check_clear'; host?: string; roaster?: string; tg?: string; what?: string; note?: string; username?: string } = { action: 'list' }): Promise<AdminData | null> {
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return null;
   try {

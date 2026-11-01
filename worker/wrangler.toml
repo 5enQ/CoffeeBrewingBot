@@ -42,6 +42,8 @@ new_sqlite_classes = ["Accounts"]
 [vars]
 # Allowed request origin (the Mini App site)
 ALLOWED_ORIGIN = "https://5enq.github.io"
+# Where «Передать на исправление» opens issues (needs the GH_ISSUES_TOKEN secret)
+GH_REPO = "5enQ/CoffeeBrewingBot"
 
 # The BOT_TOKEN secret is set via `wrangler secret put BOT_TOKEN` (or GitHub Actions)
 

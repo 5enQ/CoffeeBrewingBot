@@ -31,6 +31,8 @@ async def mock(pg, admin_log=None):
                 cur = next((g for g in GRANTS if g['tg'] == req['tg']), None)
                 if cur: cur['grants'].append(req['what'])
                 else: GRANTS.append({'account': 'x' + req['tg'], 'tg': req['tg'], 'grants': [req['what']]})
+            if req.get('action') == 'forget':
+                GRANTS[:] = [g for g in GRANTS if g['tg'] != req['tg']]
             if req.get('action') == 'note':
                 cur = next((g for g in GRANTS if g['tg'] == req['tg']), None)
                 if cur:
@@ -88,6 +90,10 @@ async def main():
         pg2, errors2 = await page(b, init=TG)
         await mock(pg2, log)
         await pg2.click('.tabbar >> text=Профиль'); await pg2.wait_for_timeout(600)
+        head = pg2.locator('.role-panel.role-owner .role-panel-head')
+        check(await head.count() == 1 and await pg2.locator('.role-panel.role-owner .section').count() == 0, 'the owner panel starts folded to its heading')
+        check('людей с правами' in await head.inner_text(), 'the folded heading shows a summary')
+        await head.click(); await pg2.wait_for_timeout(300)
         sec = pg2.locator('.section:has(h2:text("Сайты обжарщиков"))')
         check(await sec.count() == 1, 'owner sees the roaster sites section')
         check(await pg2.locator('.row:has-text("Ваш Telegram ID")').count() == 1, 'Telegram ID row')
@@ -116,6 +122,10 @@ async def main():
         await row.locator('.chip:has-text("Все фоны")').click(); await pg2.wait_for_timeout(400)
         check(any(x.get('action') == 'grant' and x.get('what') == 'tester' for x in log), 'testers grant given separately')
         await dev.screenshot(path='out/owner-dev.png')
+        pg2.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
+        await row.locator('button:has-text("Убрать из списка")').click(); await pg2.wait_for_timeout(300)
+        if await pg2.locator('.dialog:visible').count(): await pg2.locator('.dialog:visible .btn-primary').first.click(); await pg2.wait_for_timeout(400)
+        check(any(x.get('action') == 'forget' and x.get('tg') == '555666' for x in log) and await dev.locator('.grant-row:has-text("Аня")').count() == 0, 'the owner removes a person from the list')
 
         # the owner's panel is framed and colored; the checklist for testers lives in it
         check(await pg2.locator('.role-panel.role-owner .section:has(h2:text("Сайты обжарщиков"))').count() == 1, 'owner tools sit in the colored owner panel')
@@ -127,6 +137,8 @@ async def main():
         await pg2.click('.tabbar >> text=Профиль'); await pg2.wait_for_timeout(800)
         tp = pg2.locator('.role-panel.role-tester')
         check(await tp.count() == 1, 'the tester panel is shown with the testers grant')
+        check(await pg2.locator('.role-panel.role-owner .section').count() > 0, 'the owner panel stays open after a restart (remembered)')
+        await tp.locator('.role-panel-head').click(); await pg2.wait_for_timeout(400)
         row = tp.locator('.check-row:has-text("Колд брю")')
         await row.locator('button:has-text("Работает")').click(); await pg2.wait_for_timeout(400)
         a = next((x for x in TESTER_LOG if x.get('action') == 'answer'), {})
@@ -136,7 +148,8 @@ async def main():
         await tp.locator('.section:has(h2:text("Сообщить об ошибке")) button:has-text("Отправить")').click(); await pg2.wait_for_timeout(400)
         check(any(x.get('action') == 'report' and 'Свернуть' in x.get('text', '') for x in TESTER_LOG), 'a bug report is sent')
         diag = await tp.locator('.diag').inner_text()
-        check('Платформа' in diag and 'tdesktop' in diag and 'Приложение' in diag, 'diagnostics show the platform and versions')
+        check('Платформа' in diag and 'tdesktop' in diag and 'Система' in diag and 'Таймер' not in diag and 'Браузер' not in diag, 'diagnostics: platform, versions and a short system line; no timer, no browser string')
+        check('Система:' in a.get('context', ''), 'the system line goes into the report')
         await tp.screenshot(path='out/tester-panel.png')
         await pg2.locator('.role-panel.role-owner').screenshot(path='out/owner-panel.png')
         check(any(x.get('action') == 'approve' and x.get('host') == 'newroaster.ru' and x.get('roaster') == 'Новый обжарщик' for x in log), 'approve request sent with the roaster name')

@@ -103,7 +103,7 @@ export interface Found { id: string; coffee: Coffee; source: 'page' | 'user'; co
 export type SiteStatus = 'approved' | 'pending' | 'rejected';
 export interface SiteRow {
   host: string; roaster: string; status: SiteStatus; rules: SiteRules; robots: Robots | null;
-  added: number; requests: number; sample: string | null; crawlStart: number | null; crawled: number | null; lastFetch: number;
+  added: number; requests: number; sample: string | null; crawlStart: number | null; crawled: number | null; lastFetch: number; fails: number; retryAt: number | null;
 }
 
 /** During a manual re-crawl, a known page is fetched again if its lastmod changed or it is older than this */
@@ -117,6 +117,10 @@ const MAX_FAILS = 5;
 let STEP = 60_000;
 /** Minimum pause between two requests to the same site */
 let PER_SITE = 120_000;
+/** an alarm due longer ago than this is stuck (see kick) */
+const STUCK = 10 * 60_000;
+/** the longest one crawler step may take (a sitemap fetch has 15 s, a page 8 s) */
+const STEP_DEADLINE = 60_000;
 /**
  * Daily budget of the crawler: at most 70% of the Cloudflare free tier for Durable Objects SQLite
  * (5 M rows read and 100 k rows written per day, account-wide, reset at 00:00 UTC). The crawler meters its own steps
@@ -218,6 +222,12 @@ export class CoffeeCatalog extends DurableObject<Env> {
     return this.get(id);
   }
 
+  /** a lot read from a page that turned out not to be coffee for brewing (tea, capsules): out of the catalog, unless people confirmed it */
+  dropPage(id: string) {
+    this.sql.exec("UPDATE coffee SET state = 'gone', updated = ? WHERE id = ? AND source = 'page' AND confirms = 0", Date.now(), id);
+    this.staleCounts();
+  }
+
   private link(id: string, keys: string[]) {
     for (const k of keys) this.sql.exec('INSERT OR IGNORE INTO coffee_key (key, coffee) VALUES (?, ?)', k, id);
   }
@@ -302,6 +312,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
       host: r.host as string, roaster: r.roaster as string, status: r.status as SiteStatus, rules: JSON.parse((r.rules as string) || '{}'),
       robots: r.robots ? JSON.parse(r.robots as string) : null, added: r.added as number, requests: r.requests as number,
       sample: (r.sample as string) ?? null, crawlStart: (r.crawl_start as number) ?? null, crawled: (r.crawled as number) ?? null, lastFetch: r.last_fetch as number,
+      fails: (r.fails as number) ?? 0, retryAt: (r.retry_at as number) ?? null,
     };
   }
 
@@ -330,7 +341,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
       const s = this.site(host as string)!;
       const p = Object.fromEntries(pages.filter((x) => x.host === s.host).map((x) => [x.status, x.n]));
       const l = Object.fromEntries(lots.filter((x) => x.host === s.host).map((x) => [x.state, x.n]));
-      return { host: s.host, roaster: s.roaster, status: s.status, added: s.added, requests: s.requests, sample: s.sample, crawled: s.crawled, crawling: !!s.crawlStart, pages: p, lots: l };
+      return { host: s.host, roaster: s.roaster, status: s.status, added: s.added, requests: s.requests, sample: s.sample, crawled: s.crawled, crawling: !!s.crawlStart, fails: s.fails, retryAt: s.retryAt, failed: s.fails >= MAX_FAILS, pages: p, lots: l };
     });
   }
 
@@ -368,8 +379,13 @@ export class CoffeeCatalog extends DurableObject<Env> {
 
   /** Make sure the crawler runs (cron calls this as a heartbeat) */
   async kick() {
-    const at = await this.ctx.storage.getAlarm();
-    if (!at || at > Date.now() + STEP) await this.ctx.storage.setAlarm(Date.now() + 1000);
+    const at = await this.ctx.storage.getAlarm(), now = Date.now();
+    // an alarm time long in the past is an alarm that will not come: after it threw several times in a row
+    // (on 2026-10-30, during a deploy) Cloudflare stopped retrying it but kept it set, and the crawler slept for days
+    if (!at || at > now + STEP || at < now - STUCK) {
+      if (at && at < now - STUCK) console.log('crawl alarm was stuck since', new Date(at).toISOString());
+      await this.ctx.storage.setAlarm(now + 1000);
+    }
     return true;
   }
 
@@ -385,7 +401,10 @@ export class CoffeeCatalog extends DurableObject<Env> {
     this.sql = { exec: (q: string, ...b: SqlStorageValue[]) => { const c = real.exec(q, ...b); cursors.push(c); return c; } } as unknown as SqlStorage;
     let next: number | null = null;
     try {
-      try { busy = await this.step(); } catch (e) { console.log('crawl step failed', e); busy = true; }
+      // one step may not hang the crawler: a site that never answers (rockets.coffee from abroad) is given up on
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const deadline = new Promise<never>((_, no) => { timer = setTimeout(() => no(new Error('crawl step took too long')), STEP_DEADLINE); });
+      try { busy = await Promise.race([this.step(), deadline]); } catch (e) { console.log('crawl step failed', e); busy = true; } finally { if (timer) clearTimeout(timer); }
       // a step that did work may have changed page or lot counts
       if (busy) this.staleCounts();
       next = busy ? Date.now() + STEP : this.nextDue();
@@ -545,6 +564,8 @@ export class CoffeeCatalog extends DurableObject<Env> {
     const coffee = cleanCoffee(rest);
     // on an approved roaster site a name with a country is enough (HQ! coffee pages are sparse); merch has neither
     if (unsupported || (usefulCount(coffee as Record<string, unknown>) < 2 && !(coffee.country && coffee.name))) {
+      const was = this.sql.exec<{ coffee: string | null }>('SELECT coffee FROM page WHERE url = ?', url).one().coffee;
+      if (unsupported && was) this.dropPage(was);
       this.sql.exec("UPDATE page SET status = 'skip', fetched = ?, attempts = 0 WHERE url = ?", now, url);
       return;
     }

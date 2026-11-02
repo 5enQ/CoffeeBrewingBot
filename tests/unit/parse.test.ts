@@ -4,6 +4,21 @@ import { normalizeProcess, normalizeRoast, parsePage } from '../../worker/src/pa
 const page = (body: string, head = '') => `<html><head>${head}</head><body>${body}</body></html>`;
 
 describe('roaster page parser', () => {
+  it('Tilda: a decorative zero-block <h1> is not the lot name — the page title is', () => {
+    const r = parsePage(page(`<h1 class='tn-atom' field='tn_text_1'>Cпособы приготовления</h1><h1 class="js-product-name" field="title"></h1>`,
+      '<meta property="og:title" content="Гондурас Дарио Энаморадо , эспрессо" />'), 'https://silkydrum.ru/catalog/honduras-dario-enamorado-natural');
+    expect(r.name).toBe('Гондурас Дарио Энаморадо');
+    expect(r.country).toBe('Гондурас');
+    expect(r.unsupported).toBeUndefined();
+  });
+
+  it('tea and capsules are not lots for the diary', () => {
+    expect(parsePage(page('<h1>Си Ху Лунцзин, чай зелёный</h1>'), 'https://silkydrum.ru/catalog/luntszin-tea-zelenyi').unsupported).toBe(true);
+    expect(parsePage(page('<h1>Высокогорный Мао Цзянь</h1>'), 'https://silkydrum.ru/catalog/vysokogornyi-tea-zelenyi').unsupported).toBe(true);
+    expect(parsePage(page('<h1>Кофе в капсулах, Бразилия Силки</h1>'), 'https://silkydrum.ru/catalog/kofe-v-kapsulah-brazilia-silky').unsupported).toBe(true);
+    expect(parsePage(page('<h1>Эфиопия Чалчиса</h1>'), 'https://silkydrum.ru/catalog/ethiopia-chalchisa').unsupported).toBeUndefined();
+  });
+
   it('reads Tilda product characteristics', () => {
     const r = parsePage(page(`<h1>Руанда Муремуре, дрип</h1>
       <p class="js-store-prod-charcs">Страна: Руанда</p><p class="js-store-prod-charcs">Обработка: carbonic maceration</p>

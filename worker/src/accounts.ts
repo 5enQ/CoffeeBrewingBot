@@ -71,6 +71,11 @@ export class Accounts extends DurableObject<Env> {
       }
       sql.exec("UPDATE meta SET value = '2' WHERE key = 'schema'");
     }
+    // v3: the Telegram file id of a report's screenshot (copied into the private bug repository on hand-over)
+    if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 3) {
+      try { sql.exec('ALTER TABLE report ADD COLUMN photo_id TEXT'); } catch { /* already there */ }
+      sql.exec("UPDATE meta SET value = '3' WHERE key = 'schema'");
+    }
   }
 
   private grantsOf(account: string): string[] {
@@ -322,15 +327,17 @@ export class Accounts extends DurableObject<Env> {
     return rid;
   }
 
-  /** a report for the issue: the tester is named only by a short anonymous code (the repository is public) */
+  /** a report for the issue (the bug repository is private: the tester is named by the owner's note, name and @username) */
   report(rid: string) {
-    const r = this.sql.exec<{ account: string; kind: string; item: string | null; text: string; context: string | null; photo: number; ts: number; issue: string | null }>(
-      'SELECT account, kind, item, text, context, photo, ts, issue FROM report WHERE id = ?', rid).toArray()[0];
+    const r = this.sql.exec<{ account: string; kind: string; item: string | null; text: string; context: string | null; photo: number; photo_id: string | null; ts: number; issue: string | null; note: string | null; username: string | null; name: string | null; tg: string | null }>(
+      `SELECT r.account, r.kind, r.item, r.text, r.context, r.photo, r.photo_id, r.ts, r.issue, a.note, i.username, i.name, i.subject AS tg
+       FROM report r LEFT JOIN account a ON a.id = r.account LEFT JOIN identity i ON i.account = r.account AND i.provider = 'tg' WHERE r.id = ?`, rid).toArray()[0];
     if (!r) return null;
-    let h = 0;
-    for (const ch of r.account) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-    return { ...r, tester: 'T-' + h.toString(36).slice(0, 5).toUpperCase() };
+    const tester = [r.note || r.name || 'Тестировщик', r.username ? `@${r.username}` : null, r.tg ? `ID ${r.tg}` : null].filter(Boolean).join(' · ');
+    return { ...r, tester };
   }
+
+  setReportPhoto(rid: string, fileId: string) { this.sql.exec('UPDATE report SET photo_id = ? WHERE id = ?', fileId, rid); }
 
   setReportIssue(rid: string, url: string) { this.sql.exec('UPDATE report SET issue = ? WHERE id = ?', url, rid); }
 

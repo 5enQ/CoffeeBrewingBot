@@ -25,7 +25,7 @@ export const SEED_SITES: SeedSite[] = [
   { host: 'theweldercatherine.ru', roaster: 'Сварщица Екатерина', include: ['^/catalog/(dlya_filtra|dlya_espresso|kofe_v_filtr_pakete|arkhiv_kofe)/.+/$'], archive: ['^/catalog/arkhiv_kofe/'] },
   { host: 'shop.tastycoffee.ru', roaster: 'Tasty Coffee', include: ['^/coffee/[^/]+$'], exclude: ['^/coffee/capsules-'] },
   // Tilda store: lots at /catalog/<slug>, accessories live under /accessories
-  { host: 'silkydrum.ru', roaster: 'Silky Drum', include: ['^/catalog/[^/]+/?$'], exclude: ['sertifikat', 'certificate', 'podar', 'merch', 'futbolk', 'kruzhk', 'shopper'] },
+  { host: 'silkydrum.ru', roaster: 'Silky Drum', include: ['^/catalog/[^/]+/?$'], exclude: ['sertifikat', 'certificate', 'podar', 'merch', 'futbolk', 'kruzhk', 'shopper', 'tea', 'chai', 'kapsul', 'capsul'] },
   { host: 'rockets.coffee', roaster: 'Rockets', include: ['^/products/[^/]+/?$'],
     exclude: ['sertifikat', 'certificate', 'gift', 'podar', 'merch', 'futbolk', 't-shirt', 'tshirt', 'hoodie', 'hudi', 'kruzhk', 'mug', 'shopper', 'tote', 'filtr-bumag', 'paper-filter', 'kapsul', 'capsul'] },
 ];

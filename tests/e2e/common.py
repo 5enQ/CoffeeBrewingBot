@@ -24,8 +24,10 @@ def done():
     print('\nall checks passed')
 
 
-async def page(browser, width=390, height=844, dark=False, db=None, init=None):
-    ctx = await browser.new_context(viewport={'width': width, 'height': height}, color_scheme='dark' if dark else 'light')
+async def page(browser, width=390, height=844, dark=False, db=None, init=None, phone=False):
+    # phone=True: a touch screen (pointer: coarse) — the app reads the motion sensor only there
+    ctx = await browser.new_context(viewport={'width': width, 'height': height}, color_scheme='dark' if dark else 'light',
+                                    **({'is_mobile': True, 'has_touch': True} if phone else {}))
     if init:
         await ctx.add_init_script(init)
     if db is not None:

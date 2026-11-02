@@ -35,6 +35,7 @@ export function tiltInput(el: HTMLElement | null) {
   const off = platform.isDesktopClient() ? () => {} : platform.onTilt((beta, gamma) => {
     if (!base) base = { b: beta, g: gamma };
     raw = { b: beta, g: gamma };
+    if (!lastSensor) lastSensor = performance.now(); // the glass reads gravity from the very first reading
     if (!live && Math.abs(beta - base.b) + Math.abs(gamma - base.g) < 0.8) return;
     live = true;
     if (inside) return; // the mouse is on the card: it leads

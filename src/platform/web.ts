@@ -1,3 +1,4 @@
+import { tiltInfo } from '../data/tilt';
 import type { Platform, HapticKind, ShareResult, CloudKV } from './types';
 import { dialog } from '../ui/dialog';
 
@@ -36,7 +37,11 @@ export async function webShare(text: string, url: string): Promise<ShareResult> 
 
 /** Device tilt from the browser's deviceorientation event (iOS asks for permission on the first tap: see requestTiltPermission) */
 export function webTilt(cb: (beta: number, gamma: number) => void) {
-  const on = (e: DeviceOrientationEvent) => { if (e.beta !== null && e.gamma !== null) cb(e.beta, e.gamma); };
+  const on = (e: DeviceOrientationEvent) => {
+    if (e.beta === null || e.gamma === null) return;
+    Object.assign(tiltInfo, { source: 'browser', units: 'градусы', beta: e.beta, gamma: e.gamma, at: Date.now() });
+    cb(e.beta, e.gamma);
+  };
   window.addEventListener('deviceorientation', on);
   return () => window.removeEventListener('deviceorientation', on);
 }

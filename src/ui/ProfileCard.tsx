@@ -11,6 +11,7 @@ import { requestTiltPermission } from '../platform/web';
 import { BadgeRow } from './Badges';
 import { Icon, MethodIcon } from './icons';
 import { reduceMotion } from './motion';
+import { gravityOf, lookOf, planeOf, rollOf } from '../data/tilt';
 
 const initials = (s: string) => s.replace(/^@/, '').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 const clamp = (v: number, a = -1, b = 1) => Math.max(a, Math.min(b, v));
@@ -23,12 +24,14 @@ const clamp = (v: number, a = -1, b = 1) => Math.max(a, Math.min(b, v));
 export function tiltInput(el: HTMLElement | null) {
   let target = { x: 0, y: 0 };
   let base: { b: number; g: number } | null = null;
-  let lastInput = 0;
+  let lastInput = 0, lastSensor = 0;
+  let raw = { b: 0, g: 0 };
   // the first reading is "level": tilting from how the phone is held, not from flat on a table
   const off = platform.onTilt((beta, gamma) => {
     if (!base) base = { b: beta, g: gamma };
+    raw = { b: beta, g: gamma };
     target = { x: clamp((gamma - base.g) / 25), y: clamp((beta - base.b) / 25) };
-    lastInput = performance.now();
+    lastInput = lastSensor = performance.now();
   });
   const move = (e: PointerEvent) => {
     const r = el!.getBoundingClientRect();
@@ -40,6 +43,13 @@ export function tiltInput(el: HTMLElement | null) {
     read(now: number) {
       if (now - lastInput > 2500) target = { x: Math.sin(now / 1700) * 0.4, y: Math.cos(now / 2300) * 0.3 };
       return target;
+    },
+    /**
+     * The motion sensor as gravity (see data/tilt.ts) once it has spoken and no pointer moved since; null — pointer or
+     * no sensor. A phone lying still may send no new readings for a while: the last one still holds.
+     */
+    gravity() {
+      return lastSensor && lastSensor >= lastInput - 1 ? gravityOf(raw.b, raw.g) : null;
     },
     stop() { off(); el?.removeEventListener('pointermove', move); },
   };
@@ -410,6 +420,7 @@ function GlassLayer({ host, still }: { host: React.RefObject<HTMLElement | null>
     // springs: roll (surface angle, rad) and pitch (how much of the top is seen, 0..1)
     let roll = 0, rollV = 0, pitch = 0.1, pitchV = 0, amp = 0, phase = 0, last = performance.now();
     let sx = 0, sy = 0; // smoothed input
+    let baseLook: number | null = null; // how the phone was held when the card opened
     const N = 24;       // points along the surface: enough for smooth waves, cheap to fill
     const front = new Float32Array(N + 1), back = new Float32Array(N + 1);
 
@@ -417,10 +428,18 @@ function GlassLayer({ host, still }: { host: React.RefObject<HTMLElement | null>
       raf = requestAnimationFrame(step);
       const dt = Math.min(0.033, (now - last) / 1000); last = now;
       if (!visible || document.hidden) return;
-      const t = input ? input.read(now) : { x: 0, y: 0 };
+      let t = input ? input.read(now) : { x: 0, y: 0 };
+      // with the motion sensor the surface follows gravity: it stays level however the phone is turned
+      // (sx = turn / 0.42, so the surface tilts on screen by exactly the opposite of the phone's turn)
+      const g = input?.gravity();
+      if (g) {
+        const plane = clamp((planeOf(g) - 0.2) / 0.3, 0, 1); // almost flat: the turn means nothing, keep the surface level
+        if (baseLook === null) baseLook = lookOf(g);
+        t = { x: clamp((rollOf(g) / 0.42) * plane, -1.6, 1.6), y: clamp((lookOf(g) - baseLook) / 0.35) };
+      }
       const px0 = sx, py0 = sy;
       sx += (t.x - sx) * Math.min(1, dt * 14); sy += (t.y - sy) * Math.min(1, dt * 14);
-      card.style.setProperty('--tx', sx.toFixed(3));
+      card.style.setProperty('--tx', clamp(sx).toFixed(3));
       const rollT = -sx * 0.42, pitchT = 0.1 + Math.max(0, sy) * 0.32 + Math.max(0, -sy) * 0.1;
       const aR = -(roll - rollT) * 42 - rollV * 3.4;            // water: stiff and lively
       const aP = -(pitch - pitchT) * 48 - pitchV * 2.6;         // underdamped: a sharp tilt overshoots and opens the surface

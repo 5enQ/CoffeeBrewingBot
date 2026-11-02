@@ -29,6 +29,8 @@ _Nothing right now._ Unreleased work is in the changelog.
 
 ## To check
 
+- **«Стакан» with the new gravity reading** (in dev): on an iPhone and an Android phone in Telegram — turn the phone like a steering wheel (the coffee stays level), tip the top away (the surface opens). If it reacts the wrong way, Profile → panel → «Датчик наклона» shows the source, units and angles the client sends: Telegram's angle conventions are not fully documented and may differ between iOS and Android.
+
 - **Crawler after the stuck-alarm fix** (in dev): after the release, Profile → «Сайты обжарщиков» must show «Обход сегодня» growing, Silky Drum crawled with lots, the queued pages of Tasty Coffee, The Welder Catherine and Submarine going down. The 5 Silky Drum lots added by a check scan on 2026-11-02 (3 teas, capsules, a lot named «Способы приготовления») drop out when those pages are read again.
 
 - **Testers' panel** — the bot messages to the owner (answers on the checklist, bug reports with a screenshot) were tested locally only; check that they arrive.

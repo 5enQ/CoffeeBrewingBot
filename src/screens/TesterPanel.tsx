@@ -9,6 +9,8 @@ import { useStore } from '../data/store';
 import { adminCall, type AdminData } from '../data/lookup';
 import { answerCheck, diagnostics, diagText, loadChecks, sendReport, setDiagExtra, shrinkImage, type CheckItem } from '../data/tester';
 import { platform } from '../platform';
+import { requestTiltPermission } from '../platform/web';
+import { gravityOf, lookOf, rollOf, tiltInfo } from '../data/tilt';
 import { Button, Section } from '../ui/kit';
 import { Icon } from '../ui/icons';
 import { HOLIDAYS, getPreview, setPreview, type HolidayPreview as HolidayPreviewValue } from '../data/holidays';
@@ -132,6 +134,8 @@ export function TesterPanel() {
 
       <HolidayPreview />
 
+      <TiltCheck />
+
       <Section title="Диагностика">
         <dl className="diag">
           {diagnostics({ server, sync: syncText }).map((d) => <div key={d.label}><dt>{d.label}</dt><dd>{d.value}</dd></div>)}
@@ -141,6 +145,42 @@ export function TesterPanel() {
         </div>
       </Section>
     </Panel>
+  );
+}
+
+/**
+ * The motion sensor live: what the app reads (source, units, raw angles) and what it makes of them (turn, face-up).
+ * Testers tilt the phone and see whether the numbers follow; it helps when a card reacts to tilts the wrong way.
+ */
+function TiltCheck() {
+  const [on, setOn] = useState(false);
+  const [r, setR] = useState<{ beta: number; gamma: number } | null>(null);
+  useEffect(() => {
+    if (!on) return;
+    setR(null);
+    const off = platform.onTilt((beta, gamma) => setR({ beta, gamma }));
+    const t = setTimeout(() => setOn(false), 30_000);
+    return () => { off(); clearTimeout(t); };
+  }, [on]);
+  const g = r && gravityOf(r.beta, r.gamma);
+  const deg = (v: number) => `${Math.round((v * 180) / Math.PI)}°`;
+  return (
+    <Section title="Датчик наклона">
+      <p className="muted pad small-note">Включите и покрутите телефон: «Поворот» — как телефон повёрнут, как руль (0° — прямо, вправо — плюс), «К небу» — насколько экран смотрит вверх (0% — телефон стоит вертикально, 100% — лежит на столе).</p>
+      {on && (
+        <dl className="diag">
+          <div><dt>Источник</dt><dd>{r ? `${tiltInfo.source === 'telegram' ? 'Telegram' : 'браузер'}${tiltInfo.units ? `, ${tiltInfo.units}` : ''}` : 'ждём данных…'}</dd></div>
+          {r && g && <>
+            <div><dt>Углы</dt><dd>β {Math.round(r.beta)}°, γ {Math.round(r.gamma)}°</dd></div>
+            <div><dt>Поворот</dt><dd>{deg(rollOf(g))}</dd></div>
+            <div><dt>К небу</dt><dd>{Math.round(lookOf(g) * 100)}%</dd></div>
+          </>}
+        </dl>
+      )}
+      <div className="pad">
+        <Button kind="secondary" onClick={() => { void requestTiltPermission(); setOn((v) => !v); }}>{on ? 'Остановить' : 'Проверить наклон'}</Button>
+      </div>
+    </Section>
   );
 }
 

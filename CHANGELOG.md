@@ -3,7 +3,7 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
-## Unreleased
+## v1.6.0 — Comets ## Unreleased Crawler (2026-11-02)
 
 ### Changed
 - Testers' panel: «Датчик наклона» shows the motion sensor live — where the readings come from (Telegram or the browser, radians or degrees), the raw angles, how the phone is turned and how far the screen faces up — to check how a phone reports tilts.

@@ -29,6 +29,8 @@ _Nothing right now._ Unreleased work is in the changelog.
 
 ## To check
 
+- **Crawler after the stuck-alarm fix** (in dev): after the release, Profile → «Сайты обжарщиков» must show «Обход сегодня» growing, Silky Drum crawled with lots, the queued pages of Tasty Coffee, The Welder Catherine and Submarine going down. The 5 Silky Drum lots added by a check scan on 2026-11-02 (3 teas, capsules, a lot named «Способы приготовления») drop out when those pages are read again.
+
 - **Testers' panel** — the bot messages to the owner (answers on the checklist, bug reports with a screenshot) were tested locally only; check that they arrive.
 - **Bot reminder when a cold brew ends** — did not arrive on 2026-11-01 (the server never had it scheduled: no alarm ran). Fixed in dev (no hang on the write-access request, self-repair, status on the server). After the release: Profile → «О приложении» → «Сообщения от бота» must say «Работает», then a real cold brew must bring the message.
 - **Rockets (rockets.coffee) does not answer foreign servers** (checked 2026-11-02): from GitHub (USA) and from a Cloudflare worker every request timed out, while silkydrum.ru answered in 1.4 s. The site most likely accepts only Russian addresses, so the crawler cannot read it and scans of its links cannot be looked up. Options: ask Rockets to allow the crawler, fetch through a server in Russia, or leave the site out. The crawl rules for it were never checked against real pages.

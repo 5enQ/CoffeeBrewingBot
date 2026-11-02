@@ -13,7 +13,7 @@
 import { scaleKeyOf, scaleValueOf, type Scales } from '../../src/data/scales.ts';
 
 /** Page parser version: bump when the parser learns something new — unconfirmed lots refresh on the next scan or crawl */
-export const PARSER_VERSION = 3;
+export const PARSER_VERSION = 4;
 
 export interface Parsed {
   name?: string;
@@ -283,7 +283,13 @@ export function parsePage(html: string, pageUrl: string): Parsed {
   if (Object.keys(scales).length) out.scales = scales;
 
   // name
-  const h1 = text(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '') || meta(html, 'og:title').split(/\s[—|-]\s/)[0];
+  // the page heading; on Tilda pages the first <h1> can be a decorative zero-block heading («Способы приготовления»):
+  // when it shares no word with the page title, the title (og:title) names the lot better
+  const ogTitle = meta(html, 'og:title').split(/\s[—|-]\s/)[0].trim();
+  const rawH1 = text(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '');
+  const words = (t: string) => new Set(t.toLowerCase().replace(/[^a-zа-яё0-9 ]/gi, ' ').split(/\s+/).filter((w) => w.length >= 4));
+  const ogWords = words(ogTitle);
+  const h1 = !rawH1 ? ogTitle : ogTitle && ![...words(rawH1)].some((w) => ogWords.has(w)) ? ogTitle : rawH1;
   const name = cleanName(h1);
   if (name) out.name = name;
 
@@ -334,6 +340,8 @@ export function parsePage(html: string, pageUrl: string): Parsed {
     if (counts.length) out.dripOptions = counts;
   }
   if (/капсул/i.test(`${h1} ${ld.description} ${url.pathname.includes('capsules') ? 'капсулы' : ''}`)) out.unsupported = true;
+  // tea (some roasters sell it too): «Си Ху Лунцзин, чай зелёный», /catalog/…-tea-…
+  if (/(^|[^а-яё])ча[йяю]([^а-яё]|$)/i.test(h1) || /(^|[-/])(tea|chai)([-/]|$)/i.test(url.pathname)) out.unsupported = true;
   // several offers (pack sizes, drips): in stock if any of them is
   const avail = [...html.matchAll(/"availability"\s*:\s*"(?:https?:\/\/schema\.org\/)?(\w+)"/gi)].map((m) => m[1]);
   if (avail.length) out.inStock = avail.some((a) => /^(InStock|PreOrder|LimitedAvailability|OnlineOnly)$/i.test(a));

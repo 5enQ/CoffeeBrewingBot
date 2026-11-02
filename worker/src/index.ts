@@ -222,8 +222,13 @@ export default {
       const page = await fetchPage(pageUrl);
       if (!page) return json({ source: 'none' }, 200, h);
       keys = [...new Set([...keys, ...keysFor(page.url, null)])];
-      const { inStock: _s, unsupported: _u, ...parsed } = parsePage(page.html, page.url);
-      void _s; void _u;
+      const { inStock: _s, unsupported, ...parsed } = parsePage(page.html, page.url);
+      void _s;
+      // tea, capsules: not for the brewing diary, and not saved to the catalog
+      if (unsupported) {
+        if (found) await catalog.dropPage(found.id);
+        return json({ source: 'none' }, 200, h);
+      }
       const coffee = cleanCoffee(parsed);
       if (found) {
         // lot parsed by an old parser version and not confirmed by anyone — refresh it

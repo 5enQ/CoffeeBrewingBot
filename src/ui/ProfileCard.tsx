@@ -33,15 +33,38 @@ export function tiltInput(el: HTMLElement | null) {
     target = { x: clamp((gamma - base.g) / 25), y: clamp((beta - base.b) / 25) };
     lastInput = lastSensor = performance.now();
   });
-  const move = (e: PointerEvent) => {
-    const r = el!.getBoundingClientRect();
-    target = { x: clamp(((e.clientX - r.left) / r.width) * 2 - 1), y: clamp(((e.clientY - r.top) / r.height) * 2 - 1) };
-    lastInput = performance.now();
+  // the pointer is read against the card's untransformed box: the card itself turns and shrinks under
+  // the cursor, and measuring that moving box made the tilt chase itself — the card shook near its edges
+  let inside = false, swayFrom = 0;
+  const box = () => {
+    // offsetLeft/Top/Width/Height ignore the card's own transform; its offset parent does not turn
+    const p = (el!.offsetParent as HTMLElement | null)?.getBoundingClientRect() ?? { left: 0, top: 0 };
+    const left = p.left + el!.offsetLeft, top = p.top + el!.offsetTop;
+    return { left, top, width: el!.offsetWidth, height: el!.offsetHeight, right: left + el!.offsetWidth, bottom: top + el!.offsetHeight };
   };
-  el?.addEventListener('pointermove', move);
+  const move = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return; // a finger scrolls the page; phones tilt by the sensor
+    const r = box(), m = 24;
+    const over = e.clientX > r.left - m && e.clientX < r.right + m && e.clientY > r.top - m && e.clientY < r.bottom + m;
+    if (over) {
+      inside = true;
+      target = { x: clamp(((e.clientX - r.left) / r.width) * 2 - 1), y: clamp(((e.clientY - r.top) / r.height) * 2 - 1) };
+      lastInput = performance.now();
+    } else if (inside) {
+      // the cursor left: back to the middle first, the slow sway comes in later and softly
+      inside = false; target = { x: 0, y: 0 }; lastInput = performance.now();
+    }
+  };
+  const leave = () => { if (inside) { inside = false; target = { x: 0, y: 0 }; lastInput = performance.now(); } };
+  if (el) { window.addEventListener('pointermove', move, { passive: true }); document.addEventListener('pointerleave', leave); }
   return {
     read(now: number) {
-      if (now - lastInput > 2500) target = { x: Math.sin(now / 1700) * 0.4, y: Math.cos(now / 2300) * 0.3 };
+      // no sway while the cursor rests on the card: it would swing away under a still mouse and snap back on the next move
+      if (!inside && now - lastInput > 2500) {
+        if (!swayFrom) swayFrom = now;
+        const k = Math.min(1, (now - swayFrom) / 1500); // fade the sway in
+        target = { x: Math.sin(now / 1700) * 0.4 * k, y: Math.cos(now / 2300) * 0.3 * k };
+      } else swayFrom = 0;
       return target;
     },
     /**
@@ -51,7 +74,7 @@ export function tiltInput(el: HTMLElement | null) {
     gravity() {
       return lastSensor && lastSensor >= lastInput - 1 ? gravityOf(raw.b, raw.g) : null;
     },
-    stop() { off(); el?.removeEventListener('pointermove', move); },
+    stop() { off(); window.removeEventListener('pointermove', move); document.removeEventListener('pointerleave', leave); },
   };
 }
 

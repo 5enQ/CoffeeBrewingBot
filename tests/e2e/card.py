@@ -138,6 +138,17 @@ async def main():
         check(n_icons >= 10, f'tester: every method icon inside a tier ({n_icons})')
         await pt.locator('.icon-pick:visible[aria-label*="Аэропресс"]').click(); await pt.wait_for_timeout(300)
         check(await pt.locator('.pcard.tier-volume .pcard-constellation').count() >= 1, 'tester: «Объёмный» Аэропресс on the card')
+        vol = pt.locator('.pcard.tier-volume:visible').first
+        cb, cc = await vol.bounding_box(), await vol.locator('.pcard-constellation').bounding_box()
+        check(cc['x'] + cc['width'] / 2 > cb['x'] + cb['width'] * 0.6 and cc['y'] + cc['height'] / 2 < cb['y'] + cb['height'] * 0.5, 'volume: the constellation sits in the top right corner')
+        check(await vol.locator('.portal-layer').count() >= 8, 'volume: a deep sky of many layers')
+        check(await vol.locator('.pcard-glints, .pcard-sheen').count() == 0, 'volume: no metal sparkles on the night sky')
+        check(await vol.locator('.pcard-clip .pcard-portal').count() == 1, 'volume: the sky is inside the rounded clip layer')
+        seen = False
+        for _ in range(100):
+            if await vol.locator('.comet').count(): seen = True; break
+            await pt.wait_for_timeout(200)
+        check(seen, 'volume: a comet flies by now and then')
         await pt.locator('.theme-pick:visible:has-text("Бриллиант")').click(); await pt.wait_for_timeout(300)
         SERVER['diamondNo'] = 0
         check(await pt.locator('.pcard.tier-diamond').count() >= 1, 'tester: diamond card')
@@ -205,7 +216,7 @@ async def main():
                     nstars = await pv.locator('.pcard-constellation .const-stars circle').count()
                     nlines = await pv.locator('.pcard-constellation .const-lines line').count()
                     check(6 <= nstars <= 40 and nlines >= nstars - 3, f'volume card: the method is a constellation of key stars joined by lines ({nstars} stars, {nlines} lines)')
-                    check(await pv.locator('.pcard-portal canvas').count() == 4 and await pv.locator('.pcard-portal .sky.tw').first.evaluate("e => getComputedStyle(e).animationName") == 'twinkle', 'volume card: a starry sky that twinkles')
+                    check(await pv.locator('.pcard-portal canvas').count() == 7 and await pv.locator('.pcard-portal .sky.tw').first.evaluate("e => getComputedStyle(e).animationName") == 'twinkle', 'volume card: a starry sky that twinkles')
                     # a window, not a picture: far layers shift more than near ones when the phone tilts
                     await tilt(pv, 0, 0); await pv.wait_for_timeout(50); await tilt(pv, 0, 25); await pv.wait_for_timeout(900)
                     far = await pv.locator('.depth-far').evaluate('e => new DOMMatrix(getComputedStyle(e).transform).m41')

@@ -27,6 +27,9 @@ async def mock(pg, admin_log=None):
             req = json.loads(route.request.post_data or '{}')
             if admin_log is not None: admin_log.append(req)
             if req.get('action') == 'approve': SITES[1].update(status='approved', roaster=req.get('roaster') or '')
+            if req.get('action') == 'recrawl': SITES[0].update(crawled=None, crawling=True)
+            elif req.get('action') == 'list' and SITES[0]['crawling']:  # the next look: the pass is over
+                SITES[0].update(crawled=1793400000000, crawling=False, pages={'ok': 150}, lots={'active': 130, 'gone': 20})
             if req.get('action') == 'grant':
                 cur = next((g for g in GRANTS if g['tg'] == req['tg']), None)
                 if cur: cur['grants'].append(req['what'])
@@ -100,6 +103,17 @@ async def main():
         await sec.locator('.row:has-text("newroaster.ru")').click(); await pg2.wait_for_timeout(200)
         await pg2.fill('#site-name-newroaster\\.ru', 'Новый обжарщик')
         await sec.locator('button:has-text("Подключить")').click(); await pg2.wait_for_timeout(400)
+        # «Обойти заново»: a toast, then the progress under the buttons refreshes by itself until the pass is over
+        await sec.locator('.row:has-text("shop.tastycoffee.ru")').click(); await pg2.wait_for_timeout(200)
+        await sec.locator('button:has-text("Обойти заново")').click(); await pg2.wait_for_timeout(400)
+        check(any(x.get('action') == 'recrawl' and x.get('host') == 'shop.tastycoffee.ru' for x in log), 'recrawl sent')
+        check(await pg2.locator('.snack:has-text("Обход shop.tastycoffee.ru запущен")').count() == 1, 'recrawl: a toast says it started')
+        note = sec.locator('.crawl-progress')
+        check('Обновляется само' in await note.inner_text() and 'Читаем карту сайта' in await note.inner_text(), f'recrawl: progress shown under the buttons ({await note.inner_text()})')
+        check(await sec.locator('button:has-text("Обойти заново")').is_disabled(), 'recrawl: the button waits while the pass runs')
+        await pg2.wait_for_timeout(6800)
+        check(await pg2.locator('.snack:has-text("обход закончен — в продаже 130 лотов")').count() == 1, 'recrawl: a toast when the pass is over, with the lots')
+        check('Последний обход закончен' in await note.inner_text(), 'recrawl: the progress line says it is over')
         dev = pg2.locator('.section:has(h2:text("Разработчики и тестировщики"))')
         check(await dev.count() == 1, 'owner sees the developers and testers section')
         await pg2.fill('#dev-grant-id', '55 5x666')

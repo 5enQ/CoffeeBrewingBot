@@ -4,6 +4,7 @@ import { DepthCtx, useRouter } from '../router';
 import { useLayout } from '../layout';
 import { Icon } from './icons';
 import { dialog } from './dialog';
+import { HolidayGround, HolidayTop } from './Holiday';
 
 export function Screen({ title, subtitle, action, children, footer, root = false }: {
   title: string; subtitle?: string; action?: ReactNode; children: ReactNode; footer?: ReactNode; root?: boolean;
@@ -16,6 +17,7 @@ export function Screen({ title, subtitle, action, children, footer, root = false
   const closeIcon = layout === 'desktop' && depth === 1;
   return (
     <div className="screen">
+      <HolidayTop />
       <header className="topbar">
         {showBack && (
           <button className="icon-btn back" onClick={() => back()} aria-label={closeIcon ? 'Закрыть' : 'Назад'}><Icon name={closeIcon ? 'close' : 'back'} /></button>
@@ -27,6 +29,7 @@ export function Screen({ title, subtitle, action, children, footer, root = false
         {action && <div className="topbar-action">{action}</div>}
       </header>
       <main className="content">{children}</main>
+      {root && <HolidayGround />}
       {footer && <div className="footer">{footer}</div>}
     </div>
   );

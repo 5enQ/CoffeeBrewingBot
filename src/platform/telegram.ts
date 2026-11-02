@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { tiltInfo } from '../data/tilt';
 import type { Platform } from './types';
 import { createWebPlatform, requestWakeLock } from './web';
 
@@ -135,7 +136,15 @@ export function createTelegramPlatform(): Platform {
       const d = tg().DeviceOrientation;
       if (!d || !can('8.0')) return web.onTilt(cb);
       const deg = 180 / Math.PI;
-      const on = () => { if (d.beta !== null && d.gamma !== null) cb(d.beta * deg, d.gamma * deg); };
+      // Telegram documents radians, but not every client may follow it: an angle beyond π can only be degrees
+      let degrees = false;
+      const on = () => {
+        if (d.beta === null || d.gamma === null) return;
+        if (Math.abs(d.beta) > 3.3 || Math.abs(d.gamma) > 3.3) degrees = true;
+        const k = degrees ? 1 : deg;
+        Object.assign(tiltInfo, { source: 'telegram', units: degrees ? 'градусы' : 'радианы', beta: d.beta * k, gamma: d.gamma * k, at: Date.now() });
+        cb(d.beta * k, d.gamma * k);
+      };
       tg().onEvent('deviceOrientationChanged', on);
       try { d.start({ refresh_rate: 50 }); } catch { /* not supported on this device */ }
       return () => { tg().offEvent('deviceOrientationChanged', on); try { d.stop(); } catch { /* already stopped */ } };

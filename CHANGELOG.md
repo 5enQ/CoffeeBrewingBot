@@ -8,6 +8,9 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ### Changed
 - Without a connection to the server the owner's panel no longer disappears: on a device where the owner was recognized before it stays, says the server did not answer and offers «Повторить». «Версия сервера» says «нет связи» after 12 s instead of waiting forever (a blocked or throttled connection may hang instead of failing).
 
+### Fixed
+- Cards still shook under the mouse in Telegram for computers: the app sends readings of a motion sensor that a computer does not have (the same angles again and again), and each of them pulled the card back to the middle between mouse moves. Computers now ignore the motion sensor, and on phones a sensor counts only once its angles really change.
+
 ## v1.6.0 — Comets & Crawler (2026-11-02)
 
 ### Changed

@@ -26,16 +26,24 @@ export function tiltInput(el: HTMLElement | null) {
   let base: { b: number; g: number } | null = null;
   let lastInput = 0, lastSensor = 0;
   let raw = { b: 0, g: 0 };
-  // the first reading is "level": tilting from how the phone is held, not from flat on a table
-  const off = platform.onTilt((beta, gamma) => {
+  let inside = false; // the mouse is over the card
+  // the first reading is "level": tilting from how the phone is held, not from flat on a table.
+  // A sensor counts only once its angles have really changed: Telegram for computers may send readings of a sensor
+  // that is not there (the same numbers again and again); taken as input they pulled the card back to the middle
+  // between mouse moves, and the card jumped between two poses. Computers do not read the sensor at all.
+  let live = false;
+  const off = platform.isDesktopClient() ? () => {} : platform.onTilt((beta, gamma) => {
     if (!base) base = { b: beta, g: gamma };
     raw = { b: beta, g: gamma };
+    if (!live && Math.abs(beta - base.b) + Math.abs(gamma - base.g) < 0.8) return;
+    live = true;
+    if (inside) return; // the mouse is on the card: it leads
     target = { x: clamp((gamma - base.g) / 25), y: clamp((beta - base.b) / 25) };
     lastInput = lastSensor = performance.now();
   });
   // the pointer is read against the card's untransformed box: the card itself turns and shrinks under
   // the cursor, and measuring that moving box made the tilt chase itself — the card shook near its edges
-  let inside = false, swayFrom = 0;
+  let swayFrom = 0;
   const box = () => {
     // offsetLeft/Top/Width/Height ignore the card's own transform; its offset parent does not turn
     const p = (el!.offsetParent as HTMLElement | null)?.getBoundingClientRect() ?? { left: 0, top: 0 };

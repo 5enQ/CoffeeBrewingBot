@@ -216,6 +216,8 @@ export async function lookupCode(raw: string, beans: Bean[], drip = false): Prom
 export interface SiteInfo {
   host: string; roaster: string; status: 'approved' | 'pending' | 'rejected'; added: number; requests: number; sample: string | null;
   crawled: number | null; crawling: boolean; pages: Record<string, number>; lots: Record<string, number>;
+  /** the sitemap could not be read this many times in a row; retryAt — the next try; failed — gave up (5 times) */
+  fails?: number; retryAt?: number | null; failed?: boolean;
 }
 
 /** a person the owner gave something to: grants, the owner's note, what Telegram says about them */

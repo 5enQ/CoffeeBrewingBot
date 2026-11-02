@@ -344,19 +344,61 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
 
 const fmtCount = (n: number) => n >= 1e6 ? `${(n / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} млн` : n >= 1e3 ? `${(n / 1e3).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} тыс.` : String(n);
 
+const hhmm = (t: number) => new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+const crawlState = (s: SiteInfo) => s.crawling ? 'идёт обход'
+  : s.failed ? 'карта сайта не читается'
+  : s.fails && s.retryAt ? `карта сайта не прочиталась, повтор в ${hhmm(s.retryAt)}`
+  : s.crawled ? `обход ${new Date(s.crawled).toLocaleDateString('ru-RU')}` : 'ждёт обхода';
+
+/** what is going on with the site's crawl, in words, under its buttons */
+function crawlNote(s: SiteInfo, live: boolean) {
+  const done = (s.pages.ok ?? 0) + (s.pages.skip ?? 0) + (s.pages.error ?? 0);
+  const parts = [
+    s.crawling ? 'Читаем карту сайта.' : s.failed ? `Карту сайта не удалось прочитать ${s.fails} раз подряд — сервер больше не пробует. Проверьте, открывается ли сайт, и нажмите «Обойти заново».`
+      : s.fails ? `Карту сайта не удалось прочитать (${s.fails} раз), следующая попытка в ${hhmm(s.retryAt ?? 0)}.`
+      : !s.crawled ? 'Обход начнётся через несколько секунд.'
+      : s.pages.queued ? 'Карта сайта прочитана, страницы лотов открываются по одной (примерно раз в несколько секунд).' : `Последний обход закончен ${new Date(s.crawled).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.`,
+    `Страниц лотов: ${done + (s.pages.queued ?? 0)}${s.pages.queued ? `, в очереди ${s.pages.queued}` : ''}.`,
+  ];
+  if (live) parts.push('Обновляется само.');
+  return parts.join(' ');
+}
+
 function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: CrawlUsage; onChange(d: AdminData): void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [names, setNames] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
+  // after «Подключить» or «Обойти заново» the list refreshes by itself for a while, so the progress is seen
+  const [watch, setWatch] = useState<string | null>(null);
   const act = async (action: 'approve' | 'reject' | 'recrawl', s: SiteInfo) => {
     if (action === 'reject' && !(await platform.confirm(`Отклонить ${s.host}? Сервер не будет открывать страницы этого сайта.`))) return;
     setBusy(true);
     const next = await adminCall({ action, host: s.host, roaster: names[s.host]?.trim() || undefined });
     setBusy(false);
-    if (next) { onChange(next); platform.haptic('success'); toast(action === 'approve' ? 'Сайт подключён — каталог начнёт заполняться' : action === 'recrawl' ? 'Сайт будет обойден заново' : 'Сайт отклонён'); }
-    else toast('Не получилось — нет связи с сервером');
+    if (next) {
+      onChange(next); platform.haptic('success');
+      toast(action === 'approve' ? 'Сайт подключён — каталог начнёт заполняться' : action === 'recrawl' ? `Обход ${s.host} запущен` : 'Сайт отклонён');
+      if (action !== 'reject') setWatch(s.host);
+    } else toast('Не получилось — нет связи с сервером');
   };
+  useEffect(() => {
+    if (!watch) return;
+    let n = 0, stop = false;
+    const t = setInterval(async () => {
+      if (stop) return;
+      const next = await adminCall();
+      if (!next || stop) return;
+      onChange(next);
+      const s = next.sites.find((x) => x.host === watch);
+      const settled = !s || (!!s.crawled && !s.crawling && !s.pages.queued) || (!!s.fails && !s.crawling);
+      if (settled || ++n >= 40) {
+        stop = true; setWatch(null); clearInterval(t);
+        if (s && settled) toast(s.fails ? `${s.host}: не удалось прочитать карту сайта` : `${s.host}: обход закончен — в продаже ${s.lots.active ?? 0} лотов`);
+      }
+    }, 6000);
+    return () => { stop = true; clearInterval(t); };
+  }, [watch, onChange]);
   const sum = (o: Record<string, number>, ...keys: string[]) => keys.reduce((a, k) => a + (o[k] ?? 0), 0);
   const pending = sites.filter((s) => s.status === 'pending');
 
@@ -373,7 +415,7 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
         <div key={s.host}>
           <Row label={s.roaster || s.host} active={open === s.host} onClick={() => setOpen(open === s.host ? null : s.host)}
             hint={s.status === 'approved'
-              ? `${s.host} · лотов: ${sum(s.lots, 'active')} в продаже, ${sum(s.lots, 'out', 'archived', 'gone')} прошлых · ${s.crawling ? 'идёт обход' : s.crawled ? `обход ${new Date(s.crawled).toLocaleDateString('ru-RU')}` : 'ждёт обхода'}${s.pages.queued ? ` · в очереди ${s.pages.queued}` : ''}`
+              ? `${s.host} · лотов: ${sum(s.lots, 'active')} в продаже, ${sum(s.lots, 'out', 'archived', 'gone')} прошлых · ${crawlState(s)}${s.pages.queued ? ` · страниц в очереди ${s.pages.queued}` : ''}`
               : `${s.host} · ${SITE_STATUS[s.status]} · сканов: ${s.requests}`}
             value={s.status === 'approved' ? undefined : <span className="tag">{SITE_STATUS[s.status]}</span>} />
           {open === s.host && (
@@ -383,9 +425,10 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
                 <Field label="Название обжарщика" id={`site-name-${s.host}`} placeholder="Как показывать в каталоге" value={names[s.host] ?? s.roaster}
                   onChange={(e) => setNames((n) => ({ ...n, [s.host]: e.target.value }))} />
               )}
+              {s.status === 'approved' && <p className="muted pad small-note crawl-progress">{crawlNote(s, watch === s.host)}</p>}
               <div className="site-actions">
                 {s.status !== 'approved' && <Button icon="check" disabled={busy} onClick={() => act('approve', s)}>Подключить</Button>}
-                {s.status === 'approved' && <Button kind="secondary" icon="reset" disabled={busy || s.crawling} onClick={() => act('recrawl', s)}>Обойти заново</Button>}
+                {s.status === 'approved' && <Button kind="secondary" icon="reset" disabled={busy || s.crawling || watch === s.host} onClick={() => act('recrawl', s)}>Обойти заново</Button>}
                 {s.status !== 'rejected' && <Button kind="secondary" disabled={busy} onClick={() => act('reject', s)}>Отклонить</Button>}
               </div>
             </>

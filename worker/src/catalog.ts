@@ -103,7 +103,7 @@ export interface Found { id: string; coffee: Coffee; source: 'page' | 'user'; co
 export type SiteStatus = 'approved' | 'pending' | 'rejected';
 export interface SiteRow {
   host: string; roaster: string; status: SiteStatus; rules: SiteRules; robots: Robots | null;
-  added: number; requests: number; sample: string | null; crawlStart: number | null; crawled: number | null; lastFetch: number;
+  added: number; requests: number; sample: string | null; crawlStart: number | null; crawled: number | null; lastFetch: number; fails: number; retryAt: number | null;
 }
 
 /** During a manual re-crawl, a known page is fetched again if its lastmod changed or it is older than this */
@@ -302,6 +302,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
       host: r.host as string, roaster: r.roaster as string, status: r.status as SiteStatus, rules: JSON.parse((r.rules as string) || '{}'),
       robots: r.robots ? JSON.parse(r.robots as string) : null, added: r.added as number, requests: r.requests as number,
       sample: (r.sample as string) ?? null, crawlStart: (r.crawl_start as number) ?? null, crawled: (r.crawled as number) ?? null, lastFetch: r.last_fetch as number,
+      fails: (r.fails as number) ?? 0, retryAt: (r.retry_at as number) ?? null,
     };
   }
 
@@ -330,7 +331,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
       const s = this.site(host as string)!;
       const p = Object.fromEntries(pages.filter((x) => x.host === s.host).map((x) => [x.status, x.n]));
       const l = Object.fromEntries(lots.filter((x) => x.host === s.host).map((x) => [x.state, x.n]));
-      return { host: s.host, roaster: s.roaster, status: s.status, added: s.added, requests: s.requests, sample: s.sample, crawled: s.crawled, crawling: !!s.crawlStart, pages: p, lots: l };
+      return { host: s.host, roaster: s.roaster, status: s.status, added: s.added, requests: s.requests, sample: s.sample, crawled: s.crawled, crawling: !!s.crawlStart, fails: s.fails, retryAt: s.retryAt, failed: s.fails >= MAX_FAILS, pages: p, lots: l };
     });
   }
 

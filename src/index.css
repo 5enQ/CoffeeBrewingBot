@@ -63,15 +63,6 @@ button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 [hidden] { display: none !important; }
 .boot { min-height: 100vh; background: var(--bg); }
-/* the loading animation: a roaster's cooling tray from above, stirring the beans (ui/roaster.ts) */
-.loader { --loader-bg: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--hint); padding: 24px 16px; }
-.loader .roaster { width: 64px; height: 64px; display: block; color: var(--accent); }
-.loader p { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
-.loader.small { padding: 10px 16px; flex-direction: row; gap: 12px; }
-.loader.small .roaster { width: 28px; height: 28px; }
-.loader.small p { font-size: 14px; font-weight: 500; }
-.boot-loader, .boot .loader { min-height: 100vh; min-height: 100dvh; background: var(--bg); }
-.loader.overlay { position: fixed; inset: 0; z-index: 80; background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 
 /* ---------- Screen ---------- */
 .screen { min-height: 100vh; display: flex; flex-direction: column; }

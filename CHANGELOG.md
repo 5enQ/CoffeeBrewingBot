@@ -5,9 +5,6 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
-### Added
-- A loading animation: the cooling tray of a coffee roaster seen from above, in the thin-line style of the brewing method icons — the rim, a dotted perforated floor, the hub and two stirring arms with paddles turning round over a floor full of beans; a bean moves only when an arm reaches it — a paddle shoves it further than the bare bar — and beans beyond the arms' reach stay put. It shows while the app starts (already in the page before the app's script arrives, so there is no blank screen), while a shared recipe or profile opens from a link, and in the owner's and testers' panels while they load.
-
 ### Changed
 - Without a connection to the server the owner's panel no longer disappears: on a device where the owner was recognized before it stays, says the server did not answer and offers «Повторить». «Версия сервера» says «нет связи» after 12 s instead of waiting forever (a blocked or throttled connection may hang instead of failing).
 

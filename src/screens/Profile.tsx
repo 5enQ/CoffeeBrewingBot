@@ -1,5 +1,4 @@
 import { RATINGS_API } from '../config';
-import { Loader } from '../ui/Loader';
 import { fmtMass, grinderMileage, GRIND_TYPES, guessGrindType } from '../data/grind';
 import { CLOUD_LIMITS } from '../platform/types';
 import { useEffect, useState } from 'react';
@@ -254,8 +253,7 @@ function OwnerTools() {
     if (!known) return null;
     return (
       <Panel kind="owner" title="Панель владельца" hint="Нет связи с сервером." summary={state === 'loading' ? 'Загружаем…' : 'Нет связи с сервером'}>
-        {state === 'loading' ? <Loader small label="Загружаем данные с сервера…" />
-          : <p className="muted pad small-note">Сервер не ответил. Проверьте интернет; если сервер Cloudflare в вашей сети недоступен, помогает VPN.</p>}
+        <p className="muted pad small-note">{state === 'loading' ? 'Загружаем данные с сервера…' : 'Сервер не ответил. Проверьте интернет; если сервер Cloudflare в вашей сети недоступен, помогает VPN.'}</p>
         {state === 'failed' && <div className="pad"><Button kind="secondary" icon="reset" onClick={load}>Повторить</Button></div>}
       </Panel>
     );

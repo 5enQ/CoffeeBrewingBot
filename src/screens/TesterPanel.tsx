@@ -13,7 +13,6 @@ import { requestTiltPermission } from '../platform/web';
 import { gravityOf, lookOf, rollOf, tiltInfo } from '../data/tilt';
 import { Button, Section } from '../ui/kit';
 import { Icon } from '../ui/icons';
-import { Loader } from '../ui/Loader';
 import { HOLIDAYS, getPreview, setPreview, type HolidayPreview as HolidayPreviewValue } from '../data/holidays';
 import { playFireworks } from '../ui/Holiday';
 import { copyText, toast } from '../ui/toast';
@@ -106,7 +105,7 @@ export function TesterPanel() {
     <Panel kind="tester" title="Панель тестировщика" hint="Всё, что вы отправите, придёт разработчику в Telegram вместе с версией и устройством."
       summary={checks?.length ? `Проверить: ${checks.filter((c) => !c.mine).length} из ${checks.length}` : 'Сообщить об ошибке, диагностика'}>
       <Section title="Что проверить">
-        {checks === null && <Loader small label="Загружаем…" />}
+        {checks === null && <p className="muted pad">Загружаем…</p>}
         {checks?.length === 0 && <p className="muted pad">Сейчас проверять нечего — когда появится новая версия, здесь будет список.</p>}
         {checks?.map((c) => (
           <div key={c.id} className={'check-row' + (c.mine ? ` done-${c.mine}` : '')}>

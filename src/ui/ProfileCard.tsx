@@ -153,7 +153,7 @@ function Glints({ x, y }: { x: number; y: number }) {
 const seeded = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 
 /** paint stars into a canvas sized to its box; `pick` decides which of the seeded stars go into this layer */
-function paintStars(c: HTMLCanvasElement, seed: number, density: number, size: [number, number], bright: number) {
+function paintStars(c: HTMLCanvasElement, seed: number, density: number, size: [number, number], bright: number, band = false) {
   const r = c.getBoundingClientRect();
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
@@ -163,7 +163,10 @@ function paintStars(c: HTMLCanvasElement, seed: number, density: number, size: [
   const rnd = seeded(seed);
   const n = Math.round((r.width * r.height) / density);
   for (let k = 0; k < n; k++) {
-    const x = rnd() * r.width, y = rnd() * r.height, a = (0.3 + rnd() * 0.7) * bright;
+    const x = rnd() * r.width;
+    // the milky way: stars gather along a slanted band across the card (a rough normal spread around its line)
+    const y = band ? r.height * 0.5 + (x - r.width / 2) * -0.42 + (rnd() + rnd() + rnd() - 1.5) * r.height * 0.22 : rnd() * r.height;
+    const a = (0.3 + rnd() * 0.7) * bright;
     const rad = size[0] + rnd() * (size[1] - size[0]);
     const tint = rnd() < 0.18 ? '255,228,196' : rnd() < 0.3 ? '196,214,255' : '255,255,255';
     if (rad > 0.9) {
@@ -177,39 +180,79 @@ function paintStars(c: HTMLCanvasElement, seed: number, density: number, size: [
 }
 
 /** a canvas of stars that repaints only when its size changes */
-function StarLayer({ className, seed, density, size, bright = 1 }: { className: string; seed: number; density: number; size: [number, number]; bright?: number }) {
+function StarLayer({ className, seed, density, size, bright = 1, band = false }: { className: string; seed: number; density: number; size: [number, number]; bright?: number; band?: boolean }) {
   const cv = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = cv.current;
     if (!c) return;
-    const paint = () => paintStars(c, seed, density, size, bright);
+    const paint = () => paintStars(c, seed, density, size, bright, band);
     paint();
     const ro = new ResizeObserver(paint);
     ro.observe(c);
     return () => ro.disconnect();
-  }, [seed, density, size[0], size[1], bright]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [seed, density, size[0], size[1], bright, band]); // eslint-disable-line react-hooks/exhaustive-deps
   return <canvas ref={cv} className={className} />;
 }
 
 /**
- * The card as a window into space. The layers sit at different depths and shift against the tilt —
- * far stars the most, the constellation less — so it looks like looking *through* the card into a deep sky,
- * not at a picture on it. The rim is darkened from inside, like the edge of a portal.
+ * The card as a window into space. Eight layers sit at different depths and shift against the tilt —
+ * the farthest dust and the milky way the most, the near bright stars hardly at all — so it looks like
+ * looking *through* the card into a deep sky, not at a picture on it. Now and then a comet streaks across.
+ * The rim is darkened from inside, like the edge of a portal.
  * Everything is painted once; per frame only transforms change (compositor), plus a CSS twinkle.
  */
 function SpacePortal({ icon }: { icon: IconKey | null }) {
   return (
     <div className="pcard-portal" aria-hidden="true">
-      <div className="portal-layer depth-far"><StarLayer className="sky" seed={11} density={260} size={[0.25, 0.6]} bright={0.75} /></div>
-      <div className="portal-layer depth-nebula"><div className="nebula" /></div>
+      <div className="portal-layer depth-base"><div className="nebula" /></div>
+      <div className="portal-layer depth-dust"><StarLayer className="sky" seed={5} density={150} size={[0.2, 0.45]} bright={0.5} /></div>
+      <div className="portal-layer depth-band"><div className="milky" /><StarLayer className="sky" seed={17} density={90} size={[0.2, 0.55]} bright={0.6} band /></div>
+      <div className="portal-layer depth-far"><StarLayer className="sky" seed={11} density={420} size={[0.3, 0.7]} bright={0.75} /></div>
+      <div className="portal-layer depth-clouds"><div className="clouds" /></div>
       <div className="portal-layer depth-mid">
-        <StarLayer className="sky" seed={23} density={1400} size={[0.4, 1.3]} />
+        <StarLayer className="sky" seed={23} density={1500} size={[0.4, 1.3]} />
         <StarLayer className="sky tw a" seed={37} density={2600} size={[0.5, 1.5]} />
         <StarLayer className="sky tw b" seed={41} density={2600} size={[0.5, 1.4]} />
       </div>
+      <div className="portal-layer depth-comets"><Comets /></div>
       {icon && <div className="portal-layer depth-figure"><Constellation icon={icon} /></div>}
+      <div className="portal-layer depth-near"><StarLayer className="sky tw c" seed={53} density={14000} size={[1.1, 1.9]} /></div>
       <div className="portal-rim" />
     </div>
+  );
+}
+
+type Comet = { id: number; top: number; left: number; ang: number; dist: number; len: number; dur: number };
+
+/** now and then (every 7–16 s) a comet crosses the sky; none while the app is hidden or motion is reduced */
+function Comets() {
+  const [list, setList] = useState<Comet[]>([]);
+  useEffect(() => {
+    if (reduceMotion()) return;
+    let id = 0, timer = 0;
+    const next = (wait: number) => {
+      timer = window.setTimeout(() => {
+        if (!document.hidden) {
+          const right = Math.random() < 0.6; // most fly down to the right, some down to the left
+          setList((l) => [...l, {
+            id: ++id, top: 8 + Math.random() * 36, left: right ? 6 + Math.random() * 40 : 40 + Math.random() * 40,
+            ang: right ? 16 + Math.random() * 20 : 144 + Math.random() * 20, dist: 170 + Math.random() * 110,
+            len: 70 + Math.random() * 50, dur: 1700 + Math.random() * 900,
+          }]);
+        }
+        next(7000 + Math.random() * 9000);
+      }, wait);
+    };
+    next(1500 + Math.random() * 3500);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <>
+      {list.map((c) => (
+        <span key={c.id} className="comet" onAnimationEnd={() => setList((l) => l.filter((x) => x.id !== c.id))}
+          style={{ top: `${c.top}%`, left: `${c.left}%`, '--ang': `${c.ang}deg`, '--dist': `${c.dist}px`, width: `${c.len}px`, animationDuration: `${c.dur}ms` } as React.CSSProperties} />
+      ))}
+    </>
   );
 }
 
@@ -498,24 +541,30 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
   const volume = tier === 'volume' && icon && icon !== 'star';
   // «Стакан» (500 L) is an achievement background drawn as the glass, not as a metal
   const glass = 'tier' in view.theme && view.theme.look === 'glass';
-  const metal = tier && !glass;
+  // the night sky has its own stars: no metal sheen or glints on it
+  const metal = tier && !glass && tier !== 'volume';
 
   return (
     <div ref={ref} className={`pcard ${glass ? 'tier tier-glass base-glass' : 'tier' in view.theme ? `tier tier-${view.theme.tier}` : 'special' in view.theme ? `special special-${view.theme.special}` : `base-${view.theme.base}`}`} style={style}
       onClick={turn || glass ? () => requestTiltPermission() : undefined}>
-      {tier === 'diamond' && <><Facets x={t.x} y={t.y} /><div className="pcard-iris" aria-hidden="true" /><div className="pcard-film" aria-hidden="true" /><div className="pcard-edge" aria-hidden="true" /></>}
-      {metal && <div className="pcard-sheen" aria-hidden="true" />}
-      {metal && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
-      {glass && <GlassLayer host={ref} still={!live} />}
-      {tier === 'volume' && <SpacePortal icon={volume ? icon as IconKey : null} />}
-      {'special' in view.theme && view.theme.special === 'dev' && <DevLayer />}
-      {'special' in view.theme && view.theme.special === 'beta' && <BetaLayer />}
+      {/* decorations in one clipped layer: Safari (Telegram for macOS) does not clip composited children to the rounded
+          corners of an overflow:hidden card, so a sparkle or a star layer poked out as a sharp corner */}
+      <div className="pcard-clip" aria-hidden="true">
+        {tier === 'diamond' && <><Facets x={t.x} y={t.y} /><div className="pcard-iris" /><div className="pcard-film" /></>}
+        {metal && <div className="pcard-sheen" />}
+        {metal && tier !== 'diamond' && <Glints x={t.x} y={t.y} />}
+        {glass && <GlassLayer host={ref} still={!live} />}
+        {tier === 'volume' && <SpacePortal icon={volume ? icon as IconKey : null} />}
+        {'special' in view.theme && view.theme.special === 'dev' && <DevLayer />}
+        {'special' in view.theme && view.theme.special === 'beta' && <BetaLayer />}
+        {icon && !volume && !glass && (
+          <div className="pcard-corner">
+            {icon === 'star' ? <Icon name="star" size={64} filled /> : <MethodIcon icon={icon as IconKey} size={72} />}
+          </div>
+        )}
+      </div>
+      {tier === 'diamond' && <div className="pcard-edge" aria-hidden="true" />}
       {tier === 'diamond' && card.no !== undefined && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}
-      {icon && !volume && !glass && (
-        <div className="pcard-corner" aria-hidden="true">
-          {icon === 'star' ? <Icon name="star" size={64} filled /> : <MethodIcon icon={icon as IconKey} size={72} />}
-        </div>
-      )}
       <div className="pcard-body">
         <div className="pcard-head">
           {card.photo && photoOk

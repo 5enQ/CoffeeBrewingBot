@@ -40,4 +40,4 @@ _Nothing right now._ Unreleased work is in the changelog.
 
 - Lock rows (Кофе / Вода / Пропорция) are slightly indented compared with «Температура» and «Помол» below them.
 - «Минерализация воды» wraps to two lines on narrow phones; a shorter label («Вода, ppm») is an option.
-- The `probe-pages` branch is a helper for checking production (curl + log tail); delete it when no longer needed.
+- The `probe-pages` branch was emptied on 2026-11-02 (its old commits had raw server logs with users' IP addresses); delete it on GitHub. Future production checks commit only filtered results: site and usage numbers, no user requests.

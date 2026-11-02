@@ -3,6 +3,11 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
+## Unreleased
+
+### Changed
+- Without a connection to the server the owner's panel no longer disappears: on a device where the owner was recognized before it stays, says the server did not answer and offers «Повторить». «Версия сервера» says «нет связи» after 12 s instead of waiting forever (a blocked or throttled connection may hang instead of failing).
+
 ## v1.6.0 — Comets & Crawler (2026-11-02)
 
 ### Changed

@@ -233,10 +233,31 @@ function TesterTools() {
   return grants.includes('beta') && platform.initData() ? <TesterPanel /> : null;
 }
 
+const OWNER_SEEN = 'brewbook.owner';
+
 function OwnerTools() {
   const [data, setData] = useState<AdminData | null>(null);
-  useEffect(() => { if (myTelegramId()) adminCall().then(setData); }, []);
-  if (!data) return null;
+  // the owner was recognized on this device before: without a connection the panel stays and says so
+  const [known] = useState(() => { try { return localStorage.getItem(OWNER_SEEN) === '1'; } catch { return false; } });
+  const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading');
+  const load = () => {
+    if (!myTelegramId()) return;
+    setState('loading');
+    adminCall().then((d) => {
+      setData(d); setState(d ? 'ok' : 'failed');
+      if (d) { try { localStorage.setItem(OWNER_SEEN, '1'); } catch { /* no storage */ } }
+    });
+  };
+  useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!data) {
+    if (!known) return null;
+    return (
+      <Panel kind="owner" title="Панель владельца" hint="Нет связи с сервером." summary={state === 'loading' ? 'Загружаем…' : 'Нет связи с сервером'}>
+        <p className="muted pad small-note">{state === 'loading' ? 'Загружаем данные с сервера…' : 'Сервер не ответил. Проверьте интернет; если сервер Cloudflare в вашей сети недоступен, помогает VPN.'}</p>
+        {state === 'failed' && <div className="pad"><Button kind="secondary" icon="reset" onClick={load}>Повторить</Button></div>}
+      </Panel>
+    );
+  }
   return (
     <Panel kind="owner" title="Панель владельца" hint="Видна только вам: сайты обжарщиков, права людей и проверки для тестировщиков."
       summary={[data.sites.filter((x) => x.status === 'pending').length ? `новых сайтов: ${data.sites.filter((x) => x.status === 'pending').length}` : '',
@@ -444,7 +465,8 @@ function ServerVersionRow() {
   const [v, setV] = useState<string | null>(null);
   useEffect(() => {
     if (!RATINGS_API) return;
-    fetch(`${RATINGS_API}/version`).then((r) => (r.ok ? r.json() : null))
+    // a blocked or throttled connection may hang instead of failing: say so after 12 s
+    fetch(`${RATINGS_API}/version`, { signal: AbortSignal.timeout?.(12_000) }).then((r) => (r.ok ? r.json() : null))
       .then((j) => setV(j ? [j.version, fmtWhen(j.builtAt)].filter(Boolean).join(' · ') : 'нет связи'))
       .catch(() => setV('нет связи'));
   }, []);

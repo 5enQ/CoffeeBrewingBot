@@ -231,7 +231,8 @@ export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return null;
   try {
-    const r = await fetch(`${RATINGS_API}/admin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, ...body }) });
+    // a blocked or throttled connection may hang instead of failing: give up after 15 s
+    const r = await fetch(`${RATINGS_API}/admin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, ...body }), signal: AbortSignal.timeout?.(15_000) });
     if (!r.ok) return null;
     const j = await r.json();
     return { sites: j.sites ?? [], grants: j.grants ?? [], crawl: j.crawl ?? undefined, checks: j.checks ?? [] };

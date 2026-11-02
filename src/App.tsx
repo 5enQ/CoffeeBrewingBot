@@ -1,5 +1,6 @@
 import { loadTimer, useTimerSync } from './data/timer';
 import { HolidayLayer } from './ui/Holiday';
+import { Loader } from './ui/Loader';
 import { TabPages, useTabPill } from './ui/motion';
 import { CuppingSetup } from './screens/CuppingSetup';
 import { StoreProvider, useStore } from './data/store';
@@ -19,7 +20,7 @@ import { Profile, GearEdit, BadgeEdit } from './screens/Profile';
 import { MethodEdit, RecipeEdit } from './screens/RecipeEdit';
 import { RecipesScreen } from './screens/Recipes';
 import { ShareScreen, SharedRecipeScreen } from './screens/Share';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { LayoutCtx, useLayoutMode } from './layout';
 import { MethodIcon } from './ui/icons';
 import { platform } from './platform';
@@ -68,7 +69,8 @@ function Shell() {
 
   useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
 
-  // Opened from a share link — show the received recipe
+  // Opened from a share link — show the received recipe (the loader while it comes from the server)
+  const [opening, setOpening] = useState<string | null>(null);
   useEffect(() => {
     if (!ready) return;
     const param = platform.startParam();
@@ -81,21 +83,23 @@ function Shell() {
     }
     // "p…" — a profile card
     if (param.startsWith('p')) {
-      loadCard(param.slice(1)).then((card) => {
+      setOpening('Открываем профиль…');
+      loadCard(param.slice(1)).finally(() => setOpening(null)).then((card) => {
         if (card) push({ name: 'card', card });
         else platform.alert('Не получилось открыть профиль по ссылке. Проверьте интернет и попробуйте ещё раз.');
         if (location.hash.includes('r=')) history.replaceState(null, '', location.pathname + location.search);
       });
       return;
     }
-    resolveStartParam(param).then((recipe) => {
+    setOpening('Открываем рецепт…');
+    resolveStartParam(param).finally(() => setOpening(null)).then((recipe) => {
       if (recipe) push({ name: 'shared', recipe });
       else platform.alert('Не получилось открыть рецепт по ссылке. Проверьте интернет и попробуйте ещё раз.');
       if (location.hash.includes('r=')) history.replaceState(null, '', location.pathname + location.search);
     });
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!ready) return <div className="boot" />;
+  if (!ready) return <div className="boot"><Loader label="Brewbook" /></div>;
 
   const renderTab = (t: Tab) => ({ brew: <BrewHome />, journal: <Journal />, beans: <Beans />, profile: <Profile /> }[t]);
   const root = renderTab(tab);
@@ -106,7 +110,7 @@ function Shell() {
       <DepthCtx.Provider value={i + 1}>{renderRoute(r)}</DepthCtx.Provider>
     </div>
   ));
-  const overlays = <><HolidayLayer /><DialogHost /><AchievementToast /><ToastHost /></>;
+  const overlays = <>{opening && <Loader label={opening} overlay />}<HolidayLayer /><DialogHost /><AchievementToast /><ToastHost /></>;
 
   if (mode === 'desktop') {
     return (

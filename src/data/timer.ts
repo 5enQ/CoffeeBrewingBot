@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { platform } from '../platform';
 import { CLOUD_LIMITS } from '../platform/types';
 import type { Brew } from './store';
+import type { Skip } from './recipes';
 
 /**
  * The running brew timer, kept on the device so closing the app does not reset it,
@@ -17,8 +18,8 @@ export interface ActiveTimer {
   startedAt: number | null;
   /** plan length, seconds (for the banner and the reminder) */
   total: number;
-  /** seconds jumped over with «Следующий шаг»: the plan's clock ran ahead of the real one by this much */
-  skipped?: number;
+  /** steps begun early with «Следующий шаг» (see shiftPlan) */
+  skips?: Skip[];
   /** a bot reminder is scheduled for this timer */
   remind?: boolean;
   /** when this state was set (ms) — the newest one wins across devices */

@@ -21,6 +21,16 @@ export interface CustomRecipe {
   pours?: Pours;
 }
 
+/** A step jumped to early with «Следующий шаг»: from step i on, everything comes `by` seconds sooner */
+export interface Skip { i: number; by: number }
+
+/** The plan with its skips: later steps and the end move up; the clock itself keeps real time */
+export function shiftPlan(plan: BrewPlan, skips: Skip[] = []): BrewPlan {
+  if (!skips.length) return plan;
+  const off = (i: number) => skips.reduce((sum, k) => (k.i <= i ? sum + k.by : sum), 0);
+  return { ...plan, total: Math.max(0, plan.total - off(Infinity)), steps: plan.steps.map((s, i) => ({ ...s, at: Math.max(0, s.at - off(i)) })) };
+}
+
 /** Pours for a drip bag: how many, how much water each (g), the pause after each, s */
 export interface Pours { count: number; ml: number; pause: number }
 

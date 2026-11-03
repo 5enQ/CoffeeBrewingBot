@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { methodById, fmtTime, fmtNum } from '../data/methods';
-import { effectivePlan } from '../data/recipes';
+import { effectivePlan, shiftPlan, type Skip } from '../data/recipes';
 import type { Brew } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
@@ -33,8 +33,12 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   const [stored] = useState(() => { const t = loadTimer(); return t && (resume || t.draft.id === given.id) ? t : null; });
   const draft = stored?.draft ?? given;
   const m = methodById(draft.methodId);
-  const plan = effectivePlan(draft.methodId, draft.plan);
-  const long = plan.total >= LONG_TIMER;
+  // steps begun early move the rest of the plan up; the clock runs in real time all along
+  const [skips, setSkips] = useState<Skip[]>(() => stored?.skips ?? []);
+  const skipsRef = useRef(skips); skipsRef.current = skips;
+  const basePlan = effectivePlan(draft.methodId, draft.plan);
+  const plan = shiftPlan(basePlan, skips);
+  const long = basePlan.total >= LONG_TIMER;
   const { replace, reset: home, setTab } = useRouter();
   const [elapsed, setElapsed] = useState(() => (stored ? elapsedOf(stored) : 0));
   const [running, setRunning] = useState(() => stored?.startedAt != null);
@@ -43,7 +47,6 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   const [remindNote, setRemindNote] = useState('');
   const base = useRef(stored?.base ?? 0);       // seconds accumulated before the last start
   const startedAt = useRef(stored?.startedAt ?? 0); // epoch ms of the last start
-  const skipped = useRef(stored?.skipped ?? 0);  // plan seconds jumped over (the brew took that much less)
   const lastStep = useRef(stored ? plan.steps.reduce((acc, s, i) => (s.at <= elapsedOf(stored) ? i : acc), -1) : -1);
   const finished = useRef(stored ? elapsedOf(stored) >= plan.total : false);
   const closed = useRef(false);
@@ -64,12 +67,12 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     // a quick brew does not push out a long one kept in the background
     const cur = loadTimer();
     if (!long && cur && cur.draft.id !== draft.id && cur.total >= LONG_TIMER) return;
-    saveTimer({ draft, base: base.current, startedAt: on ? startedAt.current : null, total: plan.total, remind: rem === 'on' || rem === 'pending', ...(skipped.current ? { skipped: skipped.current } : {}) });
+    saveTimer({ draft, base: base.current, startedAt: on ? startedAt.current : null, total: shiftPlan(basePlan, skipsRef.current).total, remind: rem === 'on' || rem === 'pending', ...(skipsRef.current.length ? { skips: skipsRef.current } : {}) });
   };
 
   // the bot writes when a long timer ends — the app may be closed by then
   const armReminder = async () => {
-    const left = plan.total - base.current;
+    const left = shiftPlan(basePlan, skipsRef.current).total - base.current;
     if (!long || left < 60 || !remindersAvailable()) return;
     setRemind('pending');
     const ok = await scheduleReminder(startedAt.current + left * 1000, draft.plan ? `${m.name} · ${draft.plan.name}` : m.name);
@@ -101,7 +104,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     if (t && t.draft.id === draft.id) {
       live.current = t.startedAt !== null;
       base.current = t.base;
-      skipped.current = t.skipped ?? 0;
+      skipsRef.current = t.skips ?? []; setSkips(skipsRef.current);
       if (t.startedAt !== null) startedAt.current = t.startedAt;
       setRunning(t.startedAt !== null);
       setElapsed(elapsedOf(t));
@@ -164,13 +167,12 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   };
   const reset = async () => {
     if (elapsed > 0 && !(await platform.confirm('Сбросить таймер?'))) return;
-    setRunning(false); base.current = 0; skipped.current = 0; setElapsed(0); lastStep.current = -1; finished.current = false;
+    setRunning(false); base.current = 0; skipsRef.current = []; setSkips([]); setElapsed(0); lastStep.current = -1; finished.current = false;
     dropReminder(); clearTimer(draft.id);
   };
   const finish = () => {
     if (running) base.current += (Date.now() - startedAt.current) / 1000;
-    // the time written is the real one: steps jumped over did not take any
-    const total = Math.max(0, (running ? base.current : elapsed) - skipped.current);
+    const total = running ? base.current : elapsed;
     setRunning(false);
     closed.current = true;
     dropReminder(); clearTimer(draft.id);
@@ -178,19 +180,20 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     replace({ name: 'brewEdit', draft: { ...draft, time: Math.round(total || plan.total), date: Date.now() }, isNew: true, openCupping: m.id === 'cupping' });
   };
 
-  // poured faster than planned: go on to the next step now; the rest of the plan moves up with it
+  // poured faster than planned: the next step starts now and the rest of the plan moves up; the clock goes on as it was
   const skip = () => {
-    const nxt = plan.steps[idx + 1];
+    const j = idx + 1, nxt = plan.steps[j];
     if (!nxt) return;
+    const now = running ? base.current + (Date.now() - startedAt.current) / 1000 : elapsed;
+    const by = nxt.at - now;
+    if (by <= 0) return;
     platform.haptic('medium');
-    if (running) { base.current += (Date.now() - startedAt.current) / 1000; startedAt.current = Date.now(); }
-    const jump = Math.max(0, nxt.at - base.current);
-    base.current += jump; skipped.current += jump;
-    lastStep.current = idx + 1; // the step was asked for: no beep
-    setElapsed(base.current);
+    skipsRef.current = [...skipsRef.current, { i: j, by }];
+    setSkips(skipsRef.current);
+    lastStep.current = j; // the step was asked for: no beep
     persist(running);
-    // a long timer's reminder moves up too
-    if (running && long && jump > 0) { dropReminder(); void armReminder(); }
+    // a long timer ends sooner now: move its reminder
+    if (running && long) { dropReminder(); void armReminder(); }
   };
 
   // Keyboard (desktop): space — start/pause, R — reset, Enter — done

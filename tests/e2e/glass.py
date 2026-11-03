@@ -17,7 +17,7 @@ async def tilt(pg, beta, gamma):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        pg, errors = await page(b, db=DB)
+        pg, errors = await page(b, db=DB, phone=True)
         await pg.click('.tabbar >> text=Профиль'); await pg.wait_for_timeout(600)
         card = pg.locator('.pcard.base-glass:visible').first
         check(await card.count() == 1, 'with 500+ liters the profile card can be the glass')

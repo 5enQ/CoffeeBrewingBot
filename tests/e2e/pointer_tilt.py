@@ -36,6 +36,13 @@ async def main():
             for _ in range(70):
                 await pg.wait_for_timeout(50); xs.append(await tx(el))
             check(max(xs) - min(xs) < 0.02 and xs[-1] > 0.85, f'{k}: the cursor rests at the edge — the card holds still ({min(xs):.3f}…{max(xs):.3f})')
+            # Telegram for computers may send readings of a sensor that is not there: they must not pull the card around
+            await pg.evaluate("window.__ph = setInterval(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { beta: 0, gamma: 0, alpha: 0 })), 60)")
+            zs = []
+            for _ in range(40):
+                await pg.wait_for_timeout(50); zs.append(await tx(el))
+            await pg.evaluate("clearInterval(window.__ph)")
+            check(max(zs) - min(zs) < 0.02 and zs[-1] > 0.85, f'{k}: sensor readings on a computer do not shake the card ({min(zs):.3f}…{max(zs):.3f})')
             # slow moves along the edge: small steady changes, no jumps back and forth
             ys = []
             for i in range(30):

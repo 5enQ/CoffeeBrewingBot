@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { track } from '../data/track';
 import { FLAVOR_WHEEL, emptyCupping, toneOf } from '../data/cupping';
 import { allMethods, methodById, fmtRatio, fmtTime, fmtNum, parseTime } from '../data/methods';
 import { useStore, type Brew } from '../data/store';
@@ -40,6 +41,8 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
     if (b.cva) {
       const toSave: Brew = { ...b, rating: 0, cupping: null, beanId: b.cva.samples[0]?.beanId ?? b.beanId };
       saveBrew(toSave);
+    if (isNew && toSave.rating) track('brew.rated');
+      if (isNew) track('cupping.save');
       platform.haptic('success');
       if (isNew) { setTab('journal'); push({ name: 'brew', id: toSave.id, fresh: true }); }
       else back(true);

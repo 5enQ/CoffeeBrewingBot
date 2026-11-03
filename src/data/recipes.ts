@@ -17,6 +17,50 @@ export interface CustomRecipe {
   /** if the recipe was saved from a friend */
   author?: Author;
   createdAt: number;
+  /** drip bags: the steps are built from the pours (see pourPlan) */
+  pours?: Pours;
+}
+
+/** A step jumped to early with «Следующий шаг»: from step i on, everything comes `by` seconds sooner */
+export interface Skip { i: number; by: number }
+
+/** The plan with its skips: later steps and the end move up; the clock itself keeps real time */
+export function shiftPlan(plan: BrewPlan, skips: Skip[] = []): BrewPlan {
+  if (!skips.length) return plan;
+  const off = (i: number) => skips.reduce((sum, k) => (k.i <= i ? sum + k.by : sum), 0);
+  return { ...plan, total: Math.max(0, plan.total - off(Infinity)), steps: plan.steps.map((s, i) => ({ ...s, at: Math.max(0, s.at - off(i)) })) };
+}
+
+/** Pours for a drip bag: how many, how much water each (g), the pause after each, s */
+export interface Pours { count: number; ml: number; pause: number }
+
+/** a pour from a kettle takes about this long: 5 g a second, in steps of 5 s */
+export const pourSeconds = (ml: number) => Math.max(5, Math.ceil(ml / 5 / 5) * 5);
+
+/**
+ * The drip schedule from its pours: each pour, then a pause while the water drains through the bag;
+ * the last pause is the final drain. Grams on each pour are what the cup holds by then.
+ */
+export function pourPlan(p: Pours): { water: number; total: number; steps: BrewStep[] } {
+  const water = p.count * p.ml;
+  const pour = pourSeconds(p.ml);
+  const steps: BrewStep[] = [];
+  for (let i = 0; i < p.count; i++) {
+    const at = i * (pour + p.pause);
+    steps.push({ at, title: `Пролив ${i + 1}`, to: ((i + 1) * p.ml) / water,
+      hint: i === 0 ? 'Смочите кофе равномерно — тонкой струёй по кругу' : 'Тонкой струёй по кругу, не заливая край фильтра' });
+    const last = i === p.count - 1;
+    steps.push({ at: at + pour, title: last ? 'Дать стечь' : 'Пауза',
+      hint: last ? 'Снимите пакет, когда капли станут редкими' : `Ждём ${p.pause} с, пока вода уходит через пакет` });
+  }
+  return { water, total: p.count * (pour + p.pause), steps };
+}
+
+/** pours of a drip recipe made before they existed: one per step with grams, the water split evenly */
+export function poursOf(r: Pick<CustomRecipe, 'pours' | 'steps' | 'dose' | 'ratio'>): Pours {
+  if (r.pours) return r.pours;
+  const count = Math.max(1, Math.min(10, r.steps.filter((s) => s.to !== undefined).length || 3));
+  return { count, ml: Math.max(10, Math.round((r.dose * r.ratio) / count / 5) * 5), pause: 30 };
 }
 
 /** Brew schedule the timer follows. Stored as a snapshot in the brew and sent with "Share". */

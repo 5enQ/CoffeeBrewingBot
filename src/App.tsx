@@ -4,6 +4,7 @@ import { TabPages, useTabPill } from './ui/motion';
 import { CuppingSetup } from './screens/CuppingSetup';
 import { StoreProvider, useStore } from './data/store';
 import { useStatsSync } from './data/stats';
+import { InviteGate } from './ui/InviteGate';
 import { DepthCtx, RouterProvider, useRouter, type Route, type Tab } from './router';
 import { DialogHost } from './ui/kit';
 import { AchievementToast } from './ui/AchievementToast';
@@ -184,6 +185,7 @@ export default function App() {
   return (
     <StoreProvider>
       <StatsSync />
+      <InviteGate />
       <RouterProvider>
         <Shell />
       </RouterProvider>

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
+import { track } from '../data/track';
 import { ICON_CHOICES, fmtNum, fmtRatio, fmtTime, methodById, parseTime, type IconKey } from '../data/methods';
-import { sortSteps, type CustomMethod, type CustomRecipe } from '../data/recipes';
+import { pourPlan, pourSeconds, poursOf, sortSteps, type CustomMethod, type CustomRecipe, type Pours } from '../data/recipes';
 import { useStore } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
@@ -37,6 +38,8 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
   const { back } = useRouter();
   const m = methodById(initial.methodId);
   const espresso = m.id === 'espresso';
+  // a drip bag: the coffee is in the bag, so the recipe is only the pours; the steps are built from them
+  const drip = m.id === 'drip' && !asMethod;
   const initWater = initial.dose * initial.ratio;
 
   const [r, setR] = useState<CustomRecipe>(initial);
@@ -46,8 +49,11 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
     grams: s.to !== undefined ? fmtNum(initWater * s.to, 0) : '', hint: s.hint ?? '',
   })));
   const [error, setError] = useState('');
+  const [pours, setPours] = useState<Pours>(() => poursOf(initial));
+  const poured = pourPlan(pours);
+  const setPour = (patch: Partial<Pours>) => { setError(''); setPours((p) => ({ ...p, ...patch })); };
   // Changes are detected by comparing with what was opened: revert — the button is disabled again
-  const snap = () => JSON.stringify({ r, totalText, meta, steps: steps.map(({ key: _k, ...st }) => st) });
+  const snap = () => JSON.stringify({ r, totalText, meta, steps: steps.map(({ key: _k, ...st }) => st), pours: drip ? pours : null });
   const initialSnap = useRef<string | null>(null);
   if (initialSnap.current === null) initialSnap.current = snap();
   const dirty = isNew || snap() !== initialSnap.current;
@@ -82,6 +88,14 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
 
   const save = () => {
     setError('');
+    if (drip) {
+      // the coffee stays as it was (the bag decides it); the water is what the pours add up to
+      saveCustom({ ...r, name: r.name.trim() || `Мой ${m.name}`, ratio: poured.water / r.dose, total: poured.total, steps: poured.steps, pours });
+      if (isNew) track('recipe.drip');
+      platform.haptic('success');
+      back(true);
+      return;
+    }
     const parsed = [];
     for (const [i, s] of steps.entries()) {
       const at = parseTime(s.at);
@@ -95,6 +109,7 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
     if (total === null || total <= 0) return fail('Время до готовности — в формате мин:сек');
     const sorted = sortSteps(parsed);
     if (total < sorted[sorted.length - 1].at) return fail('Время до готовности не может быть раньше последнего шага');
+    if (isNew) track(meta ? 'method.save' : 'recipe.save');
     if (meta) {
       saveMethod({
         id: r.methodId, name: r.name.trim() || 'Мой метод', about: meta.about.trim(), icon: meta.icon,
@@ -153,44 +168,70 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
       )}
       {r.author && <p className="muted pad">Рецепт от {r.author.name || '@' + r.author.username}. Можно менять под себя.</p>}
 
-      <Section title="Параметры" aside={<span className="muted">{fmtNum(r.dose, 2)} г → {fmtNum(water)} г</span>}>
-        <Stepper label="Кофе" value={r.dose} step={espresso ? 0.5 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} onChange={(v) => change('dose', v)} lock={lockFor('dose')} />
-        <Stepper label={m.yieldLabel ?? 'Вода'} value={water} step={espresso ? 1 : 10} min={5} max={2000} unit="г" format={(v) => fmtNum(v)}
-          onChange={(w) => change('water', w)} lock={lockFor('water')} />
-        <Stepper label="Пропорция" value={r.ratio} step={espresso ? 0.1 : 0.1} min={1} max={25} format={fmtRatio} onChange={(v) => change('ratio', v)} lock={lockFor('ratio')} />
-        <Stepper label="Температура" value={r.temp} step={0.1} min={0} max={100} unit={r.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
-        <Field label="Помол" id="recipe-grind" value={r.grind} onChange={(e) => set({ grind: e.target.value })} />
-        <Field label="Готово к" id="recipe-total" value={totalText} inputMode="numeric" placeholder="3:30"
-          onChange={(e) => { setError(''); setTotalText(e.target.value); }} />
-      </Section>
+      {drip ? (
+        <>
+          <Section title="Проливы" aside={<span className="muted">{fmtNum(poured.water)} г · {fmtTime(poured.total)}</span>}>
+            <Stepper label="Проливов" value={pours.count} step={1} min={1} max={10} format={(v) => fmtNum(v)} onChange={(count) => setPour({ count })} />
+            <Stepper label="Воды в проливе" value={pours.ml} step={5} min={10} max={300} unit="г" format={(v) => fmtNum(v)} onChange={(ml) => setPour({ ml })} />
+            <Stepper label="Пауза между проливами" value={pours.pause} step={5} min={5} max={300} unit="с" format={(v) => fmtNum(v)} onChange={(pause) => setPour({ pause })} />
+            <Stepper label="Температура" value={r.temp} step={0.1} min={0} max={100} unit={r.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
+            <p className="muted pad small-note pour-sum" id="pour-sum">Всего воды <b>{fmtNum(poured.water)} г</b>, заварка займёт <b>{fmtTime(poured.total)}</b>. Пролив — около {pourSeconds(pours.ml)} с, последняя пауза — чтобы дать стечь.</p>
+          </Section>
+          <Section title="Шаги" aside={<span className="muted">строятся сами</span>} plain>
+            <ol className="pour-steps">
+              {poured.steps.map((st, i) => (
+                <li key={i} className={st.to !== undefined ? 'pour' : 'wait'}>
+                  <span className="step-time">{fmtTime(st.at)}</span>
+                  <b>{st.title}</b>
+                  <span className="muted">{st.to !== undefined ? `до ${fmtNum(poured.water * st.to, 0)} г` : `ждём ${fmtTime((poured.steps[i + 1]?.at ?? poured.total) - st.at)}`}</span>
+                </li>
+              ))}
+            </ol>
+          </Section>
+        </>
+      ) : (
+        <>
+          <Section title="Параметры" aside={<span className="muted">{fmtNum(r.dose, 2)} г → {fmtNum(water)} г</span>}>
+            <Stepper label="Кофе" value={r.dose} step={espresso ? 0.5 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)} onChange={(v) => change('dose', v)} lock={lockFor('dose')} />
+            <Stepper label={m.yieldLabel ?? 'Вода'} value={water} step={espresso ? 1 : 10} min={5} max={2000} unit="г" format={(v) => fmtNum(v)}
+              onChange={(w) => change('water', w)} lock={lockFor('water')} />
+            <Stepper label="Пропорция" value={r.ratio} step={espresso ? 0.1 : 0.1} min={1} max={25} format={fmtRatio} onChange={(v) => change('ratio', v)} lock={lockFor('ratio')} />
+            <Stepper label="Температура" value={r.temp} step={0.1} min={0} max={100} unit={r.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
+            <Field label="Помол" id="recipe-grind" value={r.grind} onChange={(e) => set({ grind: e.target.value })} />
+            <Field label="Готово к" id="recipe-total" value={totalText} inputMode="numeric" placeholder="3:30"
+              onChange={(e) => { setError(''); setTotalText(e.target.value); }} />
+          </Section>
 
-      <Section title="Шаги" aside={<span className="muted">граммы — сколько всего на весах</span>} plain>
-        <div className="step-editor">
-          {steps.map((s, i) => (
-            <div className="step-card" key={s.key}>
-              <div className="step-card-top">
-                <span className="step-num">{i + 1}</span>
-                <input className="step-time" aria-label={`Шаг ${i + 1}: время`} inputMode="numeric" value={s.at} placeholder="0:45"
-                  onChange={(e) => setStep(i, { at: e.target.value })} />
-                <input className="step-title" aria-label={`Шаг ${i + 1}: название`} value={s.title} placeholder="Пролив"
-                  onChange={(e) => setStep(i, { title: e.target.value })} />
-                <button type="button" className="icon-btn" onClick={() => removeStep(i)} aria-label={`Удалить шаг ${i + 1}`}><Icon name="close" size={18} /></button>
-              </div>
-              <div className="step-card-row">
-                <label className="step-grams">
-                  <span>до</span>
-                  <input aria-label={`Шаг ${i + 1}: граммы`} inputMode="decimal" value={s.grams} placeholder="—"
-                    onChange={(e) => setStep(i, { grams: e.target.value })} />
-                  <span>г</span>
-                </label>
-                <input className="step-hint" aria-label={`Шаг ${i + 1}: подсказка`} value={s.hint} placeholder="Подсказка: как лить, что сделать"
-                  onChange={(e) => setStep(i, { hint: e.target.value })} />
-              </div>
+          <Section title="Шаги" aside={<span className="muted">граммы — сколько всего на весах</span>} plain>
+            <div className="step-editor">
+              {steps.map((s, i) => (
+                <div className="step-card" key={s.key}>
+                  <div className="step-card-top">
+                    <span className="step-num">{i + 1}</span>
+                    <input className="step-time" aria-label={`Шаг ${i + 1}: время`} inputMode="numeric" value={s.at} placeholder="0:45"
+                      onChange={(e) => setStep(i, { at: e.target.value })} />
+                    <input className="step-title" aria-label={`Шаг ${i + 1}: название`} value={s.title} placeholder="Пролив"
+                      onChange={(e) => setStep(i, { title: e.target.value })} />
+                    <button type="button" className="icon-btn" onClick={() => removeStep(i)} aria-label={`Удалить шаг ${i + 1}`}><Icon name="close" size={18} /></button>
+                  </div>
+                  <div className="step-card-row">
+                    <label className="step-grams">
+                      <span>до</span>
+                      <input aria-label={`Шаг ${i + 1}: граммы`} inputMode="decimal" value={s.grams} placeholder="—"
+                        onChange={(e) => setStep(i, { grams: e.target.value })} />
+                      <span>г</span>
+                    </label>
+                    <input className="step-hint" aria-label={`Шаг ${i + 1}: подсказка`} value={s.hint} placeholder="Подсказка: как лить, что сделать"
+                      onChange={(e) => setStep(i, { hint: e.target.value })} />
+                  </div>
+                </div>
+              ))}
+              <button type="button" className="add-step" onClick={addStep}><Icon name="plus" size={18} />Добавить шаг</button>
             </div>
-          ))}
-          <button type="button" className="add-step" onClick={addStep}><Icon name="plus" size={18} />Добавить шаг</button>
-        </div>
-      </Section>
+          </Section>
+
+        </>
+      )}
 
       <Section title={meta ? 'Подсказки' : 'Заметки'}>
         <textarea id="recipe-notes" className="notes" rows={3} placeholder={meta ? 'Что делать, если кисло или горько — по строке на подсказку' : 'Вода, фильтр, для какого зерна рецепт'} value={r.notes}

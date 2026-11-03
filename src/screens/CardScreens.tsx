@@ -1,7 +1,9 @@
 /** Profile card: the own card in the Profile tab, its settings and sharing, and a card a friend sent */
 import { useEffect, useMemo, useState } from 'react';
+import { track } from '../data/track';
 import { BASE_THEMES, buildCard, cardText, MAX_SETUP, SPECIAL_THEMES, storeCard, unlockedThemes, type CardData, type UnlockedTheme } from '../data/card';
 import { useStats } from '../data/stats';
+import { RARE } from '../data/rare';
 import { MAX_FEATURED, useBadges } from '../data/featured';
 import { GEAR_CATS } from '../data/gear';
 import { TIER_LABEL, type Tier } from '../data/achievements';
@@ -20,13 +22,15 @@ import { Toggle } from './Share';
 
 /** The card as it would be sent now (levels from the server's numbers when known) */
 /** telegram — show the @username (on the own profile always; for sharing — as the user chose) */
-export function useMyCard(telegram?: boolean): { card: CardData; unlocked: UnlockedTheme[]; verified: boolean; grants: string[] } {
+export function useMyCard(telegram?: boolean): { card: CardData; unlocked: UnlockedTheme[]; verified: boolean; grants: string[]; rare: typeof RARE[number][] } {
   const { profile, gear } = useStore();
   const badges = useBadges();
   const { stats, verified, diamondNo, grants } = useStats();
   const tester = grants.includes('tester');
   const unlocked = useMemo(() => unlockedThemes(stats, tester), [stats, tester]);
-  return { card: buildCard(profile, badges.featured, gear, stats, diamondNo, grants, telegram ?? profile.shareTelegram), unlocked, verified, grants };
+  return { card: buildCard(profile, badges.featured, gear, stats, diamondNo, grants, telegram ?? profile.shareTelegram), unlocked, verified, grants,
+    // rare lots brewed open their pictures; the test grant opens all
+    rare: RARE.filter((r) => tester || (stats.rare ?? []).includes(r.id)) };
 }
 
 const TIERS: Tier[] = ['bronze', 'silver', 'gold', 'volume', 'diamond'];
@@ -58,7 +62,7 @@ export function MyCardBlock() {
 export function CardEditScreen() {
   const { profile, gear, saveProfile } = useStore();
   const { push } = useRouter();
-  const { card, unlocked, verified, grants } = useMyCard(true);
+  const { card, unlocked, verified, grants, rare } = useMyCard(true);
   const badges = useBadges();
   const [pinMsg, setPinMsg] = useState('');
   const offered = new Set(GEAR_CATS.map((c) => c.id));
@@ -142,6 +146,13 @@ export function CardEditScreen() {
             <button type="button" key={sp.id} className={'theme-pick special-' + sp.id + (current === `special:${sp.id}` ? ' on' : '')} aria-pressed={current === `special:${sp.id}`}
               onClick={() => { platform.haptic('select'); saveProfile({ ...profile, cardTheme: `special:${sp.id}` }); }}>
               <span>{sp.label}</span><small>{sp.title}</small>
+            </button>
+          ))}
+          {/* pictures for rare lots: Japan, eugenioides, liberica — after one brew of such a pack */}
+          {rare.map((r) => (
+            <button type="button" key={r.id} className={'theme-pick scene-' + r.id + (current === `rare:${r.id}` ? ' on' : '')} aria-pressed={current === `rare:${r.id}`}
+              onClick={() => { platform.haptic('select'); saveProfile({ ...profile, cardTheme: `rare:${r.id}` }); }}>
+              <span>{r.label}</span><small>{r.title}</small>
             </button>
           ))}
           {/* metal themes appear only once earned — like achievements, they are a surprise; one tile per tier */}
@@ -233,10 +244,11 @@ export function CardShareScreen() {
     try {
       if (prepared && platform.shareMessage) {
         const sent = await platform.shareMessage(prepared);
-        if (sent) { platform.haptic('success'); return; }
+        if (sent) { platform.haptic('success'); track('share.card'); return; }
         if (sent === false) return;
       }
       const res = await platform.share(cardText(card), link);
+      if (res !== 'failed') track('share.card');
       if (res === 'copied') toast('Ссылка на профиль скопирована');
       if (res === 'failed') toast('Не получилось отправить');
     } finally { setBusy(false); }

@@ -7,10 +7,20 @@
  *  - the profile card. Levels on a shared card always come from this count, never from the client.
  */
 import { DurableObject } from 'cloudflare:workers';
+import { RARE_IDS } from '../../src/data/rare.ts';
+import { EVENT_CAP, EVENT_NAMES, type MetricEvent, type Metrics } from '../../src/data/metrics.ts';
 import { countStats, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, type BrewStat, type Level, type Stats, type Tier } from '../../src/data/levels.ts';
 import type { Env } from './index';
 
-export interface AccountStats extends Stats { account: string; at: number; diamondNo?: number; grants: string[] }
+export interface AccountStats extends Stats { account: string; at: number; diamondNo?: number; grants: string[];
+  /** roles offered to this person that wait for their answer (see INVITE) */
+  invites?: string[] }
+
+/** roles that are offered, not given: the person agrees first (testing may collect more data from them) */
+export const INVITE = ['beta'] as const;
+/** what became of an offer: waiting for the answer, taken, turned down */
+export type OfferState = 'pending' | 'accepted' | 'declined';
+type Offers = Record<string, { state: OfferState; at: number }>;
 
 /**
  * Grants only the owner can give, each separately:
@@ -19,7 +29,7 @@ export interface AccountStats extends Stats { account: string; at: number; diamo
  *  tester — every background at every level, for testing; such accounts never take a real diamond number (they show № 0).
  * Owners (OWNER_IDS) have both automatically.
  */
-export const SPECIAL = ['dev', 'beta', 'tester'] as const;
+export const SPECIAL = ['dev', 'beta', 'tester', 'lighthouse'] as const;
 
 /** what Telegram tells about the person on each sign-in (kept so the owner sees who is who) */
 export interface Who { username?: string; name?: string }
@@ -36,6 +46,9 @@ function testerLevel(key: string, tier: Tier): Level | null {
   const list = key.startsWith('method:') ? METHOD_LEVELS : key === 'liters' ? LITER_LEVELS : [];
   return list.find((l) => l.tier === tier) ?? null;
 }
+
+/** a UTC day, YYYY-MM-DD */
+const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 export class Accounts extends DurableObject<Env> {
   private sql: SqlStorage;
@@ -76,6 +89,39 @@ export class Accounts extends DurableObject<Env> {
       try { sql.exec('ALTER TABLE report ADD COLUMN photo_id TEXT'); } catch { /* already there */ }
       sql.exec("UPDATE meta SET value = '3' WHERE key = 'schema'");
     }
+    // v4: brews carry rare-lot tags
+    if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 4) {
+      try { sql.exec('ALTER TABLE brew ADD COLUMN x TEXT'); } catch { /* already there */ }
+      sql.exec("UPDATE meta SET value = '4' WHERE key = 'schema'");
+    }
+    // v5: metrics — when a person last opened the app; per day, how many did; anonymous counters (no account in them)
+    if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 5) {
+      try { sql.exec('ALTER TABLE account ADD COLUMN seen INTEGER'); } catch { /* already there */ }
+      sql.exec("UPDATE meta SET value = '5' WHERE key = 'schema'");
+    }
+    // v6: roles offered to a person and their answer (testers agree before the role is theirs)
+    if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 6) {
+      try { sql.exec("ALTER TABLE account ADD COLUMN offers TEXT NOT NULL DEFAULT '{}'"); } catch { /* already there */ }
+      sql.exec("UPDATE meta SET value = '6' WHERE key = 'schema'");
+    }
+    // v7: people who were testers before the invitation existed are asked too: their role becomes an offer
+    // (paused until they agree, gone if they decline); the owners are left as they are
+    if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 7) {
+      const owners = (env.OWNER_IDS ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+      const rows = sql.exec<{ id: string; grants: string; offers: string; tg: string | null }>(
+        "SELECT a.id, a.grants, a.offers, i.subject AS tg FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.grants LIKE '%\"beta\"%'").toArray();
+      for (const r of rows) {
+        if (r.tg && owners.includes(r.tg)) continue;
+        let grants: string[] = [], offers: Offers = {};
+        try { grants = JSON.parse(r.grants); offers = JSON.parse(r.offers || '{}'); } catch { continue; }
+        if (offers.beta?.state === 'accepted') continue;
+        offers.beta = { state: 'pending', at: Date.now() };
+        sql.exec('UPDATE account SET grants = ?, offers = ? WHERE id = ?', JSON.stringify(grants.filter((g) => g !== 'beta')), JSON.stringify(offers), r.id);
+      }
+      sql.exec("UPDATE meta SET value = '7' WHERE key = 'schema'");
+    }
+    sql.exec('CREATE TABLE IF NOT EXISTS active_day (day TEXT PRIMARY KEY, n INTEGER NOT NULL)');
+    sql.exec('CREATE TABLE IF NOT EXISTS usage_day (day TEXT NOT NULL, ev TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, ev))');
   }
 
   private grantsOf(account: string): string[] {
@@ -92,23 +138,55 @@ export class Accounts extends DurableObject<Env> {
     if (!(SPECIAL as readonly string[]).includes(what) || !/^\d{1,20}$/.test(tg)) return false;
     const acc = this.resolve('tg', tg);
     const cur = new Set(this.grantsOf(acc.id));
-    if (on) cur.add(what); else cur.delete(what);
-    this.sql.exec('UPDATE account SET grants = ? WHERE id = ?', JSON.stringify([...cur]), acc.id);
+    const offers = this.offersOf(acc.id);
+    if (on && (INVITE as readonly string[]).includes(what) && !cur.has(what)) {
+      // offered: the role is theirs once they agree in the app
+      offers[what] = { state: 'pending', at: Date.now() };
+    } else if (on) cur.add(what);
+    else { cur.delete(what); delete offers[what]; }
+    this.sql.exec('UPDATE account SET grants = ?, offers = ? WHERE id = ?', JSON.stringify([...cur]), JSON.stringify(offers), acc.id);
     return true;
+  }
+
+  private offersOf(account: string): Offers {
+    try { return JSON.parse(this.sql.exec<{ offers: string }>('SELECT offers FROM account WHERE id = ?', account).toArray()[0]?.offers ?? '{}'); } catch { return {}; }
+  }
+  private invitesOf(account: string) {
+    return Object.entries(this.offersOf(account)).filter(([, o]) => o.state === 'pending').map(([k]) => k);
+  }
+
+  /** the person answers an offer in the app: agreeing gives the role, declining leaves it out; the owner sees which */
+  answerInvite(provider: string, subject: string, what: string, accept: boolean): { label: string } | null {
+    const acc = this.resolve(provider, subject);
+    const offers = this.offersOf(acc.id);
+    if (offers[what]?.state !== 'pending') return null;
+    offers[what] = { state: accept ? 'accepted' : 'declined', at: Date.now() };
+    const cur = new Set(this.grantsOf(acc.id));
+    if (accept) cur.add(what); else cur.delete(what);
+    this.sql.exec('UPDATE account SET grants = ?, offers = ? WHERE id = ?', JSON.stringify([...cur]), JSON.stringify(offers), acc.id);
+    const r = this.sql.exec<{ note: string | null; username: string | null; name: string | null }>(
+      "SELECT a.note, i.username, i.name FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.id = ?", acc.id).toArray()[0];
+    return { label: [r?.note, r?.name, r?.username ? '@' + r.username : null, provider === 'tg' ? `ID ${subject}` : null].filter(Boolean).join(' · ') };
   }
 
   /** Owner: everyone with a special background or a note */
   grantList() {
-    return this.sql.exec<{ id: string; grants: string; note: string | null; subject: string | null; username: string | null; name: string | null }>(
-      "SELECT a.id, a.grants, a.note, i.subject, i.username, i.name FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.grants <> '[]' OR a.note IS NOT NULL").toArray()
-      .map((r) => ({ account: r.id, tg: r.subject, grants: JSON.parse(r.grants) as string[], note: r.note ?? undefined, username: r.username ?? undefined, name: r.name ?? undefined }));
+    return this.sql.exec<{ id: string; grants: string; offers: string; note: string | null; subject: string | null; username: string | null; name: string | null }>(
+      "SELECT a.id, a.grants, a.offers, a.note, i.subject, i.username, i.name FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.grants <> '[]' OR a.offers <> '{}' OR a.note IS NOT NULL").toArray()
+      .map((r) => {
+        let offers: Offers = {};
+        try { offers = JSON.parse(r.offers || '{}'); } catch { /* broken row */ }
+        // only what is still open or was turned down: an accepted offer is just the role
+        const open = Object.fromEntries(Object.entries(offers).filter(([, o]) => o.state !== 'accepted').map(([k, o]) => [k, o.state]));
+        return { account: r.id, tg: r.subject, grants: JSON.parse(r.grants) as string[], offers: open, note: r.note ?? undefined, username: r.username ?? undefined, name: r.name ?? undefined };
+      });
   }
 
   /** Owner: remove a person from the list — all grants and the note go; their brews, card and numbers stay */
   forget(tg: string) {
     if (!/^\d{1,20}$/.test(tg)) return false;
     const row = this.sql.exec<{ account: string }>("SELECT account FROM identity WHERE provider = 'tg' AND subject = ?", tg).toArray()[0];
-    if (row) this.sql.exec("UPDATE account SET grants = '[]', note = NULL WHERE id = ?", row.account);
+    if (row) this.sql.exec("UPDATE account SET grants = '[]', offers = '{}', note = NULL WHERE id = ?", row.account);
     return true;
   }
 
@@ -153,7 +231,7 @@ export class Accounts extends DurableObject<Env> {
 
   /** Recount from the log, store the result, hand out the diamond number when 1000 liters are reached */
   private recount(acc: { id: string; created: number }, ratings: number): AccountStats {
-    const rows = this.sql.exec<{ m: string; w: number; t: number; r: number }>('SELECT m, w, t, r FROM brew WHERE account = ?', acc.id).toArray() as BrewStat[];
+    const rows = this.sql.exec<{ m: string; w: number; t: number; r: number; x: string | null }>('SELECT m, w, t, r, x FROM brew WHERE account = ?', acc.id).toArray() as BrewStat[];
     const s = countStats(rows, acc.created, ratings);
     const tester = this.grantsOf(acc.id).includes('tester');
     let no = tester ? TEST_NO : this.sql.exec<{ diamond_no: number | null }>('SELECT diamond_no FROM account WHERE id = ?', acc.id).one().diamond_no ?? undefined;
@@ -163,7 +241,7 @@ export class Accounts extends DurableObject<Env> {
     }
     const out: AccountStats = { ...s, account: acc.id, at: Date.now(), diamondNo: no, grants: this.grantsOf(acc.id) };
     this.sql.exec('UPDATE account SET stats = ? WHERE id = ?', JSON.stringify(out), acc.id);
-    return out;
+    return { ...out, invites: this.invitesOf(acc.id) };
   }
 
   /**
@@ -172,25 +250,104 @@ export class Accounts extends DurableObject<Env> {
    */
   async me(provider: string, subject: string, who?: Who): Promise<AccountStats> {
     const acc = this.resolve(provider, subject, who);
+    this.touch(acc.id);
     const ratings = await this.ratings(acc.id);
     const row = this.sql.exec<{ stats: string | null }>('SELECT stats FROM account WHERE id = ?', acc.id).one();
     if (!row.stats) return this.recount(acc, ratings);
     const cached = JSON.parse(row.stats) as AccountStats;
     const tester = this.grantsOf(acc.id).includes('tester');
-    return { ...cached, ratings, at: Date.now(), grants: this.grantsOf(acc.id), diamondNo: tester ? TEST_NO : cached.diamondNo === TEST_NO ? undefined : cached.diamondNo };
+    return { ...cached, ratings, at: Date.now(), grants: this.grantsOf(acc.id), invites: this.invitesOf(acc.id), diamondNo: tester ? TEST_NO : cached.diamondNo === TEST_NO ? undefined : cached.diamondNo };
   }
 
   /** Brews changed on a device (the first call imports the whole history) and brews deleted there */
-  async addBrews(provider: string, subject: string, brews: { id: string; m: string; w: number; t: number }[], removed: string[]): Promise<AccountStats> {
+  async addBrews(provider: string, subject: string, brews: { id: string; m: string; w: number; t: number; x?: string }[], removed: string[]): Promise<AccountStats> {
     const acc = this.resolve(provider, subject);
     const now = Date.now();
+    this.touch(acc.id);
     for (const b of brews) {
       // r — when the server first saw the brew; an edit keeps it, so a date moved into the past does not count again
-      this.sql.exec(`INSERT INTO brew (account, bid, m, w, t, r) VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(account, bid) DO UPDATE SET m = excluded.m, w = excluded.w, t = excluded.t`, acc.id, b.id, b.m, b.w, b.t, now);
+      this.sql.exec(`INSERT INTO brew (account, bid, m, w, t, r, x) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(account, bid) DO UPDATE SET m = excluded.m, w = excluded.w, t = excluded.t, x = excluded.x`, acc.id, b.id, b.m, b.w, b.t, now, b.x || null);
     }
     for (const bid of removed) this.sql.exec('DELETE FROM brew WHERE account = ? AND bid = ?', acc.id, bid);
     return this.recount(acc, await this.ratings(acc.id));
+  }
+
+  /* ---------- metrics (owner only; counts, no one in them) ---------- */
+
+  /** the owners' own accounts stay out of the numbers */
+  private ownerAccounts(): Set<string> {
+    const owners = (this.env.OWNER_IDS ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (!owners.length) return new Set();
+    const rows = this.sql.exec<{ account: string }>(`SELECT account FROM identity WHERE provider = 'tg' AND subject IN (${owners.map(() => '?').join(',')})`, ...owners).toArray();
+    return new Set(rows.map((r) => r.account));
+  }
+
+  /** the app was opened: remember the time; the first time today adds one to today's count */
+  private touch(account: string) {
+    if (this.ownerAccounts().has(account)) return;
+    const now = Date.now(), today = dayOf(now);
+    const seen = this.sql.exec<{ seen: number | null }>('SELECT seen FROM account WHERE id = ?', account).toArray()[0]?.seen;
+    if (!seen || dayOf(seen) !== today) this.sql.exec('INSERT INTO active_day (day, n) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET n = n + 1', today);
+    this.sql.exec('UPDATE account SET seen = ? WHERE id = ?', now, account);
+  }
+
+  /** counters from the app: only known names, a sane amount, added to today's numbers without the sender */
+  track(events: Record<string, unknown>) {
+    const today = dayOf(Date.now());
+    let n = 0;
+    for (const ev of EVENT_NAMES) {
+      const k = Math.floor(Number(events[ev]));
+      if (!(k > 0)) continue;
+      this.sql.exec('INSERT INTO usage_day (day, ev, n) VALUES (?, ?, ?) ON CONFLICT(day, ev) DO UPDATE SET n = n + excluded.n', today, ev, Math.min(EVENT_CAP, k));
+      n++;
+    }
+    return n;
+  }
+
+  metrics(): Metrics {
+    const now = Date.now(), D = 86_400_000;
+    const skip = this.ownerAccounts();
+    const out = [...skip];
+    const not = out.length ? ` AND id NOT IN (${out.map(() => '?').join(',')})` : '';
+    const notB = out.length ? ` AND account NOT IN (${out.map(() => '?').join(',')})` : '';
+    const one = (q: string, ...a: unknown[]) => Number(this.sql.exec<{ n: number }>(q, ...a).toArray()[0]?.n ?? 0);
+    // a person is someone who opened the app or has brews (an id the owner granted a background to before they came is not)
+    const people = `(seen IS NOT NULL OR EXISTS (SELECT 1 FROM brew WHERE brew.account = account.id))`;
+    const total = one(`SELECT COUNT(*) AS n FROM account WHERE ${people}${not}`, ...out);
+    const created = (d: number) => one(`SELECT COUNT(*) AS n FROM account WHERE created >= ? AND ${people}${not}`, now - d * D, ...out);
+    const seen = (d: number) => one(`SELECT COUNT(*) AS n FROM account WHERE seen >= ?${not}`, now - d * D, ...out);
+    const brewing = (d: number) => one(`SELECT COUNT(DISTINCT account) AS n FROM brew WHERE t >= ? AND t <= ?${notB}`, now - d * D, now + D, ...out);
+    const backOf = one(`SELECT COUNT(*) AS n FROM account WHERE created >= ? AND created < ? AND ${people}${not}`, now - 37 * D, now - 7 * D, ...out);
+    const backN = one(`SELECT COUNT(*) AS n FROM account WHERE created >= ? AND created < ? AND seen >= ?${not}`, now - 37 * D, now - 7 * D, now - 7 * D, ...out);
+    const brews = (d?: number) => one(`SELECT COUNT(*) AS n FROM brew WHERE t <= ?${d ? ' AND t >= ?' : ''}${notB}`, now + D, ...(d ? [now - d * D] : []), ...out);
+    const ml30 = one(`SELECT COALESCE(SUM(MIN(w, 3000)), 0) AS n FROM brew WHERE t >= ? AND t <= ?${notB}`, now - 30 * D, now + D, ...out);
+    const methods = this.sql.exec<{ m: string; all: number; d30: number }>(
+      `SELECT m, COUNT(*) AS "all", SUM(CASE WHEN t >= ? THEN 1 ELSE 0 END) AS d30 FROM brew WHERE t <= ?${notB} GROUP BY m ORDER BY "all" DESC`, now - 30 * D, now + D, ...out,
+    ).toArray().map((r) => ({ id: r.m, all: Number(r.all), d30: Number(r.d30) }));
+    const from = dayOf(now - 29 * D);
+    const act = new Map(this.sql.exec<{ day: string; n: number }>('SELECT day, n FROM active_day WHERE day >= ?', from).toArray().map((r) => [r.day, Number(r.n)]));
+    const perDay = new Map<string, number>();
+    for (const r of this.sql.exec<{ t: number }>(`SELECT t FROM brew WHERE t >= ? AND t <= ?${notB}`, now - 30 * D, now + D, ...out).toArray()) {
+      const d = dayOf(r.t); perDay.set(d, (perDay.get(d) ?? 0) + 1);
+    }
+    const days = Array.from({ length: 30 }, (_, i) => { const d = dayOf(now - (29 - i) * D); return { day: d, active: act.get(d) ?? 0, brews: perDay.get(d) ?? 0 }; });
+    const features: Metrics['features'] = {};
+    for (const r of this.sql.exec<{ ev: string; n: number }>('SELECT ev, SUM(n) AS n FROM usage_day WHERE day >= ? GROUP BY ev', from).toArray()) {
+      if ((EVENT_NAMES as string[]).includes(r.ev)) features[r.ev as MetricEvent] = Number(r.n);
+    }
+    const b30 = brews(30), active30 = brewing(30);
+    return {
+      at: now,
+      users: { total, new7: created(7), new30: created(30), seen1: seen(1), seen7: seen(7), seen30: seen(30), brewing7: brewing(7), brewing30: active30, back: { of: backOf, n: backN } },
+      brews: { total: brews(), d7: brews(7), d30: b30, liters30: Math.round(ml30 / 100) / 10, perActive30: active30 ? Math.round((b30 / active30) * 10) / 10 : 0, methods },
+      days, features,
+      extra: {
+        cards: one(`SELECT COUNT(*) AS n FROM card WHERE 1${notB}`, ...out),
+        reminders30: one(`SELECT COUNT(*) AS n FROM reminder_log WHERE ts >= ?${notB}`, now - 30 * D, ...out),
+        rare: one(`SELECT COUNT(DISTINCT account) AS n FROM brew WHERE x IS NOT NULL AND x != ''${notB}`, ...out),
+      },
+    };
   }
 
   putCard(provider: string, subject: string, data: string) {
@@ -211,7 +368,7 @@ export class Accounts extends DurableObject<Env> {
     const levels = earnedLevels({ ...cached, ratings: await this.ratings(row.account) });
     const card = JSON.parse(row.data) as Record<string, unknown>;
     const ach = (Array.isArray(card.ach) ? card.ach : []).filter((k): k is string => typeof k === 'string' && KEY.test(k) && !!levels[k]).slice(0, 3);
-    let theme = card.theme as { ach?: string; tier?: Tier; base?: string; special?: string } | undefined;
+    let theme = card.theme as { ach?: string; tier?: Tier; base?: string; special?: string; rare?: string } | undefined;
     const grants = this.grantsOf(row.account);
     const tester = grants.includes('tester');
     // a tester picks any level of any background; everyone else the level they earned or a lower one
@@ -219,12 +376,14 @@ export class Accounts extends DurableObject<Env> {
     const themeLevel = testLevel ?? (theme?.ach ? levelUpTo(theme.ach === 'liters' ? LITER_LEVELS : METHOD_LEVELS, levels[theme.ach], theme.tier) : undefined);
     if (theme?.ach && !(themeLevel && givesBackground(theme.ach, themeLevel.tier))) theme = { base: 'paper' };
     if (theme?.special && !grants.includes(theme.special)) theme = { base: 'paper' };
+    const rare = (cached as Stats).rare ?? [];
+    if (theme?.rare && !(RARE_IDS.includes(theme.rare) && (rare.includes(theme.rare) || tester))) theme = { base: 'paper' };
     const badges = (Array.isArray(card.badges) ? card.badges : []).filter((b: { kind?: string }) => b?.kind !== 'achieve');
     const earned: Record<string, Level> = Object.fromEntries(ach.map((k) => [k, levels[k]]));
     if (theme?.ach && themeLevel) earned[theme.ach] = themeLevel;
     return {
       ...card, ach, theme: theme?.ach ? { ach: theme.ach } : theme, badges, earned,
-      granted: theme?.special ? [theme.special] : [],
+      granted: theme?.special ? [theme.special] : theme?.rare ? [theme.rare] : [],
       no: theme?.ach === 'liters' && themeLevel?.tier === 'diamond' ? (tester ? TEST_NO : acc.diamond_no ?? undefined) : undefined,
     };
   }

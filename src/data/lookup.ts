@@ -227,13 +227,18 @@ export interface GrantInfo { account: string; tg: string | null; grants: string[
 export interface CrawlUsage { day: string; reads: number; writes: number; maxReads: number; maxWrites: number; paused: boolean }
 export interface AdminData { sites: SiteInfo[]; grants: GrantInfo[]; crawl?: CrawlUsage; checks?: import('./tester').CheckItem[] }
 
+/** the last answer of /admin: 403 — this Telegram account is not the owner (0 — no answer at all) */
+export let adminStatus = 0;
+
 /** Owner-only tools: roaster sites and special backgrounds. null — not the owner or no connection. */
 export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 'recrawl' | 'grant' | 'revoke' | 'note' | 'forget' | 'check_add' | 'check_remove' | 'check_clear'; host?: string; roaster?: string; tg?: string; what?: string; note?: string; username?: string } = { action: 'list' }): Promise<AdminData | null> {
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return null;
   try {
     // a blocked or throttled connection may hang instead of failing: give up after 15 s
+    adminStatus = 0;
     const r = await fetch(`${RATINGS_API}/admin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, ...body }), signal: AbortSignal.timeout?.(15_000) });
+    adminStatus = r.status;
     if (!r.ok) return null;
     const j = await r.json();
     return { sites: j.sites ?? [], grants: j.grants ?? [], crawl: j.crawl ?? undefined, checks: j.checks ?? [] };

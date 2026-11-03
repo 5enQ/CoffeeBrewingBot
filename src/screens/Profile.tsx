@@ -17,7 +17,7 @@ import { DESKTOP_MIN, useLayoutMode } from '../layout';
 import { Panel, OwnerChecks, TesterPanel } from './TesterPanel';
 import { useStats } from '../data/stats';
 import { explainRefusal, remindersAvailable, testReminder } from '../data/remind';
-import { adminCall, type AdminData, type CrawlUsage, type GrantInfo, type SiteInfo } from '../data/lookup';
+import { adminCall, adminStatus, type AdminData, type CrawlUsage, type GrantInfo, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
 import { MyCardBlock } from './CardScreens';
 import { OwnerMetrics } from './OwnerMetrics';
@@ -234,19 +234,22 @@ function TesterTools() {
   return grants.includes('beta') && platform.initData() ? <TesterPanel /> : null;
 }
 
+// the Telegram id of the owner seen on this device: one phone may have several Telegram accounts
 const OWNER_SEEN = 'brewbook.owner';
 
 function OwnerTools() {
   const [data, setData] = useState<AdminData | null>(null);
   // the owner was recognized on this device before: without a connection the panel stays and says so
-  const [known] = useState(() => { try { return localStorage.getItem(OWNER_SEEN) === '1'; } catch { return false; } });
+  const [known, setKnown] = useState(() => { try { const id = myTelegramId(); return !!id && localStorage.getItem(OWNER_SEEN) === id; } catch { return false; } });
   const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading');
   const load = () => {
     if (!myTelegramId()) return;
     setState('loading');
     adminCall().then((d) => {
       setData(d); setState(d ? 'ok' : 'failed');
-      if (d) { try { localStorage.setItem(OWNER_SEEN, '1'); } catch { /* no storage */ } }
+      if (d) { try { localStorage.setItem(OWNER_SEEN, myTelegramId() ?? ''); } catch { /* no storage */ } }
+      // the server says this account is not the owner: forget the mark, the panel goes
+      else if (adminStatus === 401 || adminStatus === 403) { try { localStorage.removeItem(OWNER_SEEN); } catch { /* no storage */ } setKnown(false); }
     });
   };
   useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps

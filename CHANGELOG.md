@@ -5,6 +5,8 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.7.0 — Pours & Pictures (2026-11-03)
+
 ### Added
 - The tester role is offered, not given: when the owner adds someone as «Тестировщик», the person sees an invitation on their next start — what testers do and what more is collected from them (report text and screenshot, app version, device, system and screen, their name and @username for the developer) — with «Согласиться» and «Отказаться». Only agreeing gives the role; the owner gets a message either way and sees «ждёт ответа» or «отказался» in the panel (a declined invitation can be sent again). People who were testers before are asked too: their role waits for the answer (the tester panel comes back once they agree, and is gone if they decline).
 - Owner, «Разработчики и тестировщики»: filters by role and by the answer to an invitation (with counts), and a compact list — one line per person with their roles as tags; tap to open the actions.

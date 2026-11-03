@@ -7,6 +7,7 @@
  *  - the profile card. Levels on a shared card always come from this count, never from the client.
  */
 import { DurableObject } from 'cloudflare:workers';
+import { RARE_IDS } from '../../src/data/rare.ts';
 import { countStats, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, type BrewStat, type Level, type Stats, type Tier } from '../../src/data/levels.ts';
 import type { Env } from './index';
 
@@ -19,7 +20,7 @@ export interface AccountStats extends Stats { account: string; at: number; diamo
  *  tester — every background at every level, for testing; such accounts never take a real diamond number (they show № 0).
  * Owners (OWNER_IDS) have both automatically.
  */
-export const SPECIAL = ['dev', 'beta', 'tester'] as const;
+export const SPECIAL = ['dev', 'beta', 'tester', 'lighthouse'] as const;
 
 /** what Telegram tells about the person on each sign-in (kept so the owner sees who is who) */
 export interface Who { username?: string; name?: string }
@@ -75,6 +76,11 @@ export class Accounts extends DurableObject<Env> {
     if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 3) {
       try { sql.exec('ALTER TABLE report ADD COLUMN photo_id TEXT'); } catch { /* already there */ }
       sql.exec("UPDATE meta SET value = '3' WHERE key = 'schema'");
+    }
+    // v4: brews carry rare-lot tags
+    if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 4) {
+      try { sql.exec('ALTER TABLE brew ADD COLUMN x TEXT'); } catch { /* already there */ }
+      sql.exec("UPDATE meta SET value = '4' WHERE key = 'schema'");
     }
   }
 
@@ -153,7 +159,7 @@ export class Accounts extends DurableObject<Env> {
 
   /** Recount from the log, store the result, hand out the diamond number when 1000 liters are reached */
   private recount(acc: { id: string; created: number }, ratings: number): AccountStats {
-    const rows = this.sql.exec<{ m: string; w: number; t: number; r: number }>('SELECT m, w, t, r FROM brew WHERE account = ?', acc.id).toArray() as BrewStat[];
+    const rows = this.sql.exec<{ m: string; w: number; t: number; r: number; x: string | null }>('SELECT m, w, t, r, x FROM brew WHERE account = ?', acc.id).toArray() as BrewStat[];
     const s = countStats(rows, acc.created, ratings);
     const tester = this.grantsOf(acc.id).includes('tester');
     let no = tester ? TEST_NO : this.sql.exec<{ diamond_no: number | null }>('SELECT diamond_no FROM account WHERE id = ?', acc.id).one().diamond_no ?? undefined;
@@ -181,13 +187,13 @@ export class Accounts extends DurableObject<Env> {
   }
 
   /** Brews changed on a device (the first call imports the whole history) and brews deleted there */
-  async addBrews(provider: string, subject: string, brews: { id: string; m: string; w: number; t: number }[], removed: string[]): Promise<AccountStats> {
+  async addBrews(provider: string, subject: string, brews: { id: string; m: string; w: number; t: number; x?: string }[], removed: string[]): Promise<AccountStats> {
     const acc = this.resolve(provider, subject);
     const now = Date.now();
     for (const b of brews) {
       // r — when the server first saw the brew; an edit keeps it, so a date moved into the past does not count again
-      this.sql.exec(`INSERT INTO brew (account, bid, m, w, t, r) VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(account, bid) DO UPDATE SET m = excluded.m, w = excluded.w, t = excluded.t`, acc.id, b.id, b.m, b.w, b.t, now);
+      this.sql.exec(`INSERT INTO brew (account, bid, m, w, t, r, x) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(account, bid) DO UPDATE SET m = excluded.m, w = excluded.w, t = excluded.t, x = excluded.x`, acc.id, b.id, b.m, b.w, b.t, now, b.x || null);
     }
     for (const bid of removed) this.sql.exec('DELETE FROM brew WHERE account = ? AND bid = ?', acc.id, bid);
     return this.recount(acc, await this.ratings(acc.id));
@@ -211,7 +217,7 @@ export class Accounts extends DurableObject<Env> {
     const levels = earnedLevels({ ...cached, ratings: await this.ratings(row.account) });
     const card = JSON.parse(row.data) as Record<string, unknown>;
     const ach = (Array.isArray(card.ach) ? card.ach : []).filter((k): k is string => typeof k === 'string' && KEY.test(k) && !!levels[k]).slice(0, 3);
-    let theme = card.theme as { ach?: string; tier?: Tier; base?: string; special?: string } | undefined;
+    let theme = card.theme as { ach?: string; tier?: Tier; base?: string; special?: string; rare?: string } | undefined;
     const grants = this.grantsOf(row.account);
     const tester = grants.includes('tester');
     // a tester picks any level of any background; everyone else the level they earned or a lower one
@@ -219,12 +225,14 @@ export class Accounts extends DurableObject<Env> {
     const themeLevel = testLevel ?? (theme?.ach ? levelUpTo(theme.ach === 'liters' ? LITER_LEVELS : METHOD_LEVELS, levels[theme.ach], theme.tier) : undefined);
     if (theme?.ach && !(themeLevel && givesBackground(theme.ach, themeLevel.tier))) theme = { base: 'paper' };
     if (theme?.special && !grants.includes(theme.special)) theme = { base: 'paper' };
+    const rare = (cached as Stats).rare ?? [];
+    if (theme?.rare && !(RARE_IDS.includes(theme.rare) && (rare.includes(theme.rare) || tester))) theme = { base: 'paper' };
     const badges = (Array.isArray(card.badges) ? card.badges : []).filter((b: { kind?: string }) => b?.kind !== 'achieve');
     const earned: Record<string, Level> = Object.fromEntries(ach.map((k) => [k, levels[k]]));
     if (theme?.ach && themeLevel) earned[theme.ach] = themeLevel;
     return {
       ...card, ach, theme: theme?.ach ? { ach: theme.ach } : theme, badges, earned,
-      granted: theme?.special ? [theme.special] : [],
+      granted: theme?.special ? [theme.special] : theme?.rare ? [theme.rare] : [],
       no: theme?.ach === 'liters' && themeLevel?.tier === 'diamond' ? (tester ? TEST_NO : acc.diamond_no ?? undefined) : undefined,
     };
   }

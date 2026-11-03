@@ -88,6 +88,23 @@ g = post('/admin', {'initData': A, 'action': 'forget', 'tg': '444'})
 ok(not any(x['tg'] == '444' for x in g['grants']), 'the owner removes a person from the list')
 ok(get(f'/cards/{cid4}').get('card') is not None, 'their card stays (only grants and the note are gone)')
 
+# rare lots: one brew of a Japanese pack opens its picture; unknown tags are dropped; a claimed picture without the brew is refused
+F = sign(555); now = int(time.time() * 1000)
+cf = post('/cards', {'initData': F, 'card': {'name': 'Ф', 'theme': {'rare': 'japan'}, 'ach': [], 'granted': ['japan']}})['id']
+ok(get(f'/cards/{cf}')['card']['theme'] == {'base': 'paper'}, 'a rare picture without the brew is not shown')
+sf = post('/brews', {'initData': F, 'brews': [{'id': 'f1', 'm': 'v60', 'w': 250, 't': now, 'x': 'japan,gold-forever'}]})
+ok(sf.get('rare') == ['japan'], f'one brew of a Japanese pack counts, unknown tags dropped: {sf.get("rare")}')
+post('/cards', {'initData': F, 'card': {'name': 'Ф', 'theme': {'rare': 'japan'}, 'ach': [], 'granted': ['japan']}})
+cj = get(f'/cards/{cf}')['card']; ok(cj['theme'] == {'rare': 'japan'} and 'japan' in cj.get('granted', []), f'then the card shows it: {cj["theme"]}')
+post('/cards', {'initData': F, 'card': {'name': 'Ф', 'theme': {'rare': 'liberica'}, 'ach': [], 'granted': ['liberica']}})
+ok(get(f'/cards/{cf}')['card']['theme'] == {'base': 'paper'}, 'another rare picture stays closed')
+sf = post('/brews', {'initData': F, 'brews': [{'id': 'f1', 'm': 'v60', 'w': 250, 't': now}]})
+ok(sf.get('rare') == [], 'the pack edited to a plain lot: the brew no longer opens it')
+# the lighthouse is given by the owner
+ok(post('/admin', {'initData': A, 'action': 'grant', 'tg': '555', 'what': 'lighthouse'}).get('grants') is not None, 'the owner gives the lighthouse')
+post('/cards', {'initData': F, 'card': {'name': 'Ф', 'theme': {'special': 'lighthouse'}, 'ach': [], 'granted': ['lighthouse']}})
+ok(get(f'/cards/{cf}')['card']['theme'] == {'special': 'lighthouse'}, 'the lighthouse card is shown')
+
 # «Стакан» for 500 liters
 E = sign(557)
 hist = [{'id': f'w{i}', 'm': 'batch', 'w': 3000, 't': T0 + (i // 2) * DAY + (i % 2) * 3600_000} for i in range(170)]

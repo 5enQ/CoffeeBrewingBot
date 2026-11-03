@@ -12,6 +12,7 @@ import { sortBadges, type BadgeLite } from './badges';
 import { catById, GEAR_CATS, type Gear, type GearCat } from './gear';
 import { backgroundLook, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, TIER_ORDER, type Level, type Stats, type Tier } from './levels';
 import { allMethods, methodById } from './methods';
+import { RARE, type RareId } from './rare';
 import type { Profile } from './store';
 
 export const BASE_THEMES = [
@@ -37,6 +38,7 @@ export type BaseTheme = typeof BASE_THEMES[number]['id'];
 export const SPECIAL_THEMES = [
   { id: 'dev', label: 'Разработчик', title: 'Команда Brewbook' },
   { id: 'beta', label: 'Тестировщик', title: 'Бета-тестер Brewbook' },
+  { id: 'lighthouse', label: 'Маяк', title: 'Хранитель маяка' },
 ] as const;
 export type SpecialTheme = typeof SPECIAL_THEMES[number]['id'];
 
@@ -52,7 +54,7 @@ export interface CardData {
   ach: string[];
   setup: { cat: GearCat; name: string }[];
   /** a base color, the achievement whose metal background is shown, or a special background */
-  theme: { base: BaseTheme } | { ach: string; tier?: Tier } | { special: SpecialTheme };
+  theme: { base: BaseTheme } | { ach: string; tier?: Tier } | { special: SpecialTheme } | { rare: RareId };
   /** levels of the achievements above (filled in by the server on a shared card) */
   earned?: Record<string, Level>;
   /** diamond only: the holder's place among everyone who reached 1000 liters (given by the server) */
@@ -62,7 +64,7 @@ export interface CardData {
 }
 
 /** What is painted: a base color, a metal tier with the achievement's icon, or a special background */
-export type CardTheme = { base: BaseTheme } | { tier: Tier; icon: string; title: string; look?: 'glass' } | { special: SpecialTheme; title: string };
+export type CardTheme = { base: BaseTheme } | { tier: Tier; icon: string; title: string; look?: 'glass' } | { special: SpecialTheme; title: string } | { rare: RareId; title: string };
 
 export const MAX_SETUP = 6;
 
@@ -101,6 +103,9 @@ export function cardView(c: CardData): { theme: CardTheme; badges: BadgeLite[] }
   else if ('special' in c.theme) {
     const sp = SPECIAL_THEMES.find((x) => x.id === (c.theme as { special: string }).special);
     if (sp && c.granted?.includes(sp.id)) theme = { special: sp.id, title: sp.title };
+  } else if ('rare' in c.theme) {
+    const r = RARE.find((x) => x.id === (c.theme as { rare: string }).rare);
+    if (r && c.granted?.includes(r.id)) theme = { rare: r.id, title: r.title };
   } else {
     const l = earned[c.theme.ach];
     if (l && givesBackground(c.theme.ach, l.tier)) theme = { tier: l.tier, icon: achievementIcon(c.theme.ach), title: achievementBadge(c.theme.ach, l.tier, l.at).title, look: backgroundLook(c.theme.ach, l.tier) };
@@ -128,11 +133,14 @@ export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite 
   const own = featured.filter((f) => !f.key.startsWith('ach:')).map((f) => { const { id: _id, ...b } = f.badge as BadgeLite & { id?: string }; return b; });
   const [chosen, chosenTier] = p.cardTheme?.startsWith('ach:') ? p.cardTheme.slice(4).split('@') as [string, Tier | undefined] : [null, undefined];
   const special = p.cardTheme?.startsWith('special:') ? SPECIAL_THEMES.find((x) => `special:${x.id}` === p.cardTheme && grants.includes(x.id)) : undefined;
+  // a rare-lot background: brewed such a lot (a tester may show any)
+  const rare = p.cardTheme?.startsWith('rare:') ? RARE.find((x) => `rare:${x.id}` === p.cardTheme && ((stats.rare ?? []).includes(x.id) || grants.includes('tester'))) : undefined;
   const test = chosen && chosenTier && grants.includes('tester') ? testLevel(chosen, chosenTier) : undefined;
   // a lower level than the one earned may be chosen (liters: the glass at 500 L while having 1000 L)
   const lower = chosen && !test ? levelUpTo(chosen === 'liters' ? LITER_LEVELS : METHOD_LEVELS, levels[chosen], chosenTier) : undefined;
   const themeLevel = test ?? lower;
   const theme: CardData['theme'] = special ? { special: special.id }
+    : rare ? { rare: rare.id }
     : chosen && themeLevel && givesBackground(chosen, themeLevel.tier) ? (chosenTier ? { ach: chosen, tier: themeLevel.tier } : { ach: chosen })
     : { base: baseOf(p.cardTheme) };
   const earned: Record<string, Level> = Object.fromEntries(ach.map((k) => [k, levels[k]]));
@@ -150,7 +158,7 @@ export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite 
     theme,
     earned,
     no: 'ach' in theme && theme.ach === 'liters' && themeLevel?.tier === 'diamond' ? diamondNo : undefined,
-    granted: special ? [special.id] : [],
+    granted: special ? [special.id] : rare ? [rare.id] : [],
   };
 }
 
@@ -166,6 +174,7 @@ export function cleanCard(raw: unknown): CardData | null {
   const t = (r.theme ?? {}) as Record<string, unknown>;
   const theme: CardData['theme'] = typeof t.ach === 'string' && KEY.test(t.ach) ? { ach: t.ach }
     : SPECIAL_THEMES.some((x) => x.id === t.special) ? { special: t.special as SpecialTheme }
+    : RARE.some((x) => x.id === t.rare) ? { rare: t.rare as RareId }
     : { base: baseOf(t.base as string) };
   const badges = Array.isArray(r.badges) ? r.badges.slice(0, 3).map((b: Record<string, unknown>) => ({
     kind: str(b?.kind, 20) as BadgeLite['kind'], title: str(b?.title, 80), detail: str(b?.detail, 60), year: str(b?.year, 10),
@@ -184,7 +193,7 @@ export function cleanCard(raw: unknown): CardData | null {
   return {
     v: 2, name, username: username || undefined, about: str(r.about, 200) || undefined, photo: /^https:\/\//.test(photo) ? photo : undefined,
     badges, ach, setup, theme, earned, no: Number.isInteger(no) && no >= 0 ? no : undefined,
-    granted: Array.isArray(r.granted) ? r.granted.filter((g): g is string => SPECIAL_THEMES.some((x) => x.id === g)) : [],
+    granted: Array.isArray(r.granted) ? r.granted.filter((g): g is string => SPECIAL_THEMES.some((x) => x.id === g) || RARE.some((x) => x.id === g)) : [],
   };
 }
 
@@ -219,6 +228,7 @@ export function cardText(c: CardData) {
   if (c.about) lines.push(c.about);
   if ('tier' in v.theme) lines.push(`🏅 ${v.theme.title}`);
   if ('special' in v.theme) lines.push(`⌘ ${v.theme.title}`);
+  if ('rare' in v.theme) lines.push(`🌱 ${v.theme.title}`);
   if (v.badges.length) lines.push(v.badges.map((b) => b.title).join(' · '));
   if (c.setup.length) lines.push('', 'Сетап:', ...c.setup.map((g) => `• ${g.name}`));
   return lines.join('\n');

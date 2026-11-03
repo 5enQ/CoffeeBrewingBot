@@ -13,6 +13,7 @@
  * The user is authenticated by the initData signature (HMAC with the bot token),
  * so a rating "on someone else's behalf" cannot be forged, and a repeated rating replaces the previous one.
  */
+import { RARE_IDS } from '../../src/data/rare.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Accounts, sendReminder } from './accounts';
 import { CoffeeCatalog, cleanCoffee, keysFor, type Found, type SiteStatus } from './catalog';
@@ -266,7 +267,9 @@ export default {
       if (url.pathname === '/me') return json(await accounts().me('tg', user.id, { username: user.username, name: user.name }), 200, h);
       if (url.pathname === '/brews') {
         const list = Array.isArray(body.brews) ? body.brews.slice(0, 500) : [];
-        const brews = list.map((b: Record<string, unknown>) => ({ id: String(b?.id ?? '').slice(0, 40), m: String(b?.m ?? '').slice(0, 40), w: Number(b?.w) || 0, t: Number(b?.t) || 0 }))
+        // x — rare-lot tags (known ones only)
+        const tags = (v: unknown) => String(v ?? '').split(',').filter((x) => RARE_IDS.includes(x)).join(',');
+        const brews = list.map((b: Record<string, unknown>) => ({ id: String(b?.id ?? '').slice(0, 40), m: String(b?.m ?? '').slice(0, 40), w: Number(b?.w) || 0, t: Number(b?.t) || 0, x: tags(b?.x) }))
           .filter((b) => /^[A-Za-z0-9_-]{1,40}$/.test(b.id) && /^[a-z0-9_-]{1,40}$/i.test(b.m) && Number.isFinite(b.t));
         const removed = (Array.isArray(body.removed) ? body.removed.slice(0, 500) : []).map(String).filter((x) => /^[A-Za-z0-9_-]{1,40}$/.test(x));
         return json(await accounts().addBrews('tg', user.id, brews, removed), 200, h);

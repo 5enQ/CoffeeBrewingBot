@@ -104,6 +104,22 @@ export class Accounts extends DurableObject<Env> {
       try { sql.exec("ALTER TABLE account ADD COLUMN offers TEXT NOT NULL DEFAULT '{}'"); } catch { /* already there */ }
       sql.exec("UPDATE meta SET value = '6' WHERE key = 'schema'");
     }
+    // v7: people who were testers before the invitation existed are asked too: their role becomes an offer
+    // (paused until they agree, gone if they decline); the owners are left as they are
+    if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 7) {
+      const owners = (env.OWNER_IDS ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+      const rows = sql.exec<{ id: string; grants: string; offers: string; tg: string | null }>(
+        "SELECT a.id, a.grants, a.offers, i.subject AS tg FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.grants LIKE '%\"beta\"%'").toArray();
+      for (const r of rows) {
+        if (r.tg && owners.includes(r.tg)) continue;
+        let grants: string[] = [], offers: Offers = {};
+        try { grants = JSON.parse(r.grants); offers = JSON.parse(r.offers || '{}'); } catch { continue; }
+        if (offers.beta?.state === 'accepted') continue;
+        offers.beta = { state: 'pending', at: Date.now() };
+        sql.exec('UPDATE account SET grants = ?, offers = ? WHERE id = ?', JSON.stringify(grants.filter((g) => g !== 'beta')), JSON.stringify(offers), r.id);
+      }
+      sql.exec("UPDATE meta SET value = '7' WHERE key = 'schema'");
+    }
     sql.exec('CREATE TABLE IF NOT EXISTS active_day (day TEXT PRIMARY KEY, n INTEGER NOT NULL)');
     sql.exec('CREATE TABLE IF NOT EXISTS usage_day (day TEXT NOT NULL, ev TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, ev))');
   }

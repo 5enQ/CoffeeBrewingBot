@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { track } from '../data/track';
 import { methodById, fmtTime, fmtNum } from '../data/methods';
 import { effectivePlan, shiftPlan, type Skip } from '../data/recipes';
 import type { Brew } from '../data/store';
@@ -162,7 +163,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
       base.current += (Date.now() - startedAt.current) / 1000; setElapsed(base.current);
       persist(false); dropReminder();
     } else {
-      if (elapsed === 0) { lastStep.current = 0; if (sound) beep(); }
+      if (elapsed === 0) { lastStep.current = 0; if (sound) beep(); track('timer.start'); }
       startedAt.current = Date.now();
       persist(true); void armReminder();
     }
@@ -179,7 +180,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     setRunning(false);
     closed.current = true;
     dropReminder(); clearTimer(draft.id);
-    platform.haptic('success');
+    platform.haptic('success'); track('brew.timer');
     replace({ name: 'brewEdit', draft: { ...draft, time: Math.round(total || plan.total), date: Date.now() }, isNew: true, openCupping: m.id === 'cupping' });
   };
 
@@ -190,7 +191,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     const now = running ? base.current + (Date.now() - startedAt.current) / 1000 : elapsed;
     const by = nxt.at - now;
     if (by <= 0) return;
-    platform.haptic('medium');
+    platform.haptic('medium'); track('timer.skip');
     skipsRef.current = [...skipsRef.current, { i: j, by }];
     setSkips(skipsRef.current);
     // the fill runs on to the mark that lights, the marks move to their new places

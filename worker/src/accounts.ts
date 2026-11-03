@@ -8,6 +8,7 @@
  */
 import { DurableObject } from 'cloudflare:workers';
 import { RARE_IDS } from '../../src/data/rare.ts';
+import { EVENT_CAP, EVENT_NAMES, type MetricEvent, type Metrics } from '../../src/data/metrics.ts';
 import { countStats, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, type BrewStat, type Level, type Stats, type Tier } from '../../src/data/levels.ts';
 import type { Env } from './index';
 
@@ -37,6 +38,9 @@ function testerLevel(key: string, tier: Tier): Level | null {
   const list = key.startsWith('method:') ? METHOD_LEVELS : key === 'liters' ? LITER_LEVELS : [];
   return list.find((l) => l.tier === tier) ?? null;
 }
+
+/** a UTC day, YYYY-MM-DD */
+const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 export class Accounts extends DurableObject<Env> {
   private sql: SqlStorage;
@@ -82,6 +86,13 @@ export class Accounts extends DurableObject<Env> {
       try { sql.exec('ALTER TABLE brew ADD COLUMN x TEXT'); } catch { /* already there */ }
       sql.exec("UPDATE meta SET value = '4' WHERE key = 'schema'");
     }
+    // v5: metrics — when a person last opened the app; per day, how many did; anonymous counters (no account in them)
+    if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 5) {
+      try { sql.exec('ALTER TABLE account ADD COLUMN seen INTEGER'); } catch { /* already there */ }
+      sql.exec("UPDATE meta SET value = '5' WHERE key = 'schema'");
+    }
+    sql.exec('CREATE TABLE IF NOT EXISTS active_day (day TEXT PRIMARY KEY, n INTEGER NOT NULL)');
+    sql.exec('CREATE TABLE IF NOT EXISTS usage_day (day TEXT NOT NULL, ev TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, ev))');
   }
 
   private grantsOf(account: string): string[] {
@@ -178,6 +189,7 @@ export class Accounts extends DurableObject<Env> {
    */
   async me(provider: string, subject: string, who?: Who): Promise<AccountStats> {
     const acc = this.resolve(provider, subject, who);
+    this.touch(acc.id);
     const ratings = await this.ratings(acc.id);
     const row = this.sql.exec<{ stats: string | null }>('SELECT stats FROM account WHERE id = ?', acc.id).one();
     if (!row.stats) return this.recount(acc, ratings);
@@ -190,6 +202,7 @@ export class Accounts extends DurableObject<Env> {
   async addBrews(provider: string, subject: string, brews: { id: string; m: string; w: number; t: number; x?: string }[], removed: string[]): Promise<AccountStats> {
     const acc = this.resolve(provider, subject);
     const now = Date.now();
+    this.touch(acc.id);
     for (const b of brews) {
       // r — when the server first saw the brew; an edit keeps it, so a date moved into the past does not count again
       this.sql.exec(`INSERT INTO brew (account, bid, m, w, t, r, x) VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -197,6 +210,83 @@ export class Accounts extends DurableObject<Env> {
     }
     for (const bid of removed) this.sql.exec('DELETE FROM brew WHERE account = ? AND bid = ?', acc.id, bid);
     return this.recount(acc, await this.ratings(acc.id));
+  }
+
+  /* ---------- metrics (owner only; counts, no one in them) ---------- */
+
+  /** the owners' own accounts stay out of the numbers */
+  private ownerAccounts(): Set<string> {
+    const owners = (this.env.OWNER_IDS ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (!owners.length) return new Set();
+    const rows = this.sql.exec<{ account: string }>(`SELECT account FROM identity WHERE provider = 'tg' AND subject IN (${owners.map(() => '?').join(',')})`, ...owners).toArray();
+    return new Set(rows.map((r) => r.account));
+  }
+
+  /** the app was opened: remember the time; the first time today adds one to today's count */
+  private touch(account: string) {
+    if (this.ownerAccounts().has(account)) return;
+    const now = Date.now(), today = dayOf(now);
+    const seen = this.sql.exec<{ seen: number | null }>('SELECT seen FROM account WHERE id = ?', account).toArray()[0]?.seen;
+    if (!seen || dayOf(seen) !== today) this.sql.exec('INSERT INTO active_day (day, n) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET n = n + 1', today);
+    this.sql.exec('UPDATE account SET seen = ? WHERE id = ?', now, account);
+  }
+
+  /** counters from the app: only known names, a sane amount, added to today's numbers without the sender */
+  track(events: Record<string, unknown>) {
+    const today = dayOf(Date.now());
+    let n = 0;
+    for (const ev of EVENT_NAMES) {
+      const k = Math.floor(Number(events[ev]));
+      if (!(k > 0)) continue;
+      this.sql.exec('INSERT INTO usage_day (day, ev, n) VALUES (?, ?, ?) ON CONFLICT(day, ev) DO UPDATE SET n = n + excluded.n', today, ev, Math.min(EVENT_CAP, k));
+      n++;
+    }
+    return n;
+  }
+
+  metrics(): Metrics {
+    const now = Date.now(), D = 86_400_000;
+    const skip = this.ownerAccounts();
+    const out = [...skip];
+    const not = out.length ? ` AND id NOT IN (${out.map(() => '?').join(',')})` : '';
+    const notB = out.length ? ` AND account NOT IN (${out.map(() => '?').join(',')})` : '';
+    const one = (q: string, ...a: unknown[]) => Number(this.sql.exec<{ n: number }>(q, ...a).toArray()[0]?.n ?? 0);
+    // a person is someone who opened the app or has brews (an id the owner granted a background to before they came is not)
+    const people = `(seen IS NOT NULL OR EXISTS (SELECT 1 FROM brew WHERE brew.account = account.id))`;
+    const total = one(`SELECT COUNT(*) AS n FROM account WHERE ${people}${not}`, ...out);
+    const created = (d: number) => one(`SELECT COUNT(*) AS n FROM account WHERE created >= ? AND ${people}${not}`, now - d * D, ...out);
+    const seen = (d: number) => one(`SELECT COUNT(*) AS n FROM account WHERE seen >= ?${not}`, now - d * D, ...out);
+    const brewing = (d: number) => one(`SELECT COUNT(DISTINCT account) AS n FROM brew WHERE t >= ? AND t <= ?${notB}`, now - d * D, now + D, ...out);
+    const backOf = one(`SELECT COUNT(*) AS n FROM account WHERE created >= ? AND created < ? AND ${people}${not}`, now - 37 * D, now - 7 * D, ...out);
+    const backN = one(`SELECT COUNT(*) AS n FROM account WHERE created >= ? AND created < ? AND seen >= ?${not}`, now - 37 * D, now - 7 * D, now - 7 * D, ...out);
+    const brews = (d?: number) => one(`SELECT COUNT(*) AS n FROM brew WHERE t <= ?${d ? ' AND t >= ?' : ''}${notB}`, now + D, ...(d ? [now - d * D] : []), ...out);
+    const ml30 = one(`SELECT COALESCE(SUM(MIN(w, 3000)), 0) AS n FROM brew WHERE t >= ? AND t <= ?${notB}`, now - 30 * D, now + D, ...out);
+    const methods = this.sql.exec<{ m: string; all: number; d30: number }>(
+      `SELECT m, COUNT(*) AS "all", SUM(CASE WHEN t >= ? THEN 1 ELSE 0 END) AS d30 FROM brew WHERE t <= ?${notB} GROUP BY m ORDER BY "all" DESC`, now - 30 * D, now + D, ...out,
+    ).toArray().map((r) => ({ id: r.m, all: Number(r.all), d30: Number(r.d30) }));
+    const from = dayOf(now - 29 * D);
+    const act = new Map(this.sql.exec<{ day: string; n: number }>('SELECT day, n FROM active_day WHERE day >= ?', from).toArray().map((r) => [r.day, Number(r.n)]));
+    const perDay = new Map<string, number>();
+    for (const r of this.sql.exec<{ t: number }>(`SELECT t FROM brew WHERE t >= ? AND t <= ?${notB}`, now - 30 * D, now + D, ...out).toArray()) {
+      const d = dayOf(r.t); perDay.set(d, (perDay.get(d) ?? 0) + 1);
+    }
+    const days = Array.from({ length: 30 }, (_, i) => { const d = dayOf(now - (29 - i) * D); return { day: d, active: act.get(d) ?? 0, brews: perDay.get(d) ?? 0 }; });
+    const features: Metrics['features'] = {};
+    for (const r of this.sql.exec<{ ev: string; n: number }>('SELECT ev, SUM(n) AS n FROM usage_day WHERE day >= ? GROUP BY ev', from).toArray()) {
+      if ((EVENT_NAMES as string[]).includes(r.ev)) features[r.ev as MetricEvent] = Number(r.n);
+    }
+    const b30 = brews(30), active30 = brewing(30);
+    return {
+      at: now,
+      users: { total, new7: created(7), new30: created(30), seen1: seen(1), seen7: seen(7), seen30: seen(30), brewing7: brewing(7), brewing30: active30, back: { of: backOf, n: backN } },
+      brews: { total: brews(), d7: brews(7), d30: b30, liters30: Math.round(ml30 / 100) / 10, perActive30: active30 ? Math.round((b30 / active30) * 10) / 10 : 0, methods },
+      days, features,
+      extra: {
+        cards: one(`SELECT COUNT(*) AS n FROM card WHERE 1${notB}`, ...out),
+        reminders30: one(`SELECT COUNT(*) AS n FROM reminder_log WHERE ts >= ?${notB}`, now - 30 * D, ...out),
+        rare: one(`SELECT COUNT(DISTINCT account) AS n FROM brew WHERE x IS NOT NULL AND x != ''${notB}`, ...out),
+      },
+    };
   }
 
   putCard(provider: string, subject: string, data: string) {

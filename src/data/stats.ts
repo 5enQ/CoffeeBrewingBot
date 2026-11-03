@@ -5,6 +5,7 @@
  */
 import { useEffect, useMemo, useRef } from 'react';
 import { RATINGS_API } from '../config';
+import { flush } from './track';
 import { platform } from '../platform';
 import { localStats, ownBrews } from './achievements';
 import { rareOfBean } from './rare';
@@ -70,6 +71,7 @@ export function useStatsSync() {
     const t = setTimeout(async () => {
       const s = await syncStats({ brews, beans, mod: latest.current.mod, del: latest.current.del });
       if (s) setServerStats(s);
+      void flush();
     }, 2500);
     return () => clearTimeout(t);
   }, [ready, brews, beans, setServerStats]);

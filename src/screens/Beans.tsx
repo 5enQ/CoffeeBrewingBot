@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { track } from '../data/track';
 import { contributeCoffee, filledLabels, lookupCode, mergeEmpty } from '../data/lookup';
 import { allMethods, methodById, fmtRatio, fmtNum } from '../data/methods';
 import { beanSca, brewBeanIds } from '../data/cva';
@@ -126,6 +127,7 @@ export function Beans() {
 
   const onCode = async (code: string) => {
     setScan(false);
+    track('pack.lookup');
     const r = await lookupCode(code, beans);
     if (r.existing) push({ name: 'bean', id: r.existing.id });
     else push({ name: 'beanEdit', bean: mergeEmpty(emptyBean(), r.patch), isNew: true });
@@ -383,6 +385,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
   const onCode = async (code: string) => {
     setScan(false);
     setStatus('Ищу…');
+    track('pack.lookup');
     const r = await lookupCode(code, beans.filter((x) => x.id !== b.id), isDrip(b));
     if (r.existing) {
       const copy = await platform.confirm(`Этот код уже есть у «${beanTitle(r.existing)}». Скопировать данные в новую пачку? Дату обжарки введите заново.`);
@@ -415,6 +418,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
     const drips = b.assorted ? (b.drips ?? []).filter((d) => d.name || d.country || d.region || d.notes) : b.drips;
     const saved: Bean = { ...b, drips, adjust, sample: dirty ? undefined : b.sample };
     saveBean(saved);
+    if (isNew && !saved.sample) track(isDrip(saved) ? 'pack.drip' : 'pack.add');
     // coffee description (no roast date, stock or notes) goes to the shared catalog so it fills in for others
     if (!saved.sample && (isNew || dirty)) contributeCoffee(saved).then((id) => { if (id && id !== saved.catalogId) patchBean(saved.id, { catalogId: id }); });
     platform.haptic('success');

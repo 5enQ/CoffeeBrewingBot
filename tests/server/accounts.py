@@ -105,6 +105,25 @@ ok(post('/admin', {'initData': A, 'action': 'grant', 'tg': '555', 'what': 'light
 post('/cards', {'initData': F, 'card': {'name': 'Ф', 'theme': {'special': 'lighthouse'}, 'ach': [], 'granted': ['lighthouse']}})
 ok(get(f'/cards/{cf}')['card']['theme'] == {'special': 'lighthouse'}, 'the lighthouse card is shown')
 
+# metrics: counts only, the owner's own use left out
+G = sign(666)
+ok(post('/track', {'initData': 'forged', 'events': {'timer.start': 1}}).get('status') == 401, 'counters need a signed Telegram user')
+ok(post('/track', {'initData': G, 'events': {'timer.start': 3, 'timer.skip': 1000, 'who.am.i': 5, 'brew.manual': -4}}).get('counted') == 2, 'only known counters, positive ones')
+post('/track', {'initData': A, 'events': {'timer.start': 7}})
+post('/brews', {'initData': G, 'brews': [{'id': 'g1', 'm': 'drip', 'w': 160, 't': int(time.time() * 1000)}]})
+ok(post('/admin', {'initData': G, 'action': 'metrics'}).get('status') == 403, 'only the owner sees the metrics')
+mx = post('/admin', {'initData': A, 'action': 'metrics'})
+ok(mx['features'].get('timer.start') == 3 and mx['features'].get('timer.skip') == 50, f'counters add up, capped per report, the owner not counted: {mx["features"]}')
+ok('who.am.i' not in mx['features'], 'unknown names are not kept')
+drip = next((x for x in mx['brews']['methods'] if x['id'] == 'drip'), None)
+ok(drip and drip['d30'] >= 1, f'brews by method: {mx["brews"]["methods"][:3]}')
+ok(mx['users']['seen1'] >= 2 and mx['days'][-1]['active'] >= 2 and mx['users']['brewing7'] >= 1, f'people today: {mx["users"]}, {mx["days"][-1]}')
+post('/brews', {'initData': A, 'brews': [{'id': f'ad{i}', 'm': 'drip', 'w': 160, 't': int(time.time() * 1000) - i} for i in range(5)]})
+mx2 = post('/admin', {'initData': A, 'action': 'metrics'})
+ok(next(x for x in mx2['brews']['methods'] if x['id'] == 'drip')['d30'] == drip['d30'], "the owner's own brews are left out")
+txt = json.dumps(mx)
+ok('"666"' not in txt and '"111"' not in txt and 'account' not in txt, 'no Telegram ids or accounts in the metrics')
+
 # «Стакан» for 500 liters
 E = sign(557)
 hist = [{'id': f'w{i}', 'm': 'batch', 'w': 3000, 't': T0 + (i // 2) * DAY + (i % 2) * 3600_000} for i in range(170)]

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { track } from '../data/track';
 import { methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
 import { emptyCupping } from '../data/cupping';
 import { isDrip, useStore, uid, type Brew } from '../data/store';
@@ -166,7 +167,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     <Screen title={m.name} subtitle={choice === 'std' ? 'Стандартный рецепт' : `Рецепт: ${plan.name}${active?.author ? ` · от ${active.author.name || '@' + active.author.username}` : ''}`}
       footer={
         <div className="footer-actions">
-          <Button kind="secondary" disabled={drip && !bean} onClick={() => { remember(); push({ name: 'brewEdit', draft: draft(), isNew: true }); }}>Без таймера</Button>
+          <Button kind="secondary" disabled={drip && !bean} onClick={() => { remember(); track('brew.manual'); push({ name: 'brewEdit', draft: draft(), isNew: true }); }}>Без таймера</Button>
           <Button icon="play" wide disabled={drip && !bean} onClick={() => { remember(); push({ name: 'timer', draft: draft() }); }}>Начать</Button>
         </div>
       }>

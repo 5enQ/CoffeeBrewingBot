@@ -20,6 +20,7 @@ import { explainRefusal, remindersAvailable, testReminder } from '../data/remind
 import { adminCall, type AdminData, type CrawlUsage, type GrantInfo, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
 import { MyCardBlock } from './CardScreens';
+import { OwnerMetrics } from './OwnerMetrics';
 
 export function Profile() {
   const store = useStore();
@@ -259,9 +260,10 @@ function OwnerTools() {
     );
   }
   return (
-    <Panel kind="owner" title="Панель владельца" hint="Видна только вам: сайты обжарщиков, права людей и проверки для тестировщиков."
+    <Panel kind="owner" title="Панель владельца" hint="Видна только вам: метрики, сайты обжарщиков, права людей и проверки для тестировщиков."
       summary={[data.sites.filter((x) => x.status === 'pending').length ? `новых сайтов: ${data.sites.filter((x) => x.status === 'pending').length}` : '',
         `людей с правами: ${data.grants.length}`, data.checks?.length ? `проверок: ${data.checks.length}` : ''].filter(Boolean).join(' · ')}>
+      <OwnerMetrics />
       <RoasterSites sites={data.sites} crawl={data.crawl} onChange={setData} />
       <DevGrants grants={data.grants} onChange={setData} />
       <OwnerChecks checks={data.checks} onChange={setData} />

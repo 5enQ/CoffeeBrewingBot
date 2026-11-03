@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { track } from '../data/track';
 import { ICON_CHOICES, fmtNum, fmtRatio, fmtTime, methodById, parseTime, type IconKey } from '../data/methods';
 import { pourPlan, pourSeconds, poursOf, sortSteps, type CustomMethod, type CustomRecipe, type Pours } from '../data/recipes';
 import { useStore } from '../data/store';
@@ -90,6 +91,7 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
     if (drip) {
       // the coffee stays as it was (the bag decides it); the water is what the pours add up to
       saveCustom({ ...r, name: r.name.trim() || `Мой ${m.name}`, ratio: poured.water / r.dose, total: poured.total, steps: poured.steps, pours });
+      if (isNew) track('recipe.drip');
       platform.haptic('success');
       back(true);
       return;
@@ -107,6 +109,7 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
     if (total === null || total <= 0) return fail('Время до готовности — в формате мин:сек');
     const sorted = sortSteps(parsed);
     if (total < sorted[sorted.length - 1].at) return fail('Время до готовности не может быть раньше последнего шага');
+    if (isNew) track(meta ? 'method.save' : 'recipe.save');
     if (meta) {
       saveMethod({
         id: r.methodId, name: r.name.trim() || 'Мой метод', about: meta.about.trim(), icon: meta.icon,

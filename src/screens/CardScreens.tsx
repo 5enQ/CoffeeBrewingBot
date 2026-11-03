@@ -1,5 +1,6 @@
 /** Profile card: the own card in the Profile tab, its settings and sharing, and a card a friend sent */
 import { useEffect, useMemo, useState } from 'react';
+import { track } from '../data/track';
 import { BASE_THEMES, buildCard, cardText, MAX_SETUP, SPECIAL_THEMES, storeCard, unlockedThemes, type CardData, type UnlockedTheme } from '../data/card';
 import { useStats } from '../data/stats';
 import { RARE } from '../data/rare';
@@ -243,10 +244,11 @@ export function CardShareScreen() {
     try {
       if (prepared && platform.shareMessage) {
         const sent = await platform.shareMessage(prepared);
-        if (sent) { platform.haptic('success'); return; }
+        if (sent) { platform.haptic('success'); track('share.card'); return; }
         if (sent === false) return;
       }
       const res = await platform.share(cardText(card), link);
+      if (res !== 'failed') track('share.card');
       if (res === 'copied') toast('Ссылка на профиль скопирована');
       if (res === 'failed') toast('Не получилось отправить');
     } finally { setBusy(false); }

@@ -344,12 +344,25 @@ export default {
 
     if (req.method === 'POST' && url.pathname === '/tg') return telegramUpdate(req, env);
 
+    // anonymous usage counters: a signed Telegram user may send them (no scripts from outside), but who sent them is not kept
+    if (req.method === 'POST' && url.pathname === '/track') {
+      let body: { initData?: string; events?: Record<string, unknown> };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      if (owners(env).includes(user.id)) return json({ counted: 0 }, 200, h);
+      const counted = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).track(body.events && typeof body.events === 'object' ? body.events : {});
+      return json({ counted }, 200, h);
+    }
+
     if (req.method === 'POST' && url.pathname === '/admin') {
       let body: { initData?: string; action?: string; host?: string; roaster?: string; tg?: string; what?: string; note?: string; username?: string };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
       if (!owners(env).includes(user.id)) return json({ error: 'forbidden' }, 403, h);
+      // numbers about the app: counts only, no people in them
+      if (body.action === 'metrics') return json(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).metrics(), 200, h);
       const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
       const host = body.host ?? '';
       const set: Record<string, SiteStatus> = { approve: 'approved', reject: 'rejected' };

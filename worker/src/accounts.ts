@@ -12,7 +12,15 @@ import { EVENT_CAP, EVENT_NAMES, type MetricEvent, type Metrics } from '../../sr
 import { countStats, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, type BrewStat, type Level, type Stats, type Tier } from '../../src/data/levels.ts';
 import type { Env } from './index';
 
-export interface AccountStats extends Stats { account: string; at: number; diamondNo?: number; grants: string[] }
+export interface AccountStats extends Stats { account: string; at: number; diamondNo?: number; grants: string[];
+  /** roles offered to this person that wait for their answer (see INVITE) */
+  invites?: string[] }
+
+/** roles that are offered, not given: the person agrees first (testing may collect more data from them) */
+export const INVITE = ['beta'] as const;
+/** what became of an offer: waiting for the answer, taken, turned down */
+export type OfferState = 'pending' | 'accepted' | 'declined';
+type Offers = Record<string, { state: OfferState; at: number }>;
 
 /**
  * Grants only the owner can give, each separately:
@@ -91,6 +99,11 @@ export class Accounts extends DurableObject<Env> {
       try { sql.exec('ALTER TABLE account ADD COLUMN seen INTEGER'); } catch { /* already there */ }
       sql.exec("UPDATE meta SET value = '5' WHERE key = 'schema'");
     }
+    // v6: roles offered to a person and their answer (testers agree before the role is theirs)
+    if (Number(sql.exec<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'").toArray()[0]?.value ?? 0) < 6) {
+      try { sql.exec("ALTER TABLE account ADD COLUMN offers TEXT NOT NULL DEFAULT '{}'"); } catch { /* already there */ }
+      sql.exec("UPDATE meta SET value = '6' WHERE key = 'schema'");
+    }
     sql.exec('CREATE TABLE IF NOT EXISTS active_day (day TEXT PRIMARY KEY, n INTEGER NOT NULL)');
     sql.exec('CREATE TABLE IF NOT EXISTS usage_day (day TEXT NOT NULL, ev TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, ev))');
   }
@@ -109,23 +122,55 @@ export class Accounts extends DurableObject<Env> {
     if (!(SPECIAL as readonly string[]).includes(what) || !/^\d{1,20}$/.test(tg)) return false;
     const acc = this.resolve('tg', tg);
     const cur = new Set(this.grantsOf(acc.id));
-    if (on) cur.add(what); else cur.delete(what);
-    this.sql.exec('UPDATE account SET grants = ? WHERE id = ?', JSON.stringify([...cur]), acc.id);
+    const offers = this.offersOf(acc.id);
+    if (on && (INVITE as readonly string[]).includes(what) && !cur.has(what)) {
+      // offered: the role is theirs once they agree in the app
+      offers[what] = { state: 'pending', at: Date.now() };
+    } else if (on) cur.add(what);
+    else { cur.delete(what); delete offers[what]; }
+    this.sql.exec('UPDATE account SET grants = ?, offers = ? WHERE id = ?', JSON.stringify([...cur]), JSON.stringify(offers), acc.id);
     return true;
+  }
+
+  private offersOf(account: string): Offers {
+    try { return JSON.parse(this.sql.exec<{ offers: string }>('SELECT offers FROM account WHERE id = ?', account).toArray()[0]?.offers ?? '{}'); } catch { return {}; }
+  }
+  private invitesOf(account: string) {
+    return Object.entries(this.offersOf(account)).filter(([, o]) => o.state === 'pending').map(([k]) => k);
+  }
+
+  /** the person answers an offer in the app: agreeing gives the role, declining leaves it out; the owner sees which */
+  answerInvite(provider: string, subject: string, what: string, accept: boolean): { label: string } | null {
+    const acc = this.resolve(provider, subject);
+    const offers = this.offersOf(acc.id);
+    if (offers[what]?.state !== 'pending') return null;
+    offers[what] = { state: accept ? 'accepted' : 'declined', at: Date.now() };
+    const cur = new Set(this.grantsOf(acc.id));
+    if (accept) cur.add(what); else cur.delete(what);
+    this.sql.exec('UPDATE account SET grants = ?, offers = ? WHERE id = ?', JSON.stringify([...cur]), JSON.stringify(offers), acc.id);
+    const r = this.sql.exec<{ note: string | null; username: string | null; name: string | null }>(
+      "SELECT a.note, i.username, i.name FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.id = ?", acc.id).toArray()[0];
+    return { label: [r?.note, r?.name, r?.username ? '@' + r.username : null, provider === 'tg' ? `ID ${subject}` : null].filter(Boolean).join(' · ') };
   }
 
   /** Owner: everyone with a special background or a note */
   grantList() {
-    return this.sql.exec<{ id: string; grants: string; note: string | null; subject: string | null; username: string | null; name: string | null }>(
-      "SELECT a.id, a.grants, a.note, i.subject, i.username, i.name FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.grants <> '[]' OR a.note IS NOT NULL").toArray()
-      .map((r) => ({ account: r.id, tg: r.subject, grants: JSON.parse(r.grants) as string[], note: r.note ?? undefined, username: r.username ?? undefined, name: r.name ?? undefined }));
+    return this.sql.exec<{ id: string; grants: string; offers: string; note: string | null; subject: string | null; username: string | null; name: string | null }>(
+      "SELECT a.id, a.grants, a.offers, a.note, i.subject, i.username, i.name FROM account a LEFT JOIN identity i ON i.account = a.id AND i.provider = 'tg' WHERE a.grants <> '[]' OR a.offers <> '{}' OR a.note IS NOT NULL").toArray()
+      .map((r) => {
+        let offers: Offers = {};
+        try { offers = JSON.parse(r.offers || '{}'); } catch { /* broken row */ }
+        // only what is still open or was turned down: an accepted offer is just the role
+        const open = Object.fromEntries(Object.entries(offers).filter(([, o]) => o.state !== 'accepted').map(([k, o]) => [k, o.state]));
+        return { account: r.id, tg: r.subject, grants: JSON.parse(r.grants) as string[], offers: open, note: r.note ?? undefined, username: r.username ?? undefined, name: r.name ?? undefined };
+      });
   }
 
   /** Owner: remove a person from the list — all grants and the note go; their brews, card and numbers stay */
   forget(tg: string) {
     if (!/^\d{1,20}$/.test(tg)) return false;
     const row = this.sql.exec<{ account: string }>("SELECT account FROM identity WHERE provider = 'tg' AND subject = ?", tg).toArray()[0];
-    if (row) this.sql.exec("UPDATE account SET grants = '[]', note = NULL WHERE id = ?", row.account);
+    if (row) this.sql.exec("UPDATE account SET grants = '[]', offers = '{}', note = NULL WHERE id = ?", row.account);
     return true;
   }
 
@@ -180,7 +225,7 @@ export class Accounts extends DurableObject<Env> {
     }
     const out: AccountStats = { ...s, account: acc.id, at: Date.now(), diamondNo: no, grants: this.grantsOf(acc.id) };
     this.sql.exec('UPDATE account SET stats = ? WHERE id = ?', JSON.stringify(out), acc.id);
-    return out;
+    return { ...out, invites: this.invitesOf(acc.id) };
   }
 
   /**
@@ -195,7 +240,7 @@ export class Accounts extends DurableObject<Env> {
     if (!row.stats) return this.recount(acc, ratings);
     const cached = JSON.parse(row.stats) as AccountStats;
     const tester = this.grantsOf(acc.id).includes('tester');
-    return { ...cached, ratings, at: Date.now(), grants: this.grantsOf(acc.id), diamondNo: tester ? TEST_NO : cached.diamondNo === TEST_NO ? undefined : cached.diamondNo };
+    return { ...cached, ratings, at: Date.now(), grants: this.grantsOf(acc.id), invites: this.invitesOf(acc.id), diamondNo: tester ? TEST_NO : cached.diamondNo === TEST_NO ? undefined : cached.diamondNo };
   }
 
   /** Brews changed on a device (the first call imports the whole history) and brews deleted there */

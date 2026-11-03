@@ -344,6 +344,21 @@ export default {
 
     if (req.method === 'POST' && url.pathname === '/tg') return telegramUpdate(req, env);
 
+    // a role offered by the owner: the person agrees or declines in the app; the owner is told
+    if (req.method === 'POST' && url.pathname === '/invite') {
+      let body: { initData?: string; what?: string; answer?: string };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      const accept = body.answer === 'accept';
+      if (!accept && body.answer !== 'decline') return json({ error: 'bad answer' }, 400, h);
+      const acc = accounts();
+      const r = await acc.answerInvite('tg', user.id, String(body.what ?? ''), accept);
+      if (!r) return json({ error: 'no such invite' }, 404, h);
+      ctx.waitUntil(toOwners(env, `${accept ? '✅' : '🚫'} ${r.label}\n${accept ? 'согласился стать тестировщиком' : 'отказался от роли тестировщика'}`, null));
+      return json(await acc.me('tg', user.id), 200, h);
+    }
+
     // anonymous usage counters: a signed Telegram user may send them (no scripts from outside), but who sent them is not kept
     if (req.method === 'POST' && url.pathname === '/track') {
       let body: { initData?: string; events?: Record<string, unknown> };

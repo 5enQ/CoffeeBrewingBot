@@ -12,7 +12,8 @@ import { rareOfBean } from './rare';
 import type { Stats } from './levels';
 import { useStore, type DB } from './store';
 
-export interface ServerStats extends Stats { at: number; account: string; diamondNo?: number; grants?: string[] }
+/** invites — roles the owner offered that wait for this person's answer */
+export interface ServerStats extends Stats { at: number; account: string; diamondNo?: number; grants?: string[]; invites?: string[] }
 
 // v2: brews carry rare-lot tags, so every brew is sent once more
 const SENT_KEY = 'brewbook.statsSent2';
@@ -46,6 +47,13 @@ async function post(path: string, body: unknown): Promise<ServerStats | null> {
 }
 
 /** Send what changed and get the counted numbers back. null — no Telegram, no server or no connection. */
+/** the person answers a role offered to them; the server's numbers come back (with the role, when agreed) */
+export async function answerInvite(what: string, accept: boolean): Promise<ServerStats | null> {
+  const initData = platform.initData();
+  if (!RATINGS_API || !initData) return null;
+  return post('/invite', { initData, what, answer: accept ? 'accept' : 'decline' });
+}
+
 export async function syncStats(db: Pick<DB, 'brews' | 'mod' | 'del'> & { beans?: DB['beans'] }): Promise<ServerStats | null> {
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return null;

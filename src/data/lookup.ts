@@ -221,7 +221,8 @@ export interface SiteInfo {
 }
 
 /** a person the owner gave something to: grants, the owner's note, what Telegram says about them */
-export interface GrantInfo { account: string; tg: string | null; grants: string[]; note?: string; username?: string; name?: string }
+/** offers — roles offered and not taken: waiting for the answer or declined */
+export interface GrantInfo { account: string; tg: string | null; grants: string[]; offers?: Record<string, 'pending' | 'declined'>; note?: string; username?: string; name?: string }
 /** what the crawler spent today (UTC day) out of its budget — 70% of the Cloudflare free tier */
 export interface CrawlUsage { day: string; reads: number; writes: number; maxReads: number; maxWrites: number; paused: boolean }
 export interface AdminData { sites: SiteInfo[]; grants: GrantInfo[]; crawl?: CrawlUsage; checks?: import('./tester').CheckItem[] }

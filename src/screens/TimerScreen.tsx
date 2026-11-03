@@ -7,6 +7,7 @@ import { useBackGuard, useRouter } from '../router';
 import { useLayout } from '../layout';
 import { Button, Screen } from '../ui/kit';
 import { Icon } from '../ui/icons';
+import { DripFlow } from '../ui/DripFlow';
 import { LONG_TIMER, clearTimer, elapsedOf, loadTimer, onTimerChange, saveTimer } from '../data/timer';
 import { toast } from '../ui/toast';
 import { cancelReminder, explainRefusal, reminderStatus, remindersAvailable, scheduleReminder } from '../data/remind';
@@ -239,6 +240,9 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
       }>
       <div className={'timer' + (skipping ? ' skipping' : '')}>
         <svg viewBox="0 0 260 260" className="timer-ring" aria-hidden="true">
+          {/* a drip: water runs down the circle while you pour, drops fall in the pauses */}
+          {m.id === 'drip' && <DripFlow steps={plan.steps} total={plan.total} running={running}
+            now={() => (live.current ? base.current + (Date.now() - startedAt.current) / 1000 : base.current)} />}
           <circle cx="130" cy="130" r={R} className="ring-track" />
           <circle cx="130" cy="130" r={R} className="ring-fill" strokeDasharray={C} strokeDashoffset={C * (1 - progress)} transform="rotate(-90 130 130)" />
           {/* the marks turn into place (a skip moves them), so they are drawn at the top and rotated; over the fill, so its end does not hide the lit one */}

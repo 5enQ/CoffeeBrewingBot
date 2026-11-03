@@ -318,6 +318,15 @@ button.row:active { background: var(--fg-soft); }
 .timer-ring { width: 100%; height: 100%; }
 .ring-track { fill: none; stroke: var(--sep); stroke-width: 10; }
 .ring-fill { fill: none; stroke: var(--accent); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.12s linear; }
+/* drip timer motion inside the ring (ui/DripFlow.tsx): quiet, behind the time */
+.drip-flow { --shine: #ffffff; pointer-events: none; }
+:root[data-theme="dark"] .drip-flow { --shine: #eafff3; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .drip-flow { --shine: #eafff3; } }
+.flow-sheet, .flow-glint, .flow-eddy { fill: none; stroke: var(--accent); stroke-linecap: round; }
+.flow-glint.light, .flow-eddy.light { stroke: var(--shine); }
+.drip-flow .drop-o { fill: none; stroke: var(--accent); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.flow-ring { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.flow-bit { fill: var(--accent); }
 .ring-tick { fill: var(--card); stroke: var(--hint); stroke-width: 2; transform-origin: 130px 130px; }
 .timer.skipping .ring-fill { transition: stroke-dashoffset 0.55s cubic-bezier(.3,.7,.3,1); }
 .timer.skipping .ring-tick { transition: transform 0.55s cubic-bezier(.3,.7,.3,1), fill 0.2s 0.45s, stroke 0.2s 0.45s; }

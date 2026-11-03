@@ -78,10 +78,13 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   // for a drip the dose is the coffee in the bag
   const dripBox = drip ? beans.find((b) => b.id === bean) : undefined;
   useEffect(() => {
-    if (dripBox?.dripWeight) setDose(dripBox.dripWeight);
+    // the water stays: only the coffee it is counted against changes
+    if (dripBox?.dripWeight) { const w = dripBox.dripWeight; setRatio((rt) => (dose * rt) / w); setDose(w); }
   }, [dripBox?.id, dripBox?.dripWeight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const apply = (r: { dose: number; ratio: number; temp: number; grind: string }) => {
+    // a drip recipe gives the water; the coffee is whatever the bag holds
+    if (drip) { setRatio((r.dose * r.ratio) / dose); setTemp(r.temp); return; }
     setDose(r.dose); setRatio(r.ratio); setTemp(r.temp); setGrind(r.grind);
   };
   // Recipe changed in the editor — pick up the new parameters
@@ -203,8 +206,9 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
         <Stepper label={waterLabel} value={water} step={espresso ? 1 : 10} min={espresso ? 10 : 30} max={2000} unit="г"
           format={(v) => fmtNum(v)}
           onChange={(w) => (drip ? setRatio(Math.max(1, w / dose)) : change('water', w))} lock={drip ? undefined : lockFor('water')} />
-        <Stepper label="Пропорция" value={ratio} step={espresso ? 0.1 : 0.5} min={1} max={25} format={fmtRatio}
-          onChange={(r) => (drip ? setRatio(r) : change('ratio', r))} lock={drip ? undefined : lockFor('ratio')} />
+        {/* the coffee in a bag is not known exactly, so a ratio says nothing — only the water */}
+        {!drip && <Stepper label="Пропорция" value={ratio} step={espresso ? 0.1 : 0.5} min={1} max={25} format={fmtRatio}
+          onChange={(r) => change('ratio', r)} lock={lockFor('ratio')} />}
         <Stepper label="Температура" value={temp} step={0.1} min={0} max={100} unit={temp ? '°C' : ''}
           format={(v) => (v === 0 ? 'холодная' : fmtNum(v))} onChange={setTemp} />
         {m.id !== 'cupping' && <PpmField value={ppm} onChange={setPpm} />}

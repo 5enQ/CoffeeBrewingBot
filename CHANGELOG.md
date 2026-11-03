@@ -6,6 +6,8 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Added
+- Drip recipes are made of pours: how many pours, how much water in each and the pause between them. The app counts the water and the time of the whole brew and builds the steps itself (pour, pause, … the last pause lets the bag drain; a pour takes about 5 g a second). The coffee, the ratio and the grind are gone from a drip recipe and the ratio from the drip brew screen: the bag decides them. Older drip recipes get pours from their steps.
+- Timer: «Следующий шаг» — poured faster than planned, go on to the next step now; the rest of the plan moves up with it (→ on a keyboard). The brew is written with the real time it took.
 - Picture backgrounds for the card, drawn and animated. Three open after one brew of a rare lot: «Ферма у горы» for coffee from Japan (coffee terraces under a snowy mountain, a farmhouse with smoke, a farmer picking cherries into a basket, sakura petals falling), «Озеро Киву» for eugenioides (a fisherman poling his pirogue across the lake, rings on the water where the pole goes in, a volcano with a thin plume, fireflies at the shore) and «Закат в Либерии» for liberica and excelsa (a giant liberica tree swaying against the setting sun, a river catching the light, smoke over a hut). A blend counts if any of its parts is such a lot. The server checks it like the other backgrounds: a brew sends the rare tags of its pack, and a card shows the picture only to someone who brewed it. The fourth, «Хранитель маяка», the owner gives: a red-and-white lighthouse at dusk whose light turns around, sweeping across the waves in time with the beam.
 
 ### Changed

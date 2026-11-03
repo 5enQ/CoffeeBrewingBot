@@ -17,6 +17,8 @@ export interface ActiveTimer {
   startedAt: number | null;
   /** plan length, seconds (for the banner and the reminder) */
   total: number;
+  /** seconds jumped over with «Следующий шаг»: the plan's clock ran ahead of the real one by this much */
+  skipped?: number;
   /** a bot reminder is scheduled for this timer */
   remind?: boolean;
   /** when this state was set (ms) — the newest one wins across devices */

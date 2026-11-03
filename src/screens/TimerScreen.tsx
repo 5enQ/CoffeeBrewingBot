@@ -43,6 +43,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   const [remindNote, setRemindNote] = useState('');
   const base = useRef(stored?.base ?? 0);       // seconds accumulated before the last start
   const startedAt = useRef(stored?.startedAt ?? 0); // epoch ms of the last start
+  const skipped = useRef(stored?.skipped ?? 0);  // plan seconds jumped over (the brew took that much less)
   const lastStep = useRef(stored ? plan.steps.reduce((acc, s, i) => (s.at <= elapsedOf(stored) ? i : acc), -1) : -1);
   const finished = useRef(stored ? elapsedOf(stored) >= plan.total : false);
   const closed = useRef(false);
@@ -63,7 +64,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     // a quick brew does not push out a long one kept in the background
     const cur = loadTimer();
     if (!long && cur && cur.draft.id !== draft.id && cur.total >= LONG_TIMER) return;
-    saveTimer({ draft, base: base.current, startedAt: on ? startedAt.current : null, total: plan.total, remind: rem === 'on' || rem === 'pending' });
+    saveTimer({ draft, base: base.current, startedAt: on ? startedAt.current : null, total: plan.total, remind: rem === 'on' || rem === 'pending', ...(skipped.current ? { skipped: skipped.current } : {}) });
   };
 
   // the bot writes when a long timer ends — the app may be closed by then
@@ -100,6 +101,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     if (t && t.draft.id === draft.id) {
       live.current = t.startedAt !== null;
       base.current = t.base;
+      skipped.current = t.skipped ?? 0;
       if (t.startedAt !== null) startedAt.current = t.startedAt;
       setRunning(t.startedAt !== null);
       setElapsed(elapsedOf(t));
@@ -162,12 +164,13 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   };
   const reset = async () => {
     if (elapsed > 0 && !(await platform.confirm('Сбросить таймер?'))) return;
-    setRunning(false); base.current = 0; setElapsed(0); lastStep.current = -1; finished.current = false;
+    setRunning(false); base.current = 0; skipped.current = 0; setElapsed(0); lastStep.current = -1; finished.current = false;
     dropReminder(); clearTimer(draft.id);
   };
   const finish = () => {
     if (running) base.current += (Date.now() - startedAt.current) / 1000;
-    const total = running ? base.current : elapsed;
+    // the time written is the real one: steps jumped over did not take any
+    const total = Math.max(0, (running ? base.current : elapsed) - skipped.current);
     setRunning(false);
     closed.current = true;
     dropReminder(); clearTimer(draft.id);
@@ -175,9 +178,24 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     replace({ name: 'brewEdit', draft: { ...draft, time: Math.round(total || plan.total), date: Date.now() }, isNew: true, openCupping: m.id === 'cupping' });
   };
 
+  // poured faster than planned: go on to the next step now; the rest of the plan moves up with it
+  const skip = () => {
+    const nxt = plan.steps[idx + 1];
+    if (!nxt) return;
+    platform.haptic('medium');
+    if (running) { base.current += (Date.now() - startedAt.current) / 1000; startedAt.current = Date.now(); }
+    const jump = Math.max(0, nxt.at - base.current);
+    base.current += jump; skipped.current += jump;
+    lastStep.current = idx + 1; // the step was asked for: no beep
+    setElapsed(base.current);
+    persist(running);
+    // a long timer's reminder moves up too
+    if (running && long && jump > 0) { dropReminder(); void armReminder(); }
+  };
+
   // Keyboard (desktop): space — start/pause, R — reset, Enter — done
-  const keys = useRef({ toggle, reset, finish });
-  keys.current = { toggle, reset, finish };
+  const keys = useRef({ toggle, reset, finish, skip });
+  keys.current = { toggle, reset, finish, skip };
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
@@ -185,6 +203,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
       if (e.code === 'Space') { e.preventDefault(); keys.current.toggle(); }
       else if (e.key === 'r' || e.key === 'R' || e.key === 'к' || e.key === 'К') keys.current.reset();
       else if (e.key === 'Enter') { e.preventDefault(); keys.current.finish(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); keys.current.skip(); }
     };
     window.addEventListener('keydown', on);
     return () => window.removeEventListener('keydown', on);
@@ -196,7 +215,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   const target = step.to !== undefined ? draft.water * step.to : null;
 
   return (
-    <Screen title={draft.plan ? `${m.name} · ${draft.plan.name}` : m.name} subtitle={`${fmtNum(draft.dose, 2)} г · ${fmtNum(draft.water)} г · ${draft.temp ? fmtNum(draft.temp) + '°C' : 'холодная вода'}`}
+    <Screen title={draft.plan ? `${m.name} · ${draft.plan.name}` : m.name} subtitle={`${m.id === 'drip' ? '' : `${fmtNum(draft.dose, 2)} г · `}${fmtNum(draft.water)} г · ${draft.temp ? fmtNum(draft.temp) + '°C' : 'холодная вода'}`}
       action={
         <button type="button" className="icon-btn text" onClick={() => setSound((s) => !s)} aria-pressed={sound}>
           {sound ? 'Звук вкл' : 'Звук выкл'}
@@ -240,6 +259,9 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
           <b>{next.title}{next.to !== undefined ? ` · до ${fmtNum(draft.water * next.to, 0)} г` : ''}</b>
         </div>
       )}
+      {next && !done && elapsed > 0 && (
+        <button type="button" className="step-skip" onClick={skip}>Следующий шаг<Icon name="chevron" size={16} /></button>
+      )}
       {long && (
         <div className="timer-long">
           <p>Таймер идёт и без приложения — его можно закрыть, время не собьётся.</p>
@@ -250,7 +272,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
           {elapsed > 0 && <Button kind="secondary" onClick={() => { setTab('brew'); home(); }}>Свернуть</Button>}
         </div>
       )}
-      {layout === 'desktop' && <p className="kbd-hint"><kbd>Пробел</kbd> старт / пауза · <kbd>R</kbd> сброс · <kbd>Enter</kbd> записать</p>}
+      {layout === 'desktop' && <p className="kbd-hint"><kbd>Пробел</kbd> старт / пауза · <kbd>R</kbd> сброс · <kbd>→</kbd> следующий шаг · <kbd>Enter</kbd> записать</p>}
     </Screen>
   );
 }

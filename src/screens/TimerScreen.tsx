@@ -36,6 +36,8 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   // steps begun early move the rest of the plan up; the clock runs in real time all along
   const [skips, setSkips] = useState<Skip[]>(() => stored?.skips ?? []);
   const skipsRef = useRef(skips); skipsRef.current = skips;
+  const [skipping, setSkipping] = useState(false);
+  const skipAnim = useRef<ReturnType<typeof setTimeout>>(undefined);
   const basePlan = effectivePlan(draft.methodId, draft.plan);
   const plan = shiftPlan(basePlan, skips);
   const long = basePlan.total >= LONG_TIMER;
@@ -190,6 +192,8 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     platform.haptic('medium');
     skipsRef.current = [...skipsRef.current, { i: j, by }];
     setSkips(skipsRef.current);
+    // the fill runs on to the mark that lights, the marks move to their new places
+    setSkipping(true); clearTimeout(skipAnim.current); skipAnim.current = setTimeout(() => setSkipping(false), 650);
     lastStep.current = j; // the step was asked for: no beep
     persist(running);
     // a long timer ends sooner now: move its reminder
@@ -233,14 +237,14 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
           <button type="button" className={'round-btn' + (done ? ' accent' : '')} onClick={finish} aria-label="Готово, записать"><Icon name="check" /></button>
         </div>
       }>
-      <div className="timer">
+      <div className={'timer' + (skipping ? ' skipping' : '')}>
         <svg viewBox="0 0 260 260" className="timer-ring" aria-hidden="true">
           <circle cx="130" cy="130" r={R} className="ring-track" />
-          {plan.steps.map((s, i) => {
-            const a = (s.at / plan.total) * 2 * Math.PI - Math.PI / 2;
-            return <circle key={i} cx={130 + R * Math.cos(a)} cy={130 + R * Math.sin(a)} r="4" className={'ring-tick' + (s.at <= elapsed ? ' on' : '')} />;
-          })}
           <circle cx="130" cy="130" r={R} className="ring-fill" strokeDasharray={C} strokeDashoffset={C * (1 - progress)} transform="rotate(-90 130 130)" />
+          {/* the marks turn into place (a skip moves them), so they are drawn at the top and rotated; over the fill, so its end does not hide the lit one */}
+          {plan.steps.map((s, i) => (
+            <circle key={i} cx="130" cy={130 - R} r="4" className={'ring-tick' + (s.at <= elapsed ? ' on' : '')} style={{ transform: `rotate(${(s.at / plan.total) * 360}deg)` }} />
+          ))}
         </svg>
         <div className="timer-center">
           <div className="timer-time">{fmtTime(elapsed)}</div>

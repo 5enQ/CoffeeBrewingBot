@@ -13,6 +13,7 @@
  * The user is authenticated by the initData signature (HMAC with the bot token),
  * so a rating "on someone else's behalf" cannot be forged, and a repeated rating replaces the previous one.
  */
+import { RARE_IDS } from '../../src/data/rare.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Accounts, sendReminder } from './accounts';
 import { CoffeeCatalog, cleanCoffee, keysFor, type Found, type SiteStatus } from './catalog';
@@ -266,7 +267,9 @@ export default {
       if (url.pathname === '/me') return json(await accounts().me('tg', user.id, { username: user.username, name: user.name }), 200, h);
       if (url.pathname === '/brews') {
         const list = Array.isArray(body.brews) ? body.brews.slice(0, 500) : [];
-        const brews = list.map((b: Record<string, unknown>) => ({ id: String(b?.id ?? '').slice(0, 40), m: String(b?.m ?? '').slice(0, 40), w: Number(b?.w) || 0, t: Number(b?.t) || 0 }))
+        // x — rare-lot tags (known ones only)
+        const tags = (v: unknown) => String(v ?? '').split(',').filter((x) => RARE_IDS.includes(x)).join(',');
+        const brews = list.map((b: Record<string, unknown>) => ({ id: String(b?.id ?? '').slice(0, 40), m: String(b?.m ?? '').slice(0, 40), w: Number(b?.w) || 0, t: Number(b?.t) || 0, x: tags(b?.x) }))
           .filter((b) => /^[A-Za-z0-9_-]{1,40}$/.test(b.id) && /^[a-z0-9_-]{1,40}$/i.test(b.m) && Number.isFinite(b.t));
         const removed = (Array.isArray(body.removed) ? body.removed.slice(0, 500) : []).map(String).filter((x) => /^[A-Za-z0-9_-]{1,40}$/.test(x));
         return json(await accounts().addBrews('tg', user.id, brews, removed), 200, h);
@@ -341,12 +344,40 @@ export default {
 
     if (req.method === 'POST' && url.pathname === '/tg') return telegramUpdate(req, env);
 
+    // a role offered by the owner: the person agrees or declines in the app; the owner is told
+    if (req.method === 'POST' && url.pathname === '/invite') {
+      let body: { initData?: string; what?: string; answer?: string };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      const accept = body.answer === 'accept';
+      if (!accept && body.answer !== 'decline') return json({ error: 'bad answer' }, 400, h);
+      const acc = accounts();
+      const r = await acc.answerInvite('tg', user.id, String(body.what ?? ''), accept);
+      if (!r) return json({ error: 'no such invite' }, 404, h);
+      ctx.waitUntil(toOwners(env, `${accept ? '✅' : '🚫'} ${r.label}\n${accept ? 'согласился стать тестировщиком' : 'отказался от роли тестировщика'}`, null));
+      return json(await acc.me('tg', user.id), 200, h);
+    }
+
+    // anonymous usage counters: a signed Telegram user may send them (no scripts from outside), but who sent them is not kept
+    if (req.method === 'POST' && url.pathname === '/track') {
+      let body: { initData?: string; events?: Record<string, unknown> };
+      try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
+      const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
+      if (!user) return json({ error: 'unauthorized' }, 401, h);
+      if (owners(env).includes(user.id)) return json({ counted: 0 }, 200, h);
+      const counted = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).track(body.events && typeof body.events === 'object' ? body.events : {});
+      return json({ counted }, 200, h);
+    }
+
     if (req.method === 'POST' && url.pathname === '/admin') {
       let body: { initData?: string; action?: string; host?: string; roaster?: string; tg?: string; what?: string; note?: string; username?: string };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
       if (!owners(env).includes(user.id)) return json({ error: 'forbidden' }, 403, h);
+      // numbers about the app: counts only, no people in them
+      if (body.action === 'metrics') return json(await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).metrics(), 200, h);
       const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
       const host = body.host ?? '';
       const set: Record<string, SiteStatus> = { approve: 'approved', reject: 'rejected' };

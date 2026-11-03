@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { track } from '../data/track';
 import { catById } from '../data/gear';
 import { methodById, fmtNum, fmtRatio, fmtTime } from '../data/methods';
 import { recipeLink, recipeText, toShared, type SharedRecipe } from '../data/share';
@@ -155,11 +156,12 @@ export function ShareScreen({ id }: { id: string }) {
   const send = async () => {
     if (prepared && platform.shareMessage) {
       const sent = await platform.shareMessage(prepared);
-      if (sent) { platform.haptic('success'); return; }
+      if (sent) { platform.haptic('success'); track('share.recipe'); return; }
       if (sent === false) return; // the window was closed without sending
       // null — did not work: send the usual way
     }
     const res = await platform.share(recipeText(recipe), link);
+    if (res !== 'failed') track('share.recipe');
     platform.haptic(res === 'failed' ? 'error' : 'success');
     platform.haptic(res === 'failed' ? 'error' : 'success');
     if (res === 'copied') toast('Рецепт и ссылка скопированы — вставьте в чат');

@@ -221,7 +221,8 @@ export interface SiteInfo {
 }
 
 /** a person the owner gave something to: grants, the owner's note, what Telegram says about them */
-export interface GrantInfo { account: string; tg: string | null; grants: string[]; note?: string; username?: string; name?: string }
+/** offers — roles offered and not taken: waiting for the answer or declined */
+export interface GrantInfo { account: string; tg: string | null; grants: string[]; offers?: Record<string, 'pending' | 'declined'>; note?: string; username?: string; name?: string }
 /** what the crawler spent today (UTC day) out of its budget — 70% of the Cloudflare free tier */
 export interface CrawlUsage { day: string; reads: number; writes: number; maxReads: number; maxWrites: number; paused: boolean }
 export interface AdminData { sites: SiteInfo[]; grants: GrantInfo[]; crawl?: CrawlUsage; checks?: import('./tester').CheckItem[] }
@@ -231,7 +232,8 @@ export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return null;
   try {
-    const r = await fetch(`${RATINGS_API}/admin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, ...body }) });
+    // a blocked or throttled connection may hang instead of failing: give up after 15 s
+    const r = await fetch(`${RATINGS_API}/admin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, ...body }), signal: AbortSignal.timeout?.(15_000) });
     if (!r.ok) return null;
     const j = await r.json();
     return { sites: j.sites ?? [], grants: j.grants ?? [], crawl: j.crawl ?? undefined, checks: j.checks ?? [] };

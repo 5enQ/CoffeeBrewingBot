@@ -20,6 +20,7 @@ import { explainRefusal, remindersAvailable, testReminder } from '../data/remind
 import { adminCall, type AdminData, type CrawlUsage, type GrantInfo, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
 import { MyCardBlock } from './CardScreens';
+import { OwnerMetrics } from './OwnerMetrics';
 
 export function Profile() {
   const store = useStore();
@@ -233,14 +234,36 @@ function TesterTools() {
   return grants.includes('beta') && platform.initData() ? <TesterPanel /> : null;
 }
 
+const OWNER_SEEN = 'brewbook.owner';
+
 function OwnerTools() {
   const [data, setData] = useState<AdminData | null>(null);
-  useEffect(() => { if (myTelegramId()) adminCall().then(setData); }, []);
-  if (!data) return null;
+  // the owner was recognized on this device before: without a connection the panel stays and says so
+  const [known] = useState(() => { try { return localStorage.getItem(OWNER_SEEN) === '1'; } catch { return false; } });
+  const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading');
+  const load = () => {
+    if (!myTelegramId()) return;
+    setState('loading');
+    adminCall().then((d) => {
+      setData(d); setState(d ? 'ok' : 'failed');
+      if (d) { try { localStorage.setItem(OWNER_SEEN, '1'); } catch { /* no storage */ } }
+    });
+  };
+  useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!data) {
+    if (!known) return null;
+    return (
+      <Panel kind="owner" title="Панель владельца" hint="Нет связи с сервером." summary={state === 'loading' ? 'Загружаем…' : 'Нет связи с сервером'}>
+        <p className="muted pad small-note">{state === 'loading' ? 'Загружаем данные с сервера…' : 'Сервер не ответил. Проверьте интернет; если сервер Cloudflare в вашей сети недоступен, помогает VPN.'}</p>
+        {state === 'failed' && <div className="pad"><Button kind="secondary" icon="reset" onClick={load}>Повторить</Button></div>}
+      </Panel>
+    );
+  }
   return (
-    <Panel kind="owner" title="Панель владельца" hint="Видна только вам: сайты обжарщиков, права людей и проверки для тестировщиков."
+    <Panel kind="owner" title="Панель владельца" hint="Видна только вам: метрики, сайты обжарщиков, права людей и проверки для тестировщиков."
       summary={[data.sites.filter((x) => x.status === 'pending').length ? `новых сайтов: ${data.sites.filter((x) => x.status === 'pending').length}` : '',
         `людей с правами: ${data.grants.length}`, data.checks?.length ? `проверок: ${data.checks.length}` : ''].filter(Boolean).join(' · ')}>
+      <OwnerMetrics />
       <RoasterSites sites={data.sites} crawl={data.crawl} onChange={setData} />
       <DevGrants grants={data.grants} onChange={setData} />
       <OwnerChecks checks={data.checks} onChange={setData} />
@@ -249,8 +272,9 @@ function OwnerTools() {
 }
 
 const GRANTS = [
-  { id: 'beta', label: 'Тестировщик', hint: 'особый фон «Тестировщик» для тех, кто тестирует новые версии' },
+  { id: 'beta', label: 'Тестировщик', hint: 'панель тестировщика и особый фон «Тестировщик»; человек сначала соглашается при входе' },
   { id: 'dev', label: 'Разработчик', hint: 'особый фон «Разработчик»' },
+  { id: 'lighthouse', label: 'Маяк', hint: 'особый фон «Хранитель маяка»' },
   { id: 'tester', label: 'Все фоны (тест)', hint: 'любой фон любого уровня; бриллиант с № 0, настоящие номера не занимает' },
 ] as const;
 
@@ -274,7 +298,11 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
     let next = await adminCall({ action, tg: id, what });
     if (next && action === 'grant' && newNote.trim() && id === tg) next = await adminCall({ action: 'note', tg: id, note: newNote.trim() });
     setBusy(false);
-    if (next) { onChange(next); if (action === 'grant' && id === tg) { setTg(''); setNewNote(''); } platform.haptic('success'); toast(action === 'grant' ? 'Выдано — появится у человека в карточке' : 'Забрано'); }
+    if (next) {
+      onChange(next); if (action === 'grant' && id === tg) { setTg(''); setNewNote(''); } platform.haptic('success');
+      const offered = action === 'grant' && next.grants.find((g) => g.tg === id)?.offers?.[what] === 'pending';
+      toast(offered ? 'Приглашение отправлено — человек ответит при следующем входе' : action === 'grant' ? 'Выдано — появится у человека в карточке' : who?.offers?.[what] === 'pending' ? 'Приглашение отменено' : 'Забрано');
+    }
     else toast('Не получилось — проверьте ID');
   };
   const forget = async (g: GrantInfo) => {
@@ -292,17 +320,48 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
     if (next) { onChange(next); setEditing(null); platform.haptic('success'); toast('Подпись сохранена'); }
     else toast('Не получилось сохранить');
   };
+  const [filter, setFilter] = useState<string>('all');
   const people = grants.filter((g) => g.tg !== me);
+  const [openRow, setOpenRow] = useState<string | null>(null);
+  // filters: by role, and by the answer to an invitation; only the ones that have someone in them
+  const FILTERS: { id: string; label: string; has(g: GrantInfo): boolean }[] = [
+    ...GRANTS.map((x) => ({ id: x.id, label: x.label, has: (g: GrantInfo) => g.grants.includes(x.id) })),
+    { id: 'pending', label: 'Ждут ответа', has: (g) => Object.values(g.offers ?? {}).includes('pending') },
+    { id: 'declined', label: 'Отказались', has: (g) => Object.values(g.offers ?? {}).includes('declined') },
+    { id: 'none', label: 'Без прав', has: (g) => !g.grants.length && !Object.keys(g.offers ?? {}).length },
+  ];
+  const shown = filter === 'all' ? people : people.filter((g) => FILTERS.find((f) => f.id === filter)?.has(g));
+  const tags = (g: GrantInfo) => [
+    ...GRANTS.filter((x) => g.grants.includes(x.id)).map((x) => ({ key: x.id, text: x.label, cls: '' })),
+    ...Object.entries(g.offers ?? {}).map(([k, v]) => ({ key: k + v, text: `${GRANTS.find((x) => x.id === k)?.label ?? k}: ${v === 'pending' ? 'ждёт ответа' : 'отказался'}`, cls: v })),
+  ];
   return (
-    <Section title="Разработчики и тестировщики">
-      <p className="muted pad small-note">Выдаётся по Telegram ID, каждое право отдельно. ID человек видит у себя: Профиль → «О приложении». У вас как у владельца все права есть всегда.</p>
-      {people.map((g) => {
+    <Section title="Разработчики и тестировщики" aside={<span className="muted">{people.length}</span>}>
+      <p className="muted pad small-note">Выдаётся по Telegram ID, каждое право отдельно. ID человек видит у себя: Профиль → «О приложении». У вас как у владельца все права есть всегда. Тестировщика сначала приглашают: роль появится, когда человек согласится.</p>
+      {people.length > 0 && (
+        <div className="chips grant-filters" role="group" aria-label="Кого показать">
+          <button type="button" className={'chip' + (filter === 'all' ? ' on' : '')} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>Все · {people.length}</button>
+          {FILTERS.map((f) => { const n = people.filter(f.has).length; return n ? (
+            <button type="button" key={f.id} className={'chip' + (filter === f.id ? ' on' : '')} aria-pressed={filter === f.id} onClick={() => setFilter(filter === f.id ? 'all' : f.id)}>{f.label} · {n}</button>
+          ) : null; })}
+        </div>
+      )}
+      <div className="grant-list">
+      {shown.map((g) => {
         const link = tgLink(g);
         const title = g.note || g.name || (g.username ? '@' + g.username : `Telegram ${g.tg ?? '—'}`);
+        const isOpen = openRow === g.account;
         return (
-          <div key={g.account} className="grant-row">
+          <div key={g.account} className={'grant-row' + (isOpen ? ' open' : '')}>
+            <button type="button" className="grant-line" aria-expanded={isOpen} onClick={() => setOpenRow(isOpen ? null : g.account)}>
+              <span className="grant-line-main">
+                <b>{title}</b>
+                <span className="grant-tags">{tags(g).length ? tags(g).map((t) => <span key={t.key} className={'tag ' + t.cls}>{t.text}</span>) : <span className="tag">без прав</span>}</span>
+              </span>
+              <Icon name="chevron" size={16} />
+            </button>
+            {isOpen && <>
             <div className="grant-who">
-              <b>{title}</b>
               <span className="muted">
                 {link
                   ? <a href={link} target="_blank" rel="noreferrer" onClick={(e) => { e.preventDefault(); platform.openLink(link); }}>@{g.username}</a>
@@ -323,14 +382,19 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
             )}
             <div className="chips">
               {GRANTS.map((x) => {
-                const on = g.grants.includes(x.id);
-                return <button type="button" key={x.id} className={'chip' + (on ? ' on' : '')} aria-pressed={on} disabled={busy || !g.tg}
-                  onClick={() => act(on ? 'revoke' : 'grant', g.tg!, x.id)}>{x.label}</button>;
+                const on = g.grants.includes(x.id), offer = g.offers?.[x.id];
+                // a pending invitation is taken back with a tap; a declined one is sent again
+                return <button type="button" key={x.id} className={'chip' + (on ? ' on' : offer ? ' ' + offer : '')} aria-pressed={on} disabled={busy || !g.tg}
+                  onClick={() => act(on || offer === 'pending' ? 'revoke' : 'grant', g.tg!, x.id)}>
+                  {x.label}{offer === 'pending' ? ' · ждёт ответа' : offer === 'declined' ? ' · отказался, пригласить снова' : ''}</button>;
               })}
             </div>
+            </>}
           </div>
         );
       })}
+      {!shown.length && people.length > 0 && <p className="muted pad small-note">Никого с таким фильтром.</p>}
+      </div>
       <Field label="Telegram ID" id="dev-grant-id" inputMode="numeric" placeholder="например, 123456789" value={tg}
         onChange={(e) => setTg(e.target.value.replace(/\D/g, '').slice(0, 20))} />
       <Field label="Подпись" id="dev-grant-note" placeholder="кто это, чтобы не забыть" value={newNote} maxLength={80} onChange={(e) => setNewNote(e.target.value)} />
@@ -401,6 +465,10 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
   }, [watch, onChange]);
   const sum = (o: Record<string, number>, ...keys: string[]) => keys.reduce((a, k) => a + (o[k] ?? 0), 0);
   const pending = sites.filter((s) => s.status === 'pending');
+  // the list only grows: new sites (they wait for a decision) stay in view, the rest fold away
+  const [showAll, setShowAll] = useState(false);
+  const rest = sites.filter((s) => s.status !== 'pending');
+  const lotsActive = rest.reduce((a, s) => a + (s.lots.active ?? 0), 0);
 
   return (
     <Section title="Сайты обжарщиков" aside={pending.length ? <span className="tag">{pending.length} новых</span> : undefined}>
@@ -411,7 +479,7 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
           {crawl.paused ? ' Лимит обхода на сегодня исчерпан — продолжит после 3:00 по Москве.' : ''}
         </p>
       )}
-      {sites.map((s) => (
+      {[...pending, ...(showAll ? rest : [])].map((s) => (
         <div key={s.host}>
           <Row label={s.roaster || s.host} active={open === s.host} onClick={() => setOpen(open === s.host ? null : s.host)}
             hint={s.status === 'approved'
@@ -435,6 +503,12 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
           )}
         </div>
       ))}
+      {rest.length > 0 && (
+        <button type="button" className="sites-toggle" aria-expanded={showAll} onClick={() => { setShowAll(!showAll); if (showAll && open && !pending.some((x) => x.host === open)) setOpen(null); }}>
+          <span>{showAll ? 'Свернуть' : `Подключённые и отклонённые · ${rest.length}`}{!showAll && <small className="muted"> · в продаже {lotsActive} лотов</small>}</span>
+          <Icon name="chevron" size={16} />
+        </button>
+      )}
     </Section>
   );
 }
@@ -444,7 +518,8 @@ function ServerVersionRow() {
   const [v, setV] = useState<string | null>(null);
   useEffect(() => {
     if (!RATINGS_API) return;
-    fetch(`${RATINGS_API}/version`).then((r) => (r.ok ? r.json() : null))
+    // a blocked or throttled connection may hang instead of failing: say so after 12 s
+    fetch(`${RATINGS_API}/version`, { signal: AbortSignal.timeout?.(12_000) }).then((r) => (r.ok ? r.json() : null))
       .then((j) => setV(j ? [j.version, fmtWhen(j.builtAt)].filter(Boolean).join(' · ') : 'нет связи'))
       .catch(() => setV('нет связи'));
   }, []);

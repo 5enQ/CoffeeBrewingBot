@@ -2,7 +2,7 @@
  * Profile card. Base themes are flat colors; bronze / silver / gold are brushed metal with a sheen that follows the tilt;
  * diamond is a faceted, iridescent 3D card that turns with the device (or the mouse on a computer).
  */
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cardView, type CardData } from '../data/card';
 import { catById } from '../data/gear';
 import type { IconKey } from '../data/methods';
@@ -12,6 +12,7 @@ import { BadgeRow } from './Badges';
 import { Icon, MethodIcon } from './icons';
 import { reduceMotion } from './motion';
 import { gravityOf, lookOf, planeOf, rollOf } from '../data/tilt';
+import { LIGHTHOUSE_T, sceneMarkup, type SceneId } from './scenes';
 
 const initials = (s: string) => s.replace(/^@/, '').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 const clamp = (v: number, a = -1, b = 1) => Math.max(a, Math.min(b, v));
@@ -26,16 +27,25 @@ export function tiltInput(el: HTMLElement | null) {
   let base: { b: number; g: number } | null = null;
   let lastInput = 0, lastSensor = 0;
   let raw = { b: 0, g: 0 };
-  // the first reading is "level": tilting from how the phone is held, not from flat on a table
-  const off = platform.onTilt((beta, gamma) => {
+  let inside = false; // the mouse is over the card
+  // the first reading is "level": tilting from how the phone is held, not from flat on a table.
+  // A sensor counts only once its angles have really changed: Telegram for computers may send readings of a sensor
+  // that is not there (the same numbers again and again); taken as input they pulled the card back to the middle
+  // between mouse moves, and the card jumped between two poses. Computers do not read the sensor at all.
+  let live = false;
+  const off = platform.isDesktopClient() ? () => {} : platform.onTilt((beta, gamma) => {
     if (!base) base = { b: beta, g: gamma };
     raw = { b: beta, g: gamma };
+    if (!lastSensor) lastSensor = performance.now(); // the glass reads gravity from the very first reading
+    if (!live && Math.abs(beta - base.b) + Math.abs(gamma - base.g) < 0.8) return;
+    live = true;
+    if (inside) return; // the mouse is on the card: it leads
     target = { x: clamp((gamma - base.g) / 25), y: clamp((beta - base.b) / 25) };
     lastInput = lastSensor = performance.now();
   });
   // the pointer is read against the card's untransformed box: the card itself turns and shrinks under
   // the cursor, and measuring that moving box made the tilt chase itself — the card shook near its edges
-  let inside = false, swayFrom = 0;
+  let swayFrom = 0;
   const box = () => {
     // offsetLeft/Top/Width/Height ignore the card's own transform; its offset parent does not turn
     const p = (el!.offsetParent as HTMLElement | null)?.getBoundingClientRect() ?? { left: 0, top: 0 };
@@ -563,13 +573,45 @@ function BetaLayer() {
   );
 }
 
+/* ---------- picture backgrounds: rare lots and the lighthouse ---------- */
+
+/**
+ * A drawn scene behind the card (see scenes.ts). Its own animations loop by themselves. The lighthouse also has
+ * SMIL parts (the beam, the light on the water) that must keep time with its CSS parts (the crests, the flash):
+ * both are set to one clock — the phase of the turn now — whenever the card comes into view, since hiding a card
+ * (display: none) restarts CSS animations but not SMIL ones.
+ */
+function SceneLayer({ id, still }: { id: SceneId; still?: boolean }) {
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const box = useRef<HTMLDivElement>(null);
+  const html = useMemo(() => `<svg viewBox="0 0 360 224" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">${sceneMarkup(id, uid)}</svg>`, [id, uid]);
+  useEffect(() => {
+    const el = box.current, svg = el?.querySelector('svg');
+    if (!el || !svg) return;
+    if (still || reduceMotion()) { svg.pauseAnimations(); return; }
+    if (id !== 'lighthouse') return;
+    const sync = () => {
+      const phase = (performance.now() / 1000) % LIGHTHOUSE_T;
+      el.style.setProperty('--lh-t', `${(-phase).toFixed(3)}s`);
+      svg.setCurrentTime(phase);
+    };
+    sync();
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) sync(); });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [id, html, still]);
+  return <div ref={box} className={'pcard-scene' + (still ? ' still' : '')} dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
 /* ---------- card ---------- */
 
 export function ProfileCard({ card, live = true }: { card: CardData; live?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const view = cardView(card);
   const tier = 'tier' in view.theme ? view.theme.tier : null;
-  const t = useTilt(live && ((!!tier && !('look' in view.theme && view.theme.look === 'glass')) || 'special' in view.theme), ref);
+  // the picture backgrounds (rare lots, the lighthouse) do not follow the tilt
+  const scene: SceneId | null = 'rare' in view.theme ? view.theme.rare : 'special' in view.theme && view.theme.special === 'lighthouse' ? 'lighthouse' : null;
+  const t = useTilt(live && ((!!tier && !('look' in view.theme && view.theme.look === 'glass')) || ('special' in view.theme && !scene)), ref);
   const [photoOk, setPhotoOk] = useState(true);
   const icon = 'tier' in view.theme ? view.theme.icon : null;
 
@@ -587,7 +629,7 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
   const metal = tier && !glass && tier !== 'volume';
 
   return (
-    <div ref={ref} className={`pcard ${glass ? 'tier tier-glass base-glass' : 'tier' in view.theme ? `tier tier-${view.theme.tier}` : 'special' in view.theme ? `special special-${view.theme.special}` : `base-${view.theme.base}`}`} style={style}
+    <div ref={ref} className={`pcard ${glass ? 'tier tier-glass base-glass' : 'tier' in view.theme ? `tier tier-${view.theme.tier}` : 'special' in view.theme ? `special special-${view.theme.special}` : 'rare' in view.theme ? 'rare' : `base-${view.theme.base}`}${scene ? ` scene scene-${scene}` : ''}`} style={style}
       onClick={turn || glass ? () => requestTiltPermission() : undefined}>
       {/* decorations in one clipped layer: Safari (Telegram for macOS) does not clip composited children to the rounded
           corners of an overflow:hidden card, so a sparkle or a star layer poked out as a sharp corner */}
@@ -599,6 +641,7 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
         {tier === 'volume' && <SpacePortal icon={volume ? icon as IconKey : null} />}
         {'special' in view.theme && view.theme.special === 'dev' && <DevLayer />}
         {'special' in view.theme && view.theme.special === 'beta' && <BetaLayer />}
+        {scene && <SceneLayer id={scene} still={!live} />}
         {icon && !volume && !glass && (
           <div className="pcard-corner">
             {icon === 'star' ? <Icon name="star" size={64} filled /> : <MethodIcon icon={icon as IconKey} size={72} />}
@@ -618,7 +661,7 @@ export function ProfileCard({ card, live = true }: { card: CardData; live?: bool
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); platform.openLink(`https://t.me/${card.username}`); }}>@{card.username}</a>}
           </div>
         </div>
-        {('tier' in view.theme || 'special' in view.theme) && <div className="pcard-tier">{view.theme.title}</div>}
+        {('tier' in view.theme || 'special' in view.theme || 'rare' in view.theme) && <div className="pcard-tier">{view.theme.title}</div>}
         {card.about && <p className="pcard-about">{card.about}</p>}
         {view.badges.length > 0 && <BadgeRow badges={view.badges} max={3} />}
         {card.setup.length > 0 && (

@@ -1,7 +1,8 @@
 import type { BadgeLite } from './badges';
 import { countStats, earnedLevels, TIER_LABEL, type Stats, type Tier } from './levels';
 import { methodById } from './methods';
-import type { Brew } from './store';
+import { rareOfBean } from './rare';
+import type { Bean, Brew } from './store';
 
 export { TIER_LABEL, TIER_ORDER, type Stats, type Tier } from './levels';
 
@@ -17,10 +18,11 @@ export interface Achievement { id: string; unlock: string; tier: Tier; badge: Ba
 export const ownBrews = (brews: Brew[]) => brews.filter((b) => !b.sample && !b.author);
 
 /** The app's own estimate, with the same limits the server applies (used offline and outside Telegram) */
-export function localStats(brews: Brew[], ratings: number): Stats {
+export function localStats(brews: Brew[], ratings: number, beans: Bean[] = []): Stats {
   const now = Date.now();
+  const byId = new Map(beans.map((x) => [x.id, x]));
   // everything on this device counts as imported history
-  return countStats(ownBrews(brews).map((b) => ({ m: b.methodId, w: b.water || 0, t: b.date, r: now })), now, ratings);
+  return countStats(ownBrews(brews).map((b) => ({ m: b.methodId, w: b.water || 0, t: b.date, r: now, x: rareOfBean(b.beanId ? byId.get(b.beanId) : null).join(',') })), now, ratings);
 }
 
 /** Achievement key → badge. Titles are built here, so the server only has to know the numbers. */

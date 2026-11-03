@@ -160,7 +160,7 @@ async def main():
         for dark in (False, True):
             for k in CARDS:
                 if dark and k not in ('diamond1', 'paper1'): continue
-                pv, err = await page(b, init=f"location.hash = '#r=p{k}';", dark=dark)
+                pv, err = await page(b, init=f"location.hash = '#r=p{k}';", dark=dark, phone=True)
                 await mock(pv, [])
                 await pv.reload(); await pv.wait_for_timeout(900)
                 check(await pv.locator('.pcard:visible').count() == 1, f'shared card {k} opens{" (dark)" if dark else ""}')

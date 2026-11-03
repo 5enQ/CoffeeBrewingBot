@@ -32,8 +32,10 @@ async def mock(pg, admin_log=None):
                 SITES[0].update(crawled=1793400000000, crawling=False, pages={'ok': 150}, lots={'active': 130, 'gone': 20})
             if req.get('action') == 'grant':
                 cur = next((g for g in GRANTS if g['tg'] == req['tg']), None)
-                if cur: cur['grants'].append(req['what'])
-                else: GRANTS.append({'account': 'x' + req['tg'], 'tg': req['tg'], 'grants': [req['what']]})
+                if not cur: cur = {'account': 'x' + req['tg'], 'tg': req['tg'], 'grants': [], 'offers': {}}; GRANTS.append(cur)
+                # the tester role is offered: the person answers in the app
+                if req['what'] == 'beta': cur.setdefault('offers', {})['beta'] = 'pending'
+                else: cur['grants'].append(req['what'])
             if req.get('action') == 'forget':
                 GRANTS[:] = [g for g in GRANTS if g['tg'] != req['tg']]
             if req.get('action') == 'note':
@@ -104,6 +106,8 @@ async def main():
         await pg2.fill('#site-name-newroaster\\.ru', 'Новый обжарщик')
         await sec.locator('button:has-text("Подключить")').click(); await pg2.wait_for_timeout(400)
         # «Обойти заново»: a toast, then the progress under the buttons refreshes by itself until the pass is over
+        check(await sec.locator('.row:has-text("shop.tastycoffee.ru")').count() == 0, 'connected sites are folded away')
+        await sec.locator('.sites-toggle').click(); await pg2.wait_for_timeout(200)
         await sec.locator('.row:has-text("shop.tastycoffee.ru")').click(); await pg2.wait_for_timeout(200)
         await sec.locator('button:has-text("Обойти заново")').click(); await pg2.wait_for_timeout(400)
         check(any(x.get('action') == 'recrawl' and x.get('host') == 'shop.tastycoffee.ru' for x in log), 'recrawl sent')
@@ -121,10 +125,12 @@ async def main():
         await pg2.fill('#dev-grant-note', 'Аня, бариста')
         await dev.locator('.site-actions button:has-text("Разработчик")').click(); await pg2.wait_for_timeout(500)
         check(any(x.get('action') == 'grant' and x.get('tg') == '555666' and x.get('what') == 'dev' for x in log), 'developers background granted on its own')
-        row = dev.locator('.grant-row:has-text("555666")')
-        check(await row.count() == 1 and await row.locator('.chip.on').all_inner_texts() == ['Разработчик'], 'the person appears with only that grant')
+        row = dev.locator('.grant-row:has-text("Аня, бариста")')
+        check(await row.count() == 1 and await row.locator('.grant-tags').inner_text() == 'Разработчик', f'the person is one compact line with their roles')
+        await row.locator('.grant-line').click(); await pg2.wait_for_timeout(200)
+        check(await row.locator('.chip.on').all_inner_texts() == ['Разработчик'], 'opened: the person has only that grant')
         check(any(x.get('action') == 'note' and x.get('tg') == '555666' and x.get('note') == 'Аня, бариста' for x in log), 'the note typed with the grant is saved')
-        check('Аня, бариста' in await row.locator('.grant-who b').inner_text(), 'the person is shown by the note')
+        check('Аня, бариста' in await row.locator('.grant-line b').inner_text(), 'the person is shown by the note')
         await row.locator('button:has-text("Изменить подпись")').click(); await pg2.wait_for_timeout(200)
         await pg2.fill('#grant-note-555666', 'Аня, бариста из Kojo'); await pg2.fill('#grant-nick-555666', '@anya_k')
         await row.locator('.grant-edit button:has-text("Сохранить")').click(); await pg2.wait_for_timeout(400)
@@ -132,7 +138,12 @@ async def main():
         link = row.locator('.grant-who a')
         check(await link.count() == 1 and await link.get_attribute('href') == 'https://t.me/anya_k', 'with a @username the person has an active Telegram link')
         await row.locator('.chip:has-text("Тестировщик")').click(); await pg2.wait_for_timeout(400)
-        check(any(x.get('action') == 'grant' and x.get('what') == 'beta' for x in log), 'testers background given')
+        check(any(x.get('action') == 'grant' and x.get('what') == 'beta' for x in log), 'tester role offered')
+        check('ждёт ответа' in await row.locator('.chip:has-text("Тестировщик")').inner_text() and 'Тестировщик: ждёт ответа' in await row.locator('.grant-tags').inner_text(), 'the offer waits for the answer')
+        check(await dev.locator('.grant-filters .chip:has-text("Ждут ответа · 1")').count() == 1, 'a filter for people who have not answered yet')
+        await dev.locator('.grant-filters .chip:has-text("Ждут ответа")').click(); await pg2.wait_for_timeout(200)
+        check(await dev.locator('.grant-row').count() == 1, 'the filter shows only them')
+        await dev.locator('.grant-filters .chip:has-text("Ждут ответа")').click(); await pg2.wait_for_timeout(200)
         await row.locator('.chip:has-text("Все фоны")').click(); await pg2.wait_for_timeout(400)
         check(any(x.get('action') == 'grant' and x.get('what') == 'tester' for x in log), 'testers grant given separately')
         await dev.screenshot(path='out/owner-dev.png')

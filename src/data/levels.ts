@@ -20,7 +20,8 @@ export const RATING_LEVELS: Level[] = [{ tier: 'bronze', at: 10 }, { tier: 'silv
 export const reached = (levels: Level[], value: number) => levels.filter((l) => value >= l.at).pop() ?? null;
 
 /** Counted numbers of one user: brews per method id, liters, ratings */
-export interface Stats { methods: Record<string, number>; liters: number; ratings: number }
+/** rare — rare lots brewed (see rare.ts): each opens a card background */
+export interface Stats { methods: Record<string, number>; liters: number; ratings: number; rare?: string[] }
 
 /** Achievement key ('method:v60', 'liters', 'ratings') → reached level */
 export function earnedLevels(s: Stats): Record<string, Level> {
@@ -46,7 +47,8 @@ export const levelUpTo = (levels: Level[], earned: Level | undefined, tier: Tier
 
 /* ---------- counting rules (the server applies them; the app uses them for its offline estimate) ---------- */
 
-export interface BrewStat { m: string; w: number; t: number; r: number }
+/** x — the rare-lot tags of the brew, comma separated ('japan', 'eugenioides', 'liberica'), empty for most */
+export interface BrewStat { m: string; w: number; t: number; r: number; x?: string | null }
 
 export const COUNT_RULES = {
   /** technical ceiling against scripted brews, far above what a person drinks (the app warns past HEALTH_CUPS) */
@@ -75,6 +77,7 @@ export function countStats(rows: BrewStat[], created: number, ratings = 0): Stat
   const perDay = new Map<number, number>();
   const waterDay = new Map<number, number>();
   const methods: Record<string, number> = {};
+  const rare = new Set<string>();
   let ml = 0;
   for (const b of [...rows].sort((a, z) => a.t - z.t)) {
     if (!b.m || !(b.t >= R.earliest) || b.t > b.r + 86_400_000) continue;
@@ -84,10 +87,11 @@ export function countStats(rows: BrewStat[], created: number, ratings = 0): Stat
     if (n >= R.perDay) continue;
     perDay.set(day, n + 1);
     methods[b.m] = (methods[b.m] ?? 0) + 1;
+    for (const x of (b.x ?? '').split(',')) if (x) rare.add(x);
     const used = waterDay.get(day) ?? 0;
     const w = Math.max(0, Math.min(R.maxWater, Math.round(b.w) || 0, R.perDayWater - used));
     waterDay.set(day, used + w);
     ml += w;
   }
-  return { methods, liters: Math.round(ml / 100) / 10, ratings };
+  return { methods, liters: Math.round(ml / 100) / 10, ratings, rare: [...rare].sort() };
 }

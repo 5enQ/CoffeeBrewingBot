@@ -3,6 +3,26 @@
 All notable changes are listed here. Versions follow [semantic versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 Work in progress is collected under **Unreleased** and becomes a version on release.
 
+## Unreleased
+
+## v1.7.0 — Pours & Pictures (2026-11-03)
+
+### Added
+- The tester role is offered, not given: when the owner adds someone as «Тестировщик», the person sees an invitation on their next start — what testers do and what more is collected from them (report text and screenshot, app version, device, system and screen, their name and @username for the developer) — with «Согласиться» and «Отказаться». Only agreeing gives the role; the owner gets a message either way and sees «ждёт ответа» or «отказался» in the panel (a declined invitation can be sent again). People who were testers before are asked too: their role waits for the answer (the tester panel comes back once they agree, and is gone if they decline).
+- Owner, «Разработчики и тестировщики»: filters by role and by the answer to an invitation (with counts), and a compact list — one line per person with their roles as tags; tap to open the actions.
+- Owner, «Сайты обжарщиков»: new sites waiting for a decision stay in view, connected and rejected ones fold into one line («Подключённые и отклонённые · N», with the lots on sale) and open on a tap.
+- Owner, «Метрики»: how many people use the app (in all, new this week and month), how many opened it today, this week and this month, how many brewed, how many of those who came 8–37 days ago are still coming back; brews this week, this month and in all, brews per person, liters; the last 30 days as bars; brews by method; how often features are used (timer, «Следующий шаг», brewing without the timer, own recipes, drip recipes by pours, sharing, new packs and drip boxes, scans, cupping). The owner's own use is left out. Counts only: the server keeps when each account last opened the app and a daily total of openings; the app sends feature use as «this happened N times», which is added to a total for the day without the sender. No brew, coffee or person goes with the counters.
+- Drip recipes are made of pours: how many pours, how much water in each and the pause between them. The app counts the water and the time of the whole brew and builds the steps itself (pour, pause, … the last pause lets the bag drain; a pour takes about 5 g a second). The coffee, the ratio and the grind are gone from a drip recipe and the ratio from the drip brew screen: the bag decides them. Older drip recipes get pours from their steps.
+- Drip timer: motion inside the ring, behind the time. While you pour, water runs down the whole circle — soft falling sheets with glints sliding down them and small eddies that bend the water; in a pause, round drops (drawn like the method icons) fall in from above and splash at the bottom, often right after the pour and sparser by its end. It holds still on pause and is off with reduced motion.
+- Timer: «Следующий шаг» — poured faster than planned, go on to the next step now (→ on a keyboard). The clock keeps running in real time; the steps after it and the end come sooner by the time saved.
+- Picture backgrounds for the card, drawn and animated. Three open after one brew of a rare lot: «Ферма у горы» for coffee from Japan (coffee terraces under a snowy mountain, a farmhouse with smoke, a farmer picking cherries into a basket, sakura petals falling), «Озеро Киву» for eugenioides (a fisherman poling his pirogue across the lake, rings on the water where the pole goes in, a volcano with a thin plume, fireflies at the shore) and «Закат в Либерии» for liberica and excelsa (a giant liberica tree swaying against the setting sun, a river catching the light, smoke over a hut). A blend counts if any of its parts is such a lot. The server checks it like the other backgrounds: a brew sends the rare tags of its pack, and a card shows the picture only to someone who brewed it. The fourth, «Хранитель маяка», the owner gives: a red-and-white lighthouse at dusk whose light turns around, sweeping across the waves in time with the beam.
+
+### Changed
+- Without a connection to the server the owner's panel no longer disappears: on a device where the owner was recognized before it stays, says the server did not answer and offers «Повторить». «Версия сервера» says «нет связи» after 12 s instead of waiting forever (a blocked or throttled connection may hang instead of failing).
+
+### Fixed
+- Cards still shook under the mouse in Telegram for computers: the app sends readings of a motion sensor that a computer does not have (the same angles again and again), and each of them pulled the card back to the middle between mouse moves. Computers now ignore the motion sensor, and on phones a sensor counts only once its angles really change.
+
 ## v1.6.0 — Comets & Crawler (2026-11-02)
 
 ### Changed

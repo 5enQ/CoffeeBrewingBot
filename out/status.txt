@@ -1,0 +1,18 @@
+sitemap.xml --http1.1 application/xml 426 1.1 text/plain
+Upgrade Required
+sitemap.xml --http1.1 text/html,appli 426 1.1 text/plain
+Upgrade Required
+sitemap.xml --http2 application/xml 426 2 text/plain
+Upgrade Required
+sitemap.xml --http2 text/html,appli 426 2 text/plain
+Upgrade Required
+HTTP/2 426 
+server: ycalb
+content-type: text/plain
+sitemap_index 200 text/html 6976
+product: 
+bot product 302 -> https://rockets.coffee/tmgrdfrend/showcaptcha?cc=1&form-fb-hint=1.150&mt=76C8D3BB0DB8563AB339F23A2D07
+yandexbot-ua product 302
+googlebot-ua product 302
+browser+cookies product 200 3 redirects, final https://rockets.coffee/tmgrdfrend/showcaptchafast?d=46E9B966EF4291AA362B2052EDDD25B75DDAC7F2B83CBE1D74064922C204B
+page: 42437 bytes; title: <title>Верификация; ld+json: 0; captcha: 1

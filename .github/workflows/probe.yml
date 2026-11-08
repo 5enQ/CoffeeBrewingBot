@@ -11,10 +11,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Reachability (status codes and timings only)
         run: |
+          set +e
           rm -rf out; mkdir -p out
           UA="Mozilla/5.0 (compatible; BrewbookBot/1.0; +https://5enq.github.io/CoffeeBrewingBot/)"
           BR="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
-          { echo "runner: $(curl -s --max-time 10 https://ipinfo.io/country 2>/dev/null)"; getent hosts rockets.coffee | awk '{print "dns", $1}'; } >> out/status.txt
+          { echo "runner: $(curl -s --max-time 10 https://ipinfo.io/country 2>/dev/null)"; getent hosts rockets.coffee | awk '{print "dns", $1}'; getent hosts www.rockets.coffee | awk '{print "dns www", $1}'; dig +short rockets.coffee NS | sed 's/^/ns /'; } >> out/status.txt
           for u in / /robots.txt /sitemap.xml /sitemap_index.xml /products/ ; do
             for a in "$UA" "$BR"; do
               curl -sS --max-time 25 -o out/body -A "$a" -w "$u ${a:0:20} %{http_code} %{time_total}s %{remote_ip} -> %{redirect_url}\n" "https://rockets.coffee$u" >> out/status.txt 2>&1 || echo "$u ${a:0:20} FAIL" >> out/status.txt

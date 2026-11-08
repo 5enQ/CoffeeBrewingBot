@@ -15,18 +15,29 @@ jobs:
           rm -rf out; mkdir -p out
           UA="Mozilla/5.0 (compatible; BrewbookBot/1.0; +https://5enq.github.io/CoffeeBrewingBot/)"
           BR="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
-          { echo "runner: $(curl -s --max-time 10 https://ipinfo.io/country 2>/dev/null)"; getent hosts rockets.coffee | awk '{print "dns", $1}'; getent hosts www.rockets.coffee | awk '{print "dns www", $1}'; dig +short rockets.coffee NS | sed 's/^/ns /'; } >> out/status.txt
-          for u in / /robots.txt /sitemap.xml /sitemap_index.xml /products/ ; do
-            for a in "$UA" "$BR"; do
-              curl -sS --max-time 25 -o out/body -A "$a" -w "$u ${a:0:20} %{http_code} %{time_total}s %{remote_ip} -> %{redirect_url}\n" "https://rockets.coffee$u" >> out/status.txt 2>&1 || echo "$u ${a:0:20} FAIL" >> out/status.txt
-            done
+          R=https://rockets.coffee
+          curl -sS --max-time 25 -A "$BR" $R/robots.txt -o out/robots.txt
+          for v in --http1.1 --http2; do for acc in "application/xml" "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"; do
+            curl -sS --max-time 25 $v -A "$BR" -H "Accept: $acc" -H "Accept-Language: ru-RU,ru;q=0.9" -o out/b -w "sitemap.xml $v ${acc:0:15} %{http_code} %{http_version} %{content_type}\n" $R/sitemap.xml >> out/status.txt
+            head -c 200 out/b | tr '\n' ' ' >> out/status.txt; echo >> out/status.txt
+          done; done
+          curl -sSI --max-time 25 -A "$BR" $R/sitemap.xml | grep -iE "^(HTTP|upgrade|server|content-type|connection|location)" >> out/status.txt
+          curl -sS --max-time 25 -A "$BR" $R/sitemap_index.xml -o out/si.xml -w "sitemap_index %{http_code} %{content_type} %{size_download}\n" >> out/status.txt
+          head -c 400 out/si.xml > out/sitemap-index-head.txt; grep -o '<loc>[^<]*</loc>' out/si.xml | head -30 > out/sitemap-index-locs.txt
+          # follow each sitemap from the index, shape only
+          for sm in $(grep -o '<loc>[^<]*</loc>' out/si.xml | sed 's/<[^>]*>//g' | head -8); do
+            curl -sS --max-time 25 -A "$BR" "$sm" -o out/x.xml -w "$sm %{http_code} %{content_type} %{size_download}\n" >> out/status.txt
+            echo "$sm $(grep -c '<loc>' out/x.xml) locs; sample: $(grep -o '<loc>[^<]*</loc>' out/x.xml | sed 's/<[^>]*>//g' | grep -m3 products | tr '\n' ' ')" >> out/sitemaps.txt
           done
-          nc -vz -w 10 rockets.coffee 443 >> out/status.txt 2>&1 || true
-          ping -c 2 -W 3 rockets.coffee >> out/status.txt 2>&1 || true
-          # only the shape of the sitemap, if any came back
-          curl -sS --max-time 25 -A "$BR" https://rockets.coffee/sitemap.xml -o out/sm.xml 2>/dev/null || true
-          if [ -s out/sm.xml ]; then head -c 600 out/sm.xml > out/sitemap-head.txt; grep -o '<loc>[^<]*</loc>' out/sm.xml | head -20 > out/sitemap-locs.txt; grep -c '<loc>' out/sm.xml >> out/sitemap-locs.txt; fi
-          rm -f out/body out/sm.xml
+          # a product page: as a bot, and as a browser keeping the cookie the guard sets
+          P=$(grep -ho 'https://rockets.coffee/products/[^<]*' out/sitemaps.txt | head -1); echo "product: $P" >> out/status.txt
+          [ -z "$P" ] && P=$R/products/
+          curl -sS --max-time 25 -A "$UA" -o /dev/null -w "bot product %{http_code} -> %{redirect_url}\n" "$P" | cut -c1-120 >> out/status.txt
+          curl -sS --max-time 25 -A "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)" -o /dev/null -w "yandexbot-ua product %{http_code}\n" "$P" >> out/status.txt
+          curl -sS --max-time 25 -A "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" -o /dev/null -w "googlebot-ua product %{http_code}\n" "$P" >> out/status.txt
+          curl -sS --max-time 25 -L -c out/jar -b out/jar -A "$BR" -H "Accept: text/html" -H "Accept-Language: ru-RU,ru;q=0.9" -o out/p.html -w "browser+cookies product %{http_code} %{num_redirects} redirects, final %{url_effective}\n" "$P" | cut -c1-160 >> out/status.txt
+          echo "page: $(wc -c < out/p.html) bytes; title: $(grep -o '<title>[^<]*' out/p.html | head -1); ld+json: $(grep -c 'application/ld+json' out/p.html); captcha: $(grep -c -i captcha out/p.html)" >> out/status.txt
+          rm -f out/b out/si.xml out/x.xml out/jar out/p.html
       - name: Commit
         run: |
           git config user.name probe; git config user.email probe@example.com

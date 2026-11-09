@@ -47,6 +47,10 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* a press shows on everything pressable: the ones with a look of their own (below) keep it, the rest dim for
+   the moment the finger is on them. :where keeps this weaker than any rule of a component. */
+:where(button, a[href], [role="button"], [role="tab"], [role="switch"], summary, label.chip, .badge) { transition: opacity 0.18s ease; }
+:where(button, a[href], [role="button"], [role="tab"], [role="switch"], summary, label.chip, .badge):not(:disabled, [aria-disabled="true"], .btn, .method-card, .recipe-tile, .step-skip, .row, .icon-btn, .stepper-value, .pin):active { opacity: 0.6; transition: opacity 0s; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); }
 /* nothing may shift the page sideways: otherwise in Telegram the whole tab "slides" together with the bottom bar */
 html, body { overflow-x: clip; }

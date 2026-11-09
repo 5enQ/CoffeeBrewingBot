@@ -98,6 +98,18 @@ button { cursor: pointer; }
 .footer-actions { display: flex; gap: 10px; align-items: center; max-width: 640px; margin: 0 auto; }
 
 /* ---------- Tabs ---------- */
+/* the page's own scrollbar where it shows (a mouse, a desktop client): thin, and it stops above the bar at the
+   bottom instead of running under it (--bottom-bar is measured in App) */
+@media (pointer: fine) {
+  /* no scrollbar-width / scrollbar-color here: Chromium then ignores the ::-webkit-scrollbar rules, track margins included */
+  html::-webkit-scrollbar { width: 10px; }
+  html::-webkit-scrollbar-track { background: transparent; margin-bottom: var(--bottom-bar, 0px); margin-top: var(--inset-top, 0px); }
+  html::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--hint) 55%, transparent); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }
+  html::-webkit-scrollbar-thumb:hover { background-color: var(--hint); }
+  .pane-scroll::-webkit-scrollbar, .pane-detail > .stack-screen::-webkit-scrollbar { width: 10px; }
+  .pane-scroll::-webkit-scrollbar-thumb, .pane-detail > .stack-screen::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--hint) 55%, transparent); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }
+  .pane-detail > .stack-screen::-webkit-scrollbar-track { margin-bottom: var(--bottom-bar, 0px); }
+}
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 25;
   display: grid; grid-template-columns: repeat(4, 1fr);

@@ -54,6 +54,10 @@ async def main():
         await pg.locator('button:has-text("Старт"):visible').click(); await pg.wait_for_timeout(200)
         h = await H()
         check(len(h) == 1, f'a button with its own vibration is not doubled ({h})')
+        # the page's scrollbar ends above the bar at the bottom
+        await pg.locator('button:has-text("Стоп"), button:has-text("Пауза")').first.click() if await pg.locator('button:has-text("Пауза"):visible').count() else None
+        bar = await pg.evaluate("() => parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bottom-bar'))")
+        check(bar > 40, f'the scrollbar is told the height of the bottom bar ({bar}px)')
         check(not errors, f'no page errors {errors}')
         await b.close()
     done()

@@ -69,6 +69,26 @@ function Shell() {
 
   useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
 
+  // the page's scrollbar ends above the bar at the bottom (the tabs, or a screen's buttons): it is told how tall that bar is
+  useEffect(() => {
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      let h = 0;
+      for (const el of document.querySelectorAll<HTMLElement>('.tabbar, .footer')) {
+        const r = el.getBoundingClientRect();
+        if (r.height && r.bottom >= innerHeight - 1 && getComputedStyle(el).visibility !== 'hidden') h = Math.max(h, innerHeight - r.top);
+      }
+      document.documentElement.style.setProperty('--bottom-bar', `${Math.round(h)}px`);
+    };
+    const soon = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    const mo = new MutationObserver(soon);
+    mo.observe(document.body, { childList: true, subtree: true });
+    addEventListener('resize', soon);
+    measure();
+    return () => { mo.disconnect(); removeEventListener('resize', soon); cancelAnimationFrame(raf); };
+  }, []);
+
   // Opened from a share link — show the received recipe
   useEffect(() => {
     if (!ready) return;

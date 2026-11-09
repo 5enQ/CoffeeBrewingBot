@@ -6,6 +6,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Changed
+- On a computer, the page's scrollbar ends above the bar at the bottom (the tabs, or a screen's buttons) instead of running under it, and is thinner, in the app's colours.
 - Every button answers a press. Things with no look of their own for a press (chips, tabs, links, the round buttons, packs in the picker, badges, theme tiles, panel headers and so on) dim while the finger is on them; buttons, cards and rows keep their own. And every tap on something pressable gives a light tap of the phone in Telegram — unless the button vibrates by itself already (a success, a selection), so it never doubles.
 
 ### Fixed

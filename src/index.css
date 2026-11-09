@@ -956,10 +956,10 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .link-btn.small { font-size: 13px; justify-self: start; padding: 0; }
 .cup-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .cup-line > span { font-size: 14px; }
-.cups { display: flex; gap: 6px; }
-.cup { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--sep); background: var(--bg); color: var(--hint); font-weight: 650; padding: 0; }
-.cup.bad { border-color: var(--star); color: var(--star); background: color-mix(in srgb, var(--star) 12%, var(--bg)); }
-.cup.defect { border-color: var(--danger, #d0453a); color: var(--danger, #d0453a); background: color-mix(in srgb, var(--danger, #d0453a) 14%, var(--bg)); }
+.cup-line .cups { display: flex; gap: 6px; margin-top: 0; }
+.cup-line .cup { flex: none; max-width: none; aspect-ratio: auto; width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--sep); background: var(--bg); color: var(--hint); font-weight: 650; padding: 0; }
+.cup-line .cup.bad { border-color: var(--star); color: var(--star); background: color-mix(in srgb, var(--star) 12%, var(--bg)); }
+.cup-line .cup.defect { border-color: var(--danger, #d0453a); color: var(--danger, #d0453a); background: color-mix(in srgb, var(--danger, #d0453a) 14%, var(--bg)); }
 .defect-type { display: grid; gap: 6px; }
 .defect-type > span { font-size: 14px; }
 .int-row { display: grid; gap: 4px; }

@@ -47,6 +47,10 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* a press shows on everything pressable: the ones with a look of their own (below) keep it, the rest dim for
+   the moment the finger is on them. :where keeps this weaker than any rule of a component. */
+:where(button, a[href], [role="button"], [role="tab"], [role="switch"], summary, label.chip, .badge) { transition: opacity 0.18s ease; }
+:where(button, a[href], [role="button"], [role="tab"], [role="switch"], summary, label.chip, .badge):not(:disabled, [aria-disabled="true"], .btn, .method-card, .recipe-tile, .step-skip, .row, .icon-btn, .stepper-value, .pin):active { opacity: 0.6; transition: opacity 0s; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); }
 /* nothing may shift the page sideways: otherwise in Telegram the whole tab "slides" together with the bottom bar */
 html, body { overflow-x: clip; }
@@ -94,6 +98,18 @@ button { cursor: pointer; }
 .footer-actions { display: flex; gap: 10px; align-items: center; max-width: 640px; margin: 0 auto; }
 
 /* ---------- Tabs ---------- */
+/* the page's own scrollbar where it shows (a mouse, a desktop client): thin, and it stops above the bar at the
+   bottom instead of running under it (--bottom-bar is measured in App) */
+@media (pointer: fine) {
+  /* no scrollbar-width / scrollbar-color here: Chromium then ignores the ::-webkit-scrollbar rules, track margins included */
+  html::-webkit-scrollbar { width: 10px; }
+  html::-webkit-scrollbar-track { background: transparent; margin-bottom: var(--bottom-bar, 0px); margin-top: var(--inset-top, 0px); }
+  html::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--hint) 55%, transparent); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }
+  html::-webkit-scrollbar-thumb:hover { background-color: var(--hint); }
+  .pane-scroll::-webkit-scrollbar, .pane-detail > .stack-screen::-webkit-scrollbar { width: 10px; }
+  .pane-scroll::-webkit-scrollbar-thumb, .pane-detail > .stack-screen::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--hint) 55%, transparent); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }
+  .pane-detail > .stack-screen::-webkit-scrollbar-track { margin-bottom: var(--bottom-bar, 0px); }
+}
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 25;
   display: grid; grid-template-columns: repeat(4, 1fr);
@@ -860,7 +876,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .recipe-tile-go { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--hint); display: flex; }
 @media (hover: hover) and (pointer: fine) { .recipe-tile:hover { box-shadow: inset 0 0 0 1.5px var(--sep); } .recipe-tile.active:hover { box-shadow: inset 0 0 0 2px var(--accent); } }
 .score-mini { color: var(--cherry); font-weight: 750; font-size: 13px; font-variant-numeric: tabular-nums; }
-.icon-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 8px; }
+.method-icon-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 8px; }
 .icon-pick-btn { aspect-ratio: 1; border: 1.5px solid transparent; border-radius: 14px; background: var(--card); color: var(--accent); display: grid; place-items: center; }
 .icon-pick-btn.on { border-color: var(--accent); background: var(--accent-soft); }
 
@@ -940,10 +956,10 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .link-btn.small { font-size: 13px; justify-self: start; padding: 0; }
 .cup-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .cup-line > span { font-size: 14px; }
-.cups { display: flex; gap: 6px; }
-.cup { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--sep); background: var(--bg); color: var(--hint); font-weight: 650; padding: 0; }
-.cup.bad { border-color: var(--star); color: var(--star); background: color-mix(in srgb, var(--star) 12%, var(--bg)); }
-.cup.defect { border-color: var(--danger, #d0453a); color: var(--danger, #d0453a); background: color-mix(in srgb, var(--danger, #d0453a) 14%, var(--bg)); }
+.cup-line .cups { display: flex; gap: 6px; margin-top: 0; }
+.cup-line .cup { flex: none; max-width: none; aspect-ratio: auto; width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--sep); background: var(--bg); color: var(--hint); font-weight: 650; padding: 0; }
+.cup-line .cup.bad { border-color: var(--star); color: var(--star); background: color-mix(in srgb, var(--star) 12%, var(--bg)); }
+.cup-line .cup.defect { border-color: var(--danger, #d0453a); color: var(--danger, #d0453a); background: color-mix(in srgb, var(--danger, #d0453a) 14%, var(--bg)); }
 .defect-type { display: grid; gap: 6px; }
 .defect-type > span { font-size: 14px; }
 .int-row { display: grid; gap: 4px; }

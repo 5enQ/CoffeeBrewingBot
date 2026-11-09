@@ -9,7 +9,8 @@ import { DepthCtx, RouterProvider, useRouter, type Route, type Tab } from './rou
 import { DialogHost } from './ui/kit';
 import { AchievementToast } from './ui/AchievementToast';
 import { ToastHost } from './ui/toast';
-import { Icon } from './ui/icons';
+import { Icon, MethodIcon } from './ui/icons';
+import { methodById } from './data/methods';
 import { BrewHome } from './screens/BrewHome';
 import { MethodScreen } from './screens/MethodScreen';
 import { TimerScreen } from './screens/TimerScreen';
@@ -22,7 +23,6 @@ import { RecipesScreen } from './screens/Recipes';
 import { ShareScreen, SharedRecipeScreen } from './screens/Share';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { LayoutCtx, useLayoutMode } from './layout';
-import { MethodIcon } from './ui/icons';
 import { platform } from './platform';
 import { resolveStartParam } from './data/share';
 import { loadCard } from './data/card';
@@ -59,6 +59,15 @@ const TABS: { id: Tab; readonly label: string; icon: 'brew' | 'journal' | 'beans
   { id: 'profile', get label() { return t('tab.profile'); }, icon: 'profile' },
 ];
 
+/** a tab's icon; «Заварить» shows the method the person brewed last (the plain brewing icon until the first brew) */
+function TabIcon({ tab, size }: { tab: (typeof TABS)[number]; size: number }) {
+  const { brews } = useStore();
+  const last = tab.id === 'brew' ? brews.reduce<(typeof brews)[number] | null>((a, b) => (!a || b.date > a.date ? b : a), null) : null;
+  // drawn on a 32-unit grid: a thicker stroke so it weighs as much as the 24-unit icons beside it
+  if (last) return <MethodIcon icon={methodById(last.methodId).icon} size={size} weight={2.1} />;
+  return <Icon name={tab.icon} size={size} />;
+}
+
 function Shell() {
   const { tab, setTab, stack, push } = useRouter();
   const { ready, profile } = useStore();
@@ -68,6 +77,26 @@ function Shell() {
   useTabPill(navRef, pillRef, `${tab}-${stack.length === 0}-${mode}-${ready}`);
 
   useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
+
+  // the page's scrollbar ends above the bar at the bottom (the tabs, or a screen's buttons): it is told how tall that bar is
+  useEffect(() => {
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      let h = 0;
+      for (const el of document.querySelectorAll<HTMLElement>('.tabbar, .footer')) {
+        const r = el.getBoundingClientRect();
+        if (r.height && r.bottom >= innerHeight - 1 && getComputedStyle(el).visibility !== 'hidden') h = Math.max(h, innerHeight - r.top);
+      }
+      document.documentElement.style.setProperty('--bottom-bar', `${Math.round(h)}px`);
+    };
+    const soon = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    const mo = new MutationObserver(soon);
+    mo.observe(document.body, { childList: true, subtree: true });
+    addEventListener('resize', soon);
+    measure();
+    return () => { mo.disconnect(); removeEventListener('resize', soon); cancelAnimationFrame(raf); };
+  }, []);
 
   // Opened from a share link — show the received recipe
   useEffect(() => {
@@ -118,7 +147,7 @@ function Shell() {
             <nav className="side-nav">
               {TABS.map((t) => (
                 <button key={t.id} type="button" className={t.id === tab ? 'on' : ''} onClick={() => setTab(t.id)} aria-current={t.id === tab ? 'page' : undefined}>
-                  <Icon name={t.icon} size={22} /><span>{t.label}</span>
+                  <TabIcon tab={t} size={22} /><span>{t.label}</span>
                 </button>
               ))}
             </nav>
@@ -149,7 +178,7 @@ function Shell() {
           <span className="tab-pill" ref={pillRef} aria-hidden="true" />
           {TABS.map((t) => (
             <button key={t.id} type="button" className={t.id === tab ? 'on' : ''} onClick={() => setTab(t.id)} aria-current={t.id === tab ? 'page' : undefined}>
-              <Icon name={t.icon} size={24} /><span>{t.label}</span>
+              <TabIcon tab={t} size={24} /><span>{t.label}</span>
             </button>
           ))}
         </nav>

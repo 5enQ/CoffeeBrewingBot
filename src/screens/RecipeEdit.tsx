@@ -151,7 +151,7 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
       {meta && (
         <>
           <Section title="Значок" plain>
-            <div className="icon-pick">
+            <div className="method-icon-pick">
               {ICON_CHOICES.map((ic) => (
                 <button type="button" key={ic} className={'icon-pick-btn' + (meta.icon === ic ? ' on' : '')} aria-label={`Значок ${ic}`} aria-pressed={meta.icon === ic}
                   onClick={() => { platform.haptic('select'); setMeta({ ...meta, icon: ic }); }}>

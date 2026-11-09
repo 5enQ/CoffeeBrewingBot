@@ -5,6 +5,19 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.7.1 — Icons & Feedback (2026-11-09)
+
+### Changed
+- The «Заварить» tab shows the icon of the method brewed last (the plain brewing icon until the first brew).
+- Icons: the cezve looks like a cezve — a flared rim with a pouring lip, a narrow neck, a round bottom and a long handle (it was a paper cup with a handle); the drip bag hangs on a cup with a handle, its arms on the rim, nothing reaching past the cup, instead of floating over a bowl; the shelf is one board with two stand-up pouches (doypacks), a big one and a small one — a straight sealed top, nearly straight sides widening a little to the bottom, standing apart.
+- On a computer, the page's scrollbar ends above the bar at the bottom (the tabs, or a screen's buttons) instead of running under it, and is thinner, in the app's colours.
+- Every button answers a press. Things with no look of their own for a press (chips, tabs, links, the round buttons, packs in the picker, badges, theme tiles, panel headers and so on) dim while the finger is on them; buttons, cards and rows keep their own. And every tap on something pressable gives a light tap of the phone in Telegram — unless the button vibrates by itself already (a success, a selection), so it never doubles.
+
+### Fixed
+- Cupping (the simple form): the cups to mark were drawn with the CVA form's style — small solid circles in place of the dashed ones that fill the row. The CVA style now stays in its own form.
+- A new method: the icons to choose from fell into one column over the description — a style of the card's icon picker had the same name and squeezed the whole grid into one cell. The grid has a name of its own now.
+- Another Telegram account on a phone where the owner had opened the app saw the owner's panel («Нет связи с сервером»): the device remembered that the owner was here, not which account. It now remembers the owner's Telegram id, and the panel goes as soon as the server says this account is not the owner.
+
 ## v1.7.0 — Pours & Pictures (2026-11-03)
 
 ### Added

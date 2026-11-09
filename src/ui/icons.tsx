@@ -17,8 +17,8 @@ const METHOD_PATHS: Record<IconKey, React.ReactNode> = {
   siphon: <><path d="M11 3h10v7l-3 3h-4l-3-3z" /><path d="M16 13v3" /><circle cx="16" cy="22" r="6" /><path d="M11 30h10" /><path d="M10 3h12" /></>,
   coldbrew: <><path d="M9 8h14v18a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2z" /><path d="M8 4h16v4H8z" /><rect x="12" y="13" width="4" height="4" rx="1" /><rect x="16.5" y="18" width="4" height="4" rx="1" /></>,
   batch: <><path d="M7 4h18v6H7z" /><path d="M9 10l2 5h10l2-5" /><path d="M16 15v2" /><path d="M11 18h10v8a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2z" /><path d="M21 20h1.5a2 2 0 0 1 0 4H21" /><path d="M7 4v24h3" /></>,
-  // a drip bag hanging on the rim of a cup: its paper arms go over the rim, its point dips into the cup
-  dripbag: <><path d="M11.5 3h9v9l-4.5 4.5-4.5-4.5z" /><path d="M13.5 6h5" /><path d="M11.5 6.5L7.6 15.2l-.9 2.6M20.5 6.5l3.9 8.7.9 2.6" /><path d="M6 15.5h20" /><path d="M7.5 15.5v4a6.5 6.5 0 0 0 6.5 6.5h4a6.5 6.5 0 0 0 6.5-6.5v-4" /><path d="M24.5 17.5h1.3a2.6 2.6 0 0 1 0 5.2h-1.9" /><path d="M9 29h14" /></>,
+  // a drip bag hanging on a cup: its paper arms end on the rim, its point dips in; nothing reaches past the cup
+  dripbag: <><path d="M11.5 3h9v9l-4.5 4.5-4.5-4.5z" /><path d="M13.5 6h5" /><path d="M11.5 6.5L8 15.5M20.5 6.5l3.5 9" /><path d="M7.5 15.5h17" /><path d="M7.5 15.5v4a6.5 6.5 0 0 0 6.5 6.5h4a6.5 6.5 0 0 0 6.5-6.5v-4" /><path d="M24.5 17.5h1.3a2.6 2.6 0 0 1 0 5.2h-1.9" /><path d="M9 29h14" /></>,
   cup: <><path d="M7 11h16v7a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7z" /><path d="M23 13h2a3 3 0 0 1 0 6h-2.5" /><path d="M6 28h19" /></>,
   kettle: <><path d="M8 14h15l-1.5 13h-12z" /><path d="M10 14a5.5 4 0 0 1 11 0" /><path d="M15.5 8.5v1.5" /><path d="M8 17l-5-5" /><path d="M23 16h2a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2.5" /></>,
   drop: <><path d="M16 4c5 6.5 8 11 8 15a8 8 0 0 1-16 0c0-4 3-8.5 8-15z" /><path d="M12 20a4 4 0 0 0 4 4" /></>,
@@ -40,8 +40,9 @@ type UiIcon = 'brew' | 'journal' | 'beans' | 'more' | 'profile' | 'share' | 'gea
 const UI_PATHS: Record<UiIcon, React.ReactNode> = {
   brew: <><path d="M5 8h14l-5 7h-4z" /><path d="M9 19h6M12 15v4" /><path d="M10 3v2M14 3v2" /></>,
   journal: <><path d="M6 3h11a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2V4a1 1 0 0 1 1-1z" /><path d="M5 18a2 2 0 0 1 2-2h12" /><path d="M9 7h6M9 10h4" /></>,
-  // shelf: one board with two coffee pouches — round shoulders, the sealed top, a bean on the label
-  beans: <><path d="M2 20.5h20M4.5 20.5v1.8M19.5 20.5v1.8" /><path d="M4 20.5V8.4C4 6.5 5.2 5 7 5h1.5c1.8 0 3 1.5 3 3.4v12.1" /><path d="M4.3 8.2h6.9" /><ellipse cx="7.75" cy="14.2" rx="1.7" ry="2.4" transform="rotate(25 7.75 14.2)" /><path d="M7.1 12.1c1 1 .1 3.1 1.3 4.3" /><path d="M13.5 20.5v-7.8c0-1.6 1.1-2.7 2.7-2.7h1.1c1.6 0 2.7 1.1 2.7 2.7v7.8" /><path d="M13.8 12.9h5.9" /><rect x="14.9" y="15" width="3.7" height="3" rx=".6" /></>,
+  // shelf: one board with two stand-up pouches (doypacks), a big one and a small one: a straight sealed top,
+  // the sides widening to a round-cornered bottom; they stand apart and inside the board
+  beans: <><path d="M2.5 20.5h19M5 20.5v1.8M19 20.5v1.8" /><path d="M4 7h7.4c.2 3.6.9 6.6.9 9.8 0 2-1.1 3.2-3 3.2H6.1c-1.9 0-3-1.2-3-3.2 0-3.2.7-6.2.9-9.8z" /><path d="M3.9 9.2h7.6" /><path d="M14.4 11h5.4c.2 2.3.7 4.2.7 6.3 0 1.7-.9 2.7-2.4 2.7h-2c-1.5 0-2.4-1-2.4-2.7 0-2.1.5-4 .7-6.3z" /><path d="M14.3 12.9h5.6" /></>,
   profile: <><circle cx="12" cy="8" r="3.6" /><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6" /></>,
   share: <><path d="M12 15V4M8 8l4-4 4 4" /><path d="M6 11H5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1h-1" /></>,
   gear: <><path d="M6 4h12l-1 5H7z" /><path d="M9 9v3h6V9" /><rect x="7" y="12" width="10" height="8" rx="1.5" /><path d="M12 15v2" /></>,

@@ -42,7 +42,7 @@ const UI_PATHS: Record<UiIcon, React.ReactNode> = {
   journal: <><path d="M6 3h11a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2V4a1 1 0 0 1 1-1z" /><path d="M5 18a2 2 0 0 1 2-2h12" /><path d="M9 7h6M9 10h4" /></>,
   // shelf: one board with two stand-up pouches (doypacks), a big one and a small one: a straight sealed top,
   // the sides widening to a round-cornered bottom; they stand apart and inside the board
-  beans: <><path d="M2.5 20.5h19M5 20.5v1.8M19 20.5v1.8" /><path d="M4 7h7.4c.2 3.6.9 6.6.9 9.8 0 2-1.1 3.2-3 3.2H6.1c-1.9 0-3-1.2-3-3.2 0-3.2.7-6.2.9-9.8z" /><path d="M3.9 9.2h7.6" /><path d="M14.4 11h5.4c.2 2.3.7 4.2.7 6.3 0 1.7-.9 2.7-2.4 2.7h-2c-1.5 0-2.4-1-2.4-2.7 0-2.1.5-4 .7-6.3z" /><path d="M14.3 12.9h5.6" /></>,
+  beans: <><path d="M2.5 20.5h19M5 20.5v1.8M19 20.5v1.8" /><path d="M4.2 7h7l.8 11.9c.1.7-.4 1.1-1.1 1.1H4.5c-.7 0-1.2-.4-1.1-1.1z" /><path d="M4.05 9.2h7.3" /><path d="M14.6 11h5l.6 8c0 .6-.3 1-.9 1h-4.4c-.6 0-.9-.4-.9-1z" /><path d="M14.45 12.9h5.3" /></>,
   profile: <><circle cx="12" cy="8" r="3.6" /><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6" /></>,
   share: <><path d="M12 15V4M8 8l4-4 4 4" /><path d="M6 11H5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1h-1" /></>,
   gear: <><path d="M6 4h12l-1 5H7z" /><path d="M9 9v3h6V9" /><rect x="7" y="12" width="10" height="8" rx="1.5" /><path d="M12 15v2" /></>,

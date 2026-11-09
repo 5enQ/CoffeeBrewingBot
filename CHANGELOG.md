@@ -5,6 +5,8 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.7.1 — Icons & Feedback (2026-11-09)
+
 ### Changed
 - The «Заварить» tab shows the icon of the method brewed last (the plain brewing icon until the first brew).
 - Icons: the cezve looks like a cezve — a flared rim with a pouring lip, a narrow neck, a round bottom and a long handle (it was a paper cup with a handle); the drip bag hangs on a cup with a handle, its arms on the rim, nothing reaching past the cup, instead of floating over a bowl; the shelf is one board with two stand-up pouches (doypacks), a big one and a small one — a straight sealed top, nearly straight sides widening a little to the bottom, standing apart.

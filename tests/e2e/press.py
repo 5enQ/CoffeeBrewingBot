@@ -45,6 +45,13 @@ async def main():
         await pg.click('#plain', force=True); await pg.wait_for_timeout(100)
         check(await H() == [], 'a disabled button does not')
         await pg.evaluate("() => document.getElementById('plain').remove()")
+        # the icons of a new method lie in a grid (a style of the card's icon picker once squeezed them into one cell)
+        await pg.click('.tabbar >> text=Заварить'); await pg.wait_for_timeout(300)
+        await pg.locator('[aria-label="Свой метод"]:visible').first.click(); await pg.wait_for_timeout(500)
+        g = await pg.locator('.method-icon-pick').bounding_box()
+        rows = await pg.evaluate("() => new Set([...document.querySelectorAll('.method-icon-pick button')].map((b) => Math.round(b.getBoundingClientRect().top))).size")
+        check(g and g['width'] > 300 and 2 <= rows <= 4, f'new method: the icons lie in a grid ({rows} rows, {g and round(g["width"])} px wide)')
+        await pg.go_back(); await pg.wait_for_timeout(400)
         # a button that vibrates by itself: only its own vibration
         await pg.click('.tabbar >> text=Заварить'); await pg.wait_for_timeout(300); await H()
         await pg.locator('.method-card:visible').first.click(); await pg.wait_for_timeout(300)

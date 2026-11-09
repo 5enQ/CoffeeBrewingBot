@@ -10,6 +10,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - Every button answers a press. Things with no look of their own for a press (chips, tabs, links, the round buttons, packs in the picker, badges, theme tiles, panel headers and so on) dim while the finger is on them; buttons, cards and rows keep their own. And every tap on something pressable gives a light tap of the phone in Telegram — unless the button vibrates by itself already (a success, a selection), so it never doubles.
 
 ### Fixed
+- A new method: the icons to choose from fell into one column over the description — a style of the card's icon picker had the same name and squeezed the whole grid into one cell. The grid has a name of its own now.
 - Another Telegram account on a phone where the owner had opened the app saw the owner's panel («Нет связи с сервером»): the device remembered that the owner was here, not which account. It now remembers the owner's Telegram id, and the panel goes as soon as the server says this account is not the owner.
 
 ## v1.7.0 — Pours & Pictures (2026-11-03)

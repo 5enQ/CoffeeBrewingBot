@@ -5,6 +5,10 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Changed
+- A method with no own recipes: the note «Своих рецептов … пока нет» stands apart, below the standard recipe, with «Свой рецепт» as a button in the middle of the screen under it; once there are own recipes the button is at the bottom as before.
+- An opened own recipe has the buttons of a brew in the journal: delete (asks first; brews stay in the journal), «Изменить» and «Заварить» (the timer). Brewing without the timer is a link under the steps.
+
 ## v1.7.1 — Icons & Feedback (2026-11-09)
 
 ### Changed

@@ -7,7 +7,7 @@ TG = """window.Telegram = { WebApp: {
   version: '8.0', platform: 'tdesktop', colorScheme: 'light', themeParams: {}, isVersionAtLeast: (v) => parseFloat(v) <= 8.0,
   ready() {}, expand() {}, onEvent() {}, offEvent() {}, setHeaderColor() {}, setBackgroundColor() {}, setBottomBarColor() {},
   enableClosingConfirmation() {}, disableClosingConfirmation() {}, disableVerticalSwipes() {},
-  BackButton: { show() {}, hide() {}, onClick() {}, offClick() {} }, HapticFeedback: { impactOccurred(k) { (window.__h = window.__h || []).push('impact:' + k); }, notificationOccurred(k) { (window.__h = window.__h || []).push('note:' + k); }, selectionChanged() { (window.__h = window.__h || []).push('select'); } },
+  BackButton: { show() {}, hide() {}, onClick(cb) { window.__tgBack = cb; }, offClick() {} }, HapticFeedback: { impactOccurred(k) { (window.__h = window.__h || []).push('impact:' + k); }, notificationOccurred(k) { (window.__h = window.__h || []).push('note:' + k); }, selectionChanged() { (window.__h = window.__h || []).push('select'); } },
   MainButton: { hide() {} }, SettingsButton: { hide() {} } } };"""
 
 async def main():
@@ -45,13 +45,6 @@ async def main():
         await pg.click('#plain', force=True); await pg.wait_for_timeout(100)
         check(await H() == [], 'a disabled button does not')
         await pg.evaluate("() => document.getElementById('plain').remove()")
-        # the icons of a new method lie in a grid (a style of the card's icon picker once squeezed them into one cell)
-        await pg.click('.tabbar >> text=Заварить'); await pg.wait_for_timeout(300)
-        await pg.locator('[aria-label="Свой метод"]:visible').first.click(); await pg.wait_for_timeout(500)
-        g = await pg.locator('.method-icon-pick').bounding_box()
-        rows = await pg.evaluate("() => new Set([...document.querySelectorAll('.method-icon-pick button')].map((b) => Math.round(b.getBoundingClientRect().top))).size")
-        check(g and g['width'] > 300 and 2 <= rows <= 4, f'new method: the icons lie in a grid ({rows} rows, {g and round(g["width"])} px wide)')
-        await pg.go_back(); await pg.wait_for_timeout(400)
         # a button that vibrates by itself: only its own vibration
         await pg.click('.tabbar >> text=Заварить'); await pg.wait_for_timeout(300); await H()
         await pg.locator('.method-card:visible').first.click(); await pg.wait_for_timeout(300)
@@ -65,6 +58,12 @@ async def main():
         await pg.locator('button:has-text("Стоп"), button:has-text("Пауза")').first.click() if await pg.locator('button:has-text("Пауза"):visible').count() else None
         bar = await pg.evaluate("() => parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bottom-bar'))")
         check(bar > 40, f'the scrollbar is told the height of the bottom bar ({bar}px)')
+        # the icons of a new method lie in a grid (a style of the card's icon picker once squeezed them into one cell)
+        pg2, _ = await page(b, init=TG, phone=True, db=db); pg = pg2; await pg.wait_for_timeout(1200)
+        await pg.locator('[aria-label="Свой метод"]:visible').first.click(); await pg.wait_for_timeout(500)
+        g = await pg.locator('.method-icon-pick').bounding_box()
+        rows = await pg.evaluate("() => new Set([...document.querySelectorAll('.method-icon-pick button')].map((b) => Math.round(b.getBoundingClientRect().top))).size")
+        check(g and g['width'] > 300 and 2 <= rows <= 4, f'new method: the icons lie in a grid ({rows} rows, {g and round(g["width"])} px wide)')
         check(not errors, f'no page errors {errors}')
         await b.close()
     done()

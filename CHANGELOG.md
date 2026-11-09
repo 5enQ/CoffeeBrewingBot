@@ -6,6 +6,8 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Changed
+- The «Заварить» tab shows the icon of the method brewed last (the plain brewing icon until the first brew).
+- Icons: the cezve looks like a cezve — a flared rim with a pouring lip, a narrow neck, a round bottom and a long handle (it was a paper cup with a handle); the drip bag hangs on the rim of a cup with a handle instead of floating over a bowl; the shelf is one board with two coffee pouches with round shoulders, a sealed top and a label.
 - On a computer, the page's scrollbar ends above the bar at the bottom (the tabs, or a screen's buttons) instead of running under it, and is thinner, in the app's colours.
 - Every button answers a press. Things with no look of their own for a press (chips, tabs, links, the round buttons, packs in the picker, badges, theme tiles, panel headers and so on) dim while the finger is on them; buttons, cards and rows keep their own. And every tap on something pressable gives a light tap of the phone in Telegram — unless the button vibrates by itself already (a success, a selection), so it never doubles.
 

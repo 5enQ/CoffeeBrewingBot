@@ -64,6 +64,14 @@ async def main():
         g = await pg.locator('.method-icon-pick').bounding_box()
         rows = await pg.evaluate("() => new Set([...document.querySelectorAll('.method-icon-pick button')].map((b) => Math.round(b.getBoundingClientRect().top))).size")
         check(g and g['width'] > 300 and 2 <= rows <= 4, f'new method: the icons lie in a grid ({rows} rows, {g and round(g["width"])} px wide)')
+        # «Заварить» wears the method brewed last
+        vb = lambda: pg.evaluate("() => document.querySelector('.tabbar button svg').getAttribute('viewBox')")
+        pg, _ = await page(b, init=TG, phone=True, db=db); await pg.wait_for_timeout(1000)
+        check(await vb() == '0 0 24 24', 'no brews yet: the plain brewing icon')
+        import time as _t
+        db2 = {**db, 'brews': [{'id': 'b1', 'methodId': 'cezve', 'date': int(_t.time() * 1000), 'dose': 10, 'water': 100, 'temp': 0, 'grind': '', 'time': 120, 'rating': 0, 'notes': ''}]}
+        pg, _ = await page(b, init=TG, phone=True, db=db2); await pg.wait_for_timeout(1000)
+        check(await vb() == '0 0 32 32', 'after a brew: the icon of its method')
         check(not errors, f'no page errors {errors}')
         await b.close()
     done()

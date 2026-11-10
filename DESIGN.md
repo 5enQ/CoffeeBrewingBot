@@ -86,3 +86,7 @@ The app looks like filter paper with a coffee-leaf green: quiet surfaces, one ac
 - For motion, film it: a strip of frames 60–80ms apart through the change (the overlap mid-transition, the
   baseline of rolling digits, the last frame clean).
 - Add an e2e check for the behavior (`tests/e2e`), including that the moving parts settle.
+- **Only what you meant changes.** `tests/e2e/ui_snapshot.py` measures every visible element of the main screens
+  (light, dark, high contrast, desktop) and lists what differs from the baseline. Read the list: a rule written for
+  one label that also shrank a number shows up there as a line you did not expect. Update the baseline only when
+  every line is intended.

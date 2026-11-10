@@ -6,3 +6,6 @@
 - Work on `dev`. Releases go dev → test → main; don't release unless asked.
 - After a change: `npx tsc -b`, `npx vitest run`, `npm run build:single`, then the e2e suites in `tests/e2e`
   (`npm run test:e2e`), and an entry in `CHANGELOG.md` under «Unreleased».
+- `tests/e2e/ui_snapshot.py` guards the screens: it lists every element whose font, color, size, padding or spacing
+  differs from `tests/e2e/ui-baseline/`. Each listed line must be a change you meant; anything else is a side effect
+  to fix. Once only the intended lines remain, `UPDATE=1 python3 ui_snapshot.py` and commit the baseline with the change.

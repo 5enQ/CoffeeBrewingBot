@@ -1,4 +1,4 @@
-"""UI guard: what a change does to the screens it was not meant to touch.
+"""UI autotests: what a change does to the screens it was not meant to touch.
 
 Each screen is opened with the same data at the same frozen moment, and every element that shows something
 (text, a control, an icon, a surface with a background or an edge) is measured: its font, color, size, padding,
@@ -202,7 +202,7 @@ async def main():
             reported.setdefault(screen, places)
             check(not lines, f'{name}: same as the baseline' + ('' if not lines else f' — {len(lines)} difference(s):\n' + '\n'.join(lines[:40]) + ('\n  …' if len(lines) > 40 else '')))
 
-        # the guard itself: the v1.7.2 slip (a label rule that also caught the rolling number) must be caught
+        # the autotests check themselves: the v1.7.2 slip (a label rule that also caught the rolling number) must be caught
         clean, _ = await snapshot(b, 'journal')
         broken, _ = await snapshot(b, 'journal', css='.stats span { font-size: 12px; }')
         lines = diff(clean, broken)

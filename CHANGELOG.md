@@ -6,7 +6,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Tests
-- A screen guard (`tests/e2e/ui_snapshot.py`): seven main screens — brewing, a method, the journal, a brew, the shelf, a pack, the profile — in light, dark and high contrast, and two of them on desktop, are opened with the same data at a frozen moment, and every visible element is measured: font, color, size, padding, corners, the gap to its neighbor. Any difference from the saved baseline is listed by place («div.stats › span.roll "4": font 22px → 12px»), so a change that touches more than it meant fails the run. The guard checks itself on the v1.7.2 slip (shrunken stat numbers) every run.
+- UI autotests (`tests/e2e/ui_snapshot.py`): seven main screens — brewing, a method, the journal, a brew, the shelf, a pack, the profile — in light, dark and high contrast, and two of them on desktop, are opened with the same data at a frozen moment, and every visible element is measured: font, color, size, padding, corners, the gap to its neighbor. Any difference from the saved baseline is listed by place («div.stats › span.roll "4": font 22px → 12px»), so a change that touches more than it meant fails the run. They check themselves on the v1.7.2 slip (shrunken stat numbers) every run.
 
 ### Added
 - «Вид интерфейса» in the profile is one card of three settings — «Тема», «Высокая контрастность», «Раскладка» — each with its name, its choice and a line on what it does. The theme: «Авто» (as on the device and in Telegram), «Светлая» or «Тёмная» — a theme other than Telegram's uses the app's own colors, and Telegram's bars follow it.

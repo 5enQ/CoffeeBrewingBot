@@ -149,6 +149,13 @@ button.row:active { background: var(--fg-soft); }
 .row-lead { color: var(--accent); display: flex; flex-shrink: 0; }
 .row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .row-label { font-weight: 550; overflow-wrap: anywhere; }
+/* a title and its tag on one line: the title gives way (…), the tag keeps its size */
+.one-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.one-line .tag { flex: none; margin-left: 0; }
+.row-hint .one-line { gap: 6px; }
+.row-hint .one-line .tag { font-size: 11px; padding: 1px 6px; }
+.one-line-text { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stat-star { font-size: 0.6em; margin-left: 3px; vertical-align: 0.35em; color: #e0a100; }
 .row-hint { color: var(--hint); font-size: 13px; overflow-wrap: anywhere; }
 .row-value { color: var(--hint); text-align: right; flex-shrink: 0; max-width: 55%; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .row-chev { color: var(--hint); opacity: 0.6; display: flex; }
@@ -477,7 +484,7 @@ button.row:active { background: var(--fg-soft); }
 .bean-card-top b { font-size: 17px; }
 .bean-card-origin { color: var(--hint); font-size: 14px; }
 .bean-card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.bean-card-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--hint); border-top: 1px solid var(--sep); padding-top: 8px; margin-top: 2px; }
+.bean-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: var(--hint); border-top: 1px solid var(--sep); padding-top: 8px; margin-top: 2px; }
 .bean-hero { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .pack-notes { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
 .quick-methods { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
@@ -510,6 +517,10 @@ button.row:active { background: var(--fg-soft); }
 .manual .btn { padding: 0 22px; }
 
 /* ---------- Empty states, dialogs ---------- */
+/* the note and its button: the same space above each (the section's own bottom margin is subtracted below) */
+.recipes-empty { --gap: 28px; display: flex; flex-direction: column; align-items: center; gap: var(--gap); text-align: center; padding: 6px 24px 24px; }
+.recipes-empty p { margin: 0; color: var(--hint); max-width: 300px; }
+.no-timer { display: flex; justify-content: center; padding-top: 4px; }
 .empty { text-align: center; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .empty h3 { margin: 0; font-size: 19px; }
 .empty p { margin: 0 0 8px; color: var(--hint); max-width: 300px; }
@@ -693,7 +704,7 @@ button.row:active { background: var(--fg-soft); }
 .stock-text b { color: var(--fg); font-size: 16px; font-weight: 750; }
 .stock.low .stock-text span:last-child { color: var(--star); font-weight: 600; }
 .stock-none { font-size: 13px; color: var(--hint); }
-.foot-right { display: inline-flex; align-items: center; gap: 6px; }
+.foot-right { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .bean-list.done .bean-card { opacity: 0.75; }
 .stock-card { background: var(--card); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .stock-card-head { display: flex; justify-content: space-between; align-items: baseline; }
@@ -1577,3 +1588,24 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .metric-bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
 .metric-list b { text-align: right; font-variant-numeric: tabular-nums; }
 .metric-list small { font-size: 11.5px; text-align: right; }
+
+/* changes that move (ui/motion.tsx): a rolling value, a swapped line */
+.roll { white-space: pre; font-variant-numeric: tabular-nums; }
+.roll-d { position: relative; display: inline-block; vertical-align: baseline;
+  -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); }
+.roll-new { display: inline-block; animation: roll-in 0.42s cubic-bezier(0.25, 0.8, 0.25, 1) both; animation-delay: inherit; }
+.roll-d::before { content: attr(data-c); position: absolute; left: 0; right: 0; top: 0; text-align: center; animation: roll-out 0.42s cubic-bezier(0.45, 0, 0.1, 1) both; animation-delay: inherit; }
+.roll-d.down .roll-new { animation-name: roll-in-down; }
+.roll-d.down::before { animation-name: roll-out-down; }
+@keyframes roll-in { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes roll-out { from { transform: none; opacity: 1; } to { transform: translateY(-100%); opacity: 0; } }
+@keyframes roll-in-down { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes roll-out-down { from { transform: none; opacity: 1; } to { transform: translateY(100%); opacity: 0; } }
+.swap { display: grid; overflow: clip; }
+.swap:has(.swap-l.out) { -webkit-mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent); mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent); }
+.swap-l { grid-area: 1 / 1; min-width: 0; }
+.swap-l.out { animation: swap-out 0.3s cubic-bezier(0.45, 0, 0.1, 1) both; pointer-events: none; }
+.swap-l.in { animation: swap-in 0.42s cubic-bezier(0.25, 0.8, 0.25, 1) both; }
+@keyframes swap-out { to { transform: translateY(-100%); opacity: 0; } }
+@keyframes swap-in { from { transform: translateY(100%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .roll-new, .roll-d::before, .swap-l.in, .swap-l.out { animation: none; } .roll-d::before { content: none; } .swap-l.out { display: none; } }

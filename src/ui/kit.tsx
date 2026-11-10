@@ -1,4 +1,5 @@
 import { useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type InputHTMLAttributes } from 'react';
+import { Roll } from './motion';
 import { platform } from '../platform';
 import { DepthCtx, useRouter } from '../router';
 import { useLayout } from '../layout';
@@ -153,7 +154,8 @@ export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format
         ) : (
           <button type="button" className="stepper-value" aria-label={`${label}: ввести вручную`}
             onClick={() => { if (locked) { deny(); return; } setText(String(value).replace('.', ',')); setEditing(true); }}>
-            {format ? format(value) : value}{unit && <small>{unit}</small>}
+            {/* + and − roll the digits that changed, up or down */}
+            <Roll text={String(format ? format(value) : value)} />{unit && <small>{unit}</small>}
           </button>
         )}
         {btn(1)}

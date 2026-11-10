@@ -1,4 +1,5 @@
 import { platform } from '../platform';
+import { Roll } from '../ui/motion';
 import { useEffect, useRef, useState } from 'react';
 import { track } from '../data/track';
 import { methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
@@ -193,10 +194,10 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
       <div className="method-hero">
         <span className="method-hero-icon"><MethodIcon icon={m.icon} size={44} /></span>
         <dl className="recipe-sum">
-          <div><dt>Кофе</dt><dd>{fmtNum(dose, 2)} г</dd></div>
-          <div><dt>{waterLabel}</dt><dd>{fmtNum(water)} г</dd></div>
-          <div><dt>Пропорция</dt><dd>{fmtRatio(ratio)}</dd></div>
-          <div><dt>Время</dt><dd>{fmtTime(plan.total)}</dd></div>
+          <div><dt>Кофе</dt><dd><Roll text={fmtNum(dose, 2)} /> г</dd></div>
+          <div><dt>{waterLabel}</dt><dd><Roll text={fmtNum(water)} /> г</dd></div>
+          <div><dt>Пропорция</dt><dd><Roll text={fmtRatio(ratio)} /></dd></div>
+          <div><dt>Время</dt><dd><Roll text={fmtTime(plan.total)} /></dd></div>
         </dl>
       </div>
 

@@ -1587,3 +1587,24 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .metric-bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
 .metric-list b { text-align: right; font-variant-numeric: tabular-nums; }
 .metric-list small { font-size: 11.5px; text-align: right; }
+
+/* changes that move (ui/motion.tsx): a rolling value, a swapped line */
+.roll { white-space: pre; font-variant-numeric: tabular-nums; }
+.roll-d { position: relative; display: inline-block; vertical-align: baseline;
+  -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); }
+.roll-new { display: inline-block; animation: roll-in 0.42s cubic-bezier(0.25, 0.8, 0.25, 1) both; animation-delay: inherit; }
+.roll-d::before { content: attr(data-c); position: absolute; left: 0; right: 0; top: 0; text-align: center; animation: roll-out 0.42s cubic-bezier(0.45, 0, 0.1, 1) both; animation-delay: inherit; }
+.roll-d.down .roll-new { animation-name: roll-in-down; }
+.roll-d.down::before { animation-name: roll-out-down; }
+@keyframes roll-in { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes roll-out { from { transform: none; opacity: 1; } to { transform: translateY(-100%); opacity: 0; } }
+@keyframes roll-in-down { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes roll-out-down { from { transform: none; opacity: 1; } to { transform: translateY(100%); opacity: 0; } }
+.swap { display: grid; overflow: clip; }
+.swap:has(.swap-l.out) { -webkit-mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent); mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent); }
+.swap-l { grid-area: 1 / 1; min-width: 0; }
+.swap-l.out { animation: swap-out 0.3s cubic-bezier(0.45, 0, 0.1, 1) both; pointer-events: none; }
+.swap-l.in { animation: swap-in 0.42s cubic-bezier(0.25, 0.8, 0.25, 1) both; }
+@keyframes swap-out { to { transform: translateY(-100%); opacity: 0; } }
+@keyframes swap-in { from { transform: translateY(100%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .roll-new, .roll-d::before, .swap-l.in, .swap-l.out { animation: none; } .roll-d::before { content: none; } .swap-l.out { display: none; } }

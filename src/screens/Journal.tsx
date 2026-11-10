@@ -1,4 +1,5 @@
 import { exactMass, extraction } from '../data/extraction';
+import { Roll } from '../ui/motion';
 import { BREWS, plural as pluralOf } from '../data/plural';
 import { useMemo, useState } from 'react';
 import { cupScore, QUALITY, CUP_ATTRS, toneOf, SCORE_MIN, SCORE_MAX } from '../data/cupping';
@@ -52,9 +53,9 @@ export function Journal() {
       {brews.length > 0 && (
         <div className="stats">
           {/* one line under each number: the three tiles keep one height */}
-          <div><b>{brews.length}</b><span>{pluralOf(brews.length, BREWS)}</span></div>
-          <div><b>{avg ? fmtNum(avg) : '—'}{avg ? <span className="stat-star" aria-hidden="true">★</span> : null}</b><span>в среднем</span></div>
-          <div><b>{cuppedScores.length ? fmtNum(Math.max(...cuppedScores), 2) : '—'}</b><span>лучший балл</span></div>
+          <div><b><Roll text={String(brews.length)} /></b><span>{pluralOf(brews.length, BREWS)}</span></div>
+          <div><b><Roll text={avg ? fmtNum(avg) : '—'} />{avg ? <span className="stat-star" aria-hidden="true">★</span> : null}</b><span>в среднем</span></div>
+          <div><b><Roll text={cuppedScores.length ? fmtNum(Math.max(...cuppedScores), 2) : '—'} /></b><span>лучший балл</span></div>
         </div>
       )}
 

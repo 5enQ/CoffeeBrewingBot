@@ -14,6 +14,9 @@ The app looks like filter paper with a coffee-leaf green: quiet surfaces, one ac
 - Colors only from tokens: `--bg`, `--card`, `--fg`, `--hint`, `--accent` (+ `--accent-soft`, `--accent-fg`),
   `--sep`, `--hint-soft`, `--fg-soft`, `--danger`, `--star`, `--cherry`. Every token has a dark value; never write a
   color that works in one theme only. In Telegram the theme comes from its settings — check light and dark.
+- High contrast (`[data-contrast="high"]`, a profile setting) has its own token values and gives surfaces an edge
+  (`--edge` outline). A new card-like surface joins that list in index.css; check it with high contrast on too.
+- A folding section is `<Section fold="key">` (kit.tsx): the body opens with its height, the open state is remembered.
 - Status colors mean status (`--danger` errors, `--star` ratings, `--cherry` scores); the accent is for the one
   action or the one selected thing on a screen.
 - Radius `--r` (14px) for cards and groups; pills 99px; nested shapes: outer radius = inner radius + padding.

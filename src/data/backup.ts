@@ -25,7 +25,7 @@ const LABELS: Record<string, string> = {
   variety: 'Сорт', process: 'Обработка', altitude: 'Высота', harvest: 'Урожай', roastLevel: 'Степень обжарки',
   roastDate: 'Дата обжарки', weight: 'Вес пачки, г', barcode: 'Штрихкод', link: 'Ссылка', packNotes: 'Дескрипторы обжарщика',
   comment: 'Комментарий', createdAt: 'Добавлено', isBlend: 'Бленд', parts: 'Состав', share: 'Доля', adjust: 'Поправка остатка, г',
-  finished: 'Допито', sample: 'Пример',
+  finished: 'Допито', finishedAt: 'Когда допито', sample: 'Пример',
   date: 'Дата', methodId: 'Метод', beanId: 'Зерно', dose: 'Кофе, г', water: 'Вода, г', temp: 'Температура, °C', grind: 'Помол',
   time: 'Время', rating: 'Оценка', taste: 'Быстрая оценка вкуса', acidity: 'Кислотность', sweetness: 'Сладость', bitterness: 'Горечь',
   body: 'Тело', descriptors: 'Дескрипторы', notes: 'Заметки', cupping: 'Каппинг 2004', cva: 'Каппинг CVA', plan: 'Схема',
@@ -47,7 +47,7 @@ const LABELS: Record<string, string> = {
 };
 const KEY_OF = Object.fromEntries(Object.entries(LABELS).map(([k, l]) => [l.toLowerCase(), k]));
 
-const DATE_KEYS = new Set(['date', 'createdAt']);
+const DATE_KEYS = new Set(['date', 'createdAt', 'finishedAt']);
 const TIME_KEYS = new Set(['time', 'total', 'at']);
 /** always text, even if it looks like a number */
 const STRING_KEYS = new Set(['weight', 'barcode', 'code', 'share', 'year', 'harvest', 'altitude', 'roastDate', 'name', 'title', 'detail', 'details', 'grind', 'comment', 'notes', 'hint', 'about', 'purpose', 'roast', 'id']);

@@ -49,12 +49,13 @@ export const blendLines = (b: BeanLike) => (b.parts ?? []).map((p) => ({
   text: [[p.country, p.region, p.farm].filter(Boolean).join(', '), p.variety, p.process].filter(Boolean).join(' · ') || 'не указано',
 }));
 
-/** "Days after roast" label and a hint about resting the beans */
-export function RestBadge({ roastDate }: { roastDate: string }) {
-  const d = daysSince(roastDate);
+/** "Days after roast" label and a hint about resting the beans; a finished pack keeps the age it was finished at */
+export function RestBadge({ roastDate, until }: { roastDate: string; until?: number | null }) {
+  const d = daysSince(roastDate, until ?? undefined);
   if (d === null) return null;
   const state = d < 5 ? 'young' : d <= 35 ? 'ready' : 'old';
   const label = d === 0 ? 'обжарен сегодня' : `${d} дн. после обжарки`;
+  if (until) return <span className="tag tag-rest-done" title="Столько дней прошло после обжарки, когда пачка закончилась">{label}</span>;
   return <span className={`tag tag-rest-${state}`} title={state === 'young' ? 'Зерну стоит отдохнуть' : state === 'old' ? 'Вкус может угасать' : 'Хорошее окно'}>{label}</span>;
 }
 

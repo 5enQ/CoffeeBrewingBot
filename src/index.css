@@ -37,6 +37,26 @@
   color-scheme: dark;
 }
 
+/* High contrast («Вид интерфейса»): darker text and hints, separators and edges you can see, cards that stand off
+   the page. The app's own palette — Telegram's colors are not applied in this mode (platform/telegram.ts). */
+:root[data-contrast="high"] {
+  --bg: #e4e7e1; --card: #ffffff; --fg: #000000; --hint: #353d38;
+  --accent: #174a32; --accent-fg: #ffffff; --link: #174a32; --danger: #9c1f14;
+  --sep: rgba(0, 0, 0, 0.42); --star: #7d4c08; --cherry: #8a1426; --edge: rgba(0, 0, 0, 0.55);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-contrast="high"]:not([data-theme="light"]) {
+    --bg: #000000; --card: #15191a; --fg: #ffffff; --hint: #d2d9d4;
+    --accent: #8ff0bd; --accent-fg: #000000; --link: #8ff0bd; --danger: #ff9488;
+    --sep: rgba(255, 255, 255, 0.45); --star: #ffcb7a; --cherry: #ff8ea0; --edge: rgba(255, 255, 255, 0.6);
+  }
+}
+:root[data-contrast="high"][data-theme="dark"] {
+  --bg: #000000; --card: #15191a; --fg: #ffffff; --hint: #d2d9d4;
+  --accent: #8ff0bd; --accent-fg: #000000; --link: #8ff0bd; --danger: #ff9488;
+  --sep: rgba(255, 255, 255, 0.45); --star: #ffcb7a; --cherry: #ff8ea0; --edge: rgba(255, 255, 255, 0.6);
+}
+
 :root {
   /* active tab "bubble" — button colors from the theme (in Telegram — from its settings) */
   --pill-bg: var(--accent);
@@ -257,6 +277,8 @@ button.row:active { background: var(--fg-soft); }
 .tag-rest-young { background: color-mix(in srgb, var(--star) 16%, transparent); color: var(--star); }
 .tag-rest-ready { background: var(--accent-soft); color: var(--accent); }
 .tag-rest-old { background: color-mix(in srgb, var(--danger) 13%, transparent); color: var(--danger); }
+/* a finished pack: its age stopped, so no resting advice — a quiet tag */
+.tag-rest-done { background: var(--hint-soft); color: var(--hint); }
 
 /* ---------- Stars, dots ---------- */
 .stars { display: inline-flex; gap: 2px; color: var(--hint); vertical-align: middle; }
@@ -450,8 +472,10 @@ button.row:active { background: var(--fg-soft); }
 /* ---------- Journal ---------- */
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .stats > div { background: var(--card); border-radius: var(--r); padding: 12px; display: flex; flex-direction: column; }
-.stats b { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-.stats span { color: var(--hint); font-size: 12px; line-height: 1.2; }
+.stats b { color: var(--fg); font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+/* only the label under the number: a rolling number inside <b> is a span too */
+.stats > div > span { color: var(--hint); font-size: 12px; line-height: 1.2; }
+.stats.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .detail-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--card); border-radius: var(--r); padding: 14px; }
 .param-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--sep); border-radius: var(--r); overflow: hidden; }
@@ -1609,3 +1633,36 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 @keyframes swap-out { to { transform: translateY(-100%); opacity: 0; } }
 @keyframes swap-in { from { transform: translateY(100%); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .roll-new, .roll-d::before, .swap-l.in, .swap-l.out { animation: none; } .roll-d::before { content: none; } .swap-l.out { display: none; } }
+
+/* a section that folds under its title (kit Section fold) */
+.section-fold { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; min-width: 0; }
+.section-fold svg { color: var(--hint); transform: rotate(90deg); transition: transform 0.25s cubic-bezier(0.45, 0, 0.1, 1); }
+.section.foldable:not(.open) .section-fold svg { transform: none; }
+.section-count { margin-left: 8px; font-weight: 600; color: var(--hint); }
+.fold-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s cubic-bezier(0.45, 0, 0.1, 1); }
+.section.open .fold-body { grid-template-rows: 1fr; }
+.fold-inner { min-height: 0; overflow: hidden; }
+.section.foldable:not(.open) .fold-inner { visibility: hidden; transition: visibility 0s 0.3s; }
+@media (prefers-reduced-motion: reduce) { .fold-body, .section-fold svg { transition: none; } }
+
+/* high contrast: every surface gets a visible edge, tinted fills get stronger, quiet text gets weight */
+:root[data-contrast="high"] :is(.group, .method-card, .recipe-tile, .stats > div, .param-grid > div, .stock-card,
+  .step-card, .step-now, .search, .stepper-input, .dialog, .track, .rate-block, .recipe-block, .drip-item, .attr,
+  .rating-card, .detail-head, .blend-part, .cva-card, .cva-block, .icon-pick-btn, .quick-methods button, .bean-card) {
+  outline: 1px solid var(--edge); outline-offset: -1px;
+}
+:root[data-contrast="high"] .segmented { background: transparent; box-shadow: inset 0 0 0 1px var(--edge); }
+:root[data-contrast="high"] .segmented button.on { background: var(--fg); color: var(--bg); box-shadow: none; }
+:root[data-contrast="high"] .chip { border-color: var(--edge); }
+:root[data-contrast="high"] {
+  --accent-soft: color-mix(in srgb, var(--accent) 24%, transparent);
+  --hint-soft: color-mix(in srgb, var(--hint) 22%, transparent);
+  --fg-soft: color-mix(in srgb, var(--fg) 12%, transparent);
+}
+:root[data-contrast="high"] :is(.muted, .hint, .row-hint, .eyebrow, .section h2, .status) { font-weight: 500; }
+:root[data-contrast="high"] :is(.field input, textarea)::placeholder { opacity: 1; }
+:root[data-contrast="high"] a[href] { text-decoration: underline; text-underline-offset: 2px; }
+:root[data-contrast="high"] :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+/* «Вид интерфейса»: the layout choice stands apart from the theme */
+.look-gap { margin-top: 8px; }

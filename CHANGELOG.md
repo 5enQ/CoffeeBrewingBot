@@ -5,6 +5,20 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Added
+- «Вид интерфейса» in the profile has a theme: «Авто» (as on the device and in Telegram), «Светлая» or «Тёмная» — a theme other than Telegram's uses the app's own colors, and Telegram's bars follow it.
+- High contrast, a separate switch in the same place: black or white text, darker hints, separators and card edges you can see, stronger tinted fills, underlined links — on every screen, in both themes. Both settings belong to the device and are not synced.
+- «Мои рецепты» and «Резервная копия» in the profile fold under their titles (folded at first; the app remembers which are open). Choosing «Свой рецепт» there opens the list by itself.
+
+### Changed
+- In the profile «Мои рецепты» comes after «Моё оборудование».
+- The journal without cupping shows two tiles; the «лучший балл» tile appears with the first cupping.
+
+### Fixed
+- The numbers in the journal's and the profile's tiles were small since v1.7.2 (the label style caught the rolling digits).
+- A finished pack in «Допито» keeps the days after roast it had when it was finished, in a quiet gray tag, instead of counting on (the moment is saved when a pack is marked finished or runs out; older packs take the date of their last brew).
+- Switching to and from the Profile tab with the lighthouse card stalled: the light on the waves ran as 520 separate animations, and the copy of the tab sliding away started a second live scene. The crests now light up in 72 groups, and the sliding copy stands still — about 4–5 times less work on a slow phone.
+
 ## v1.7.2 — Moving Parts (2026-11-10)
 
 ### Changed

@@ -26,6 +26,7 @@ export function createNativePlatform(): Platform {
     hasNativeBack: false, // iOS has no system "back", so the header arrow stays
 
     async init() {
+      await web.init();
       // Hardware "back" on Android: first our screen stack, then minimize the app
       plugin('App')?.addListener('backButton', () => {
         if (backHandler) backHandler(); else plugin('App')?.minimizeApp?.();

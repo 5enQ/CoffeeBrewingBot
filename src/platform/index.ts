@@ -1,4 +1,5 @@
 import type { Platform } from './types';
+import { markRoot } from '../appearance';
 import { createWebPlatform } from './web';
 import { createTelegramPlatform, looksLikeTelegram } from './telegram';
 import { createNativePlatform, looksLikeNative } from './native';
@@ -44,6 +45,7 @@ export async function initPlatform() {
   } catch (e) {
     console.warn('Платформа не инициализирована, работаем как веб-приложение', e);
     platform = counted(createWebPlatform());
+    markRoot();
   }
   tapFeedback();
   document.documentElement.dataset.platform = platform.kind;

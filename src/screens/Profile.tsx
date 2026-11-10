@@ -22,6 +22,8 @@ import { explainRefusal, remindersAvailable, testReminder } from '../data/remind
 import { adminCall, adminStatus, type AdminData, type CrawlUsage, type GrantInfo, type SiteInfo } from '../data/lookup';
 import { copyText, toast } from '../ui/toast';
 import { MyCardBlock } from './CardScreens';
+import { Toggle } from './Share';
+import { setAppearance, useAppearance } from '../appearance';
 import { OwnerMetrics } from './OwnerMetrics';
 
 export function Profile() {
@@ -64,6 +66,7 @@ export function Profile() {
   const [pickMethod, setPickMethod] = useState(false);
   const sel = useSelected();
   const layoutInfo = useLayoutMode();
+  const look = useAppearance();
   const emptyCats = GEAR_CATS.filter((c) => !gear.some((g) => g.cat === c.id));
   // grinders show their "mileage": how much coffee went through them
   const gearHint = (g: Gear) => {
@@ -82,33 +85,6 @@ export function Profile() {
         <div><b><Roll text={String(store.beans.length)} /></b><span>{plural(store.beans.length, PACKS)}</span></div>
         <div><b><Roll text={String(gear.length)} /></b><span>{plural(gear.length, DEVICES)}</span></div>
       </div>
-
-      <Section title="Мои рецепты" aside={
-        <button type="button" className="icon-btn" onClick={() => setPickMethod((v) => !v)} aria-label="Новый рецепт"><Icon name="plus" /></button>
-      } plain>
-        {pickMethod && (
-          <div className="chips pick-method">
-            {allMethods().map((m) => (
-              <button type="button" key={m.id} className="chip" onClick={() => { setPickMethod(false); push({ name: 'recipeEdit', isNew: true, recipe: recipeFromStandard(m.id, uid()) }); }}>{m.name}</button>
-            ))}
-          </div>
-        )}
-        {store.custom.length > 0 ? (
-          <div className="group">
-            {store.custom.map((r) => {
-              const m = methodById(r.methodId);
-              return (
-                <Row key={r.id} leading={<MethodIcon icon={m.icon} size={24} />} label={r.name}
-                  hint={`${m.name} · ${fmtNum(r.dose, 2)} г → ${fmtNum(r.dose * r.ratio)} г · ${r.steps.length} ${r.steps.length === 1 ? 'шаг' : r.steps.length < 5 ? 'шага' : 'шагов'}${r.author ? ` · от ${r.author.name || '@' + r.author.username}` : ''}`}
-                  onClick={() => push({ name: 'recipeEdit', isNew: false, recipe: r })}
-                  active={sel?.name === 'recipeEdit' && sel.recipe.id === r.id} />
-              );
-            })}
-          </div>
-        ) : !pickMethod && (
-          <p className="muted pad">Свои схемы проливов: выберите метод и поменяйте шаги, граммы и время. Рецепт появится на экране метода, по нему пойдёт таймер.</p>
-        )}
-      </Section>
 
       <Section title="Моё оборудование" aside={
         <button type="button" className="icon-btn" onClick={() => addGear('grinder')} aria-label="Добавить оборудование"><Icon name="plus" /></button>
@@ -141,6 +117,34 @@ export function Profile() {
         </div>
       </Section>
 
+      {/* after the equipment, folded: there can be many */}
+      <Section title="Мои рецепты" fold="recipes" count={store.custom.length || undefined} open={pickMethod} aside={
+        <button type="button" className="icon-btn" onClick={() => setPickMethod((v) => !v)} aria-label="Новый рецепт"><Icon name="plus" /></button>
+      } plain>
+        {pickMethod && (
+          <div className="chips pick-method">
+            {allMethods().map((m) => (
+              <button type="button" key={m.id} className="chip" onClick={() => { setPickMethod(false); push({ name: 'recipeEdit', isNew: true, recipe: recipeFromStandard(m.id, uid()) }); }}>{m.name}</button>
+            ))}
+          </div>
+        )}
+        {store.custom.length > 0 ? (
+          <div className="group">
+            {store.custom.map((r) => {
+              const m = methodById(r.methodId);
+              return (
+                <Row key={r.id} leading={<MethodIcon icon={m.icon} size={24} />} label={r.name}
+                  hint={`${m.name} · ${fmtNum(r.dose, 2)} г → ${fmtNum(r.dose * r.ratio)} г · ${r.steps.length} ${r.steps.length === 1 ? 'шаг' : r.steps.length < 5 ? 'шага' : 'шагов'}${r.author ? ` · от ${r.author.name || '@' + r.author.username}` : ''}`}
+                  onClick={() => push({ name: 'recipeEdit', isNew: false, recipe: r })}
+                  active={sel?.name === 'recipeEdit' && sel.recipe.id === r.id} />
+              );
+            })}
+          </div>
+        ) : !pickMethod && (
+          <p className="muted pad">Свои схемы проливов: выберите метод и поменяйте шаги, граммы и время. Рецепт появится на экране метода, по нему пойдёт таймер.</p>
+        )}
+      </Section>
+
       {store.hasSamples && (
         <Section title="Примеры" plain>
           <p className="muted pad">Для наглядности добавлены пачки на полке, заварки и оборудование с пометкой «пример».</p>
@@ -150,7 +154,7 @@ export function Profile() {
 
       <SyncSection />
 
-      <Section title="Резервная копия" plain>
+      <Section title="Резервная копия" fold="backup" plain>
         <p className="muted pad">Копия в формате Markdown — обычный текст с разделами «Полка», «Дневник», «Оборудование». Его можно открыть и поправить в любом редакторе, а потом загрузить обратно. Старые копии в JSON тоже принимаются.</p>
         <div className="btn-col">
           <Button kind="secondary" onClick={copy}>Скопировать текстом</Button>
@@ -166,6 +170,15 @@ export function Profile() {
       </Section>
 
       <Section title="Вид интерфейса" plain>
+        <p className="eyebrow pad">Тема</p>
+        <Segmented value={look.theme} onChange={(v) => setAppearance({ ...look, theme: v })}
+          options={[{ value: 'auto', label: 'Авто' }, { value: 'light', label: 'Светлая' }, { value: 'dark', label: 'Тёмная' }]} />
+        {look.theme === 'auto' && <p className="muted pad">Как на устройстве{platform.kind === 'telegram' ? ' и в Telegram' : ''}.</p>}
+        <div className="group">
+          <Toggle id="contrast" label="Высокая контрастность" hint="Чётче текст, края и разделители — на всех экранах"
+            checked={look.contrast} onChange={(v) => setAppearance({ ...look, contrast: v })} />
+        </div>
+        <p className="eyebrow pad look-gap">Раскладка</p>
         <Segmented value={profile.layout ?? 'auto'} onChange={(v) => store.saveProfile({ ...profile, layout: v })}
           options={[{ value: 'auto', label: 'Авто' }, { value: 'desktop', label: 'Компьютер' }, { value: 'mobile', label: 'Телефон' }]} />
         <p className="muted pad">

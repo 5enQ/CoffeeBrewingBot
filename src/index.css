@@ -1664,5 +1664,6 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 :root[data-contrast="high"] a[href] { text-decoration: underline; text-underline-offset: 2px; }
 :root[data-contrast="high"] :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 
-/* «Вид интерфейса»: the layout choice stands apart from the theme */
-.look-gap { margin-top: 8px; }
+/* «Вид интерфейса»: a setting's name, its choice, then what it does — 12px apart, 14px from the card's edges */
+.look-pick { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; }
+.look-pick .row-hint { line-height: 1.35; }

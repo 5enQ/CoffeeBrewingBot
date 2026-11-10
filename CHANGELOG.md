@@ -6,7 +6,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Added
-- «Вид интерфейса» in the profile has a theme: «Авто» (as on the device and in Telegram), «Светлая» or «Тёмная» — a theme other than Telegram's uses the app's own colors, and Telegram's bars follow it.
+- «Вид интерфейса» in the profile is one card of three settings — «Тема», «Высокая контрастность», «Раскладка» — each with its name, its choice and a line on what it does. The theme: «Авто» (as on the device and in Telegram), «Светлая» or «Тёмная» — a theme other than Telegram's uses the app's own colors, and Telegram's bars follow it.
 - High contrast, a separate switch in the same place: black or white text, darker hints, separators and card edges you can see, stronger tinted fills, underlined links — on every screen, in both themes. Both settings belong to the device and are not synced.
 - «Мои рецепты» and «Резервная копия» in the profile fold under their titles (folded at first; the app remembers which are open). Choosing «Свой рецепт» there opens the list by itself.
 

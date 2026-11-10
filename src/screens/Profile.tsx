@@ -170,24 +170,33 @@ export function Profile() {
       </Section>
 
       <Section title="Вид интерфейса" plain>
-        <p className="eyebrow pad">Тема</p>
-        <Segmented value={look.theme} onChange={(v) => setAppearance({ ...look, theme: v })}
-          options={[{ value: 'auto', label: 'Авто' }, { value: 'light', label: 'Светлая' }, { value: 'dark', label: 'Тёмная' }]} />
-        {look.theme === 'auto' && <p className="muted pad">Как на устройстве{platform.kind === 'telegram' ? ' и в Telegram' : ''}.</p>}
-        <div className="group">
+        {/* one card: each setting is a block with its name, its choice and a line on what it does */}
+        <div className="group look-card">
+          <div className="look-pick">
+            <span className="row-label">Тема</span>
+            <Segmented value={look.theme} onChange={(v) => setAppearance({ ...look, theme: v })}
+              options={[{ value: 'auto', label: 'Авто' }, { value: 'light', label: 'Светлая' }, { value: 'dark', label: 'Тёмная' }]} />
+            <span className="row-hint">
+              {look.theme === 'auto'
+                ? `Как на устройстве${platform.kind === 'telegram' ? ' и в Telegram' : ''}.`
+                : `Всегда ${look.theme === 'light' ? 'светлая' : 'тёмная'}, что бы ни стояло на устройстве.`}
+            </span>
+          </div>
           <Toggle id="contrast" label="Высокая контрастность" hint="Чётче текст, края и разделители — на всех экранах"
             checked={look.contrast} onChange={(v) => setAppearance({ ...look, contrast: v })} />
+          <div className="look-pick">
+            <span className="row-label">Раскладка</span>
+            <Segmented value={profile.layout ?? 'auto'} onChange={(v) => store.saveProfile({ ...profile, layout: v })}
+              options={[{ value: 'auto', label: 'Авто' }, { value: 'desktop', label: 'Компьютер' }, { value: 'mobile', label: 'Телефон' }]} />
+            <span className="row-hint">
+              {(profile.layout ?? 'auto') === 'auto'
+                ? `На компьютере — меню слева и две колонки, на телефоне — вкладки внизу. Две колонки включаются, когда окно шире ${DESKTOP_MIN} px.`
+                : profile.layout === 'desktop'
+                  ? `Меню слева и две колонки на любом устройстве, когда окно шире ${DESKTOP_MIN} px.`
+                  : 'Всегда как на телефоне: вкладки внизу.'}
+            </span>
+          </div>
         </div>
-        <p className="eyebrow pad look-gap">Раскладка</p>
-        <Segmented value={profile.layout ?? 'auto'} onChange={(v) => store.saveProfile({ ...profile, layout: v })}
-          options={[{ value: 'auto', label: 'Авто' }, { value: 'desktop', label: 'Компьютер' }, { value: 'mobile', label: 'Телефон' }]} />
-        <p className="muted pad">
-          {(profile.layout ?? 'auto') === 'auto'
-            ? `На компьютере — меню слева и две колонки, на телефоне — вкладки внизу. Две колонки включаются, когда окно шире ${DESKTOP_MIN} px.`
-            : profile.layout === 'desktop'
-              ? `Меню слева и две колонки на любом устройстве, когда окно шире ${DESKTOP_MIN} px.`
-              : 'Всегда как на телефоне: вкладки внизу.'}
-        </p>
         {layoutInfo.desktopClient && layoutInfo.mode === 'mobile' && (profile.layout ?? 'auto') !== 'mobile' && (
           platform.requestFullscreen
             ? <Button kind="secondary" onClick={() => platform.requestFullscreen?.()}>Развернуть окно на весь экран</Button>

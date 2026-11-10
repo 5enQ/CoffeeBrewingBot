@@ -10,7 +10,7 @@ async def main():
         b = await p.chromium.launch()
         pg, errors = await page(b, db=DB)
         V = lambda s: pg.locator(s + ':visible')
-        row = V('.stepper:has(.stepper-label:has-text("Минерализация воды"))').first
+        row = V('.stepper:has(.stepper-label:has-text("Минерализация"))').first
         cup = V('.stepper:has(.stepper-label:has-text("TDS чашки"))').first
         await V('.method-card:has-text("V60")').click(); await pg.wait_for_timeout(200)
         await V('.recipe-tile').first.click(); await pg.wait_for_timeout(300)

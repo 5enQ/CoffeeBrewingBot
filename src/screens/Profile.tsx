@@ -1,4 +1,6 @@
 import { RATINGS_API } from '../config';
+import { Roll } from '../ui/motion';
+import { BREWS, DEVICES, PACKS, plural } from '../data/plural';
 import { fmtMass, grinderMileage, GRIND_TYPES, guessGrindType } from '../data/grind';
 import { CLOUD_LIMITS } from '../platform/types';
 import { useEffect, useState } from 'react';
@@ -76,9 +78,9 @@ export function Profile() {
       <MyCardBlock />
 
       <div className="stats">
-        <div><b>{store.brews.length}</b><span>заварок</span></div>
-        <div><b>{store.beans.length}</b><span>пачек</span></div>
-        <div><b>{gear.length}</b><span>оборудования</span></div>
+        <div><b><Roll text={String(store.brews.length)} /></b><span>{plural(store.brews.length, BREWS)}</span></div>
+        <div><b><Roll text={String(store.beans.length)} /></b><span>{plural(store.beans.length, PACKS)}</span></div>
+        <div><b><Roll text={String(gear.length)} /></b><span>{plural(gear.length, DEVICES)}</span></div>
       </div>
 
       <Section title="Мои рецепты" aside={

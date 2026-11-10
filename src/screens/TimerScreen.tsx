@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Roll, Swap } from '../ui/motion';
 import { track } from '../data/track';
 import { methodById, fmtTime, fmtNum } from '../data/methods';
 import { effectivePlan, shiftPlan, type Skip } from '../data/recipes';
@@ -257,18 +258,19 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
         </div>
       </div>
 
-      <div className={'step-now' + (running || elapsed > 0 ? ' live' : '')} key={idx}>
-        <span className="eyebrow">{elapsed === 0 ? 'Первый шаг' : done ? 'Финиш' : `Шаг ${idx + 1} из ${plan.steps.length}`}</span>
-        <h2>{done ? 'Готово' : step.title}</h2>
-        {!done && target !== null && <div className="pour-big">до <b>{fmtNum(target, 0)}</b> г</div>}
-        {!done && step.hint && <p>{step.hint}</p>}
+      {/* the card stays; what changed moves: the step number rolls, the title and hint slide in, the grams roll */}
+      <div className={'step-now' + (running || elapsed > 0 ? ' live' : '')}>
+        <span className="eyebrow">{elapsed === 0 ? 'Первый шаг' : done ? 'Финиш' : <>Шаг <Roll text={String(idx + 1)} /> из {plan.steps.length}</>}</span>
+        <h2><Swap id={done ? 'done' : idx}>{done ? 'Готово' : step.title}</Swap></h2>
+        {!done && target !== null && <div className="pour-big">до <b><Roll text={fmtNum(target, 0)} /></b> г</div>}
+        {!done && step.hint && <p><Swap id={idx}>{step.hint}</Swap></p>}
         {done && <p>Нажмите ✓, чтобы записать результат и оценить чашку.</p>}
       </div>
 
       {next && !done && (
         <div className="step-next">
           <span>Через {fmtTime(next.at - elapsed)}</span>
-          <b>{next.title}{next.to !== undefined ? ` · до ${fmtNum(draft.water * next.to, 0)} г` : ''}</b>
+          <b><Swap id={idx}>{next.title}{next.to !== undefined ? ` · до ${fmtNum(draft.water * next.to, 0)} г` : ''}</Swap></b>
         </div>
       )}
       {next && !done && elapsed > 0 && (

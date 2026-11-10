@@ -1,5 +1,5 @@
 /** UI animations: tab transitions, the active-tab "bubble", tile reordering */
-import { useCallback, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 
 export const reduceMotion = () => {
   try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
@@ -149,4 +149,70 @@ export function useFlip(ref: RefObject<HTMLElement | null>, skip?: string | null
   });
 
   return snapshot;
+}
+
+/* ---------- Changes that move ----------
+   After the craft rules of the Stageshow skill: «every change moves», «change only what changed».
+   Off with reduced motion: the new value just stands there. */
+
+const ROLL_MS = 420;
+
+/**
+ * A value that rolls: only the characters that changed move — the old one up and out, the new one in from below
+ * (down when the number went down), the last digit first; unchanged characters stand still. Right-aligned, so
+ * «95» → «100» grows to the left like a counter.
+ */
+export function Roll({ text, className }: { text: string; className?: string }) {
+  const prev = useRef(text);
+  const [pair, setPair] = useState<{ from: string; to: string; down: boolean; n: number } | null>(null);
+  useLayoutEffect(() => {
+    if (prev.current === text) return;
+    const from = prev.current;
+    prev.current = text;
+    if (reduceMotion()) return;
+    const num = (s: string) => parseFloat(s.replace(/\s/g, '').replace(',', '.').replace(/[^\d.-]/g, ''));
+    const a = num(from), b = num(text);
+    setPair((p) => ({ from, to: text, down: !Number.isNaN(a) && !Number.isNaN(b) && b < a, n: (p?.n ?? 0) + 1 }));
+    const t = setTimeout(() => setPair(null), ROLL_MS + 200);
+    return () => clearTimeout(t);
+  }, [text]);
+  if (!pair || pair.to !== text) return <span className={'roll' + (className ? ' ' + className : '')}>{text}</span>;
+  const len = Math.max(pair.from.length, text.length);
+  const A = [...pair.from.padStart(len, ' ')], B = [...text.padStart(len, ' ')];
+  return (
+    <span className={'roll' + (className ? ' ' + className : '')} aria-label={text} key={pair.n}>
+      {B.map((ch, i) => (A[i] === ch
+        ? <span key={i} aria-hidden="true">{ch === ' ' ? '' : ch}</span>
+        // the old character is the box's ::before (absolutely placed), so the element's text is only the new value
+        : <span key={i} className={'roll-d' + (pair.down ? ' down' : '')} data-c={A[i] === '\u2007' ? '' : A[i]} style={{ animationDelay: `${(len - 1 - i) * 35}ms` }} aria-hidden="true">
+            <span className="roll-new">{ch === '\u2007' ? '' : ch}</span>
+          </span>))}
+    </span>
+  );
+}
+
+/**
+ * Content that is replaced by other content of the same kind (a step's title, its hint): the old leaves upward
+ * as the new arrives from below, in the same place; the container stays.
+ */
+export function Swap({ id, children, className }: { id: string | number; children: ReactNode; className?: string }) {
+  const last = useRef<{ id: string | number; node: ReactNode }>({ id, node: children });
+  const [old, setOld] = useState<{ id: string | number; node: ReactNode } | null>(null);
+  // the old layer leaves on its own timer: re-renders in between (a running clock) must not cancel it
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  useLayoutEffect(() => {
+    if (last.current.id !== id && !reduceMotion()) {
+      setOld(last.current);
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => setOld(null), 420);
+    }
+    last.current = { id, node: children };
+  });
+  return (
+    <span className={'swap' + (className ? ' ' + className : '')}>
+      {old && <span className="swap-l out" key={'o' + old.id} aria-hidden="true">{old.node}</span>}
+      <span className={'swap-l' + (old ? ' in' : '')} key={'n' + id}>{children}</span>
+    </span>
+  );
 }

@@ -111,7 +111,7 @@ function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
       <span className="bean-card-origin">{beanMeta(b) || 'Происхождение не указано'}</span>
       <StockBar bean={b} />
       <div className="bean-card-foot">
-        <span>{b.roaster || '—'}</span>
+        <span className="one-line-text">{b.roaster || '—'}</span>
         <span className="foot-right"><RestBadge roastDate={b.roastDate} />{avgScore ? <span className="score-mini">{fmtNum(avgScore, 2)}</span> : avg ? <Stars value={Math.round(avg * 2) / 2} size={12} /> : null}</span>
       </div>
     </button>

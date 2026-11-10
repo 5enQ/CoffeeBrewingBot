@@ -1,3 +1,5 @@
+import { platform } from '../platform';
+import { Roll } from '../ui/motion';
 import { useEffect, useRef, useState } from 'react';
 import { track } from '../data/track';
 import { methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
@@ -20,8 +22,8 @@ import { PpmField } from '../ui/WaterFields';
 
 export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }) {
   const m = methodById(methodId);
-  const { recipes, saveRecipe, beans, brews, gear: myGear, custom, profile, saveProfile } = useStore();
-  const { push } = useRouter();
+  const { recipes, saveRecipe, beans, brews, gear: myGear, custom, deleteCustom, profile, saveProfile } = useStore();
+  const { push, back } = useRouter();
   const saved = recipes[m.id];
   const mine = custom.filter((r) => r.methodId === m.id);
 
@@ -163,21 +165,39 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     grindBy: grinder && grindUnit && grindValue !== undefined ? { ...(saved?.grindBy ?? {}), [`${grinder.id}:${grindUnit}`]: grindValue } : saved?.grindBy,
   });
 
+  const startTimer = () => { remember(); push({ name: 'timer', draft: draft() }); };
+  const noTimer = () => { remember(); track('brew.manual'); push({ name: 'brewEdit', draft: draft(), isNew: true }); };
+  const removeRecipe = async () => {
+    if (!active || !(await platform.confirm(`Удалить рецепт «${active.name}»? Заварки останутся в дневнике.`))) return;
+    platform.haptic('warning');
+    back(true);
+    deleteCustom(active.id);
+  };
+
   return (
     <Screen title={m.name} subtitle={choice === 'std' ? 'Стандартный рецепт' : `Рецепт: ${plan.name}${active?.author ? ` · от ${active.author.name || '@' + active.author.username}` : ''}`}
       footer={
-        <div className="footer-actions">
-          <Button kind="secondary" disabled={drip && !bean} onClick={() => { remember(); track('brew.manual'); push({ name: 'brewEdit', draft: draft(), isNew: true }); }}>Без таймера</Button>
-          <Button icon="play" wide disabled={drip && !bean} onClick={() => { remember(); push({ name: 'timer', draft: draft() }); }}>Начать</Button>
-        </div>
+        // an own recipe: delete it, change it, brew it (like a brew in the journal); «Без таймера» moves below the steps
+        active ? (
+          <div className="footer-actions">
+            <button type="button" className="round-btn" onClick={removeRecipe} aria-label="Удалить рецепт"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" /></svg></button>
+            <Button kind="secondary" icon="edit" onClick={editRecipe}>Изменить</Button>
+            <Button icon="play" wide disabled={drip && !bean} onClick={startTimer}>Заварить</Button>
+          </div>
+        ) : (
+          <div className="footer-actions">
+            <Button kind="secondary" disabled={drip && !bean} onClick={noTimer}>Без таймера</Button>
+            <Button icon="play" wide disabled={drip && !bean} onClick={startTimer}>Начать</Button>
+          </div>
+        )
       }>
       <div className="method-hero">
         <span className="method-hero-icon"><MethodIcon icon={m.icon} size={44} /></span>
         <dl className="recipe-sum">
-          <div><dt>Кофе</dt><dd>{fmtNum(dose, 2)} г</dd></div>
-          <div><dt>{waterLabel}</dt><dd>{fmtNum(water)} г</dd></div>
-          <div><dt>Пропорция</dt><dd>{fmtRatio(ratio)}</dd></div>
-          <div><dt>Время</dt><dd>{fmtTime(plan.total)}</dd></div>
+          <div><dt>Кофе</dt><dd><Roll text={fmtNum(dose, 2)} /> г</dd></div>
+          <div><dt>{waterLabel}</dt><dd><Roll text={fmtNum(water)} /> г</dd></div>
+          <div><dt>Пропорция</dt><dd><Roll text={fmtRatio(ratio)} /></dd></div>
+          <div><dt>Время</dt><dd><Roll text={fmtTime(plan.total)} /></dd></div>
         </dl>
       </div>
 
@@ -238,6 +258,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
           <li className="done"><time>{fmtTime(plan.total)}</time><div><b>Готово</b></div></li>
         </ol>
       </Section>
+      {active && <div className="pad no-timer"><button type="button" className="link-btn" disabled={drip && !bean} onClick={noTimer}>Записать без таймера</button></div>}
 
       <Section title="Если что-то не так">
         <ul className="tips">{m.tips.map((t) => <li key={t}>{t}</li>)}</ul>

@@ -27,6 +27,8 @@ export function OwnerMetrics() {
   const featTop = Math.max(1, ...feats.map((f) => f.n));
   return (
     <Section title="Метрики" aside={<button type="button" className="link-btn" onClick={load}>Обновить</button>}>
+      {/* one block with the card's inset: tiles, the 30 days, the lists — no lines between them */}
+      <div className="metric-body">
       <div className="metric-tiles">
         <div className="metric-tile"><b>{u.total}</b><span>человек всего</span><small>+{u.new7} за неделю · +{u.new30} за месяц</small></div>
         <div className="metric-tile"><b>{u.seen7}</b><span>открывали за неделю</span><small>сегодня {u.seen1} · за месяц {u.seen30}</small></div>
@@ -69,6 +71,7 @@ export function OwnerMetrics() {
           </li>
         ))}
       </ul>
+      </div>
       <p className="muted pad small-note">Карточек профиля: {m.extra.cards} · напоминаний о долгом таймере за месяц: {m.extra.reminders30} · заваривали редкие лоты: {m.extra.rare}.</p>
       <p className="muted pad small-note">Только числа: сервер не хранит, кто что нажимал, — приложение присылает «это было N раз», и оно прибавляется к общему счётчику дня. Ваши заварки и нажатия не считаются. Посещения и счётчики копятся с версии, где появились метрики; заварки — за всё время.</p>
     </Section>

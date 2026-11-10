@@ -5,6 +5,10 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Fixed
+- In Telegram, picking the theme other than Telegram's («Светлая» with Telegram dark, or the reverse) used the app's own colors. Telegram tells an app only the colors of its current theme, so the app now remembers them for each theme it has been opened in, and the other theme takes your Telegram's colors from that memory; until the app has been opened once in that Telegram theme, its own palette stands in. Telegram's top and bottom bars follow. High contrast keeps the app's own stronger palette.
+- Owner panel: the metrics (tiles, the 30 days, methods and features) sit inside the card with the same inset as everything else, without lines between them; «Подключённые и отклонённые» is a left-aligned row with the lots under it («в продаже 100 лотов» — and «1 лот», «2 лота»); «1 новый» instead of «1 новых»; the people filters stand off the line above them.
+
 ## v1.7.3 — Clear View (2026-11-10)
 
 ### Tests

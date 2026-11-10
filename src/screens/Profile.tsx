@@ -1,6 +1,6 @@
 import { RATINGS_API } from '../config';
 import { Roll } from '../ui/motion';
-import { BREWS, DEVICES, PACKS, plural } from '../data/plural';
+import { BREWS, DEVICES, LOTS, PACKS, plural } from '../data/plural';
 import { fmtMass, grinderMileage, GRIND_TYPES, guessGrindType } from '../data/grind';
 import { CLOUD_LIMITS } from '../platform/types';
 import { useEffect, useState } from 'react';
@@ -499,7 +499,7 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
   const lotsActive = rest.reduce((a, s) => a + (s.lots.active ?? 0), 0);
 
   return (
-    <Section title="Сайты обжарщиков" aside={pending.length ? <span className="tag">{pending.length} новых</span> : undefined}>
+    <Section title="Сайты обжарщиков" aside={pending.length ? <span className="tag">{pending.length} {plural(pending.length, ['новый', 'новых', 'новых'])}</span> : undefined}>
       <p className="muted pad small-note">Видно только вам как владельцу бота. Сервер открывает страницы только подключённых сайтов. Каждый сайт обходится один раз при подключении, дальше новые лоты попадают в каталог, когда их сканируют. «Обойти заново» — повторный обход вручную.</p>
       {crawl && (
         <p className={'muted pad small-note crawl-usage' + (crawl.paused ? ' warn' : '')}>
@@ -533,7 +533,10 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
       ))}
       {rest.length > 0 && (
         <button type="button" className="sites-toggle" aria-expanded={showAll} onClick={() => { setShowAll(!showAll); if (showAll && open && !pending.some((x) => x.host === open)) setOpen(null); }}>
-          <span>{showAll ? 'Свернуть' : `Подключённые и отклонённые · ${rest.length}`}{!showAll && <small className="muted"> · в продаже {lotsActive} лотов</small>}</span>
+          <span className="sites-toggle-text">
+            <span>{showAll ? 'Свернуть' : `Подключённые и отклонённые · ${rest.length}`}</span>
+            {!showAll && <small>в продаже {lotsActive} {plural(lotsActive, LOTS)}</small>}
+          </span>
           <Icon name="chevron" size={16} />
         </button>
       )}

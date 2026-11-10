@@ -5,6 +5,8 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.7.2 — Moving Parts (2026-11-10)
+
 ### Changed
 - Changes move instead of swapping. Numbers roll: only the digits that changed move, up when the number grows and down when it falls, the last digit first — in every stepper (coffee, water, temperature…), in the sums at the top of a recipe, in the counters of the journal and the profile, in the timer's step number and grams. In the timer the step card stays in place: the new step's title and hint slide in from below as the old ones leave upward, and the «next step» line does the same. Off with reduced motion.
 - Journal rows take one line under the title: the «пример» tag, then grams and time (the icon already says the method, and it is written out only for a brew with no coffee chosen; the ratio is inside the brew). On the shelf a long roaster name gives way (…) to the rest badge and the score.

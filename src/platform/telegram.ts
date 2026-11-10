@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { tiltInfo } from '../data/tilt';
+import { getAppearance, markRoot, onAppearance } from '../appearance';
 import type { Platform } from './types';
 import { createWebPlatform, requestWakeLock } from './web';
 
@@ -24,25 +25,39 @@ function loadSdk(): Promise<void> {
 
 const tg = () => (window as any).Telegram.WebApp;
 
-/** Map Telegram theme colors to the app's CSS variables */
+const THEME_VARS = ['--bg', '--card', '--fg', '--hint', '--accent', '--accent-fg', '--link', '--danger', '--sep'];
+
+/**
+ * Map Telegram theme colors to the app's CSS variables — unless the person picked the other theme or high
+ * contrast in «Вид интерфейса»: then the app's own palette is used, and Telegram's bars take its background.
+ */
 function applyTheme() {
   const p = tg().themeParams || {};
   const root = document.documentElement.style;
   const set = (name: string, value?: string) => value ? root.setProperty(name, value) : root.removeProperty(name);
-  set('--bg', p.secondary_bg_color || p.bg_color);
-  set('--card', p.section_bg_color || p.bg_color);
-  set('--fg', p.text_color);
-  set('--hint', p.hint_color || p.subtitle_text_color);
-  set('--accent', p.button_color);
-  set('--accent-fg', p.button_text_color);
-  set('--link', p.link_color);
-  set('--danger', p.destructive_text_color);
-  set('--sep', p.section_separator_color);
-  document.documentElement.dataset.theme = tg().colorScheme;
+  const look = getAppearance();
+  const scheme: 'light' | 'dark' = tg().colorScheme;
+  const own = look.contrast || (look.theme !== 'auto' && look.theme !== scheme);
+  markRoot(scheme);
+  if (own) {
+    THEME_VARS.forEach((v) => root.removeProperty(v));
+  } else {
+    set('--bg', p.secondary_bg_color || p.bg_color);
+    set('--card', p.section_bg_color || p.bg_color);
+    set('--fg', p.text_color);
+    set('--hint', p.hint_color || p.subtitle_text_color);
+    set('--accent', p.button_color);
+    set('--accent-fg', p.button_text_color);
+    set('--link', p.link_color);
+    set('--danger', p.destructive_text_color);
+    set('--sep', p.section_separator_color);
+  }
   try {
-    tg().setHeaderColor?.('secondary_bg_color');
-    tg().setBackgroundColor?.('secondary_bg_color');
-    tg().setBottomBarColor?.('secondary_bg_color');
+    // the bars match the page: Telegram's own color, or ours as a hex once it is applied
+    const bg = own ? getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() : 'secondary_bg_color';
+    tg().setHeaderColor?.(bg);
+    tg().setBackgroundColor?.(bg);
+    tg().setBottomBarColor?.(bg);
   } catch { /* old clients */ }
 }
 
@@ -66,6 +81,7 @@ export function createTelegramPlatform(): Platform {
       if (can('7.7')) app.disableVerticalSwipes(); // swiping down does not close the app while scrolling
       applyTheme();
       app.onEvent('themeChanged', applyTheme);
+      onAppearance(applyTheme);
       app.BackButton.onClick(onBack);
     },
 

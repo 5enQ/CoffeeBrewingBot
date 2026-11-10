@@ -4,7 +4,7 @@ import { contributeCoffee, filledLabels, lookupCode, mergeEmpty } from '../data/
 import { allMethods, methodById, fmtRatio, fmtNum } from '../data/methods';
 import { beanSca, brewBeanIds } from '../data/cva';
 import { emptyBean, isDrip, newDripItem, uid, useStore, type Bean, type BlendPart, type DripItem } from '../data/store';
-import { beanStock, dripItemLeft, dripTotal, isFinished, DRIP_COUNTS, PACK_SIZES } from '../data/stock';
+import { beanStock, dripItemLeft, dripTotal, finishedOn, isFinished, DRIP_COUNTS, PACK_SIZES } from '../data/stock';
 import { platform } from '../platform';
 import { useBackGuard, useRouter, useSelected } from '../router';
 import { MethodIcon, Icon } from '../ui/icons';
@@ -112,7 +112,7 @@ function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
       <StockBar bean={b} />
       <div className="bean-card-foot">
         <span className="one-line-text">{b.roaster || '—'}</span>
-        <span className="foot-right"><RestBadge roastDate={b.roastDate} />{avgScore ? <span className="score-mini">{fmtNum(avgScore, 2)}</span> : avg ? <Stars value={Math.round(avg * 2) / 2} size={12} /> : null}</span>
+        <span className="foot-right"><RestBadge roastDate={b.roastDate} until={finishedOn(b, beanStock(b, brews), brews)} />{avgScore ? <span className="score-mini">{fmtNum(avgScore, 2)}</span> : avg ? <Stars value={Math.round(avg * 2) / 2} size={12} /> : null}</span>
       </div>
     </button>
   );
@@ -195,7 +195,7 @@ export function BeanDetail({ id }: { id: string }) {
   const saveFix = () => {
     const n = parseFloat((fix ?? '').replace(',', '.'));
     if (!isNaN(n) && n >= 0) {
-      saveBean({ ...b, adjust: drip ? Math.round(n) - (st.total - st.used) : Math.round((n - (st.total - st.used)) * 10) / 10, finished: n <= 0 });
+      saveBean({ ...b, adjust: drip ? Math.round(n) - (st.total - st.used) : Math.round((n - (st.total - st.used)) * 10) / 10, finished: n <= 0, finishedAt: n <= 0 ? Date.now() : undefined });
       platform.haptic('success');
     }
     setFix(null);
@@ -203,11 +203,11 @@ export function BeanDetail({ id }: { id: string }) {
   const toggleFinished = async () => {
     if (finished && st.total > 0 && st.left <= 0) { setFix(''); return; } // back on the shelf — weigh the remainder first
     if (!finished && !(await platform.confirm(drip ? 'Отметить коробку законченной? Она переедет в раздел «Допито».' : 'Отметить пачку допитой? Она переедет в раздел «Допито».'))) return;
-    saveBean({ ...b, finished: !finished });
+    saveBean({ ...b, finished: !finished, finishedAt: finished ? undefined : Date.now() });
     platform.haptic('success');
   };
   const buyAgain = () => {
-    const { id: _id, createdAt: _c, roastDate: _r, adjust: _a, finished: _f, sample: _s, ...rest } = b;
+    const { id: _id, createdAt: _c, roastDate: _r, adjust: _a, finished: _f, finishedAt: _fa, sample: _s, ...rest } = b;
     // an assorted copy gets new kind ids: brews of the old box do not belong to them
     push({ name: 'beanEdit', bean: { ...emptyBean(), ...rest, drips: rest.drips?.map((d) => ({ ...d, id: uid() })) }, isNew: true });
   };
@@ -233,7 +233,7 @@ export function BeanDetail({ id }: { id: string }) {
     <Screen title={beanTitle(b)} subtitle={beanOrigin(b)}
       action={<button type="button" className="icon-btn" onClick={() => push({ name: 'beanEdit', bean: b, isNew: false })} aria-label="Изменить"><Icon name="edit" /></button>}>
       <div className="bean-hero">
-        <RestBadge roastDate={b.roastDate} />
+        <RestBadge roastDate={b.roastDate} until={finishedOn(b, st, brews)} />
         {b.packNotes && <p className="pack-notes">{b.packNotes}</p>}
       </div>
 

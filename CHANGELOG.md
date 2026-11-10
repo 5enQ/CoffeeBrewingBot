@@ -5,6 +5,33 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.7.3 — Clear View (2026-11-10)
+
+### Tests
+- **Страж** (`npm run guard`): all checks of the project in one run — app and server types, unit tests, server tests, the build, every browser test and the UI autotests — with a summary of what passed. A release is merged only when Страж is all green.
+- UI autotests (`tests/e2e/ui_snapshot.py`): seven main screens — brewing, a method, the journal, a brew, the shelf, a pack, the profile — in light, dark and high contrast, and two of them on desktop, are opened with the same data at a frozen moment, and every visible element is measured: font, color, size, padding, corners, the gap to its neighbor. Any difference from the saved baseline is listed by place («div.stats › span.roll "4": font 22px → 12px»), so a change that touches more than it meant fails the run. They check themselves on the v1.7.2 slip (shrunken stat numbers) every run.
+
+### Added
+- «Вид интерфейса» in the profile is one card of three settings — «Тема», «Высокая контрастность», «Раскладка» — each with its name, its choice and a line on what it does. The theme: «Авто» (as on the device and in Telegram), «Светлая» or «Тёмная» — a theme other than Telegram's uses the app's own colors, and Telegram's bars follow it.
+- High contrast, a separate switch in the same place: black or white text, darker hints, separators and card edges you can see, stronger tinted fills, underlined links — on every screen, in both themes. Both settings belong to the device and are not synced.
+- «Мои рецепты» and «Резервная копия» in the profile fold under their titles (folded at first; the app remembers which are open). Choosing «Свой рецепт» there opens the list by itself.
+
+### Changed
+- In the profile «Мои рецепты» comes after «Моё оборудование».
+- Sound in the timer is a speaker icon (crossed out when off) instead of the words «Звук вкл».
+- A brew written down without the timer starts with the coffee and the parameters — nothing has filled them in yet — then the rating and the taste; after the timer the order stays as it was.
+- A new profile shows no row of zero counters; they appear with the first brew, pack or device.
+- The journal without cupping shows two tiles; the «лучший балл» tile appears with the first cupping.
+
+### Fixed
+- The buttons under a brew and an own recipe («Изменить», «Повторить», «Заварить») ran past the right edge — on a 320 px phone «Повторить» was cut in half. They share the row now; on a narrow phone «Изменить» keeps only its pencil, round like the delete button.
+- On a narrow phone the timer's next step («Через 0:42 · Первый пролив · до 150 г») broke into four pieces; it keeps one line, the step's name gives way (…), the grams stay whole.
+- Gray hints were a little too faint on the page background in the light theme (4.2:1); they are a shade darker (4.65:1, 5.3:1 on cards), within the accessibility norm.
+- Small controls answer to a finger-sized area without looking bigger: the taste dots, the rating stars (also a little larger), text links like «Скрыть», «Взвесить», «Добавить», the header icons, a pack's scale dots, and the cupping form's 1–9 dots and cups.
+- The numbers in the journal's and the profile's tiles were small since v1.7.2 (the label style caught the rolling digits).
+- A finished pack in «Допито» keeps the days after roast it had when it was finished, in a quiet gray tag, instead of counting on (the moment is saved when a pack is marked finished or runs out; older packs take the date of their last brew).
+- Switching to and from the Profile tab with the lighthouse card stalled: the light on the waves ran as 520 separate animations, and the copy of the tab sliding away started a second live scene. The crests now light up in 72 groups, and the sliding copy stands still — about 4–5 times less work on a slow phone.
+
 ## v1.7.2 — Moving Parts (2026-11-10)
 
 ### Changed

@@ -227,8 +227,9 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   return (
     <Screen title={draft.plan ? `${m.name} · ${draft.plan.name}` : m.name} subtitle={`${m.id === 'drip' ? '' : `${fmtNum(draft.dose, 2)} г · `}${fmtNum(draft.water)} г · ${draft.temp ? fmtNum(draft.temp) + '°C' : 'холодная вода'}`}
       action={
-        <button type="button" className="icon-btn text" onClick={() => setSound((s) => !s)} aria-pressed={sound}>
-          {sound ? 'Звук вкл' : 'Звук выкл'}
+        <button type="button" className="icon-btn" onClick={() => setSound((s) => !s)} aria-pressed={sound} aria-label="Звук"
+          title={sound ? 'Звук включён' : 'Звук выключен'}>
+          <Icon name={sound ? 'sound' : 'sound-off'} />
         </button>
       }
       footer={
@@ -270,7 +271,8 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
       {next && !done && (
         <div className="step-next">
           <span>Через {fmtTime(next.at - elapsed)}</span>
-          <b><Swap id={idx}>{next.title}{next.to !== undefined ? ` · до ${fmtNum(draft.water * next.to, 0)} г` : ''}</Swap></b>
+          {/* one line: the step's name gives way (…), the grams never wrap */}
+          <b><Swap id={idx}><span className="step-next-title">{next.title}</span>{next.to !== undefined && <span className="step-next-g">{` · до ${fmtNum(draft.water * next.to, 0)} г`}</span>}</Swap></b>
         </div>
       )}
       {next && !done && elapsed > 0 && (

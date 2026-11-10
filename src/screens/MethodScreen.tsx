@@ -166,7 +166,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   });
 
   const startTimer = () => { remember(); push({ name: 'timer', draft: draft() }); };
-  const noTimer = () => { remember(); track('brew.manual'); push({ name: 'brewEdit', draft: draft(), isNew: true }); };
+  const noTimer = () => { remember(); track('brew.manual'); push({ name: 'brewEdit', draft: draft(), isNew: true, manual: true }); };
   const removeRecipe = async () => {
     if (!active || !(await platform.confirm(`Удалить рецепт «${active.name}»? Заварки останутся в дневнике.`))) return;
     platform.haptic('warning');

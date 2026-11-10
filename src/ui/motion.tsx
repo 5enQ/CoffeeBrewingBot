@@ -1,5 +1,5 @@
 /** UI animations: tab transitions, the active-tab "bubble", tile reordering */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createContext, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 
 export const reduceMotion = () => {
   try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
@@ -13,6 +13,9 @@ const EASE = 'cubic-bezier(0.3, 0.7, 0.2, 1)';
  * Tab contents: on switch the new tab slides in from the side, the old one slides out the other way.
  * Direction follows the tab order in the bottom bar.
  */
+/** true inside the copy of a tab that is sliding away: heavy decorations stand still there */
+export const LeavingCtx = createContext(false);
+
 export function TabPages<T extends string>({ tab, order, render }: { tab: T; order: T[]; render(t: T): ReactNode }) {
   const [leaving, setLeaving] = useState<{ tab: T; dir: number; scroll: number } | null>(null);
   const [prevTab, setPrevTab] = useState(tab);
@@ -51,7 +54,9 @@ export function TabPages<T extends string>({ tab, order, render }: { tab: T; ord
   return (
     <div className={'tab-pages' + (leaving ? ' moving' : '')}>
       {leaving && leaving.tab !== tab && (
-        <div className="tab-page leaving" key={leaving.tab} ref={outRef} aria-hidden="true" inert>{render(leaving.tab)}</div>
+        <div className="tab-page leaving" key={leaving.tab} ref={outRef} aria-hidden="true" inert>
+          <LeavingCtx.Provider value={true}>{render(leaving.tab)}</LeavingCtx.Provider>
+        </div>
       )}
       <div className="tab-page" key={tab} ref={inRef}>{render(tab)}</div>
     </div>

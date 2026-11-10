@@ -22,7 +22,10 @@ function lighthouseParts() {
   const L = world(284, 192); // the foot of the tower
   let seed = 5;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  let water = '';
+  // crests are grouped by the moment the beam passes them: one animated group per 1/BINS of the turn instead of
+  // one animation per crest — 520 animated rects made switching to and from the Profile tab stall (v1.7.3)
+  const BINS = 72;
+  const bins: string[] = Array.from({ length: BINS }, () => '');
   for (let k = 0; k < 520; k++) {
     const y = H + 3 + Math.pow(rnd(), 1.6) * 84, x = rnd() * 360;
     if (x > 236 && y > 186) continue; // the cliff
@@ -31,8 +34,12 @@ function lighthouseParts() {
     const t = ((((180 - ang) / 360) % 1) + 1) % 1;           // the moment of the turn the beam points there
     const bright = Math.max(0.25, Math.min(1, 2.2 / (1 + Math.hypot(dx, dz) / 30))) * (dz < -2 ? 0.4 : 1);
     const len = (2 + (y - H) * 0.1) * (0.7 + rnd() * 0.8);
-    water += `<rect x="${f(x - len / 2)}" y="${f(y)}" width="${f(len)}" height="${f(0.6 + (y - H) * 0.012, 2)}" rx=".5" fill="#fff1b8" fill-opacity="${f(bright, 2)}" style="opacity:0;animation:bg-lh-crest ${T}s linear infinite calc(var(--lh-t, 0s) + ${f(-(1 - t) * T, 2)}s)"/>`;
+    bins[Math.round(t * BINS) % BINS] += `<rect x="${f(x - len / 2)}" y="${f(y)}" width="${f(len)}" height="${f(0.6 + (y - H) * 0.012, 2)}" rx=".5" fill-opacity="${f(bright, 2)}"/>`;
   }
+  let water = '';
+  bins.forEach((rects, i) => {
+    if (rects) water += `<g class="lh-crests" fill="#fff1b8" style="opacity:0;animation:bg-lh-crest ${T}s linear infinite calc(var(--lh-t, 0s) + ${f(-(1 - i / BINS) * T, 2)}s)">${rects}</g>`;
+  });
   // the lantern's own reflection straight down the water toward us, shimmering (each period divides T)
   const SHIM = [1.4, 1.75, 2, 2.8, 3.5];
   for (let k = 0; k < 26; k++) {

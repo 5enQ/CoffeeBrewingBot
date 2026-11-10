@@ -52,6 +52,17 @@ export function beanStock(bean: Bean, brews: Brew[]): Stock {
 /** Pack is finished: marked manually or out of weight */
 export const isFinished = (bean: Bean, st: Stock) => !!bean.finished || (st.total > 0 && st.left <= 0);
 
+/**
+ * When a finished pack was finished: the moment it was marked (finishedAt), else its last brew (a pack that ran out,
+ * or one marked before the moment was kept). Null while it is on the shelf.
+ */
+export const finishedOn = (bean: Bean, st: Stock, brews: Pick<Brew, 'date' | 'cva' | 'beanId'>[]): number | null => {
+  if (!isFinished(bean, st)) return null;
+  if (bean.finished && bean.finishedAt) return bean.finishedAt;
+  const last = brews.filter((b) => brewBeanIds(b).includes(bean.id)).reduce((m, b) => Math.max(m, b.date), 0);
+  return last || bean.finishedAt || null;
+};
+
 /** Remaining count of one drip kind in an assorted box */
 export function dripItemLeft(bean: Bean, itemId: string, brews: Brew[]) {
   const item = bean.drips?.find((d) => d.id === itemId);

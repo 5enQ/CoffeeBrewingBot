@@ -43,7 +43,7 @@ Server (Cloudflare Worker) locally: `cd worker && npm i && echo 'BOT_TOKEN="123:
   - Never merge back (`main` → `test` → `dev`): `ROADMAP.md` would be deleted in `dev`.
 - Before merging: set `"version"` in `package.json` (semantic versioning: `X` — major changes or data format breaks, `Y` — new features, `Z` — fixes only) and turn **Unreleased** in [`CHANGELOG.md`](CHANGELOG.md) into `## vX.Y.Z — Title (YYYY-MM-DD)`. The title is used as the release name everywhere (`scripts/release-info.mjs`).
 - The running versions are visible in the app (Profile → "О приложении": app and server versions), at `https://brewbook-ratings.brewbook.workers.dev/version`, and in the Cloudflare dashboard (Workers → brewbook-ratings → Deployments: tag `v1.1.0` with the release title).
-- Before a release the change set is tested: unit tests (parser, scales), browser end-to-end tests on mobile/desktop and light/dark themes, a two-device sync simulation, backup round trip, a local server run and a live check of the roaster-page parser.
+- **Страж** (`npm run guard`, `tests/guard.sh`) is the set of checks every release passes before it is merged into `test` and again before `main`: app and server types, unit tests (parser, scales…), server tests on a local copy of the worker, the build, the browser end-to-end tests (mobile/desktop, light/dark, two-device sync, backup round trip…) and the UI autotests (`tests/e2e/ui_snapshot.py`: every visible element of the main screens compared with a saved baseline, so only intended changes pass). It runs in the development environment, never against the main server. A release goes out only when Страж is all green; a new kind of check is added to it as a stage.
 
 ## Localization
 

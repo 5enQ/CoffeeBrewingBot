@@ -36,7 +36,7 @@ function renderRoute(r: Route) {
     case 'method': if (r.methodId === 'cupping') return <CuppingSetup beanId={r.beanId} from={r.from} />;
       return <MethodScreen methodId={r.methodId} beanId={r.beanId} from={r.from} recipeId={r.recipeId} />;
     case 'timer': return <TimerScreen draft={r.draft} resume={r.resume} />;
-    case 'brewEdit': return <BrewEdit draft={r.draft} isNew={r.isNew} openCupping={r.openCupping} />;
+    case 'brewEdit': return <BrewEdit draft={r.draft} isNew={r.isNew} openCupping={r.openCupping} manual={r.manual} />;
     case 'brew': return <BrewDetail id={r.id} fresh={r.fresh} />;
     case 'bean': return <BeanDetail id={r.id} />;
     case 'beanEdit': return <BeanEdit bean={r.bean} isNew={r.isNew} scanOnOpen={r.scanOnOpen} />;

@@ -412,11 +412,11 @@
 "h": 50,
 "opacity": "1",
 "outline": "",
-"pad": "0px 18px",
+"pad": "0px 16px",
 "radius": "13px",
 "shadow": "",
-"w": 150.5,
-"x": 230.5
+"w": 147.5,
+"x": 226.5
 },
 "div.footer › div.footer-actions › button.btn.btn-secondary": {
 "bg": "color(srgb 0.407843 0.760784 0.580392 / 0.13)",
@@ -425,10 +425,10 @@
 "h": 50,
 "opacity": "1",
 "outline": "",
-"pad": "0px 18px",
+"pad": "0px 16px",
 "radius": "13px",
 "shadow": "",
-"w": 144.5,
+"w": 140.5,
 "x": 76
 },
 "div.footer › div.footer-actions › button.round-btn": {
@@ -460,7 +460,7 @@
 "shadow": "",
 "tt": "none",
 "w": 86.5,
-"x": 46
+"x": 44.5
 },
 "div.footer-actions › button.btn.btn-primary.wide › svg": {
 "bg": "rgba(0, 0, 0, 0)",
@@ -474,7 +474,7 @@
 "shadow": "",
 "stroke": "rgb(12, 25, 18) 1.8px rgb(12, 25, 18)",
 "w": 20,
-"x": 18
+"x": 16.5
 },
 "div.footer-actions › button.btn.btn-secondary › span \"Изменить\"": {
 "align": "center",
@@ -492,7 +492,7 @@
 "shadow": "",
 "tt": "none",
 "w": 80.5,
-"x": 46
+"x": 44
 },
 "div.footer-actions › button.btn.btn-secondary › svg": {
 "bg": "rgba(0, 0, 0, 0)",
@@ -506,7 +506,7 @@
 "shadow": "",
 "stroke": "rgb(104, 194, 148) 1.8px rgb(104, 194, 148)",
 "w": 20,
-"x": 18
+"x": 16
 },
 "div.footer-actions › button.round-btn › svg": {
 "bg": "rgba(0, 0, 0, 0)",

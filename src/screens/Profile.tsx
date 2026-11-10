@@ -80,11 +80,12 @@ export function Profile() {
     <Screen title="Профиль" root>
       <MyCardBlock />
 
-      <div className="stats">
+      {/* the counters appear with the first brew, pack or device: three zeros say nothing */}
+      {store.brews.length + store.beans.length + gear.length > 0 && <div className="stats">
         <div><b><Roll text={String(store.brews.length)} /></b><span>{plural(store.brews.length, BREWS)}</span></div>
         <div><b><Roll text={String(store.beans.length)} /></b><span>{plural(store.beans.length, PACKS)}</span></div>
         <div><b><Roll text={String(gear.length)} /></b><span>{plural(gear.length, DEVICES)}</span></div>
-      </div>
+      </div>}
 
       <Section title="Моё оборудование" aside={
         <button type="button" className="icon-btn" onClick={() => addGear('grinder')} aria-label="Добавить оборудование"><Icon name="plus" /></button>

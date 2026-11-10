@@ -4,7 +4,7 @@
   --bg: #eff1ec;          /* background — filter paper with a green tint */
   --card: #ffffff;
   --fg: #1b211d;
-  --hint: #6b756e;
+  --hint: #646e67;
   --accent: #2c6a4c;      /* coffee tree leaf */
   --accent-fg: #ffffff;
   --link: #2c6a4c;
@@ -116,6 +116,14 @@ button { cursor: pointer; }
   border-top: 1px solid var(--sep);
 }
 .footer-actions { display: flex; gap: 10px; align-items: center; max-width: 640px; margin: 0 auto; }
+/* the buttons share the row and never push past its edge; on a narrow phone the secondary one keeps only its icon,
+   round like the delete button beside it (its words stay for screen readers) */
+.footer-actions > .btn { min-width: 0; padding: 0 16px; }
+.footer-actions > .btn > span { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 374px) {
+  .footer-actions > .btn-secondary:has(svg) { flex: 0 0 50px; width: 50px; padding: 0; border-radius: 50%; }
+  .footer-actions > .btn-secondary:has(svg) > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+}
 
 /* ---------- Tabs ---------- */
 /* the page's own scrollbar where it shows (a mouse, a desktop client): thin, and it stops above the bar at the
@@ -389,7 +397,12 @@ button.row:active { background: var(--fg-soft); }
 .pour-big b { font-size: 40px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .step-now p { margin: 6px 0 0; color: var(--hint); }
 .step-next { display: flex; justify-content: space-between; gap: 12px; padding: 0 6px; color: var(--hint); font-size: 15px; }
-.step-next b { color: var(--fg); font-weight: 600; text-align: right; }
+.step-next > span { white-space: nowrap; flex-shrink: 0; }
+.step-next b { color: var(--fg); font-weight: 600; text-align: right; min-width: 0; display: flex; justify-content: flex-end; }
+.step-next .swap { grid-template-columns: minmax(0, auto); min-width: 0; }
+.step-next .swap-l { display: flex; justify-content: flex-end; min-width: 0; white-space: nowrap; }
+.step-next-title { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.step-next-g { flex-shrink: 0; }
 .step-skip { display: flex; width: fit-content; align-items: center; gap: 4px; margin: 10px auto 0; padding: 9px 14px 9px 18px; border: 0; border-radius: 999px;
   background: var(--chip, rgba(127,127,127,0.12)); color: var(--accent); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .step-skip:active { transform: scale(0.97); }
@@ -930,7 +943,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .star-half.left { left: 0; }
 .star-half.right { right: 0; }
 .star-half:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 4px; }
-.stars.editable { gap: 4px; }
+.stars.editable { gap: 6px; }
 
 /* ---------- Cupping: big tile and CVA ---------- */
 .method-card.wide { grid-column: 1 / -1; width: 100%; background: linear-gradient(100deg, color-mix(in srgb, var(--cherry) 13%, var(--card)), var(--card) 70%); }
@@ -1667,3 +1680,13 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 /* «Вид интерфейса»: a setting's name, its choice, then what it does — 12px apart, 14px from the card's edges */
 .look-pick { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; }
 .look-pick .row-hint { line-height: 1.35; }
+
+/* Hit areas: small controls answer to a finger-sized area (about 44 px) around them without looking any bigger.
+   The area is an invisible ::before; it stops halfway to a neighbor so two controls never share a spot. */
+:where(.link-btn, .icon-btn) { position: relative; }
+.link-btn::before { content: ''; position: absolute; inset: -8px -6px; }
+.icon-btn::before { content: ''; position: absolute; inset: -2px; }
+.dots-row button::before { content: ''; position: absolute; inset: -10px -5px; border-radius: 0; }
+.star-half::before { content: ''; position: absolute; inset: -6px 0; }
+.star-half.left::before { left: -3px; }
+.star-half.right::before { right: -3px; }

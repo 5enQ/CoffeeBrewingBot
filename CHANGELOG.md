@@ -16,9 +16,16 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ### Changed
 - In the profile «Мои рецепты» comes after «Моё оборудование».
+- Sound in the timer is a speaker icon (crossed out when off) instead of the words «Звук вкл».
+- A brew written down without the timer starts with the coffee and the parameters — nothing has filled them in yet — then the rating and the taste; after the timer the order stays as it was.
+- A new profile shows no row of zero counters; they appear with the first brew, pack or device.
 - The journal without cupping shows two tiles; the «лучший балл» tile appears with the first cupping.
 
 ### Fixed
+- The buttons under a brew and an own recipe («Изменить», «Повторить», «Заварить») ran past the right edge — on a 320 px phone «Повторить» was cut in half. They share the row now; on a narrow phone «Изменить» keeps only its pencil, round like the delete button.
+- On a narrow phone the timer's next step («Через 0:42 · Первый пролив · до 150 г») broke into four pieces; it keeps one line, the step's name gives way (…), the grams stay whole.
+- Gray hints were a little too faint on the page background in the light theme (4.2:1); they are a shade darker (4.65:1, 5.3:1 on cards), within the accessibility norm.
+- Small controls answer to a finger-sized area without looking bigger: the taste dots, the rating stars (also a little larger), text links like «Скрыть», «Взвесить», «Добавить», and the header icons.
 - The numbers in the journal's and the profile's tiles were small since v1.7.2 (the label style caught the rolling digits).
 - A finished pack in «Допито» keeps the days after roast it had when it was finished, in a quiet gray tag, instead of counting on (the moment is saved when a pack is marked finished or runs out; older packs take the date of their last brew).
 - Switching to and from the Profile tab with the lighthouse card stalled: the light on the waves ran as 520 separate animations, and the copy of the tab sliding away started a second live scene. The crests now light up in 72 groups, and the sliding copy stands still — about 4–5 times less work on a slow phone.

@@ -25,8 +25,10 @@ async def main():
             if scene == 'lighthouse':
                 t = await card.locator('.pcard-scene').evaluate("e => e.style.getPropertyValue('--lh-t')")
                 check(t.startswith('-'), f'lighthouse: the CSS clock is set to the turn ({t})')
-                crests = await card.locator('.pcard-scene rect[style*="bg-lh-crest"]').count()
+                crests = await card.locator('.pcard-scene .lh-crests rect').count()
                 check(crests > 100, f'lighthouse: the light runs over the waves ({crests} crests)')
+                groups = await card.locator('.pcard-scene [style*="bg-lh-crest"]').count()
+                check(0 < groups <= 80, f'lighthouse: the crests light up in groups, not one animation each ({groups})')
             # ids are unique per card, so a second copy on the page cannot steal the gradients
             dup = await pg.evaluate("() => { const ids = [...document.querySelectorAll('.pcard-scene [id]')].map((e) => e.id); return ids.length - new Set(ids).size; }")
             check(dup == 0, f'{scene}: no repeated ids ({dup})')

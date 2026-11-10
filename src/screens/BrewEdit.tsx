@@ -17,7 +17,7 @@ import { healthWarning } from '../data/health';
 import { CupTdsField, PpmField } from '../ui/WaterFields';
 
 
-export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: boolean; openCupping?: boolean }) {
+export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; isNew: boolean; openCupping?: boolean; manual?: boolean }) {
   const { saveBrew, gear: myGear, brews } = useStore();
   const { setTab, push, back } = useRouter();
   const [b, setB] = useState<Brew>(draft);
@@ -90,54 +90,10 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
     );
   }
 
-  return (
-    <Screen title={isNew ? 'Как получилось?' : 'Редактировать'} subtitle={`${m.name} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
-      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty}>Сохранить</Button></div>}>
-
-      {!isCupping && (
-        <Section title="Оценка" plain>
-          <div className="rating-card">
-            <Stars value={b.rating} onChange={(rating) => set({ rating })} size={36} />
-            <span>{ratingLabel(b.rating)}</span>
-          </div>
-        </Section>
-      )}
-
-      <Section title="Вкус">
-        <Dots label="Кислотность" left="плоско" right="ярко" value={b.taste.acidity} onChange={(v) => set({ taste: { ...b.taste, acidity: v } })} />
-        <Dots label="Сладость" left="нет" right="много" value={b.taste.sweetness} onChange={(v) => set({ taste: { ...b.taste, sweetness: v } })} />
-        <Dots label="Горечь" left="нет" right="сильная" value={b.taste.bitterness} onChange={(v) => set({ taste: { ...b.taste, bitterness: v } })} />
-        <Dots label="Тело" left="водянистое" right="плотное" value={b.taste.body} onChange={(v) => set({ taste: { ...b.taste, body: v } })} />
-      </Section>
-
-      {!isCupping && (
-        <Section title="Измерения">
-          <CupTdsField brew={b} onChange={(patch) => set(patch)} />
-        </Section>
-      )}
-
-      <Section title="Дескрипторы" aside={b.descriptors.length ? <span className="count">{b.descriptors.length}</span> : undefined} plain>
-        {b.descriptors.length > 0 && (
-          <div className="picked"><Chips options={b.descriptors} value={b.descriptors} onToggle={toggleDesc} toneOf={toneOf} /></div>
-        )}
-        <div className="wheel">
-          {FLAVOR_WHEEL.map((g) => (
-            <div key={g.group} className={'wheel-group' + (openGroup === g.group ? ' open' : '')} data-tone={g.tone}>
-              <button type="button" className="wheel-head" onClick={() => setOpenGroup(openGroup === g.group ? null : g.group)} aria-expanded={openGroup === g.group}>
-                <span className="swatch" />{g.group}
-                {g.items.some((i) => b.descriptors.includes(i)) && <span className="count">{g.items.filter((i) => b.descriptors.includes(i)).length}</span>}
-              </button>
-              {openGroup === g.group && <Chips options={g.items} value={b.descriptors} onToggle={toggleDesc} toneOf={toneOf} />}
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Заметки">
-        <textarea id="brew-notes" className="notes" rows={3} value={b.notes} placeholder="Что изменить в следующий раз?"
-          onChange={(e) => set({ notes: e.target.value })} />
-      </Section>
-
+  // the coffee and the parameters: written down by hand they come first (nothing filled them in yet),
+  // after the timer they are already right and wait below the tasting
+  const setup = (
+    <>
       {b.methodId === 'drip' ? (
         <Section title="Дрип" plain>
           <DripPicker value={b.beanId} dripId={b.dripId} onChange={(beanId, dripId) => set({ beanId, dripId })} />
@@ -179,6 +135,60 @@ export function BrewEdit({ draft, isNew, openCupping }: { draft: Brew; isNew: bo
         <Field label="Время" id="edit-time" value={timeText} inputMode="numeric" placeholder="3:10"
           onChange={(e) => { setTimeText(e.target.value); const t = parseTime(e.target.value); if (t !== null) set({ time: t }); }} />
       </Section>
+    </>
+  );
+
+  return (
+    <Screen title={isNew ? 'Как получилось?' : 'Редактировать'} subtitle={`${m.name} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
+      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty}>Сохранить</Button></div>}>
+
+      {manual && setup}
+
+      {!isCupping && (
+        <Section title="Оценка" plain>
+          <div className="rating-card">
+            <Stars value={b.rating} onChange={(rating) => set({ rating })} size={40} />
+            <span>{ratingLabel(b.rating)}</span>
+          </div>
+        </Section>
+      )}
+
+      <Section title="Вкус">
+        <Dots label="Кислотность" left="плоско" right="ярко" value={b.taste.acidity} onChange={(v) => set({ taste: { ...b.taste, acidity: v } })} />
+        <Dots label="Сладость" left="нет" right="много" value={b.taste.sweetness} onChange={(v) => set({ taste: { ...b.taste, sweetness: v } })} />
+        <Dots label="Горечь" left="нет" right="сильная" value={b.taste.bitterness} onChange={(v) => set({ taste: { ...b.taste, bitterness: v } })} />
+        <Dots label="Тело" left="водянистое" right="плотное" value={b.taste.body} onChange={(v) => set({ taste: { ...b.taste, body: v } })} />
+      </Section>
+
+      {!isCupping && (
+        <Section title="Измерения">
+          <CupTdsField brew={b} onChange={(patch) => set(patch)} />
+        </Section>
+      )}
+
+      <Section title="Дескрипторы" aside={b.descriptors.length ? <span className="count">{b.descriptors.length}</span> : undefined} plain>
+        {b.descriptors.length > 0 && (
+          <div className="picked"><Chips options={b.descriptors} value={b.descriptors} onToggle={toggleDesc} toneOf={toneOf} /></div>
+        )}
+        <div className="wheel">
+          {FLAVOR_WHEEL.map((g) => (
+            <div key={g.group} className={'wheel-group' + (openGroup === g.group ? ' open' : '')} data-tone={g.tone}>
+              <button type="button" className="wheel-head" onClick={() => setOpenGroup(openGroup === g.group ? null : g.group)} aria-expanded={openGroup === g.group}>
+                <span className="swatch" />{g.group}
+                {g.items.some((i) => b.descriptors.includes(i)) && <span className="count">{g.items.filter((i) => b.descriptors.includes(i)).length}</span>}
+              </button>
+              {openGroup === g.group && <Chips options={g.items} value={b.descriptors} onToggle={toggleDesc} toneOf={toneOf} />}
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Заметки">
+        <textarea id="brew-notes" className="notes" rows={3} value={b.notes} placeholder="Что изменить в следующий раз?"
+          onChange={(e) => set({ notes: e.target.value })} />
+      </Section>
+
+      {!manual && setup}
 
       <Section title="Оборудование" plain>
         <GearPicker methodId={b.methodId} value={b.gear ?? []} onChange={(gear) => set({ gear })} />

@@ -35,7 +35,7 @@ export function MethodIcon({ icon, size = 32, weight }: { icon: IconKey; size?: 
   );
 }
 
-type UiIcon = 'brew' | 'journal' | 'beans' | 'more' | 'profile' | 'share' | 'gear' | 'medal' | 'copy' | 'back' | 'plus' | 'scan' | 'chevron' | 'play' | 'pause' | 'reset' | 'check' | 'star' | 'trash' | 'repeat' | 'edit' | 'camera' | 'image' | 'close' | 'lock' | 'unlock' | 'pin' | 'undo' | 'home' | 'search';
+type UiIcon = 'brew' | 'journal' | 'beans' | 'more' | 'profile' | 'share' | 'gear' | 'medal' | 'copy' | 'back' | 'plus' | 'scan' | 'chevron' | 'play' | 'pause' | 'reset' | 'check' | 'star' | 'trash' | 'repeat' | 'edit' | 'camera' | 'image' | 'close' | 'lock' | 'unlock' | 'pin' | 'undo' | 'home' | 'search' | 'sound' | 'sound-off';
 
 const UI_PATHS: Record<UiIcon, React.ReactNode> = {
   brew: <><path d="M5 8h14l-5 7h-4z" /><path d="M9 19h6M12 15v4" /><path d="M10 3v2M14 3v2" /></>,
@@ -56,6 +56,9 @@ const UI_PATHS: Record<UiIcon, React.ReactNode> = {
   play: <path d="M8 5l11 7-11 7z" />,
   pause: <path d="M8 5v14M16 5v14" />,
   reset: <><path d="M4 12a8 8 0 1 0 2.5-5.8" /><path d="M4 4v4h4" /></>,
+  // a speaker with sound waves; with a slash through when muted
+  sound: <><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" /><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" /></>,
+  'sound-off': <><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" /><path d="M16 9.5l5 5M21 9.5l-5 5" /></>,
   check: <path d="M5 12.5l4.5 4.5L19 7" />,
   star: <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z" />,
   trash: <><path d="M5 7h14M10 7V4h4v3" /><path d="M7 7l1 13h8l1-13" /></>,

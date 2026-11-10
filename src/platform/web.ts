@@ -1,3 +1,4 @@
+import { markRoot, onAppearance } from '../appearance';
 import { tiltInfo } from '../data/tilt';
 import type { Platform, HapticKind, ShareResult, CloudKV } from './types';
 import { dialog } from '../ui/dialog';
@@ -57,7 +58,7 @@ export function createWebPlatform(): Platform {
   return {
     kind: 'web',
     hasNativeBack: false,
-    async init() {},
+    async init() { markRoot(); onAppearance(() => markRoot()); },
     user: () => null,
     colorScheme: () => (mq?.matches ? 'dark' : 'light'),
     onThemeChange(cb) {

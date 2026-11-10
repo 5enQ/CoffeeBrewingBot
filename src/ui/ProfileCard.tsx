@@ -2,7 +2,7 @@
  * Profile card. Base themes are flat colors; bronze / silver / gold are brushed metal with a sheen that follows the tilt;
  * diamond is a faceted, iridescent 3D card that turns with the device (or the mouse on a computer).
  */
-import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cardView, type CardData } from '../data/card';
 import { catById } from '../data/gear';
 import type { IconKey } from '../data/methods';
@@ -10,7 +10,7 @@ import { platform } from '../platform';
 import { requestTiltPermission } from '../platform/web';
 import { BadgeRow } from './Badges';
 import { Icon, MethodIcon } from './icons';
-import { reduceMotion } from './motion';
+import { LeavingCtx, reduceMotion } from './motion';
 import { gravityOf, lookOf, planeOf, rollOf } from '../data/tilt';
 import { LIGHTHOUSE_T, sceneMarkup, type SceneId } from './scenes';
 
@@ -605,7 +605,9 @@ function SceneLayer({ id, still }: { id: SceneId; still?: boolean }) {
 
 /* ---------- card ---------- */
 
-export function ProfileCard({ card, live = true }: { card: CardData; live?: boolean }) {
+export function ProfileCard({ card, live: liveProp = true }: { card: CardData; live?: boolean }) {
+  // the copy of a tab sliding away keeps the picture but stops its motion: a second live scene made the switch stall
+  const live = liveProp && !useContext(LeavingCtx);
   const ref = useRef<HTMLDivElement>(null);
   const view = cardView(card);
   const tier = 'tier' in view.theme ? view.theme.tier : null;

@@ -36,16 +36,35 @@ export function Screen({ title, subtitle, action, children, footer, root = false
   );
 }
 
-export function Section({ title, aside, children, plain = false }: { title?: string; aside?: ReactNode; children: ReactNode; plain?: boolean }) {
+/**
+ * fold — the section folds under its title (the key remembers it, per device); count — shown beside the title;
+ * open — opens it from outside (a «+» in the header that needs the body).
+ */
+export function Section({ title, aside, children, plain = false, fold, count, open: openFrom }: {
+  title?: string; aside?: ReactNode; children: ReactNode; plain?: boolean; fold?: string; count?: number; open?: boolean;
+}) {
+  const key = fold ? 'brewbook.fold.' + fold : '';
+  const [open, setOpen] = useState(() => { if (!fold) return true; try { return localStorage.getItem(key) === '1'; } catch { return false; } });
+  useEffect(() => { if (openFrom) setOpen(true); }, [openFrom]);
+  const toggle = () => setOpen((v) => { try { localStorage.setItem(key, v ? '0' : '1'); } catch { /* no storage */ } return !v; });
+  const body = <div className={plain ? '' : 'group'}>{children}</div>;
   return (
-    <section className="section">
+    <section className={'section' + (fold ? ' foldable' + (open ? ' open' : '') : '')}>
       {(title || aside) && (
         <div className="section-head">
-          {title && <h2>{title}</h2>}
+          {fold && title
+            ? <button type="button" className="section-fold" aria-expanded={open} onClick={toggle}>
+                <h2>{title}{count !== undefined && <span className="section-count">{count}</span>}</h2>
+                <Icon name="chevron" size={16} />
+              </button>
+            : title && <h2>{title}</h2>}
           {aside}
         </div>
       )}
-      <div className={plain ? '' : 'group'}>{children}</div>
+      {fold
+        // the body opens and closes with its height; closed, it is out of the tab order
+        ? <div className="fold-body"><div className="fold-inner" inert={!open || undefined}>{body}</div></div>
+        : body}
     </section>
   );
 }

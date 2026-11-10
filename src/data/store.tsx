@@ -42,6 +42,8 @@ export interface Bean {
   adjust?: number;
   /** pack finished (removed from the shelf) */
   finished?: boolean;
+  /** when it was marked finished, ms: its age after roast stops there */
+  finishedAt?: number;
   sample?: boolean;
   /** 'drip' — a box of drip bags (otherwise a pack of beans) */
   kind?: 'beans' | 'drip';
@@ -254,11 +256,12 @@ export function emptyBean(): Bean {
   };
 }
 
-export const daysSince = (iso: string) => {
+/** whole days from a date (YYYY-MM-DD) to now, or to `until` (ms) */
+export const daysSince = (iso: string, until = Date.now()) => {
   if (!iso) return null;
   const d = new Date(iso + 'T00:00:00');
   if (isNaN(+d)) return null;
-  return Math.floor((Date.now() - +d) / 86_400_000);
+  return Math.max(0, Math.floor((until - +d) / 86_400_000));
 };
 
 function seedGear(): Gear[] {

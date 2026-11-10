@@ -8,7 +8,7 @@ export function PpmField({ value, onChange }: { value: number; onChange(v: numbe
   const low = value > 0 && value < WATER_PPM.min, high = value > WATER_PPM.max;
   return (
     <>
-      <Stepper label="Минерализация воды" value={value} step={5} min={0} max={1500} unit={value ? 'ppm' : ''}
+      <Stepper label="Минерализация" value={value} step={5} min={0} max={1500} unit={value ? 'ppm' : ''}
         format={(v) => (v ? String(v) : 'не указана')}
         onChange={(v) => onChange(value === 0 && v > 0 && v <= 5 ? 100 : v)} />
       {value === 0 && <p className="muted pad small-note ppm-hint">Сколько минералов растворено в воде — по TDS-метру. SCA советует {WATER_PPM.min}–{WATER_PPM.max} ppm, лучше около {WATER_PPM.target}.</p>}

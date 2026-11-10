@@ -149,6 +149,13 @@ button.row:active { background: var(--fg-soft); }
 .row-lead { color: var(--accent); display: flex; flex-shrink: 0; }
 .row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .row-label { font-weight: 550; overflow-wrap: anywhere; }
+/* a title and its tag on one line: the title gives way (…), the tag keeps its size */
+.one-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.one-line .tag { flex: none; margin-left: 0; }
+.row-hint .one-line { gap: 6px; }
+.row-hint .one-line .tag { font-size: 11px; padding: 1px 6px; }
+.one-line-text { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stat-star { font-size: 0.6em; margin-left: 3px; vertical-align: 0.35em; color: #e0a100; }
 .row-hint { color: var(--hint); font-size: 13px; overflow-wrap: anywhere; }
 .row-value { color: var(--hint); text-align: right; flex-shrink: 0; max-width: 55%; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .row-chev { color: var(--hint); opacity: 0.6; display: flex; }
@@ -477,7 +484,7 @@ button.row:active { background: var(--fg-soft); }
 .bean-card-top b { font-size: 17px; }
 .bean-card-origin { color: var(--hint); font-size: 14px; }
 .bean-card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.bean-card-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--hint); border-top: 1px solid var(--sep); padding-top: 8px; margin-top: 2px; }
+.bean-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: var(--hint); border-top: 1px solid var(--sep); padding-top: 8px; margin-top: 2px; }
 .bean-hero { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .pack-notes { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
 .quick-methods { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
@@ -696,7 +703,7 @@ button.row:active { background: var(--fg-soft); }
 .stock-text b { color: var(--fg); font-size: 16px; font-weight: 750; }
 .stock.low .stock-text span:last-child { color: var(--star); font-weight: 600; }
 .stock-none { font-size: 13px; color: var(--hint); }
-.foot-right { display: inline-flex; align-items: center; gap: 6px; }
+.foot-right { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .bean-list.done .bean-card { opacity: 0.75; }
 .stock-card { background: var(--card); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .stock-card-head { display: flex; justify-content: space-between; align-items: baseline; }

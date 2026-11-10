@@ -1,4 +1,5 @@
 import { exactMass, extraction } from '../data/extraction';
+import { BREWS, plural as pluralOf } from '../data/plural';
 import { useMemo, useState } from 'react';
 import { cupScore, QUALITY, CUP_ATTRS, toneOf, SCORE_MIN, SCORE_MAX } from '../data/cupping';
 import { allMethods, methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
@@ -50,9 +51,10 @@ export function Journal() {
     <Screen title="Дневник" root>
       {brews.length > 0 && (
         <div className="stats">
-          <div><b>{brews.length}</b><span>заварок</span></div>
-          <div><b>{avg ? fmtNum(avg) : '—'}</b><span>средняя оценка</span></div>
-          <div><b>{cuppedScores.length ? fmtNum(Math.max(...cuppedScores), 2) : '—'}</b><span>лучший каппинг</span></div>
+          {/* one line under each number: the three tiles keep one height */}
+          <div><b>{brews.length}</b><span>{pluralOf(brews.length, BREWS)}</span></div>
+          <div><b>{avg ? fmtNum(avg) : '—'}{avg ? <span className="stat-star" aria-hidden="true">★</span> : null}</b><span>в среднем</span></div>
+          <div><b>{cuppedScores.length ? fmtNum(Math.max(...cuppedScores), 2) : '—'}</b><span>лучший балл</span></div>
         </div>
       )}
 
@@ -77,9 +79,10 @@ export function Journal() {
             return (
               <Row key={b.id}
                 leading={<MethodIcon icon={m.icon} size={26} />}
-                label={<>{b.cva && b.cva.samples.length > 1 ? `Каппинг · ${b.cva.samples.length} образца` : brewBeanTitle(b, bean)} {b.sample && <SampleTag />}</>}
-                hint={b.cva ? `${m.name} · ${b.cva.samples.map((s) => beanTitle(beans.find((x) => x.id === s.beanId))).join(', ')}` : `${b.author ? `от ${b.author.name || '@' + b.author.username} · ` : ''}${m.name} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г · ${fmtRatio(b.water / b.dose)} · ${fmtTime(b.time)}`}
-                value={<BrewScore brew={b} size={14} />}
+                // the title whole; under it one line: the «пример» tag, grams and time (the icon says the method — named only when no coffee names the brew; the ratio is inside)
+                label={b.cva && b.cva.samples.length > 1 ? `Каппинг · ${b.cva.samples.length} образца` : brewBeanTitle(b, bean)}
+                hint={<span className="one-line">{b.sample && <SampleTag />}<span className="one-line-text">{b.cva ? `${m.name} · ${b.cva.samples.map((s) => beanTitle(beans.find((x) => x.id === s.beanId))).join(', ')}` : `${b.author ? `от ${b.author.name || '@' + b.author.username} · ` : ''}${bean ? '' : `${m.name} · `}${fmtNum(b.dose, 2)}\u00a0→\u00a0${fmtNum(b.water)}\u00a0г · ${fmtTime(b.time)}`}</span></span>}
+                value={<BrewScore brew={b} size={12} />}
                 onClick={() => push({ name: 'brew', id: b.id })}
                 active={sel?.name === 'brew' && sel.id === b.id}
               />

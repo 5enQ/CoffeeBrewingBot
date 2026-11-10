@@ -75,6 +75,26 @@ async def main():
         check(not errors, f'no page errors {errors[:2]}')
         await pg.close()
 
+        # the scales: a pack's taste dots and the cupping form's 1–9 dots and cups answer to a finger too
+        pg, errors = await page(b, db=DB)
+        V = lambda s: pg.locator(s + ':visible')
+        AREA = "e => { const r = e.getBoundingClientRect(), a = getComputedStyle(e, '::before'); return r.height - (parseFloat(a.top) || 0) - (parseFloat(a.bottom) || 0); }"
+        await pg.click('.tabbar >> text=Полка'); await pg.wait_for_timeout(300)
+        await V('.bean-card').first.click(); await pg.wait_for_timeout(400)
+        await V('[aria-label="Изменить"]').first.click(); await pg.wait_for_timeout(400)
+        n = await V('.scale-row.editable .scale-dots button').count()
+        h = await V('.scale-row.editable .scale-dots button').first.evaluate(AREA) if n else 0
+        check(n > 0 and h >= 44, f'a pack\'s scale dot answers to {h:.0f}px in height ({n} dots)')
+        await pg.goto(pg.url); await pg.wait_for_timeout(500)
+        await V('.method-card:has-text("Каппинг")').first.click(); await pg.wait_for_timeout(400)
+        await V('button:has-text("Без таймера")').first.click(); await pg.wait_for_timeout(500)
+        for sel, name in (('.aff-dot', 'a cupping 1–9 dot'), ('.cup-line .cup', 'a cup')):
+            n = await V(sel).count()
+            h = await V(sel).first.evaluate(AREA) if n else 0
+            check(n > 0 and h >= 44, f'{name} answers to {h:.0f}px in height')
+        check(not errors, f'scales: no page errors {errors[:2]}')
+        await pg.close()
+
         # a new profile shows no row of zeros
         pg, errors = await page(b, db=EMPTY)
         await pg.click('.tabbar >> text=Профиль'); await pg.wait_for_timeout(400)

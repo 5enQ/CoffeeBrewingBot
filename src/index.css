@@ -1690,3 +1690,8 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .star-half::before { content: ''; position: absolute; inset: -6px 0; }
 .star-half.left::before { left: -3px; }
 .star-half.right::before { right: -3px; }
+.scale-row.editable .scale-dots button::before { content: ''; position: absolute; inset: -6px -2px; }
+.aff-dot { position: relative; }
+.aff-dot::before { content: ''; position: absolute; inset: -6px -2px; }
+.cup-line .cup { position: relative; }
+.cup-line .cup::before { content: ''; position: absolute; inset: -4px -3px; }

@@ -234,7 +234,7 @@ export function RecipeEdit({ recipe: initial, isNew, asMethod }: { recipe: Custo
       )}
 
       <Section title={meta ? 'Подсказки' : 'Заметки'}>
-        <textarea id="recipe-notes" className="notes" rows={3} placeholder={meta ? 'Что делать, если кисло или горько — по строке на подсказку' : 'Вода, фильтр, для какого зерна рецепт'} value={r.notes}
+        <textarea id="recipe-notes" className="notes" rows={3} aria-label={meta ? 'Подсказки' : 'Заметки'} placeholder={meta ? 'Что делать, если кисло или горько — по строке на подсказку' : 'Вода, фильтр, для какого зерна рецепт'} value={r.notes}
           onChange={(e) => set({ notes: e.target.value })} />
       </Section>
 

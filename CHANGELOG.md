@@ -5,7 +5,14 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Added
+- «Анимация фонов» in «Вид интерфейса»: switched off, the moving card backgrounds (the lighthouse, rare lots, the volume card's sky) and the holiday decorations stand still. A per-device setting, like the theme.
+
 ### Fixed
+- Accessibility (WCAG 2.2 review): the field being typed into shows a green ring, not only a slightly darker fill; notes, search and other fields with only a grey hint inside are named for screen readers; the confirm («Удалить эту запись?») is a real modal — named by its question, the page under it out of reach, Esc says no, focus goes back to the button that opened it; keyboard focus no longer scrolls under the bottom bar or the title; a newly opened screen takes focus on its title and names the browser tab; «Авто / Светлая / Тёмная» and the other segmented choices read as pressed buttons, not tabs; popups («Скопировано», a new badge) are spoken through one live region that is always there, so screen readers don't miss them; the profile name and the Telegram nick offer autofill.
+- On iPhone, tapping the backup paste field or a cupping note zoomed the page: their text is 16 px now.
+- With «уменьшить движение» a new timer step, a changed number, a new tab and popups fade in for 0.2 s instead of appearing unnoticed; nothing slides.
+- On a 320 px phone «Настроить» under the profile card went past the edge of the screen: both buttons share the row, without their icons on a narrow phone.
 - In Telegram, picking the theme other than Telegram's («Светлая» with Telegram dark, or the reverse) used the app's own colors. Telegram tells an app only the colors of its current theme, so the app now remembers them for each theme it has been opened in, and the other theme takes your Telegram's colors from that memory; until the app has been opened once in that Telegram theme, its own palette stands in. Telegram's top and bottom bars follow. High contrast keeps the app's own stronger palette.
 - Owner panel: the metrics (tiles, the 30 days, methods and features) sit inside the card with the same inset as everything else, without lines between them; «Подключённые и отклонённые» is a left-aligned row with the lots under it («в продаже 100 лотов» — and «1 лот», «2 лота»); «1 новый» instead of «1 новых»; the people filters stand off the line above them.
 

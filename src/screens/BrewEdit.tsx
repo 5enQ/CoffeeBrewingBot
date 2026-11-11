@@ -70,7 +70,7 @@ export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; i
         <Section title="Цель и заметки">
           <Field label="Цель сессии" id="cva-purpose" value={cva.purpose} placeholder="например, выбор лота"
             onChange={(e) => set({ cva: { ...cva, purpose: e.target.value } })} />
-          <textarea id="brew-notes" className="notes" rows={3} value={b.notes} placeholder="Общие заметки о сессии"
+          <textarea id="brew-notes" className="notes" rows={3} aria-label="Заметки" value={b.notes} placeholder="Общие заметки о сессии"
             onChange={(e) => set({ notes: e.target.value })} />
         </Section>
 
@@ -184,7 +184,7 @@ export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; i
       </Section>
 
       <Section title="Заметки">
-        <textarea id="brew-notes" className="notes" rows={3} value={b.notes} placeholder="Что изменить в следующий раз?"
+        <textarea id="brew-notes" className="notes" rows={3} aria-label="Заметки" value={b.notes} placeholder="Что изменить в следующий раз?"
           onChange={(e) => set({ notes: e.target.value })} />
       </Section>
 

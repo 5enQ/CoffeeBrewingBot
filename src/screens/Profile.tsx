@@ -165,7 +165,7 @@ export function Profile() {
             <input type="file" accept=".md,.markdown,.txt,.json,text/markdown,text/plain,application/json" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) importText(await f.text()); }} />
           </label>
         </div>
-        <textarea id="backup-paste" className="notes mono" rows={4} placeholder="…или вставьте текст копии сюда" value={paste} onChange={(e) => setPaste(e.target.value)} />
+        <textarea id="backup-paste" className="notes mono" rows={4} aria-label="Текст резервной копии" placeholder="…или вставьте текст копии сюда" value={paste} onChange={(e) => setPaste(e.target.value)} />
         {(paste.trim().startsWith('{') || paste.includes('## ')) && <Button onClick={() => importText(paste)}>Восстановить из текста</Button>}
         {msg && <p className="status">{msg}</p>}
       </Section>
@@ -175,7 +175,7 @@ export function Profile() {
         <div className="group look-card">
           <div className="look-pick">
             <span className="row-label">Тема</span>
-            <Segmented value={look.theme} onChange={(v) => setAppearance({ ...look, theme: v })}
+            <Segmented label="Тема" value={look.theme} onChange={(v) => setAppearance({ ...look, theme: v })}
               options={[{ value: 'auto', label: 'Авто' }, { value: 'light', label: 'Светлая' }, { value: 'dark', label: 'Тёмная' }]} />
             <span className="row-hint">
               {look.theme === 'auto'
@@ -185,9 +185,11 @@ export function Profile() {
           </div>
           <Toggle id="contrast" label="Высокая контрастность" hint="Чётче текст, края и разделители — на всех экранах"
             checked={look.contrast} onChange={(v) => setAppearance({ ...look, contrast: v })} />
+          <Toggle id="backgrounds-move" label="Анимация фонов" hint="Фоны карточки и праздничное оформление. Выключите, если движение отвлекает"
+            checked={!look.still} onChange={(v) => setAppearance({ ...look, still: !v })} />
           <div className="look-pick">
             <span className="row-label">Раскладка</span>
-            <Segmented value={profile.layout ?? 'auto'} onChange={(v) => store.saveProfile({ ...profile, layout: v })}
+            <Segmented label="Раскладка" value={profile.layout ?? 'auto'} onChange={(v) => store.saveProfile({ ...profile, layout: v })}
               options={[{ value: 'auto', label: 'Авто' }, { value: 'desktop', label: 'Компьютер' }, { value: 'mobile', label: 'Телефон' }]} />
             <span className="row-hint">
               {(profile.layout ?? 'auto') === 'auto'

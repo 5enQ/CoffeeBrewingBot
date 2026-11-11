@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type InputHTMLAttributes } from 'react';
-import { Roll } from './motion';
+import { LeavingCtx, Roll } from './motion';
 import { platform } from '../platform';
 import { DepthCtx, useRouter } from '../router';
 import { useLayout } from '../layout';
@@ -7,12 +7,26 @@ import { Icon } from './icons';
 import { dialog } from './dialog';
 import { HolidayGround, HolidayTop } from './Holiday';
 
+let screensShown = 0;
+
 export function Screen({ title, subtitle, action, children, footer, root = false }: {
   title: string; subtitle?: string; action?: ReactNode; children: ReactNode; footer?: ReactNode; root?: boolean;
 }) {
-  const { back } = useRouter();
+  const { back, stack } = useRouter();
   const layout = useLayout();
   const depth = useContext(DepthCtx);
+  const leaving = useContext(LeavingCtx);
+  const head = useRef<HTMLHeadingElement>(null);
+  const isTop = depth === stack.length && !leaving;
+  // a new screen names itself: the tab title follows it, and when the old focus is gone (it sat on the screen just
+  // hidden) focus lands on this heading, so a screen reader says where we are (WCAG 2.4.2, 2.4.3)
+  useEffect(() => {
+    if (!isTop) return;
+    document.title = root ? `${title} — Brewbook` : `${title} · Brewbook`;
+    const a = document.activeElement as HTMLElement | null;
+    const lost = !a || a === document.body || !a.isConnected || !a.checkVisibility?.();
+    if (screensShown++ && lost) head.current?.focus({ preventScroll: true });
+  }, [isTop, title, root]);
   // On desktop the "back" arrow is always needed (right card); the first card gets "close"
   const showBack = !root && (layout === 'desktop' || !platform.hasNativeBack);
   const closeIcon = layout === 'desktop' && depth === 1;
@@ -24,7 +38,7 @@ export function Screen({ title, subtitle, action, children, footer, root = false
           <button className="icon-btn back" onClick={() => back()} aria-label={closeIcon ? 'Закрыть' : 'Назад'}><Icon name={closeIcon ? 'close' : 'back'} /></button>
         )}
         <div className="topbar-text">
-          <h1>{title}</h1>
+          <h1 ref={head} tabIndex={-1}>{title}</h1>
           {subtitle && <p>{subtitle}</p>}
         </div>
         {action && <div className="topbar-action">{action}</div>}
@@ -200,13 +214,14 @@ export function Chips({ options, value, onToggle, toneOf }: {
   );
 }
 
-export function Segmented<T extends string>({ options, value, onChange }: {
-  options: { value: T; label: string }[]; value: T; onChange(v: T): void;
+/** A choice of one, not tabs: no panel sits under it, so it reads as pressed buttons in a group (WCAG 4.1.2) */
+export function Segmented<T extends string>({ options, value, onChange, label }: {
+  options: { value: T; label: string }[]; value: T; onChange(v: T): void; label?: string;
 }) {
   return (
-    <div className="segmented" role="tablist">
+    <div className="segmented" role="group" aria-label={label}>
       {options.map((o) => (
-        <button type="button" role="tab" key={o.value} aria-selected={o.value === value}
+        <button type="button" key={o.value} aria-pressed={o.value === value}
           className={o.value === value ? 'on' : ''}
           onClick={() => { platform.haptic('select'); onChange(o.value); }}>{o.label}</button>
       ))}
@@ -314,11 +329,27 @@ export function SampleTag() {
 
 export function DialogHost() {
   const d = useSyncExternalStore(dialog.subscribe, dialog.get);
+  const box = useRef<HTMLDivElement>(null);
+  // a modal: the page under it is inert, Esc answers "no", focus goes back to whatever opened it (WCAG 2.4.3, 4.1.2)
+  useEffect(() => {
+    if (!d) return;
+    const back = d.opener as HTMLElement | null;
+    const shut: HTMLElement[] = [];
+    for (let e = box.current?.parentElement; e && e !== document.body; e = e.parentElement)
+      for (const s of Array.from(e.parentElement?.children ?? [])) if (s !== e && s instanceof HTMLElement && !s.inert) { s.inert = true; shut.push(s); }
+    const key = (ev: KeyboardEvent) => { if (ev.key === 'Escape') { ev.preventDefault(); dialog.close(false); } };
+    document.addEventListener('keydown', key);
+    return () => {
+      document.removeEventListener('keydown', key);
+      shut.forEach((s) => { s.inert = false; });
+      if (back?.isConnected) back.focus({ preventScroll: true });
+    };
+  }, [d]);
   if (!d) return null;
   return (
     <div className="modal-backdrop" onClick={() => dialog.close(false)}>
-      <div className="dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <p>{d.message}</p>
+      <div ref={box} className="dialog" role={d.kind === 'confirm' ? 'alertdialog' : 'dialog'} aria-modal="true" aria-labelledby="dialog-msg" onClick={(e) => e.stopPropagation()}>
+        <p id="dialog-msg">{d.message}</p>
         <div className="dialog-actions">
           {d.kind === 'confirm' && <button type="button" className="btn btn-ghost" onClick={() => dialog.close(false)}>Отмена</button>}
           <button type="button" className="btn btn-primary" autoFocus onClick={() => dialog.close(true)}>{d.kind === 'confirm' ? 'Да' : 'OK'}</button>

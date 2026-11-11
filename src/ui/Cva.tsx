@@ -115,7 +115,7 @@ function AffectiveForm({ value, cups, onChange }: { value: Affective; cups: numb
                   ))}
                 </div>
                 {openNote === sec.key || value.notes[sec.key] ? (
-                  <input className="aff-note" placeholder="Почему такая оценка (аффективная заметка)" value={value.notes[sec.key] ?? ''} autoFocus={openNote === sec.key}
+                  <input className="aff-note" aria-label={`${sec.label}: заметка`} placeholder="Почему такая оценка (аффективная заметка)" value={value.notes[sec.key] ?? ''} autoFocus={openNote === sec.key}
                     onChange={(e) => set({ notes: { ...value.notes, [sec.key]: e.target.value } })} />
                 ) : (
                   <button type="button" className="link-btn small" onClick={() => setOpenNote(sec.key)}>+ заметка</button>
@@ -222,7 +222,7 @@ function DescriptiveForm({ value, onChange }: { value: Descriptive; onChange(v: 
   const set = (patch: Partial<Descriptive>) => onChange({ ...value, ...patch });
   const inten = (k: keyof Descriptive['intensity']) => (v: number | undefined) => set({ intensity: { ...value.intensity, [k]: v } });
   const note = (k: keyof Descriptive['notes'], placeholder: string) => (
-    <input className="aff-note" placeholder={placeholder} value={value.notes[k] ?? ''} onChange={(e) => set({ notes: { ...value.notes, [k]: e.target.value } })} />
+    <input className="aff-note" aria-label={placeholder} placeholder={placeholder} value={value.notes[k] ?? ''} onChange={(e) => set({ notes: { ...value.notes, [k]: e.target.value } })} />
   );
   return (
     <section className="cva-block">
@@ -297,7 +297,7 @@ function ExtrinsicForm({ value, onChange }: { value: Extrinsic; onChange(v: Extr
                   <button type="button" key={it.id} className={'chip' + (value.checked.includes(it.id) ? ' on' : '') + (it.sub ? ' child' : '')} onClick={() => toggle(it.id)}>{it.label}</button>
                 ))}
               </div>
-              <input className="aff-note" placeholder="Подробности" value={value.notes[g.id] ?? ''}
+              <input className="aff-note" aria-label={`${g.label}: подробности`} placeholder="Подробности" value={value.notes[g.id] ?? ''}
                 onChange={(e) => onChange({ ...value, notes: { ...value.notes, [g.id]: e.target.value } })} />
             </div>
           ))}

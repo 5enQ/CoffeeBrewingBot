@@ -8,7 +8,7 @@ import { InviteGate } from './ui/InviteGate';
 import { DepthCtx, RouterProvider, useRouter, type Route, type Tab } from './router';
 import { DialogHost } from './ui/kit';
 import { AchievementToast } from './ui/AchievementToast';
-import { ToastHost } from './ui/toast';
+import { LiveRegion, ToastHost } from './ui/toast';
 import { Icon, MethodIcon } from './ui/icons';
 import { methodById } from './data/methods';
 import { BrewHome } from './screens/BrewHome';
@@ -136,7 +136,7 @@ function Shell() {
       <DepthCtx.Provider value={i + 1}>{renderRoute(r)}</DepthCtx.Provider>
     </div>
   ));
-  const overlays = <><HolidayLayer /><DialogHost /><AchievementToast /><ToastHost /></>;
+  const overlays = <><HolidayLayer /><DialogHost /><AchievementToast /><ToastHost /><LiveRegion /></>;
 
   if (mode === 'desktop') {
     return (

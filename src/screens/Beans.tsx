@@ -155,7 +155,7 @@ export function Beans() {
       </button>
 
       {beans.length > 4 && (
-        <input id="bean-search" className="search" type="search" placeholder="Поиск: страна, обработка, обжарщик" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input id="bean-search" className="search" type="search" aria-label="Поиск по полке" placeholder="Поиск: страна, обработка, обжарщик" value={q} onChange={(e) => setQ(e.target.value)} />
       )}
 
       {active.length === 0 && done.length === 0 && <Empty title="Полка пуста" text="Купили кофе? Добавьте пачку с весом и датой обжарки — остаток будет считаться сам." />}
@@ -589,7 +589,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
           // a roaster page link was pasted — fill in fields the same way as from a QR code
           if (b.link && b.link !== bean.link && /^https?:\/\/\S+$/i.test(b.link) && !b.country && !(b.drips ?? []).length) onCode(b.link);
         } })}
-        <textarea id="bean-comment" className="notes" rows={3} placeholder="Где купил, цена, впечатления" value={b.comment} onChange={(e) => set({ comment: e.target.value })} />
+        <textarea id="bean-comment" className="notes" rows={3} aria-label="Заметки" placeholder="Где купил, цена, впечатления" value={b.comment} onChange={(e) => set({ comment: e.target.value })} />
       </Section>
 
       {scan && <Scanner onResult={onCode} onClose={() => setScan(false)} />}

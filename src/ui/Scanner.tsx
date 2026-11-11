@@ -139,7 +139,7 @@ export function Scanner({ onResult, onClose }: { onResult(code: string): void; o
         </div>
         {error && <p className="error">{error}</p>}
         <form className="manual" onSubmit={(e) => { e.preventDefault(); if (manual.trim()) finish(manual); }}>
-          <input id="manual-code" inputMode="numeric" placeholder="Цифры под штрихкодом" value={manual} onChange={(e) => setManual(e.target.value)} />
+          <input id="manual-code" inputMode="numeric" aria-label="Цифры под штрихкодом" placeholder="Цифры под штрихкодом" value={manual} onChange={(e) => setManual(e.target.value)} />
           <button type="submit" className="btn btn-primary" disabled={!manual.trim()}>OK</button>
         </form>
       </div>

@@ -74,6 +74,8 @@
 html, body { margin: 0; background: var(--bg); color: var(--fg); }
 /* nothing may shift the page sideways: otherwise in Telegram the whole tab "slides" together with the bottom bar */
 html, body { overflow-x: clip; }
+/* keyboard focus never scrolls under the sticky title or the bottom bar (WCAG 2.4.11) */
+html { scroll-padding-top: calc(var(--inset-top) + 72px); scroll-padding-bottom: calc(var(--inset-bottom) + 88px); }
 body {
   font: 16px/1.4 var(--font);
   -webkit-font-smoothing: antialiased;
@@ -98,6 +100,7 @@ button { cursor: pointer; }
   backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
 }
 .topbar-text { flex: 1; min-width: 0; }
+.topbar h1:focus { outline: none; } /* a landing spot for focus on a new screen, not a control */
 .topbar h1 { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 750; letter-spacing: -0.02em; text-wrap: balance; }
 .topbar p { margin: 2px 0 0; color: var(--hint); font-size: 14px; }
 .topbar .back { margin-left: -10px; }
@@ -202,13 +205,17 @@ button.row:active { background: var(--fg-soft); }
 .field input::placeholder, textarea::placeholder { color: var(--hint); opacity: 0.7; }
 .field input:focus, .field select:focus { outline: none; }
 .field:focus-within { background: var(--fg-soft); }
+/* a field you type into shows a ring, not only a 6% darker fill (WCAG 2.4.7) */
+.field:has(:focus-visible) { box-shadow: inset 0 0 0 2px var(--accent); }
+.field:has(:focus-visible) :focus-visible { outline: none; }
 .field-suffix { margin-left: 6px; display: flex; }
 .notes {
   width: 100%; border: 0; background: var(--card); padding: 12px 14px; font-size: 16px; resize: vertical; display: block; border-radius: 0;
 }
 .section > .notes { border-radius: var(--r); }
 .notes:focus { outline: none; background: color-mix(in srgb, var(--card) 92%, var(--fg)); }
-.notes.mono { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border-radius: var(--r); margin-top: 10px; }
+.notes:focus-visible, .search:focus-visible, .aff-note:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.notes.mono { font-family: ui-monospace, Menlo, monospace; font-size: 16px; border-radius: var(--r); margin-top: 10px; }
 .search { width: 100%; border: 0; border-radius: 12px; background: var(--card); padding: 11px 14px; font-size: 16px; }
 
 /* stepper */
@@ -593,7 +600,7 @@ button.row:active { background: var(--fg-soft); }
 .avatar.small { width: 36px; height: 36px; font-size: 14px; }
 .profile-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .profile-name { border: 0; background: none; font-size: 21px; font-weight: 700; padding: 4px 0; width: 100%; color: var(--fg); }
-.profile-name:focus, .profile-about:focus { outline: none; }
+.profile-name:focus:not(:focus-visible), .profile-about:focus:not(:focus-visible) { outline: none; }
 .profile-handle { color: var(--accent); font-size: 14px; font-weight: 600; }
 .profile-about { border: 0; background: none; resize: none; font-size: 15px; color: var(--hint); padding: 4px 0; width: 100%; }
 
@@ -660,7 +667,7 @@ button.row:active { background: var(--fg-soft); }
 .profile-handle { display: flex; align-items: center; gap: 1px; }
 .profile-handle input { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 15px; padding: 2px 0; width: 100%; min-width: 0; }
 .profile-handle input::placeholder { color: var(--hint); font-weight: 500; }
-.profile-handle input:focus { outline: none; }
+.profile-handle input:focus:not(:focus-visible) { outline: none; }
 .toggle-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 56px; cursor: pointer; }
 .toggle-row.disabled { opacity: 0.55; cursor: default; }
 .param-grid dd.dd-text { font-size: 14px; line-height: 1.25; padding-top: 2px; }
@@ -713,7 +720,8 @@ button.row:active { background: var(--fg-soft); }
 .recipe-picker .chip { white-space: nowrap; flex-shrink: 0; }
 .recipe-picker .chip small { color: var(--hint); font-weight: 500; }
 .recipe-name-input { flex: 1; min-width: 0; border: 0; background: none; font-size: 22px; font-weight: 700; color: var(--fg); padding: 6px 0; }
-.recipe-name-input:focus { outline: none; }
+.recipe-name-input:focus:not(:focus-visible) { outline: none; }
+.recipe-name-input:focus-visible { outline-offset: 0; border-radius: 6px; }
 .step-editor { display: flex; flex-direction: column; gap: 8px; }
 .step-card { background: var(--card); border-radius: var(--r); padding: 8px 6px 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 .step-card-top { display: flex; align-items: center; gap: 8px; }
@@ -783,7 +791,7 @@ button.row:active { background: var(--fg-soft); }
 .toast small { color: var(--hint); font-size: 12px; }
 .toast .badge { transform: scale(1.1); }
 @keyframes toastIn { from { transform: translate(-50%, -24px) scale(0.9); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: calm-in 0.2s ease both; } }
 
 /* ---------- Blend ---------- */
 .blend-editor { display: flex; flex-direction: column; gap: 8px; }
@@ -805,7 +813,7 @@ button.row:active { background: var(--fg-soft); }
   animation: snackIn 0.25s ease; pointer-events: none; text-align: center;
 }
 @keyframes snackIn { from { transform: translate(-50%, 10px); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .snack { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .snack { animation: calm-in 0.2s ease both; } }
 .round-btn:disabled { opacity: 0.4; }
 
 /* =========================================================
@@ -1000,7 +1008,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .aff-scale { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; }
 .aff-dot { aspect-ratio: 1; max-height: 40px; border-radius: 50%; border: 1px solid var(--sep); background: var(--bg); color: var(--hint); font-weight: 650; font-size: 14px; font-variant-numeric: tabular-nums; padding: 0; }
 .aff-dot.on { background: var(--cherry); border-color: var(--cherry); color: #fff; }
-.aff-note { width: 100%; border: 1px solid var(--sep); background: var(--bg); color: var(--fg); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 14px; }
+.aff-note { width: 100%; border: 1px solid var(--sep); background: var(--bg); color: var(--fg); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 16px; }
 .link-btn.small { font-size: 13px; justify-self: start; padding: 0; }
 .cup-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .cup-line > span { font-size: 14px; }
@@ -1380,7 +1388,10 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 
 /* ---------- Profile: the own card ---------- */
 .my-card { margin-bottom: 8px; }
-.my-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.my-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.my-card-actions > .btn { min-width: 0; }
+/* a narrow phone (320 px): the words keep their room, the icons step aside — «Настроить» went past the edge */
+@media (max-width: 374px) { .my-card-actions > .btn { padding: 0 10px; } .my-card-actions > .btn > svg { display: none; } }
 .profile-about.field-area { display: block; box-sizing: border-box; padding: 12px 16px; color: var(--fg); font: inherit; font-size: 16px; min-height: 64px; }
 .profile-about.field-area::placeholder { color: var(--hint); }
 .crawl-usage.warn { color: var(--danger); }
@@ -1581,6 +1592,8 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .pcard-scene svg { display: block; width: 100%; height: 100%; }
 .pcard-scene .fb { transform-box: fill-box; transform-origin: center; }
 .pcard-scene.still *, .pcard-scene.still *::before { animation-play-state: paused !important; }
+/* «Анимация фонов» off: every looping decoration holds its frame (WCAG 2.2.2) */
+html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) :is(*, *::before, *::after) { animation-play-state: paused !important; }
 @media (prefers-reduced-motion: reduce) { .pcard-scene * { animation: none !important; } }
 .pcard-scene .fbb { transform-box: fill-box; transform-origin: 50% 100%; }
 /* a picture sits under the text: light text with a shadow, the brand in the corner the scenes keep free */
@@ -1648,7 +1661,12 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .swap-l.in { animation: swap-in 0.42s cubic-bezier(0.25, 0.8, 0.25, 1) both; }
 @keyframes swap-out { to { transform: translateY(-100%); opacity: 0; } }
 @keyframes swap-in { from { transform: translateY(100%); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .roll-new, .roll-d::before, .swap-l.in, .swap-l.out { animation: none; } .roll-d::before { content: none; } .swap-l.out { display: none; } }
+/* reduced motion: no slides, but what changed still shows itself with a short fade in place */
+@keyframes calm-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .roll-d::before, .swap-l.in, .swap-l.out { animation: none; } .roll-d::before { content: none; } .swap-l.out { display: none; }
+  .roll-new, .swap-l.calm, .tab-page:not(.leaving) { animation: calm-in 0.2s ease both; }
+}
 
 /* a section that folds under its title (kit Section fold) */
 .section-fold { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; min-width: 0; }

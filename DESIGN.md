@@ -82,6 +82,8 @@ The app looks like filter paper with a coffee-leaf green: quiet surfaces, one ac
   opacity fade (`calm-in`); always check it.
 - Focus is always visible: a field you type into gets a 2 px accent ring (inset), never only a darker fill; the
   page scrolls with room for the sticky title and the bottom bar.
+  Inside a card that clips (`overflow: hidden`, a scroller) the ring goes inside the control; a new scroller or
+  clipping card leaves room for it. `tests/e2e/keyboard.py` walks the main screens with Tab and fails on a cut ring.
 
 ## Checking a change
 

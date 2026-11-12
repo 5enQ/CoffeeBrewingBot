@@ -62,13 +62,33 @@ export function RouterProvider({ children }: { children: ReactNode }) {
   const depthRef = useRef(0);
   depthRef.current = stack.length;
 
+  // what had focus when each screen was opened: going back puts focus there again, not at the top of the page
+  const openers = useRef<(Element | null)[]>([]);
+
   const back = useCallback(async (force?: boolean) => {
     const msg = guards.get(depthRef.current);
     if (!force && msg && !(await platform.confirm(msg))) return;
     guards.delete(depthRef.current);
     platform.haptic('light');
+    const to = openers.current[depthRef.current - 1];
     setStack((s) => s.slice(0, -1));
+    requestAnimationFrame(() => { if (to instanceof HTMLElement && to.isConnected && to.checkVisibility?.()) to.focus({ preventScroll: true }); });
   }, []);
+
+  // Esc goes back a screen: inside Telegram the back arrow is Telegram's own, out of reach of Tab.
+  // In a text field Esc only leaves the field; an open dialog answers Esc itself.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || !depthRef.current) return;
+      if (document.querySelector('[aria-modal="true"], .modal-backdrop')) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.matches?.('input, textarea, select, [contenteditable="true"]')) { t.blur(); return; }
+      e.preventDefault();
+      void back();
+    };
+    document.addEventListener('keydown', key);
+    return () => document.removeEventListener('keydown', key);
+  }, [back]);
 
   // remember each screen's scroll so "back" returns to the same place
   const scrolls = useRef<number[]>([]);
@@ -84,7 +104,7 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     tab,
     setTab(t) { platform.haptic('select'); guards.clear(); setTabState(t); setStack([]); window.scrollTo({ top: 0 }); },
     stack,
-    push(r) { platform.haptic('light'); scrolls.current[depthRef.current] = window.scrollY; setStack((s) => [...s, r]); },
+    push(r) { platform.haptic('light'); scrolls.current[depthRef.current] = window.scrollY; openers.current[depthRef.current] = document.activeElement; setStack((s) => [...s, r]); },
     async pushAt(depth: number, r: Route) {
       // Called from a screen below the top one (desktop: from the list on the left) — screens above are replaced.
       // If they have unsaved changes, ask first.
@@ -94,6 +114,7 @@ export function RouterProvider({ children }: { children: ReactNode }) {
       }
       for (let d = depthRef.current; d > depth; d--) guards.delete(d);
       platform.haptic('light');
+      openers.current[depth] = document.activeElement;
       setStack((s) => [...s.slice(0, depth), r]);
     },
     replace(r) { guards.delete(depthRef.current); setStack((s) => [...s.slice(0, -1), r]); },

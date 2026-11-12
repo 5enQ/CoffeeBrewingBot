@@ -87,6 +87,10 @@ body::before {
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* inside a rounded card that clips its rows, a ring outside the row is cut down to a stray line (or vanishes for a
+   lone row): there the ring goes inside, with the card's rounding */
+:is(.group, .wheel) :focus-visible { outline-offset: -2px; }
+:is(.group, .wheel) :is(.row, .wheel-head, .gear-more):focus-visible { border-radius: var(--r); }
 [hidden] { display: none !important; }
 .boot { min-height: 100vh; background: var(--bg); }
 
@@ -206,8 +210,8 @@ button.row:active { background: var(--fg-soft); }
 .field input:focus, .field select:focus { outline: none; }
 .field:focus-within { background: var(--fg-soft); }
 /* a field you type into shows a ring, not only a 6% darker fill (WCAG 2.4.7) */
-.field:has(:focus-visible) { box-shadow: inset 0 0 0 2px var(--accent); }
-.field:has(:focus-visible) :focus-visible { outline: none; }
+.field:has(:is(input, select, textarea):focus-visible) { box-shadow: inset 0 0 0 2px var(--accent); }
+.field :is(input, select, textarea):focus-visible { outline: none; }
 .field-suffix { margin-left: 6px; display: flex; }
 .notes {
   width: 100%; border: 0; background: var(--card); padding: 12px 14px; font-size: 16px; resize: vertical; display: block; border-radius: 0;
@@ -279,7 +283,8 @@ button.row:active { background: var(--fg-soft); }
 [data-tone="sweet"] { --t: #c47a2c; } [data-tone="nut"] { --t: #8b5a3a; } [data-tone="spice"] { --t: #b5452b; }
 [data-tone="ferment"] { --t: #7e3f7c; } [data-tone="green"] { --t: #4c9a49; } [data-tone="roast"] { --t: #7b6957; }
 [data-tone="defect"] { --t: #727a74; }
-.filter-row { margin: -6px 0 -8px; overflow-x: auto; }
+/* room for a focus ring inside the scroller: padding out, the same amount of margin back */
+.filter-row { margin: -10px -4px -12px; padding: 4px; overflow-x: auto; scroll-padding-inline: 4px; }
 .filter-row .chips { flex-wrap: nowrap; }
 .filter-row .chip { white-space: nowrap; }
 
@@ -358,7 +363,8 @@ button.row:active { background: var(--fg-soft); }
 /* bean picker */
 .bean-picker {
   display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x proximity;
-  margin: 0 calc(-1 * var(--gutter-r)) 0 calc(-1 * var(--gutter-l)); padding: 2px var(--gutter-r) 6px var(--gutter-l);
+  margin: -2px calc(-1 * var(--gutter-r)) 0 calc(-1 * var(--gutter-l)); padding: 4px var(--gutter-r) 6px var(--gutter-l);
+  scroll-padding-inline: var(--gutter-l) var(--gutter-r);
   scrollbar-width: none;
 }
 .bean-picker::-webkit-scrollbar { display: none; }
@@ -859,7 +865,7 @@ button.row:active { background: var(--fg-soft); }
 /* columns */
 .pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .pane-list { border-right: 1px solid var(--sep); }
-.pane-scroll, .pane-detail > .stack-screen { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
+.pane-scroll, .pane-detail > .stack-screen { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding: 24px 0; }
 .desk .screen { min-height: 100%; }
 .desk .topbar {
   top: 0; padding: 18px 24px 12px; background: color-mix(in srgb, var(--bg) 90%, transparent);
@@ -1683,6 +1689,8 @@ html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) 
 .fold-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s cubic-bezier(0.45, 0, 0.1, 1); }
 .section.open .fold-body { grid-template-rows: 1fr; }
 .fold-inner { min-height: 0; overflow: hidden; }
+/* open: a few pixels of room so focus rings at the edges are not cut (margin takes them back, nothing moves) */
+.section.open .fold-inner { padding: 4px; margin: -4px; }
 .section.foldable:not(.open) .fold-inner { visibility: hidden; transition: visibility 0s 0.3s; }
 @media (prefers-reduced-motion: reduce) { .fold-body, .section-fold svg { transition: none; } }
 

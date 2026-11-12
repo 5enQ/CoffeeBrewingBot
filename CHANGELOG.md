@@ -13,6 +13,8 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - Rating a cup: «Измерения» (TDS) comes after «Дескрипторы».
 
 ### Fixed
+- Keyboard on a computer: the focus ring of a list row (the journal, «Повторить», gear, coffee) was drawn outside the row and cut by its rounded card — a lone row showed nothing, rows in a list showed only a stray line between them. Rings inside cards are now drawn inside the row with the card's rounding; filter chips, the coffee picker and opened sections leave room for a whole ring.
+- Esc goes back a screen (inside Telegram the back arrow is Telegram's and Tab can't reach it); in a text field Esc only leaves the field. Going back puts focus on the row that opened the screen.
 - Taste scales (кислотность, сладость…): the line behind the dots no longer shows through the picked ones.
 - Accessibility (WCAG 2.2 review): the field being typed into shows a green ring, not only a slightly darker fill; notes, search and other fields with only a grey hint inside are named for screen readers; the confirm («Удалить эту запись?») is a real modal — named by its question, the page under it out of reach, Esc says no, focus goes back to the button that opened it; keyboard focus no longer scrolls under the bottom bar or the title; a newly opened screen takes focus on its title and names the browser tab; «Авто / Светлая / Тёмная» and the other segmented choices read as pressed buttons, not tabs; popups («Скопировано», a new badge) are spoken through one live region that is always there, so screen readers don't miss them; the profile name and the Telegram nick offer autofill.
 - On iPhone, tapping the backup paste field or a cupping note zoomed the page: their text is 16 px now.

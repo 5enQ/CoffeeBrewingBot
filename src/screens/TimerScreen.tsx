@@ -273,10 +273,9 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
           <span>Через {fmtTime(next.at - elapsed)}</span>
           {/* one line: the step's name gives way (…), the grams never wrap */}
           <b><Swap id={idx}><span className="step-next-title">{next.title}</span>{next.to !== undefined && <span className="step-next-g">{` · до ${fmtNum(draft.water * next.to, 0)} г`}</span>}</Swap></b>
+          {/* on the same line as what comes next, so it stays on screen above the footer while you pour */}
+          {elapsed > 0 && <button type="button" className="step-skip" onClick={skip} title="Следующий шаг">Дальше<Icon name="chevron" size={16} /></button>}
         </div>
-      )}
-      {next && !done && elapsed > 0 && (
-        <button type="button" className="step-skip" onClick={skip}>Следующий шаг<Icon name="chevron" size={16} /></button>
       )}
       {long && (
         <div className="timer-long">

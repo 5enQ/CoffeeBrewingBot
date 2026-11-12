@@ -311,7 +311,8 @@ button.row:active { background: var(--fg-soft); }
 .dots-row button {
   position: relative; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--sep); background: var(--card); padding: 0;
 }
-.dots-row button.past { background: var(--accent-soft); border-color: transparent; }
+/* opaque fills: the line behind the dots must not show through them */
+.dots-row button.past { background: color-mix(in srgb, var(--accent) 22%, var(--card)); border-color: transparent; }
 .dots-row button.on { background: var(--accent); border-color: var(--accent); transform: scale(1.15); }
 
 /* switch */
@@ -374,7 +375,8 @@ button.row:active { background: var(--fg-soft); }
 .bean-pick.action span { color: var(--accent) !important; font-size: 13px !important; }
 
 /* ---------- Timer ---------- */
-.timer { position: relative; width: min(78vw, 300px); aspect-ratio: 1; max-width: 100%; margin: 4px auto 0; }
+/* the ring gives way on a short screen, so the step card and «Дальше» stay above the footer without scrolling */
+.timer { position: relative; width: min(78vw, 300px, max(140px, 100dvh - 480px - var(--inset-top) - var(--inset-bottom))); aspect-ratio: 1; max-width: 100%; margin: 4px auto 0; }
 .timer-ring { width: 100%; height: 100%; }
 .ring-track { fill: none; stroke: var(--sep); stroke-width: 10; }
 .ring-fill { fill: none; stroke: var(--accent); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.12s linear; }
@@ -394,6 +396,8 @@ button.row:active { background: var(--fg-soft); }
 .timer-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .timer-time { font-family: var(--font-num); font-size: clamp(56px, 18vw, 76px); font-weight: 300; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; }
 .timer-total { color: var(--hint); font-size: 14px; margin-top: 6px; text-align: center; max-width: 70%; }
+/* a short screen: the ring has shrunk, the time follows it */
+@media (max-height: 640px) { .timer-time { font-size: clamp(40px, 7dvh, 56px); } .timer-total { font-size: 12px; margin-top: 2px; } }
 
 .step-now { background: var(--card); border-radius: var(--r); padding: 18px; text-align: center; }
 .step-now.live { animation: stepIn 0.35s ease; }
@@ -403,14 +407,17 @@ button.row:active { background: var(--fg-soft); }
 .pour-big { font-size: 18px; color: var(--accent); }
 .pour-big b { font-size: 40px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .step-now p { margin: 6px 0 0; color: var(--hint); }
-.step-next { display: flex; justify-content: space-between; gap: 12px; padding: 0 6px; color: var(--hint); font-size: 15px; }
-.step-next > span { white-space: nowrap; flex-shrink: 0; }
-.step-next b { color: var(--fg); font-weight: 600; text-align: right; min-width: 0; display: flex; justify-content: flex-end; }
+/* what comes next: when (hint) over its name, «Дальше» beside both — the name gets the whole width left of the button */
+.step-next { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; padding: 0 0 0 6px; color: var(--hint); font-size: 15px; }
+.step-next > span { grid-column: 1; white-space: nowrap; font-size: 13px; }
+.step-next b { grid-column: 1; color: var(--fg); font-weight: 600; min-width: 0; display: flex; justify-content: flex-start; }
+.step-next .step-skip { grid-column: 2; grid-row: 1 / span 2; }
 .step-next .swap { grid-template-columns: minmax(0, auto); min-width: 0; }
-.step-next .swap-l { display: flex; justify-content: flex-end; min-width: 0; white-space: nowrap; }
-.step-next-title { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.step-next-g { flex-shrink: 0; }
-.step-skip { display: flex; width: fit-content; align-items: center; gap: 4px; margin: 10px auto 0; padding: 9px 14px 9px 18px; border: 0; border-radius: 999px;
+/* a long name wraps onto a second line rather than losing its end; the grams stay whole */
+.step-next .swap-l { display: flex; flex-wrap: wrap; justify-content: flex-start; min-width: 0; }
+.step-next-title { min-width: 0; }
+.step-next-g { flex-shrink: 0; white-space: nowrap; }
+.step-skip { display: flex; width: fit-content; align-items: center; gap: 2px; margin: 0; padding: 9px 10px 9px 16px; border: 0; border-radius: 999px;
   background: var(--chip, rgba(127,127,127,0.12)); color: var(--accent); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .step-skip:active { transform: scale(0.97); }
 .pour-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }

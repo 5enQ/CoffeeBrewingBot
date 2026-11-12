@@ -80,6 +80,18 @@ async def main():
         anim = await pg2.evaluate("() => [...document.querySelectorAll('.step-now .swap-l')].map((e) => getComputedStyle(e).animationName)")
         check(anim and all(a == 'calm-in' for a in anim), f'reduced motion: the new step fades in {anim}')
 
+        # the timer on a short phone (360×640): the step card and «Дальше» fit above the footer, no scrolling to reach them
+        pg4, err4 = await page(b, db=DB, width=360, height=640)
+        await pg4.locator('.method-card:visible:has-text("V60")').first.click(); await pg4.wait_for_timeout(300)
+        await pg4.locator('.recipe-tile:visible').first.click(); await pg4.wait_for_timeout(400)
+        await pg4.locator('button:visible:has-text("Начать")').last.click(); await pg4.wait_for_timeout(500)
+        st = pg4.locator('button:visible:has-text("Старт")')
+        if await st.count(): await st.first.click()
+        await pg4.wait_for_timeout(600)
+        fit = await pg4.evaluate("""() => { const v = (s) => [...document.querySelectorAll(s)].find((e) => e.getClientRects().length);
+          return [Math.round(v('.step-skip').getBoundingClientRect().bottom), Math.round(v('.footer').getBoundingClientRect().top)]; }""")
+        check(fit[0] <= fit[1], f'360×640: «Дальше» is above the footer without scrolling {fit}')
+
         # 320 px: «Поделиться» and «Настроить» stay inside the screen
         pg3, err3 = await page(b, db=DB, width=320)
         await pg3.click('.tabbar >> text=Профиль'); await pg3.wait_for_timeout(400)

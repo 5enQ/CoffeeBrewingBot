@@ -8,7 +8,12 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ### Added
 - «Анимация фонов» in «Вид интерфейса»: switched off, the moving card backgrounds (the lighthouse, rare lots, the volume card's sky) and the holiday decorations stand still. A per-device setting, like the theme.
 
+### Changed
+- The timer keeps every control on one screen while you brew: «Дальше» (the next step) sits beside what comes next («Через 0:43 / Первый пролив · до 150 г») instead of on its own line below, and on a shorter phone the ring gets smaller, so the step card and «Дальше» stay above the bottom buttons without scrolling. A long name of the next step wraps to a second line instead of being cut.
+- Rating a cup: «Измерения» (TDS) comes after «Дескрипторы».
+
 ### Fixed
+- Taste scales (кислотность, сладость…): the line behind the dots no longer shows through the picked ones.
 - Accessibility (WCAG 2.2 review): the field being typed into shows a green ring, not only a slightly darker fill; notes, search and other fields with only a grey hint inside are named for screen readers; the confirm («Удалить эту запись?») is a real modal — named by its question, the page under it out of reach, Esc says no, focus goes back to the button that opened it; keyboard focus no longer scrolls under the bottom bar or the title; a newly opened screen takes focus on its title and names the browser tab; «Авто / Светлая / Тёмная» and the other segmented choices read as pressed buttons, not tabs; popups («Скопировано», a new badge) are spoken through one live region that is always there, so screen readers don't miss them; the profile name and the Telegram nick offer autofill.
 - On iPhone, tapping the backup paste field or a cupping note zoomed the page: their text is 16 px now.
 - With «уменьшить движение» a new timer step, a changed number, a new tab and popups fade in for 0.2 s instead of appearing unnoticed; nothing slides.

@@ -36,8 +36,10 @@ async def main():
             st = V('button:has-text("Старт")')
             if await st.count(): await st.first.click()
             await pg.wait_for_timeout(600)
-            h = await V('.step-next').first.evaluate('e => e.getBoundingClientRect().height')
-            check(h < 30, f'{w}px: the next step stays on one line ({h:.0f}px)')
+            h = await V('.step-next b').first.evaluate('e => e.getBoundingClientRect().height')
+            check(h < 30 or (w < 375 and h < 50), f'{w}px: the name of the next step takes one line, two on a narrow phone ({h:.0f}px)')
+            t = await V('.step-next-title').first.evaluate('e => e.scrollWidth <= e.clientWidth')
+            check(t, f'{w}px: and is not cut short')
             g = await V('.step-next-g').first.inner_text()
             check('до' in g and 'г' in g, f'{w}px: its grams are whole ({g.strip()})')
             snd = V('[aria-label="Звук"]').first

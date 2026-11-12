@@ -160,12 +160,6 @@ export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; i
         <Dots label="Тело" left="водянистое" right="плотное" value={b.taste.body} onChange={(v) => set({ taste: { ...b.taste, body: v } })} />
       </Section>
 
-      {!isCupping && (
-        <Section title="Измерения">
-          <CupTdsField brew={b} onChange={(patch) => set(patch)} />
-        </Section>
-      )}
-
       <Section title="Дескрипторы" aside={b.descriptors.length ? <span className="count">{b.descriptors.length}</span> : undefined} plain>
         {b.descriptors.length > 0 && (
           <div className="picked"><Chips options={b.descriptors} value={b.descriptors} onToggle={toggleDesc} toneOf={toneOf} /></div>
@@ -182,6 +176,13 @@ export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; i
           ))}
         </div>
       </Section>
+
+      {/* the measurement after the taste words: most people describe the cup, fewer reach for a refractometer */
+      }{!isCupping && (
+        <Section title="Измерения">
+          <CupTdsField brew={b} onChange={(patch) => set(patch)} />
+        </Section>
+      )}
 
       <Section title="Заметки">
         <textarea id="brew-notes" className="notes" rows={3} aria-label="Заметки" value={b.notes} placeholder="Что изменить в следующий раз?"

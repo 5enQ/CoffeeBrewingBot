@@ -59,17 +59,21 @@ async def main():
             check(not errors, f'{w}px: no page errors {errors}')
             await pg.context.close()
 
-        # a whole round trip by keyboard: open a brew, Esc back, focus is on the same row again
-        pg, errors = await page(b, db=DB)
-        await ns['tab'](pg, 'Дневник'); await pg.wait_for_timeout(700)
-        row = pg.locator('.tab-page:not(.leaving) button.row').nth(1)
-        await row.focus(); name = (await row.inner_text()).split('\n')[0]
-        await pg.keyboard.press('Enter'); await pg.wait_for_timeout(600)
-        title = await pg.evaluate('() => document.title')
-        check(title.startswith(name), f'Enter opens the brew ({title})')
-        await pg.keyboard.press('Escape'); await pg.wait_for_timeout(600)
-        f = await pg.evaluate("() => [document.activeElement.className, document.activeElement.textContent, document.title]")
-        check(f[0].startswith('row') and f[1].startswith(name) and f[2].startswith('Дневник'), f'Esc goes back and focus returns to that row {f[:1]}')
+        # a whole round trip by keyboard: open a brew, Esc back, focus is on the same row again (phone and the wide layout)
+        for w in (1280, 390):
+            pg, errors = await page(b, width=w, height=860, db=DB)
+            await ns['tab'](pg, 'Дневник'); await pg.wait_for_timeout(700)
+            row = pg.locator(':is(.pane-list, .tab-page:not(.leaving)) button.row:visible').nth(1)
+            await row.focus(); name = (await row.inner_text()).split('\n')[0]
+            await pg.keyboard.press('Enter'); await pg.wait_for_timeout(600)
+            title = await pg.evaluate('() => document.title')
+            check(title.startswith(name), f'{w}px: Enter opens the brew ({title})')
+            h = await pg.evaluate("() => [document.activeElement.tagName, document.activeElement.textContent]")
+            check(h == ['H1', name], f'{w}px: focus moves to the opened card, onto its title {h}')
+            await pg.keyboard.press('Escape'); await pg.wait_for_timeout(600)
+            f = await pg.evaluate("() => [document.activeElement.className, document.activeElement.textContent, document.title]")
+            check(f[0].startswith('row') and f[1].startswith(name) and f[2].startswith('Дневник'), f'{w}px: Esc goes back and focus returns to that row {f[:1]}')
+            if w > 800: await pg.context.close()
         # Esc in a text field leaves the field, it doesn't leave the screen
         await ns['tab'](pg, 'Профиль'); await pg.wait_for_timeout(500)
         await pg.locator('button:visible:has-text("Настроить")').first.click(); await pg.wait_for_timeout(500)

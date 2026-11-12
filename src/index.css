@@ -866,6 +866,8 @@ button.row:active { background: var(--fg-soft); }
 .pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .pane-list { border-right: 1px solid var(--sep); }
 .pane-scroll, .pane-detail > .stack-screen { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding: 24px 0; }
+/* the right card has its own bottom bar («Сохранить»): keyboard focus scrolls clear of it */
+.pane-detail > .stack-screen { scroll-padding-bottom: 110px; }
 .desk .screen { min-height: 100%; }
 .desk .topbar {
   top: 0; padding: 18px 24px 12px; background: color-mix(in srgb, var(--bg) 90%, transparent);

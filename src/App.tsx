@@ -77,6 +77,15 @@ function Shell() {
   useTabPill(navRef, pillRef, `${tab}-${stack.length === 0}-${mode}-${ready}`);
 
   useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
+  // keyboard focus on a control only half inside its scrolling pane: bring the rest in (browsers leave it cut)
+  useEffect(() => {
+    const on = (e: FocusEvent) => {
+      const t = e.target as HTMLElement;
+      if (t?.matches?.(':focus-visible')) requestAnimationFrame(() => t.scrollIntoView({ block: 'nearest' }));
+    };
+    document.addEventListener('focusin', on);
+    return () => document.removeEventListener('focusin', on);
+  }, []);
 
   // the page's scrollbar ends above the bar at the bottom (the tabs, or a screen's buttons): it is told how tall that bar is
   useEffect(() => {

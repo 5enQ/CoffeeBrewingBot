@@ -17,6 +17,7 @@ export function Screen({ title, subtitle, action, children, footer, root = false
   const depth = useContext(DepthCtx);
   const leaving = useContext(LeavingCtx);
   const head = useRef<HTMLHeadingElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   const isTop = depth === stack.length && !leaving;
   // a new screen names itself: the tab title follows it, and when the old focus is gone (it sat on the screen just
   // hidden) focus lands on this heading, so a screen reader says where we are (WCAG 2.4.2, 2.4.3)
@@ -25,13 +26,15 @@ export function Screen({ title, subtitle, action, children, footer, root = false
     document.title = root ? `${title} — Brewbook` : `${title} · Brewbook`;
     const a = document.activeElement as HTMLElement | null;
     const lost = !a || a === document.body || !a.isConnected || !a.checkVisibility?.();
-    if (screensShown++ && lost) head.current?.focus({ preventScroll: true });
-  }, [isTop, title, root]);
+    // wide layout: a card opened from the list on the left — focus moves into it (Esc brings it back to the row)
+    const elsewhere = depth > 0 && !!box.current && !box.current.contains(a);
+    if (screensShown++ && (lost || elsewhere)) head.current?.focus({ preventScroll: true });
+  }, [isTop, title, root, depth]);
   // On desktop the "back" arrow is always needed (right card); the first card gets "close"
   const showBack = !root && (layout === 'desktop' || !platform.hasNativeBack);
   const closeIcon = layout === 'desktop' && depth === 1;
   return (
-    <div className="screen">
+    <div className="screen" ref={box}>
       <HolidayTop />
       <header className="topbar">
         {showBack && (

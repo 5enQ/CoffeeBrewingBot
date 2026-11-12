@@ -314,8 +314,9 @@ export function BrewHome() {
                 label={brewBeanTitle(b, bean)}
                 hint={`${m.name}${b.plan ? ` · ${b.plan.name}` : ''} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г`}
                 value={<BrewScore brew={b} size={14} />}
-                onClick={() => push({ name: 'method', methodId: b.methodId, beanId: b.beanId, from: b })}
-                active={sel?.name === 'method' && sel.from?.id === b.id}
+                // the same card as in the journal (its «Повторить» leads on to the method), whatever recipe it was brewed by
+                onClick={() => push({ name: 'brew', id: b.id })}
+                active={sel?.name === 'brew' && sel.id === b.id}
               />
             );
           })}

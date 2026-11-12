@@ -9,6 +9,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - «Анимация фонов» in «Вид интерфейса»: switched off, the moving card backgrounds (the lighthouse, rare lots, the volume card's sky) and the holiday decorations stand still. A per-device setting, like the theme.
 
 ### Changed
+- «Повторить» on the brew tab opens the brew's card, the same as in the journal (delete, «Изменить», «Повторить»). It used to open the method screen, which for a brew made by an own recipe looked like that recipe's page and otherwise like a new brew.
 - The timer keeps every control on one screen while you brew: «Дальше» (the next step) sits beside what comes next («Через 0:43 / Первый пролив · до 150 г») instead of on its own line below, and on a shorter phone the ring gets smaller, so the step card and «Дальше» stay above the bottom buttons without scrolling. A long name of the next step wraps to a second line instead of being cut.
 - Rating a cup: «Измерения» (TDS) comes after «Дескрипторы».
 

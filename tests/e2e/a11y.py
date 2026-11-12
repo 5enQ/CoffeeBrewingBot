@@ -15,6 +15,12 @@ async def main():
         b = await p.chromium.launch()
         pg, errors = await page(b, db=DB)
         V = lambda s: pg.locator(s + ':visible')
+        # «Повторить» on the brew tab opens every brew as the journal does: its card, not the method screen
+        for n in range(3):
+            await V('.tab-page:not(.leaving) .group button.row').nth(n).click(); await pg.wait_for_timeout(600)
+            ft = await pg.evaluate("() => [...document.querySelectorAll('.footer')].filter((f) => f.getClientRects().length).map((f) => f.innerText.replace(/\\s+/g, ' ')).join()")
+            check(ft.strip() == 'Изменить Повторить' and await V('[aria-label="Удалить"]').count() == 1, f'«Повторить» row {n + 1} opens the brew card ({ft.strip()})')
+            await pg.keyboard.press('Escape'); await pg.wait_for_timeout(600)
         live = await pg.evaluate("() => [...document.querySelectorAll('[role=status]')].map((e) => e.textContent)")
         check(live == [''], f'one empty live region is there from the start ({live})')
 

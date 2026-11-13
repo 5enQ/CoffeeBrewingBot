@@ -21,6 +21,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - Rating a cup: «Измерения» (TDS) comes after «Дескрипторы».
 
 ### Fixed
+- A brew saved just before the app was minimised or closed reached the server (stats, the owner's metrics) only on the next start: it is now sent as the app is left, with a request that outlives the page.
 - On a computer a method pinned by right click could not be unpinned the same way, and the next left click on it did nothing: a right click no longer leaves the tile in the «held» state.
 - Keyboard on a computer: the focus ring of a list row (the journal, «Повторить», gear, coffee) was drawn outside the row and cut by its rounded card — a lone row showed nothing, rows in a list showed only a stray line between them. Rings inside cards are now drawn inside the row with the card's rounding; filter chips, the coffee picker and opened sections leave room for a whole ring.
 - Esc goes back a screen (inside Telegram the back arrow is Telegram's and Tab can't reach it); in a text field Esc only leaves the field. Going back puts focus on the row that opened the screen.

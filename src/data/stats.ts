@@ -37,9 +37,9 @@ export function pendingStats(db: Pick<DB, 'brews' | 'mod' | 'del'> & { beans?: D
   return { brews, removed, top };
 }
 
-async function post(path: string, body: unknown): Promise<ServerStats | null> {
+async function post(path: string, body: unknown, keepalive = false): Promise<ServerStats | null> {
   try {
-    const r = await fetch(`${RATINGS_API}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await fetch(`${RATINGS_API}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive });
     if (!r.ok) return null;
     const j = await r.json();
     return j && typeof j.account === 'string' ? j as ServerStats : null;
@@ -54,11 +54,23 @@ export async function answerInvite(what: string, accept: boolean): Promise<Serve
   return post('/invite', { initData, what, answer: accept ? 'accept' : 'decline' });
 }
 
-export async function syncStats(db: Pick<DB, 'brews' | 'mod' | 'del'> & { beans?: DB['beans'] }): Promise<ServerStats | null> {
+/** leaving — the app is hidden or closed: the request has to outlive the page, and a keepalive body is capped at 64 KB */
+const LEAVING_MAX = 60_000;
+
+export async function syncStats(db: Pick<DB, 'brews' | 'mod' | 'del'> & { beans?: DB['beans'] }, leaving = false): Promise<ServerStats | null> {
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return null;
   const since = readSent();
   const { brews, removed, top } = pendingStats(db, since);
+  if (leaving) {
+    // only what changed, and only if it fits; a big first import waits for the next start
+    if (!brews.length && !removed.length) return null;
+    const body = { initData, brews, removed };
+    if (JSON.stringify(body).length > LEAVING_MAX) return null;
+    const res = await post('/brews', body, true);
+    if (res) writeSent(top);
+    return res;
+  }
   let res: ServerStats | null = null;
   if (!brews.length && !removed.length) res = await post('/me', { initData });
   for (let i = 0; i < brews.length || (i === 0 && removed.length); i += CHUNK) {
@@ -83,6 +95,20 @@ export function useStatsSync() {
     }, 2500);
     return () => clearTimeout(t);
   }, [ready, brews, beans, setServerStats]);
+
+  // the app is minimised or closed within those 2.5 s (a brew saved, Telegram closed right away): send it now,
+  // with a request that outlives the page — otherwise it waited for the next start
+  const now = useRef({ brews, beans }); now.current = { brews, beans };
+  useEffect(() => {
+    if (!ready) return;
+    const leave = (e: Event) => {
+      if (e.type === 'visibilitychange' && document.visibilityState !== 'hidden') return;
+      void syncStats({ ...now.current, mod: latest.current.mod, del: latest.current.del }, true);
+    };
+    document.addEventListener('visibilitychange', leave);
+    window.addEventListener('pagehide', leave);
+    return () => { document.removeEventListener('visibilitychange', leave); window.removeEventListener('pagehide', leave); };
+  }, [ready]);
 }
 
 /** The numbers to show: the server's when known, otherwise the local estimate */

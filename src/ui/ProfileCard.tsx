@@ -11,6 +11,7 @@ import { requestTiltPermission } from '../platform/web';
 import { BadgeRow } from './Badges';
 import { Icon, MethodIcon } from './icons';
 import { LeavingCtx, reduceMotion } from './motion';
+import { useAppearance } from '../appearance';
 import { gravityOf, lookOf, planeOf, rollOf } from '../data/tilt';
 import { LIGHTHOUSE_T, sceneMarkup, type SceneId } from './scenes';
 
@@ -270,8 +271,9 @@ type Comet = { id: number; top: number; left: number; ang: number; dist: number;
 /** now and then (every 7–16 s) a comet crosses the sky; none while the app is hidden or motion is reduced */
 function Comets() {
   const [list, setList] = useState<Comet[]>([]);
+  const still = useAppearance().still === true;
   useEffect(() => {
-    if (reduceMotion()) return;
+    if (reduceMotion() || still) return;
     let id = 0, timer = 0;
     const next = (wait: number) => {
       timer = window.setTimeout(() => {
@@ -288,7 +290,7 @@ function Comets() {
     };
     next(1500 + Math.random() * 3500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [still]);
   return (
     <>
       {list.map((c) => (
@@ -607,7 +609,8 @@ function SceneLayer({ id, still }: { id: SceneId; still?: boolean }) {
 
 export function ProfileCard({ card, live: liveProp = true }: { card: CardData; live?: boolean }) {
   // the copy of a tab sliding away keeps the picture but stops its motion: a second live scene made the switch stall
-  const live = liveProp && !useContext(LeavingCtx);
+  // and a paused background (Профиль → Вид интерфейса) stands still the same way
+  const live = liveProp && !useContext(LeavingCtx) && !useAppearance().still;
   const ref = useRef<HTMLDivElement>(null);
   const view = cardView(card);
   const tier = 'tier' in view.theme ? view.theme.tier : null;

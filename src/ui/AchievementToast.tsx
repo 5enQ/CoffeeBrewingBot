@@ -4,6 +4,7 @@ import { useStats } from '../data/stats';
 import { useStore } from '../data/store';
 import { platform } from '../platform';
 import { BadgeChip } from './Badges';
+import { announce } from './toast';
 
 /** New achievement notification. Achievements are hidden until earned — you learn about them when you get them. */
 export function AchievementToast() {
@@ -26,13 +27,14 @@ export function AchievementToast() {
   const cur = queue[0];
   useEffect(() => {
     if (!cur) return;
+    announce(`Новый значок: ${cur.badge.title}. Его можно показать в профиле`);
     const t = setTimeout(() => setQueue((q) => q.slice(1)), 5000);
     return () => clearTimeout(t);
   }, [cur]);
 
   if (!cur) return null;
   return (
-    <div className="toast" role="status" onClick={() => setQueue((q) => q.slice(1))} key={cur.unlock}>
+    <div className="toast" aria-hidden="true" onClick={() => setQueue((q) => q.slice(1))} key={cur.unlock}>
       <span className="toast-eyebrow">Новый значок</span>
       <BadgeChip b={cur.badge} />
       <small>Его можно показать в профиле</small>

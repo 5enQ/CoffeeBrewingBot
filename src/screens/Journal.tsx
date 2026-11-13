@@ -84,7 +84,7 @@ export function Journal() {
                 // the title whole; under it one line: the «пример» tag, grams and time (the icon says the method — named only when no coffee names the brew; the ratio is inside)
                 label={b.cva && b.cva.samples.length > 1 ? `Каппинг · ${b.cva.samples.length} образца` : brewBeanTitle(b, bean)}
                 hint={<span className="one-line">{b.sample && <SampleTag />}<span className="one-line-text">{b.cva ? `${m.name} · ${b.cva.samples.map((s) => beanTitle(beans.find((x) => x.id === s.beanId))).join(', ')}` : `${b.author ? `от ${b.author.name || '@' + b.author.username} · ` : ''}${bean ? '' : `${m.name} · `}${fmtNum(b.dose, 2)}\u00a0→\u00a0${fmtNum(b.water)}\u00a0г · ${fmtTime(b.time)}`}</span></span>}
-                value={<BrewScore brew={b} size={12} />}
+                value={b.unrated ? <span className="unrated-tag">не оценена</span> : <BrewScore brew={b} size={12} />}
                 onClick={() => push({ name: 'brew', id: b.id })}
                 active={sel?.name === 'brew' && sel.id === b.id}
               />
@@ -124,6 +124,12 @@ export function BrewDetail({ id, fresh }: { id: string; fresh?: boolean }) {
             : <Button icon="repeat" wide onClick={() => push({ name: 'method', methodId: b.methodId, beanId: b.beanId, from: b })}>Повторить</Button>}
         </div>
       }>
+      {b.unrated && (
+        <button type="button" className="unrated-banner" onClick={() => push({ name: 'brewEdit', draft: b, isNew: false })}>
+          <span><b>Вы не оценили эту заварку</b><small>Вкус, звёзды и заметки — пока помните</small></span>
+          <span className="unrated-go">Оценить<Icon name="chevron" size={16} /></span>
+        </button>
+      )}
       {b.author && <AuthorBlock author={b.author} />}
       {b.author && b.shareId && b.authorId && <RateBlock rid={b.shareId} author={b.authorId} authorName={b.author.name} />}
       {!b.author && b.shareId && profile.ratingStats?.recipes[b.shareId] && (

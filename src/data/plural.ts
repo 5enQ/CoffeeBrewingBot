@@ -7,3 +7,4 @@ export const BREWS = ['заварка', 'заварки', 'заварок'] as c
 export const PACKS = ['пачка', 'пачки', 'пачек'] as const;
 /** a grinder, a kettle, scales — devices */
 export const DEVICES = ['устройство', 'устройства', 'устройств'] as const;
+export const LOTS = ['лот', 'лота', 'лотов'] as const;

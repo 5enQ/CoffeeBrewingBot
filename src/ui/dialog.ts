@@ -3,6 +3,8 @@ export interface DialogState {
   message: string;
   kind: 'confirm' | 'alert';
   resolve: (ok: boolean) => void;
+  /** what had focus when the dialog opened: focus goes back there when it closes */
+  opener: Element | null;
 }
 
 let current: DialogState | null = null;
@@ -19,9 +21,9 @@ export const dialog = {
     c?.resolve(ok);
   },
   confirm(message: string) {
-    return new Promise<boolean>((resolve) => { current = { message, kind: 'confirm', resolve }; emit(); });
+    return new Promise<boolean>((resolve) => { current = { message, kind: 'confirm', resolve, opener: document.activeElement }; emit(); });
   },
   alert(message: string) {
-    return new Promise<void>((resolve) => { current = { message, kind: 'alert', resolve: () => resolve() }; emit(); });
+    return new Promise<void>((resolve) => { current = { message, kind: 'alert', resolve: () => resolve(), opener: document.activeElement }; emit(); });
   },
 };

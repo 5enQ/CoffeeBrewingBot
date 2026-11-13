@@ -57,7 +57,7 @@ function ReportForm({ id, placeholder, onSend, onCancel, sendLabel = 'Отпра
   };
   return (
     <div className="report-form">
-      <textarea id={id} className="notes" rows={3} value={text} placeholder={placeholder} onChange={(e) => setText(e.target.value)} maxLength={3000} />
+      <textarea id={id} className="notes" rows={3} aria-label="Описание" value={text} placeholder={placeholder} onChange={(e) => setText(e.target.value)} maxLength={3000} />
       <div className="report-actions">
         <label className="btn btn-secondary">
           <span>{image ? 'Скриншот добавлен ✓' : 'Добавить скриншот'}</span>
@@ -237,7 +237,7 @@ export function OwnerChecks({ checks, onChange }: { checks: AdminData['checks'];
           )}
         </div>
       ))}
-      <textarea id="check-new" className="notes" rows={2} placeholder="Например: колд брю — сообщение от бота приходит, когда время вышло" value={text} maxLength={200} onChange={(e) => setText(e.target.value)} />
+      <textarea id="check-new" className="notes" rows={2} aria-label="Новая проверка" placeholder="Например: колд брю — сообщение от бота приходит, когда время вышло" value={text} maxLength={200} onChange={(e) => setText(e.target.value)} />
       <div className="site-actions">
         <Button icon="plus" disabled={busy || !text.trim()} onClick={() => act('check_add')}>Добавить пункт</Button>
         {list.length > 0 && <Button kind="secondary" disabled={busy} onClick={() => act('check_clear')}>Очистить список</Button>}

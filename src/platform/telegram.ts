@@ -27,19 +27,37 @@ const tg = () => (window as any).Telegram.WebApp;
 
 const THEME_VARS = ['--bg', '--card', '--fg', '--hint', '--accent', '--accent-fg', '--link', '--danger', '--sep'];
 
+type ThemeParams = Record<string, string | undefined>;
+const PARAMS_KEY = 'brewbook.tgtheme.';
+
 /**
- * Map Telegram theme colors to the app's CSS variables — unless the person picked the other theme or high
- * contrast in «Вид интерфейса»: then the app's own palette is used, and Telegram's bars take its background.
+ * Telegram gives the colors of its current theme only. So the app remembers them for each theme it has seen
+ * (light and dark): when the person picks the other theme in «Вид интерфейса», the colors of their Telegram's
+ * other theme are taken from that memory. Until the app has seen it once, its own palette stands in.
+ */
+function rememberParams(scheme: 'light' | 'dark', p: ThemeParams) {
+  if (!p.bg_color && !p.secondary_bg_color) return;
+  try { localStorage.setItem(PARAMS_KEY + scheme, JSON.stringify(p)); } catch { /* no storage */ }
+}
+function recalledParams(scheme: 'light' | 'dark'): ThemeParams | null {
+  try { return JSON.parse(localStorage.getItem(PARAMS_KEY + scheme) || 'null'); } catch { return null; }
+}
+
+/**
+ * Map Telegram theme colors to the app's CSS variables: the current theme's, or — when the person picked the
+ * other one — the remembered colors of that Telegram theme. High contrast uses the app's own stronger palette.
  */
 function applyTheme() {
-  const p = tg().themeParams || {};
+  const now: ThemeParams = tg().themeParams || {};
   const root = document.documentElement.style;
   const set = (name: string, value?: string) => value ? root.setProperty(name, value) : root.removeProperty(name);
   const look = getAppearance();
   const scheme: 'light' | 'dark' = tg().colorScheme;
-  const own = look.contrast || (look.theme !== 'auto' && look.theme !== scheme);
+  rememberParams(scheme, now);
+  const want = look.theme === 'auto' ? scheme : look.theme;
+  const p = look.contrast ? null : want === scheme ? now : recalledParams(want);
   markRoot(scheme);
-  if (own) {
+  if (!p) {
     THEME_VARS.forEach((v) => root.removeProperty(v));
   } else {
     set('--bg', p.secondary_bg_color || p.bg_color);
@@ -53,8 +71,8 @@ function applyTheme() {
     set('--sep', p.section_separator_color);
   }
   try {
-    // the bars match the page: Telegram's own color, or ours as a hex once it is applied
-    const bg = own ? getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() : 'secondary_bg_color';
+    // the bars match the page: Telegram's own color key for its current theme, otherwise the page's color as hex
+    const bg = p === now ? 'secondary_bg_color' : (p?.secondary_bg_color || p?.bg_color || getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
     tg().setHeaderColor?.(bg);
     tg().setBackgroundColor?.(bg);
     tg().setBottomBarColor?.(bg);

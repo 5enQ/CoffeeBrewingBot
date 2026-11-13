@@ -5,6 +5,42 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.7.4 — Keep Pouring (2026-11-13)
+
+### Added
+- «Ждать» in the timer, beside «Дальше»: a step goes slower than planned — the clock keeps running, the next step (and every one after it) waits until «Ждать» is pressed again; the line shows «Ждём · +0:12». The added time stays in the plan, and the brew is written down with the steps as they actually went (also after «Дальше»). Keyboard: W.
+- «Заварить» in the footer of a bean card: beans — by the method this coffee was last brewed with («Заварить · V60»), drips — «Заварить дрип» (drip boxes had no way to start brewing from the card). The other methods open from a round button left of it: a grid over the footer (the methods already used with this coffee tinted), closed by ×, a tap outside or Esc — no swipe. A finished pack has no footer and keeps the grid in the card.
+- «Анимация фонов» in «Вид интерфейса»: switched off, the moving card backgrounds (the lighthouse, rare lots, the volume card's sky) and the holiday decorations stand still. A per-device setting, like the theme.
+
+### Changed
+- ✓ in the timer writes the brew down at once (journal, stock, stats). Rating it on «Как получилось?» is optional now: leaving that screen asks nothing and keeps the brew, and the journal marks it «не оценена»; its page has «Вы не оценили эту заварку · Оценить». Saving the rating (even unchanged) takes the mark away. Closing Telegram after ✓ no longer loses the brew.
+- Profile: «Настроить» on the left, «Поделиться» (the main one) on the right — the same order as other screens.
+- Owner's metrics: «Обновить» shows it is working — the arrow turns and the numbers dim, then «Обновлено» for a moment (or «Не вышло · ещё раз»); the numbers carry the time they are for.
+- «Купить ещё» on a finished pack opens «Ещё пачка»: the roast date first (with the weight), the rest folded as «Как у прошлой пачки» — one tap to change it.
+- A drip box: the 1 / 5 / 6 … шт presets are gone, only the count field remains.
+- The timer's next step: its grams («до 150 г», quieter) go under the name when the line is short, without a stray «·» at the start.
+- «Повторить» on the brew tab opens the brew's card, the same as in the journal (delete, «Изменить», «Повторить»). It used to open the method screen, which for a brew made by an own recipe looked like that recipe's page and otherwise like a new brew.
+- The timer keeps every control on one screen while you brew: «Дальше» (the next step) sits beside what comes next («Через 0:43 / Первый пролив · до 150 г») instead of on its own line below, and on a shorter phone the ring gets smaller, so the step card and «Дальше» stay above the bottom buttons without scrolling. A long name of the next step wraps to a second line instead of being cut.
+- Rating a cup: «Измерения» (TDS) comes after «Дескрипторы».
+
+### Fixed
+- A brew saved just before the app was minimised or closed reached the server (stats, the owner's metrics) only on the next start: it is now sent as the app is left, with a request that outlives the page.
+- On a computer a method pinned by right click could not be unpinned the same way, and the next left click on it did nothing: a right click no longer leaves the tile in the «held» state.
+- Keyboard on a computer: the focus ring of a list row (the journal, «Повторить», gear, coffee) was drawn outside the row and cut by its rounded card — a lone row showed nothing, rows in a list showed only a stray line between them. Rings inside cards are now drawn inside the row with the card's rounding; filter chips, the coffee picker and opened sections leave room for a whole ring.
+- Esc goes back a screen (inside Telegram the back arrow is Telegram's and Tab can't reach it); in a text field Esc only leaves the field. Going back puts focus on the row that opened the screen.
+- Wide layout (computer), by keyboard: a card opened from the list takes focus onto its title, Esc closes it and focus is back on the row; in the right card focus scrolls clear of its «Сохранить» bar, and a control only half inside a scrolling pane is brought fully into view.
+- Taste scales (кислотность, сладость…): the line behind the dots no longer shows through the picked ones.
+- Accessibility (WCAG 2.2 review): the field being typed into shows a green ring, not only a slightly darker fill; notes, search and other fields with only a grey hint inside are named for screen readers; the confirm («Удалить эту запись?») is a real modal — named by its question, the page under it out of reach, Esc says no, focus goes back to the button that opened it; keyboard focus no longer scrolls under the bottom bar or the title; a newly opened screen takes focus on its title and names the browser tab; «Авто / Светлая / Тёмная» and the other segmented choices read as pressed buttons, not tabs; popups («Скопировано», a new badge) are spoken through one live region that is always there, so screen readers don't miss them; the profile name and the Telegram nick offer autofill.
+- On iPhone, tapping the backup paste field or a cupping note zoomed the page: their text is 16 px now.
+- With «уменьшить движение» a new timer step, a changed number, a new tab and popups fade in for 0.2 s instead of appearing unnoticed; nothing slides.
+- On a 320 px phone «Настроить» under the profile card went past the edge of the screen: both buttons share the row, without their icons on a narrow phone.
+- In Telegram, picking the theme other than Telegram's («Светлая» with Telegram dark, or the reverse) used the app's own colors. Telegram tells an app only the colors of its current theme, so the app now remembers them for each theme it has been opened in, and the other theme takes your Telegram's colors from that memory; until the app has been opened once in that Telegram theme, its own palette stands in. Telegram's top and bottom bars follow. High contrast keeps the app's own stronger palette.
+- Owner panel: the metrics (tiles, the 30 days, methods and features) sit inside the card with the same inset as everything else, without lines between them; «Подключённые и отклонённые» is a left-aligned row with the lots under it («в продаже 100 лотов» — and «1 лот», «2 лота»); «1 новый» instead of «1 новых»; the people filters stand off the line above them.
+
+### Tests
+- Страж missed suites whose names have digits (`a11y.py` was looked for as `y.py`): it now runs every suite in `run-e2e.sh`.
+- The owner metrics test waits for the server's answer instead of a fixed time.
+
 ## v1.7.3 — Clear View (2026-11-10)
 
 ### Tests

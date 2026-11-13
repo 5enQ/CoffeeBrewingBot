@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
 /** Short popup message at the bottom of the screen ("Copied" etc.) */
 let current: { id: number; text: string } | null = null;
@@ -9,6 +9,24 @@ const emit = () => listeners.forEach((l) => l());
 export function toast(text: string) {
   current = { id: ++seq, text };
   emit();
+  announce(text);
+}
+
+/* One live region, present from the start; only its text changes. Screen readers often miss a region that
+   appears together with its words, so the visible popups are hidden from them and speak through this (WCAG 4.1.3). */
+let said = '';
+const ears = new Set<() => void>();
+export function announce(text: string) {
+  said = '';
+  ears.forEach((l) => l());
+  // cleared first, filled on the next frame: the same words twice in a row are still read out
+  requestAnimationFrame(() => { said = text; ears.forEach((l) => l()); });
+}
+
+export function LiveRegion() {
+  const [, tick] = useState(0);
+  useEffect(() => { const l = () => tick((n) => n + 1); ears.add(l); return () => { ears.delete(l); }; }, []);
+  return <div className="sr-only" role="status" aria-live="polite">{said}</div>;
 }
 
 export function ToastHost() {
@@ -20,7 +38,7 @@ export function ToastHost() {
     return () => clearTimeout(timer);
   }, [t]);
   if (!t) return null;
-  return <div className="snack" role="status" key={t.id}>{t.text}</div>;
+  return <div className="snack" aria-hidden="true" key={t.id}>{t.text}</div>;
 }
 
 /** Copy with a fallback for webviews without the Clipboard API */

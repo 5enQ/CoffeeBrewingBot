@@ -8,7 +8,7 @@ import { InviteGate } from './ui/InviteGate';
 import { DepthCtx, RouterProvider, useRouter, type Route, type Tab } from './router';
 import { DialogHost } from './ui/kit';
 import { AchievementToast } from './ui/AchievementToast';
-import { ToastHost } from './ui/toast';
+import { LiveRegion, ToastHost } from './ui/toast';
 import { Icon, MethodIcon } from './ui/icons';
 import { methodById } from './data/methods';
 import { BrewHome } from './screens/BrewHome';
@@ -36,10 +36,10 @@ function renderRoute(r: Route) {
     case 'method': if (r.methodId === 'cupping') return <CuppingSetup beanId={r.beanId} from={r.from} />;
       return <MethodScreen methodId={r.methodId} beanId={r.beanId} from={r.from} recipeId={r.recipeId} />;
     case 'timer': return <TimerScreen draft={r.draft} resume={r.resume} />;
-    case 'brewEdit': return <BrewEdit draft={r.draft} isNew={r.isNew} openCupping={r.openCupping} manual={r.manual} />;
+    case 'brewEdit': return <BrewEdit draft={r.draft} isNew={r.isNew} openCupping={r.openCupping} manual={r.manual} saved={r.saved} />;
     case 'brew': return <BrewDetail id={r.id} fresh={r.fresh} />;
     case 'bean': return <BeanDetail id={r.id} />;
-    case 'beanEdit': return <BeanEdit bean={r.bean} isNew={r.isNew} scanOnOpen={r.scanOnOpen} />;
+    case 'beanEdit': return <BeanEdit bean={r.bean} isNew={r.isNew} scanOnOpen={r.scanOnOpen} again={r.again} />;
     case 'methodEdit': return <MethodEdit method={r.method} isNew={r.isNew} />;
     case 'recipeEdit': return <RecipeEdit recipe={r.recipe} isNew={r.isNew} />;
     case 'badgeEdit': return <BadgeEdit badge={r.badge} isNew={r.isNew} />;
@@ -77,6 +77,15 @@ function Shell() {
   useTabPill(navRef, pillRef, `${tab}-${stack.length === 0}-${mode}-${ready}`);
 
   useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
+  // keyboard focus on a control only half inside its scrolling pane: bring the rest in (browsers leave it cut)
+  useEffect(() => {
+    const on = (e: FocusEvent) => {
+      const t = e.target as HTMLElement;
+      if (t?.matches?.(':focus-visible')) requestAnimationFrame(() => t.scrollIntoView({ block: 'nearest' }));
+    };
+    document.addEventListener('focusin', on);
+    return () => document.removeEventListener('focusin', on);
+  }, []);
 
   // the page's scrollbar ends above the bar at the bottom (the tabs, or a screen's buttons): it is told how tall that bar is
   useEffect(() => {
@@ -136,7 +145,7 @@ function Shell() {
       <DepthCtx.Provider value={i + 1}>{renderRoute(r)}</DepthCtx.Provider>
     </div>
   ));
-  const overlays = <><HolidayLayer /><DialogHost /><AchievementToast /><ToastHost /></>;
+  const overlays = <><HolidayLayer /><DialogHost /><AchievementToast /><ToastHost /><LiveRegion /></>;
 
   if (mode === 'desktop') {
     return (

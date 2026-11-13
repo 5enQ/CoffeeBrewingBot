@@ -51,8 +51,9 @@ export function MyCardBlock() {
       <div className="pcard-stage"><ProfileCard card={card} /></div>
       {!profile.name.trim() && <p className="muted pad small-note">Добавьте имя, значки и фон в «Настроить» — так вас увидят друзья в карточке и в рецептах.</p>}
       <div className="my-card-actions">
-        <Button icon="share" wide onClick={() => push({ name: 'cardShare' })}>Поделиться</Button>
+        {/* as everywhere: the secondary action on the left, the main one on the right, under the thumb */}
         <Button kind="secondary" icon="edit" wide onClick={() => push({ name: 'cardEdit' })}>Настроить</Button>
+        <Button icon="share" wide onClick={() => push({ name: 'cardShare' })}>Поделиться</Button>
       </div>
     </div>
   );
@@ -98,10 +99,10 @@ export function CardEditScreen() {
       <div className="pcard-stage"><ProfileCard card={card} /></div>
 
       <Section title="О себе">
-        <Field label="Имя" id="profile-name" placeholder="Как вас подписать" value={profile.name} onChange={(e) => saveProfile({ ...profile, name: e.target.value })} />
-        <Field label="Telegram" id="profile-tg" placeholder="username без @" value={profile.telegram} autoCapitalize="off" autoCorrect="off" spellCheck={false}
+        <Field label="Имя" id="profile-name" name="name" autoComplete="name" placeholder="Как вас подписать" value={profile.name} onChange={(e) => saveProfile({ ...profile, name: e.target.value })} />
+        <Field label="Telegram" id="profile-tg" name="username" autoComplete="username" placeholder="username без @" value={profile.telegram} autoCapitalize="off" autoCorrect="off" spellCheck={false}
           onChange={(e) => saveProfile({ ...profile, telegram: e.target.value.replace(/^@/, '').replace(/[^A-Za-z0-9_]/g, '') })} />
-        <textarea id="profile-about" className="profile-about field-area" rows={2} placeholder="Пара слов о себе" maxLength={200}
+        <textarea id="profile-about" className="profile-about field-area" rows={2} aria-label="О себе" placeholder="Пара слов о себе" maxLength={200}
           value={profile.about} onChange={(e) => saveProfile({ ...profile, about: e.target.value })} />
       </Section>
 

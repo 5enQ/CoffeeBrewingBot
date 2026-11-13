@@ -55,9 +55,11 @@ function MethodTile({ id, className, onOpen, onPin, pinned, label, children }: {
       onPointerUp={cancel} onPointerLeave={cancel} onPointerCancel={cancel}
       onContextMenu={(e) => {
         e.preventDefault();
-        // on touch screens the context menu arrives together with the long press — the timer handles it
-        if (lastPointer !== 'mouse' || held.current || timer.current) return;
-        held.current = true; pinOnce(onPin);
+        // on touch screens the context menu arrives together with the long press — the timer handles it.
+        // A right click is a click of its own: it must not leave «held» set, or the next right click (unpin)
+        // and the next left click (open) were both swallowed
+        if (lastPointer !== 'mouse' || timer.current) return;
+        pinOnce(onPin);
       }}
       onClick={() => { if (held.current || Date.now() - lastPinAt < 400) { held.current = false; return; } onOpen(); }}>
       {children}
@@ -314,8 +316,9 @@ export function BrewHome() {
                 label={brewBeanTitle(b, bean)}
                 hint={`${m.name}${b.plan ? ` · ${b.plan.name}` : ''} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г`}
                 value={<BrewScore brew={b} size={14} />}
-                onClick={() => push({ name: 'method', methodId: b.methodId, beanId: b.beanId, from: b })}
-                active={sel?.name === 'method' && sel.from?.id === b.id}
+                // the same card as in the journal (its «Повторить» leads on to the method), whatever recipe it was brewed by
+                onClick={() => push({ name: 'brew', id: b.id })}
+                active={sel?.name === 'brew' && sel.id === b.id}
               />
             );
           })}

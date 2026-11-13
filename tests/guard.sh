@@ -25,7 +25,7 @@ stage 'Server types'       bash -c 'cd worker && npm run -s typecheck'
 stage 'Server tests'       npm run -s test:server
 stage 'Build'              npm run -s build:single
 cd tests/e2e
-for t in $(grep -o '[a-z_]*\.py' ../run-e2e.sh); do
+for t in $(grep -o '[a-z0-9_]*\.py' ../run-e2e.sh); do
   if [ "$t" = ui_snapshot.py ]; then stage 'UI autotests' python3 "$t"; else stage "Browser: ${t%.py}" python3 "$t"; fi
 done
 cd ../..

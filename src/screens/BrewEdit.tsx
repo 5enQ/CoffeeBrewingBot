@@ -17,7 +17,7 @@ import { healthWarning } from '../data/health';
 import { CupTdsField, PpmField } from '../ui/WaterFields';
 
 
-export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; isNew: boolean; openCupping?: boolean; manual?: boolean }) {
+export function BrewEdit({ draft, isNew, openCupping, manual, saved }: { draft: Brew; isNew: boolean; openCupping?: boolean; manual?: boolean; saved?: boolean }) {
   const { saveBrew, gear: myGear, brews } = useStore();
   const { setTab, push, back } = useRouter();
   const [b, setB] = useState<Brew>(draft);
@@ -28,7 +28,8 @@ export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; i
   const isCupping = b.methodId === 'cupping';
   const dirty = JSON.stringify(b) !== JSON.stringify(draft);
 
-  useBackGuard(dirty || isNew, isNew ? 'Не сохранять эту заварку?' : 'Выйти без сохранения изменений?');
+  // after ✓ in the timer the brew is already in the journal (marked unrated): leaving keeps it, only unsaved changes are asked about
+  useBackGuard(dirty || (isNew && !saved), saved ? 'Выйти без оценки? Заварка уже в дневнике.' : isNew ? 'Не сохранять эту заварку?' : 'Выйти без сохранения изменений?');
 
   useEffect(() => {
     if (openCupping) setTimeout(() => cuppingRef.current?.scrollIntoView({ behavior: 'smooth' }), 300);
@@ -38,8 +39,10 @@ export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; i
   const toggleDesc = (d: string) => set({ descriptors: b.descriptors.includes(d) ? b.descriptors.filter((x) => x !== d) : [...b.descriptors, d] });
 
   const save = () => {
-    if (b.cva) {
-      const toSave: Brew = { ...b, rating: 0, cupping: null, beanId: b.cva.samples[0]?.beanId ?? b.beanId };
+    // saving here is the rating: the «не оценена» mark goes
+    const { unrated: _u, ...rated } = b;
+    if (rated.cva) {
+      const toSave: Brew = { ...rated, rating: 0, cupping: null, beanId: rated.cva.samples[0]?.beanId ?? b.beanId };
       saveBrew(toSave);
     if (isNew && toSave.rating) track('brew.rated');
       if (isNew) track('cupping.save');
@@ -50,8 +53,8 @@ export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; i
     }
     // only cupping is rated with the SCA form; other methods use stars
     const toSave: Brew = isCupping
-      ? { ...b, rating: 0, cupping: { ...(b.cupping ?? emptyCupping()), descriptors: b.descriptors, notes: b.notes } }
-      : { ...b, cupping: null };
+      ? { ...rated, rating: 0, cupping: { ...(b.cupping ?? emptyCupping()), descriptors: b.descriptors, notes: b.notes } }
+      : { ...rated, cupping: null };
     const warn = isNew ? healthWarning(brews, toSave) : null;
     saveBrew(toSave);
     platform.haptic('success');
@@ -64,13 +67,13 @@ export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; i
     const cva = b.cva;
     return (
       <Screen title={isNew ? 'Оценка каппинга' : 'Редактировать каппинг'} subtitle={`${MODES.find((x) => x.id === cva.mode)?.label} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
-        footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty}>Сохранить</Button></div>}>
+        footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty && !draft.unrated}>Сохранить</Button></div>}>
         <CvaEditor value={cva} onChange={(v) => set({ cva: v })} />
 
         <Section title="Цель и заметки">
           <Field label="Цель сессии" id="cva-purpose" value={cva.purpose} placeholder="например, выбор лота"
             onChange={(e) => set({ cva: { ...cva, purpose: e.target.value } })} />
-          <textarea id="brew-notes" className="notes" rows={3} value={b.notes} placeholder="Общие заметки о сессии"
+          <textarea id="brew-notes" className="notes" rows={3} aria-label="Заметки" value={b.notes} placeholder="Общие заметки о сессии"
             onChange={(e) => set({ notes: e.target.value })} />
         </Section>
 
@@ -140,7 +143,7 @@ export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; i
 
   return (
     <Screen title={isNew ? 'Как получилось?' : 'Редактировать'} subtitle={`${m.name} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
-      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty}>Сохранить</Button></div>}>
+      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty && !draft.unrated}>Сохранить</Button></div>}>
 
       {manual && setup}
 
@@ -160,12 +163,6 @@ export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; i
         <Dots label="Тело" left="водянистое" right="плотное" value={b.taste.body} onChange={(v) => set({ taste: { ...b.taste, body: v } })} />
       </Section>
 
-      {!isCupping && (
-        <Section title="Измерения">
-          <CupTdsField brew={b} onChange={(patch) => set(patch)} />
-        </Section>
-      )}
-
       <Section title="Дескрипторы" aside={b.descriptors.length ? <span className="count">{b.descriptors.length}</span> : undefined} plain>
         {b.descriptors.length > 0 && (
           <div className="picked"><Chips options={b.descriptors} value={b.descriptors} onToggle={toggleDesc} toneOf={toneOf} /></div>
@@ -183,8 +180,15 @@ export function BrewEdit({ draft, isNew, openCupping, manual }: { draft: Brew; i
         </div>
       </Section>
 
+      {/* the measurement after the taste words: most people describe the cup, fewer reach for a refractometer */
+      }{!isCupping && (
+        <Section title="Измерения">
+          <CupTdsField brew={b} onChange={(patch) => set(patch)} />
+        </Section>
+      )}
+
       <Section title="Заметки">
-        <textarea id="brew-notes" className="notes" rows={3} value={b.notes} placeholder="Что изменить в следующий раз?"
+        <textarea id="brew-notes" className="notes" rows={3} aria-label="Заметки" value={b.notes} placeholder="Что изменить в следующий раз?"
           onChange={(e) => set({ notes: e.target.value })} />
       </Section>
 

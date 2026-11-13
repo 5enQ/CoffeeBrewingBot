@@ -78,7 +78,7 @@ async def main():
         check(set(sent[0]) == {'id', 'm', 'w', 't'}, f'only method, water and date leave the device ({sorted(sent[0])})')
         V = lambda s: pg.locator(s + ':visible')
         await pg.click('.tabbar >> text=Профиль'); await pg.wait_for_timeout(500)
-        check(await V('.pcard').count() == 1 and await V('.my-card-actions button').all_inner_texts() == ['Поделиться', 'Настроить'], 'Profile opens with the card and two buttons')
+        check(await V('.pcard').count() == 1 and await V('.my-card-actions button').all_inner_texts() == ['Настроить', 'Поделиться'], 'Profile opens with the card and two buttons, the main one («Поделиться») on the right')
         check('@anya_brews' in await V('.pcard').inner_text(), 'own card shows the Telegram username')
         await pg.screenshot(path=str(OUT / 'profile-card.png'))
         await V('.my-card-actions button:has-text("Настроить")').click(); await pg.wait_for_timeout(500)

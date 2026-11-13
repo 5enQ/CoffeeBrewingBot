@@ -1421,19 +1421,6 @@
 "div.my-card › div.my-card-actions › button.btn.btn-primary.wide": {
 "bg": "rgb(104, 194, 148)",
 "border": "",
-"gap": 18,
-"h": 50,
-"opacity": "1",
-"outline": "",
-"pad": "0px 18px",
-"radius": "13px",
-"shadow": "",
-"w": 175,
-"x": 16
-},
-"div.my-card › div.my-card-actions › button.btn.btn-secondary.wide": {
-"bg": "color(srgb 0.407843 0.760784 0.580392 / 0.13)",
-"border": "",
 "gap": -50,
 "h": 50,
 "opacity": "1",
@@ -1443,6 +1430,19 @@
 "shadow": "",
 "w": 175,
 "x": 199
+},
+"div.my-card › div.my-card-actions › button.btn.btn-secondary.wide": {
+"bg": "color(srgb 0.407843 0.760784 0.580392 / 0.13)",
+"border": "",
+"gap": 18,
+"h": 50,
+"opacity": "1",
+"outline": "",
+"pad": "0px 18px",
+"radius": "13px",
+"shadow": "",
+"w": 175,
+"x": 16
 },
 "div.my-card › div.pcard-stage › div.pcard.base-paper": {
 "bg": "rgba(0, 0, 0, 0)",

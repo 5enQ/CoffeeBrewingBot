@@ -1635,6 +1635,15 @@ html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) 
 .theme-pick[class*='scene-'] span, .theme-pick[class*='scene-'] small, .theme-pick.special-lighthouse span, .theme-pick.special-lighthouse small { text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
 
 /* owner: metrics (screens/OwnerMetrics.tsx) */
+/* «Обновить» in the owner's metrics: the arrow turns while it asks, the numbers dim */
+.metric-reload { display: inline-flex; align-items: center; gap: 5px; }
+.metric-reload:disabled { opacity: 1; color: var(--hint); }
+.metric-reload.busy svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(-360deg); } }
+@media (prefers-reduced-motion: reduce) { .metric-reload.busy svg { animation: calm-in 0.9s ease-in-out infinite alternate; } }
+.metric-body { transition: opacity 0.2s; }
+.metric-body.stale { opacity: 0.45; }
+.metric-at { margin: 0 0 8px; font-size: 12px; }
 .metric-body { padding: 12px 12px 14px; }
 .metric-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0 0 8px; }
 .metric-tile { display: grid; gap: 1px; padding: 10px 12px; border-radius: 14px; background: var(--hint-soft); min-width: 0; }

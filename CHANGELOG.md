@@ -11,6 +11,8 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - «Анимация фонов» in «Вид интерфейса»: switched off, the moving card backgrounds (the lighthouse, rare lots, the volume card's sky) and the holiday decorations stand still. A per-device setting, like the theme.
 
 ### Changed
+- Profile: «Настроить» on the left, «Поделиться» (the main one) on the right — the same order as other screens.
+- Owner's metrics: «Обновить» shows it is working — the arrow turns and the numbers dim, then «Обновлено» for a moment (or «Не вышло · ещё раз»); the numbers carry the time they are for.
 - «Купить ещё» on a finished pack opens «Ещё пачка»: the roast date first (with the weight), the rest folded as «Как у прошлой пачки» — one tap to change it.
 - A drip box: the 1 / 5 / 6 … шт presets are gone, only the count field remains.
 - The timer's next step: its grams («до 150 г», quieter) go under the name when the line is short, without a stray «·» at the start.

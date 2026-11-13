@@ -3,7 +3,7 @@ import { EVENTS, EVENT_NAMES, type Metrics } from '../data/metrics';
 import { fmtNum, methodById } from '../data/methods';
 import { loadMetrics } from '../data/track';
 import { Button, Section } from '../ui/kit';
-import { MethodIcon } from '../ui/icons';
+import { Icon, MethodIcon } from '../ui/icons';
 
 const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)}%` : '—');
 const dm = (day: string) => { const [, m, d] = day.split('-'); return `${Number(d)}.${m}`; };
@@ -12,7 +12,15 @@ const dm = (day: string) => { const [, m, d] = day.split('-'); return `${Number(
 export function OwnerMetrics() {
   const [m, setM] = useState<Metrics | null>(null);
   const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading');
-  const load = () => { setState('loading'); loadMetrics().then((x) => { setM(x); setState(x ? 'ok' : 'failed'); }); };
+  // «Обновить» shows that it works: the arrow turns and the numbers dim while it asks; then «Обновлено» for a moment
+  const [fresh, setFresh] = useState(false);
+  const load = () => {
+    setState('loading'); setFresh(false);
+    loadMetrics().then((x) => {
+      if (x) { setM(x); setState('ok'); setFresh(true); setTimeout(() => setFresh(false), 2500); }
+      else { setState('failed'); }
+    });
+  };
   useEffect(load, []);
   if (!m) return (
     <Section title="Метрики">
@@ -26,9 +34,14 @@ export function OwnerMetrics() {
   const feats = EVENT_NAMES.map((ev) => ({ ev, n: m.features[ev] ?? 0 })).sort((a, z) => z.n - a.n);
   const featTop = Math.max(1, ...feats.map((f) => f.n));
   return (
-    <Section title="Метрики" aside={<button type="button" className="link-btn" onClick={load}>Обновить</button>}>
+    <Section title="Метрики" aside={
+      <button type="button" className={'link-btn metric-reload' + (state === 'loading' ? ' busy' : '')} onClick={load} disabled={state === 'loading'} aria-live="polite">
+        <Icon name={fresh ? 'check' : 'reset'} size={16} />
+        {state === 'loading' ? 'Обновляем…' : fresh ? 'Обновлено' : state === 'failed' ? 'Не вышло · ещё раз' : 'Обновить'}
+      </button>}>
       {/* one block with the card's inset: tiles, the 30 days, the lists — no lines between them */}
-      <div className="metric-body">
+      <div className={'metric-body' + (state === 'loading' ? ' stale' : '')} aria-busy={state === 'loading'}>
+      <p className="metric-at muted">на {new Date(m.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</p>
       <div className="metric-tiles">
         <div className="metric-tile"><b>{u.total}</b><span>человек всего</span><small>+{u.new7} за неделю · +{u.new30} за месяц</small></div>
         <div className="metric-tile"><b>{u.seen7}</b><span>открывали за неделю</span><small>сегодня {u.seen1} · за месяц {u.seen30}</small></div>

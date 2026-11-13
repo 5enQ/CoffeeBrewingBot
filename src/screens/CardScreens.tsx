@@ -51,8 +51,9 @@ export function MyCardBlock() {
       <div className="pcard-stage"><ProfileCard card={card} /></div>
       {!profile.name.trim() && <p className="muted pad small-note">Добавьте имя, значки и фон в «Настроить» — так вас увидят друзья в карточке и в рецептах.</p>}
       <div className="my-card-actions">
-        <Button icon="share" wide onClick={() => push({ name: 'cardShare' })}>Поделиться</Button>
+        {/* as everywhere: the secondary action on the left, the main one on the right, under the thumb */}
         <Button kind="secondary" icon="edit" wide onClick={() => push({ name: 'cardEdit' })}>Настроить</Button>
+        <Button icon="share" wide onClick={() => push({ name: 'cardShare' })}>Поделиться</Button>
       </div>
     </div>
   );

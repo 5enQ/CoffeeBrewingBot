@@ -20,11 +20,14 @@ async def main():
         b = await p.chromium.launch()
         pg, errors = await page(b, init=TG, phone=True)
         sent = []
+        slow = {'on': False}
         async def handle(route):
             u = route.request.url
             req = json.loads(route.request.post_data or '{}')
             if '/track' in u: sent.append(req); body = {'counted': 1}
-            elif '/admin' in u: body = METRICS if req.get('action') == 'metrics' else {'sites': [], 'grants': [], 'checks': []}
+            elif '/admin' in u:
+                body = METRICS if req.get('action') == 'metrics' else {'sites': [], 'grants': [], 'checks': []}
+                if slow['on'] and req.get('action') == 'metrics': await asyncio.sleep(1.2)
             else: body = {}
             await route.fulfill(status=200, content_type='application/json', body=json.dumps(body))
         await pg.route('**/brewbook-ratings.brewbook.workers.dev/**', handle)
@@ -40,6 +43,20 @@ async def main():
         check('Запуск таймера' in feats and '120' in feats, 'feature counters')
         await pg.locator('.metric-tiles').first.scroll_into_view_if_needed()
         await pg.locator('.section:has(.metric-tiles)').first.screenshot(path='out/metrics.png')
+
+        # «Обновить» shows it is working, then that it is done
+        slow['on'] = True
+        btn = pg.locator('.metric-reload')
+        await btn.click(); await pg.wait_for_timeout(300)
+        busy = [await btn.inner_text(), await btn.is_disabled(), await pg.locator('.metric-body.stale').count(),
+                await pg.evaluate("() => getComputedStyle(document.querySelector('.metric-reload svg')).animationName")]
+        check(busy[0].strip() == 'Обновляем…' and busy[1] and busy[2] == 1 and busy[3] != 'none', f'while it asks: the arrow turns, the numbers dim {busy}')
+        await pg.locator('.section:has(.metric-tiles)').first.screenshot(path='out/metrics-loading.png')
+        await pg.wait_for_timeout(1300)
+        done_ = [await btn.inner_text(), await pg.locator('.metric-body.stale').count()]
+        check(done_[0].strip() == 'Обновлено' and done_[1] == 0, f'then «Обновлено» and the numbers are back {done_}')
+        await pg.wait_for_timeout(2700)
+        check((await btn.inner_text()).strip() == 'Обновить', 'and the button is back to «Обновить»')
 
         # counters: the app sends only names and numbers
         await pg.click('.tabbar >> text=Заварить'); await pg.wait_for_timeout(300)

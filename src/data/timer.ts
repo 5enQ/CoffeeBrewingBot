@@ -20,6 +20,8 @@ export interface ActiveTimer {
   total: number;
   /** steps begun early with «Следующий шаг» (see shiftPlan) */
   skips?: Skip[];
+  /** «Ждать»: step i waits since this many seconds of the clock (the plan moves on with time until it is released) */
+  hold?: { i: number; from: number };
   /** a bot reminder is scheduled for this timer */
   remind?: boolean;
   /** when this state was set (ms) — the newest one wins across devices */

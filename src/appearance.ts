@@ -1,11 +1,12 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * How the interface looks on this device: the color theme and high contrast.
+ * How the interface looks on this device: the color theme, high contrast and whether backgrounds move.
  * A per-device setting (like the layout), kept in localStorage so it applies before the first paint.
  */
 export type ThemePref = 'auto' | 'light' | 'dark';
-export type Appearance = { theme: ThemePref; contrast: boolean };
+/** still — the looping backgrounds (card scenes, holiday decorations) stand still: a pause for WCAG 2.2.2 */
+export type Appearance = { theme: ThemePref; contrast: boolean; still?: boolean };
 
 const KEY = 'brewbook.appearance';
 const DEFAULT: Appearance = { theme: 'auto', contrast: false };
@@ -14,7 +15,7 @@ function read(): Appearance {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (v && typeof v === 'object') {
-      return { theme: v.theme === 'light' || v.theme === 'dark' ? v.theme : 'auto', contrast: v.contrast === true };
+      return { theme: v.theme === 'light' || v.theme === 'dark' ? v.theme : 'auto', contrast: v.contrast === true, still: v.still === true };
     }
   } catch { /* no storage or broken value */ }
   return DEFAULT;
@@ -48,4 +49,5 @@ export function markRoot(scheme?: 'light' | 'dark') {
   const theme = current.theme === 'auto' ? scheme : current.theme;
   if (theme) el.dataset.theme = theme; else delete el.dataset.theme;
   if (current.contrast) el.dataset.contrast = 'high'; else delete el.dataset.contrast;
+  if (current.still) el.dataset.still = ''; else delete el.dataset.still;
 }

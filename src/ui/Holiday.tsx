@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState, type ReactElement, type RefObject } from 'react';
 import { activeHoliday, bannerHidden, fireworksDue, fireworksShown, hideBanner, type Holiday } from '../data/holidays';
 import { reduceMotion } from './motion';
+import { useAppearance } from '../appearance';
 import { toast } from './toast';
 
 export function useHoliday(): Holiday | null {
@@ -368,9 +369,10 @@ export function Pumpkin({ size = 56, face = true }: { size?: number; face?: bool
 /** falling snow over the app: a light canvas loop, ~30 fps, paused while hidden */
 function Snow() {
   const cv = useRef<HTMLCanvasElement>(null);
+  const still = useAppearance().still === true;
   useEffect(() => {
     const c = cv.current;
-    if (!c || reduceMotion()) return;
+    if (!c || reduceMotion() || still) return;
     const ctx = c.getContext('2d');
     if (!ctx) return;
     let w = 0, h = 0, raf = 0, last = 0;
@@ -398,7 +400,7 @@ function Snow() {
     };
     raf = requestAnimationFrame(step);
     return () => { cancelAnimationFrame(raf); removeEventListener('resize', size); };
-  }, []);
+  }, [still]);
   return <canvas ref={cv} className="holiday-snow" aria-hidden="true" />;
 }
 

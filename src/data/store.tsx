@@ -110,6 +110,8 @@ export interface Brew {
   grindValue?: number;
   grindUnit?: GrindUnit;
   time: number;      // actual time, s
+  /** written down by ✓ in the timer, the «Как получилось?» screen not saved yet: the journal asks to rate it */
+  unrated?: true;
   rating: number;    // 0..5
   taste: QuickTaste;
   descriptors: string[];

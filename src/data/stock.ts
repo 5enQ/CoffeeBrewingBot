@@ -70,6 +70,5 @@ export function dripItemLeft(bean: Bean, itemId: string, brews: Brew[]) {
   return Math.max(0, (item.count || 0) - brews.filter((b) => b.beanId === bean.id && b.dripId === itemId).length);
 }
 
-export const DRIP_COUNTS = [1, 5, 6, 8, 10, 12, 15, 20];
 
 export const PACK_SIZES = ['100', '200', '250', '500', '1000'];

@@ -70,10 +70,12 @@
 /* a press shows on everything pressable: the ones with a look of their own (below) keep it, the rest dim for
    the moment the finger is on them. :where keeps this weaker than any rule of a component. */
 :where(button, a[href], [role="button"], [role="tab"], [role="switch"], summary, label.chip, .badge) { transition: opacity 0.18s ease; }
-:where(button, a[href], [role="button"], [role="tab"], [role="switch"], summary, label.chip, .badge):not(:disabled, [aria-disabled="true"], .btn, .method-card, .recipe-tile, .step-skip, .row, .icon-btn, .stepper-value, .pin):active { opacity: 0.6; transition: opacity 0s; }
+:where(button, a[href], [role="button"], [role="tab"], [role="switch"], summary, label.chip, .badge):not(:disabled, [aria-disabled="true"], .btn, .method-card, .recipe-tile, .step-skip, .step-hold, .row, .icon-btn, .stepper-value, .pin):active { opacity: 0.6; transition: opacity 0s; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); }
 /* nothing may shift the page sideways: otherwise in Telegram the whole tab "slides" together with the bottom bar */
 html, body { overflow-x: clip; }
+/* keyboard focus never scrolls under the sticky title or the bottom bar (WCAG 2.4.11) */
+html { scroll-padding-top: calc(var(--inset-top) + 72px); scroll-padding-bottom: calc(var(--inset-bottom) + 88px); }
 body {
   font: 16px/1.4 var(--font);
   -webkit-font-smoothing: antialiased;
@@ -85,6 +87,10 @@ body::before {
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* inside a rounded card that clips its rows, a ring outside the row is cut down to a stray line (or vanishes for a
+   lone row): there the ring goes inside, with the card's rounding */
+:is(.group, .wheel) :focus-visible { outline-offset: -2px; }
+:is(.group, .wheel) :is(.row, .wheel-head, .gear-more):focus-visible { border-radius: var(--r); }
 [hidden] { display: none !important; }
 .boot { min-height: 100vh; background: var(--bg); }
 
@@ -98,6 +104,7 @@ button { cursor: pointer; }
   backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
 }
 .topbar-text { flex: 1; min-width: 0; }
+.topbar h1:focus { outline: none; } /* a landing spot for focus on a new screen, not a control */
 .topbar h1 { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 750; letter-spacing: -0.02em; text-wrap: balance; }
 .topbar p { margin: 2px 0 0; color: var(--hint); font-size: 14px; }
 .topbar .back { margin-left: -10px; }
@@ -202,13 +209,17 @@ button.row:active { background: var(--fg-soft); }
 .field input::placeholder, textarea::placeholder { color: var(--hint); opacity: 0.7; }
 .field input:focus, .field select:focus { outline: none; }
 .field:focus-within { background: var(--fg-soft); }
+/* a field you type into shows a ring, not only a 6% darker fill (WCAG 2.4.7) */
+.field:has(:is(input, select, textarea):focus-visible) { box-shadow: inset 0 0 0 2px var(--accent); }
+.field :is(input, select, textarea):focus-visible { outline: none; }
 .field-suffix { margin-left: 6px; display: flex; }
 .notes {
   width: 100%; border: 0; background: var(--card); padding: 12px 14px; font-size: 16px; resize: vertical; display: block; border-radius: 0;
 }
 .section > .notes { border-radius: var(--r); }
 .notes:focus { outline: none; background: color-mix(in srgb, var(--card) 92%, var(--fg)); }
-.notes.mono { font-family: ui-monospace, Menlo, monospace; font-size: 12px; border-radius: var(--r); margin-top: 10px; }
+.notes:focus-visible, .search:focus-visible, .aff-note:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.notes.mono { font-family: ui-monospace, Menlo, monospace; font-size: 16px; border-radius: var(--r); margin-top: 10px; }
 .search { width: 100%; border: 0; border-radius: 12px; background: var(--card); padding: 11px 14px; font-size: 16px; }
 
 /* stepper */
@@ -272,7 +283,8 @@ button.row:active { background: var(--fg-soft); }
 [data-tone="sweet"] { --t: #c47a2c; } [data-tone="nut"] { --t: #8b5a3a; } [data-tone="spice"] { --t: #b5452b; }
 [data-tone="ferment"] { --t: #7e3f7c; } [data-tone="green"] { --t: #4c9a49; } [data-tone="roast"] { --t: #7b6957; }
 [data-tone="defect"] { --t: #727a74; }
-.filter-row { margin: -6px 0 -8px; overflow-x: auto; }
+/* room for a focus ring inside the scroller: padding out, the same amount of margin back */
+.filter-row { margin: -10px -4px -12px; padding: 4px; overflow-x: auto; scroll-padding-inline: 4px; }
 .filter-row .chips { flex-wrap: nowrap; }
 .filter-row .chip { white-space: nowrap; }
 
@@ -304,7 +316,8 @@ button.row:active { background: var(--fg-soft); }
 .dots-row button {
   position: relative; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--sep); background: var(--card); padding: 0;
 }
-.dots-row button.past { background: var(--accent-soft); border-color: transparent; }
+/* opaque fills: the line behind the dots must not show through them */
+.dots-row button.past { background: color-mix(in srgb, var(--accent) 22%, var(--card)); border-color: transparent; }
 .dots-row button.on { background: var(--accent); border-color: var(--accent); transform: scale(1.15); }
 
 /* switch */
@@ -350,7 +363,8 @@ button.row:active { background: var(--fg-soft); }
 /* bean picker */
 .bean-picker {
   display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x proximity;
-  margin: 0 calc(-1 * var(--gutter-r)) 0 calc(-1 * var(--gutter-l)); padding: 2px var(--gutter-r) 6px var(--gutter-l);
+  margin: -2px calc(-1 * var(--gutter-r)) 0 calc(-1 * var(--gutter-l)); padding: 4px var(--gutter-r) 6px var(--gutter-l);
+  scroll-padding-inline: var(--gutter-l) var(--gutter-r);
   scrollbar-width: none;
 }
 .bean-picker::-webkit-scrollbar { display: none; }
@@ -367,7 +381,8 @@ button.row:active { background: var(--fg-soft); }
 .bean-pick.action span { color: var(--accent) !important; font-size: 13px !important; }
 
 /* ---------- Timer ---------- */
-.timer { position: relative; width: min(78vw, 300px); aspect-ratio: 1; max-width: 100%; margin: 4px auto 0; }
+/* the ring gives way on a short screen, so the step card and «Дальше» stay above the footer without scrolling */
+.timer { position: relative; width: min(78vw, 300px, max(140px, 100dvh - 480px - var(--inset-top) - var(--inset-bottom))); aspect-ratio: 1; max-width: 100%; margin: 4px auto 0; }
 .timer-ring { width: 100%; height: 100%; }
 .ring-track { fill: none; stroke: var(--sep); stroke-width: 10; }
 .ring-fill { fill: none; stroke: var(--accent); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.12s linear; }
@@ -387,6 +402,8 @@ button.row:active { background: var(--fg-soft); }
 .timer-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .timer-time { font-family: var(--font-num); font-size: clamp(56px, 18vw, 76px); font-weight: 300; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; }
 .timer-total { color: var(--hint); font-size: 14px; margin-top: 6px; text-align: center; max-width: 70%; }
+/* a short screen: the ring has shrunk, the time follows it */
+@media (max-height: 640px) { .timer-time { font-size: clamp(40px, 7dvh, 56px); } .timer-total { font-size: 12px; margin-top: 2px; } }
 
 .step-now { background: var(--card); border-radius: var(--r); padding: 18px; text-align: center; }
 .step-now.live { animation: stepIn 0.35s ease; }
@@ -396,16 +413,24 @@ button.row:active { background: var(--fg-soft); }
 .pour-big { font-size: 18px; color: var(--accent); }
 .pour-big b { font-size: 40px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .step-now p { margin: 6px 0 0; color: var(--hint); }
-.step-next { display: flex; justify-content: space-between; gap: 12px; padding: 0 6px; color: var(--hint); font-size: 15px; }
-.step-next > span { white-space: nowrap; flex-shrink: 0; }
-.step-next b { color: var(--fg); font-weight: 600; text-align: right; min-width: 0; display: flex; justify-content: flex-end; }
+/* what comes next: when (hint) over its name, «Дальше» beside both — the name gets the whole width left of the button */
+.step-next { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 8px; align-items: center; padding: 0 0 0 6px; color: var(--hint); font-size: 15px; }
+.step-next > span { grid-column: 1; white-space: nowrap; font-size: 13px; }
+.step-next b { grid-column: 1; color: var(--fg); font-weight: 600; min-width: 0; display: flex; justify-content: flex-start; }
+.step-next .step-hold { grid-column: 2; grid-row: 1 / span 2; }
+.step-next .step-skip { grid-column: 3; grid-row: 1 / span 2; }
 .step-next .swap { grid-template-columns: minmax(0, auto); min-width: 0; }
-.step-next .swap-l { display: flex; justify-content: flex-end; min-width: 0; white-space: nowrap; }
-.step-next-title { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.step-next-g { flex-shrink: 0; }
-.step-skip { display: flex; width: fit-content; align-items: center; gap: 4px; margin: 10px auto 0; padding: 9px 14px 9px 18px; border: 0; border-radius: 999px;
+/* a long name wraps onto a second line rather than losing its end; the grams stay whole */
+.step-next .swap-l { display: flex; flex-wrap: wrap; justify-content: flex-start; column-gap: 0.4em; min-width: 0; }
+.step-next-title { min-width: 0; }
+.step-next-g { flex-shrink: 0; white-space: nowrap; color: var(--hint); font-weight: 500; }
+.step-skip { display: flex; width: fit-content; align-items: center; gap: 2px; margin: 0; padding: 9px 10px 9px 16px; border: 0; border-radius: 999px;
   background: var(--chip, rgba(127,127,127,0.12)); color: var(--accent); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
-.step-skip:active { transform: scale(0.97); }
+.step-skip:active, .step-hold:active { transform: scale(0.97); }
+/* «Ждать»: the same pill, quieter; pressed — filled, the next step waits until it is pressed again */
+.step-hold { padding: 9px 14px; border: 0; border-radius: 999px; background: var(--chip, rgba(127,127,127,0.12)); color: var(--fg); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.step-hold.on { background: var(--accent); color: var(--accent-fg, #fff); }
+@media (max-width: 374px) { .step-hold { padding: 9px 11px; } .step-skip { padding: 9px 8px 9px 12px; } }
 .pour-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .pour-steps li { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: baseline; padding: 10px 14px; border-radius: 14px; background: var(--card); }
 .pour-steps li.wait { background: transparent; padding-block: 4px; }
@@ -524,6 +549,26 @@ button.row:active { background: var(--fg-soft); }
 .bean-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: var(--hint); border-top: 1px solid var(--sep); padding-top: 8px; margin-top: 2px; }
 .bean-hero { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .pack-notes { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
+/* a brew written down by ✓ in the timer but not rated yet: a tag in the journal, a plaque on its page */
+.unrated-tag { padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--fg); background: color-mix(in srgb, var(--star) 24%, var(--card)); white-space: nowrap; }
+.unrated-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin: 4px 0 16px; padding: 14px 16px;
+  border: 0; border-radius: var(--r); background: color-mix(in srgb, var(--star) 16%, var(--card)); color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.unrated-banner > span:first-child { display: flex; flex-direction: column; gap: 2px; }
+.unrated-banner small { color: var(--hint); font-size: 13px; }
+.unrated-go { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; font-weight: 600; color: var(--accent); }
+/* the bean card's other methods: a grid over the footer, grown from the round button at its left; the page dims
+   under it but the footer stays bright, so × is right where the menu was opened */
+.method-menu-shade { position: fixed; inset: 0; z-index: 24; background: rgba(0, 0, 0, 0.22); animation: calm-in 0.15s ease both; }
+.method-menu { position: fixed; z-index: 26; box-sizing: border-box; padding: 6px 6px 8px; border-radius: 18px; background: var(--card);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.28); transform-origin: 24px 100%; animation: menu-in 0.18s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes menu-in { from { opacity: 0; transform: translateY(8px) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) { .method-menu { animation: calm-in 0.15s ease both; } }
+.method-menu-note { margin: 4px 8px 8px; font-size: 13px; color: var(--hint); }
+.method-menu-grid button { background: none; }
+.method-menu-grid button.used { background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
+.method-menu-toggle svg { transform: rotate(-90deg); transition: transform 0.18s; }
+.method-menu-toggle.on svg { transform: none; }
+[data-contrast="high"] .method-menu { outline: 2px solid var(--fg); }
 .quick-methods { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .quick-methods button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 2px; border: 0; border-radius: 12px; background: var(--card); color: var(--accent); }
 .quick-methods span { font-size: 11px; color: var(--fg); text-align: center; line-height: 1.15; }
@@ -593,7 +638,7 @@ button.row:active { background: var(--fg-soft); }
 .avatar.small { width: 36px; height: 36px; font-size: 14px; }
 .profile-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .profile-name { border: 0; background: none; font-size: 21px; font-weight: 700; padding: 4px 0; width: 100%; color: var(--fg); }
-.profile-name:focus, .profile-about:focus { outline: none; }
+.profile-name:focus:not(:focus-visible), .profile-about:focus:not(:focus-visible) { outline: none; }
 .profile-handle { color: var(--accent); font-size: 14px; font-weight: 600; }
 .profile-about { border: 0; background: none; resize: none; font-size: 15px; color: var(--hint); padding: 4px 0; width: 100%; }
 
@@ -660,7 +705,7 @@ button.row:active { background: var(--fg-soft); }
 .profile-handle { display: flex; align-items: center; gap: 1px; }
 .profile-handle input { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 15px; padding: 2px 0; width: 100%; min-width: 0; }
 .profile-handle input::placeholder { color: var(--hint); font-weight: 500; }
-.profile-handle input:focus { outline: none; }
+.profile-handle input:focus:not(:focus-visible) { outline: none; }
 .toggle-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 56px; cursor: pointer; }
 .toggle-row.disabled { opacity: 0.55; cursor: default; }
 .param-grid dd.dd-text { font-size: 14px; line-height: 1.25; padding-top: 2px; }
@@ -713,7 +758,8 @@ button.row:active { background: var(--fg-soft); }
 .recipe-picker .chip { white-space: nowrap; flex-shrink: 0; }
 .recipe-picker .chip small { color: var(--hint); font-weight: 500; }
 .recipe-name-input { flex: 1; min-width: 0; border: 0; background: none; font-size: 22px; font-weight: 700; color: var(--fg); padding: 6px 0; }
-.recipe-name-input:focus { outline: none; }
+.recipe-name-input:focus:not(:focus-visible) { outline: none; }
+.recipe-name-input:focus-visible { outline-offset: 0; border-radius: 6px; }
 .step-editor { display: flex; flex-direction: column; gap: 8px; }
 .step-card { background: var(--card); border-radius: var(--r); padding: 8px 6px 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 .step-card-top { display: flex; align-items: center; gap: 8px; }
@@ -783,7 +829,7 @@ button.row:active { background: var(--fg-soft); }
 .toast small { color: var(--hint); font-size: 12px; }
 .toast .badge { transform: scale(1.1); }
 @keyframes toastIn { from { transform: translate(-50%, -24px) scale(0.9); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: calm-in 0.2s ease both; } }
 
 /* ---------- Blend ---------- */
 .blend-editor { display: flex; flex-direction: column; gap: 8px; }
@@ -805,7 +851,7 @@ button.row:active { background: var(--fg-soft); }
   animation: snackIn 0.25s ease; pointer-events: none; text-align: center;
 }
 @keyframes snackIn { from { transform: translate(-50%, 10px); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .snack { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .snack { animation: calm-in 0.2s ease both; } }
 .round-btn:disabled { opacity: 0.4; }
 
 /* =========================================================
@@ -844,7 +890,9 @@ button.row:active { background: var(--fg-soft); }
 /* columns */
 .pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .pane-list { border-right: 1px solid var(--sep); }
-.pane-scroll, .pane-detail > .stack-screen { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
+.pane-scroll, .pane-detail > .stack-screen { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding: 24px 0; }
+/* the right card has its own bottom bar («Сохранить»): keyboard focus scrolls clear of it */
+.pane-detail > .stack-screen { scroll-padding-bottom: 110px; }
 .desk .screen { min-height: 100%; }
 .desk .topbar {
   top: 0; padding: 18px 24px 12px; background: color-mix(in srgb, var(--bg) 90%, transparent);
@@ -1000,7 +1048,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .aff-scale { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; }
 .aff-dot { aspect-ratio: 1; max-height: 40px; border-radius: 50%; border: 1px solid var(--sep); background: var(--bg); color: var(--hint); font-weight: 650; font-size: 14px; font-variant-numeric: tabular-nums; padding: 0; }
 .aff-dot.on { background: var(--cherry); border-color: var(--cherry); color: #fff; }
-.aff-note { width: 100%; border: 1px solid var(--sep); background: var(--bg); color: var(--fg); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 14px; }
+.aff-note { width: 100%; border: 1px solid var(--sep); background: var(--bg); color: var(--fg); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 16px; }
 .link-btn.small { font-size: 13px; justify-self: start; padding: 0; }
 .cup-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .cup-line > span { font-size: 14px; }
@@ -1151,11 +1199,13 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 :root[data-theme="dark"] .tag.pending { color: #e8b84a; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.pending { color: #e8b84a; } }
 .chip.pending { border-style: dashed; }
-.sites-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 16px; border: 0; border-top: 1px solid var(--line, rgba(0,0,0,0.06)); background: none; color: var(--link, var(--accent)); font: inherit; font-weight: 600; cursor: pointer; }
-.sites-toggle svg { transition: transform 0.15s; }
+.sites-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 12px 14px; border: 0; border-top: 1px solid var(--line, rgba(0,0,0,0.06)); background: none; color: var(--link, var(--accent)); font: inherit; font-weight: 600; cursor: pointer; }
+.sites-toggle svg { transition: transform 0.15s; flex: none; }
+.sites-toggle-text { display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; }
+.sites-toggle-text small { color: var(--hint); font-size: 13px; font-weight: 400; }
 .sites-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
 .chip.declined { opacity: 0.75; }
-.grant-filters { padding: 0 16px 8px; }
+.grant-filters { padding: 12px 14px; }
 .site-actions { display: flex; gap: 8px; padding: 0 16px 12px; flex-wrap: wrap; }
 .site-actions .btn { flex: 1; min-width: 120px; }
 
@@ -1378,7 +1428,10 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 
 /* ---------- Profile: the own card ---------- */
 .my-card { margin-bottom: 8px; }
-.my-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.my-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.my-card-actions > .btn { min-width: 0; }
+/* a narrow phone (320 px): the words keep their room, the icons step aside — «Настроить» went past the edge */
+@media (max-width: 374px) { .my-card-actions > .btn { padding: 0 10px; } .my-card-actions > .btn > svg { display: none; } }
 .profile-about.field-area { display: block; box-sizing: border-box; padding: 12px 16px; color: var(--fg); font: inherit; font-size: 16px; min-height: 64px; }
 .profile-about.field-area::placeholder { color: var(--hint); }
 .crawl-usage.warn { color: var(--danger); }
@@ -1579,6 +1632,8 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .pcard-scene svg { display: block; width: 100%; height: 100%; }
 .pcard-scene .fb { transform-box: fill-box; transform-origin: center; }
 .pcard-scene.still *, .pcard-scene.still *::before { animation-play-state: paused !important; }
+/* «Анимация фонов» off: every looping decoration holds its frame (WCAG 2.2.2) */
+html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) :is(*, *::before, *::after) { animation-play-state: paused !important; }
 @media (prefers-reduced-motion: reduce) { .pcard-scene * { animation: none !important; } }
 .pcard-scene .fbb { transform-box: fill-box; transform-origin: 50% 100%; }
 /* a picture sits under the text: light text with a shadow, the brand in the corner the scenes keep free */
@@ -1600,7 +1655,17 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .theme-pick[class*='scene-'] span, .theme-pick[class*='scene-'] small, .theme-pick.special-lighthouse span, .theme-pick.special-lighthouse small { text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
 
 /* owner: metrics (screens/OwnerMetrics.tsx) */
-.metric-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 4px 0 8px; }
+/* «Обновить» in the owner's metrics: the arrow turns while it asks, the numbers dim */
+.metric-reload { display: inline-flex; align-items: center; gap: 5px; }
+.metric-reload:disabled { opacity: 1; color: var(--hint); }
+.metric-reload.busy svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(-360deg); } }
+@media (prefers-reduced-motion: reduce) { .metric-reload.busy svg { animation: calm-in 0.9s ease-in-out infinite alternate; } }
+.metric-body { transition: opacity 0.2s; }
+.metric-body.stale { opacity: 0.45; }
+.metric-at { margin: 0 0 8px; font-size: 12px; }
+.metric-body { padding: 12px 12px 14px; }
+.metric-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0 0 8px; }
 .metric-tile { display: grid; gap: 1px; padding: 10px 12px; border-radius: 14px; background: var(--hint-soft); min-width: 0; }
 .metric-tile b { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .metric-tile span { font-size: 13px; font-weight: 600; }
@@ -1645,7 +1710,12 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .swap-l.in { animation: swap-in 0.42s cubic-bezier(0.25, 0.8, 0.25, 1) both; }
 @keyframes swap-out { to { transform: translateY(-100%); opacity: 0; } }
 @keyframes swap-in { from { transform: translateY(100%); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .roll-new, .roll-d::before, .swap-l.in, .swap-l.out { animation: none; } .roll-d::before { content: none; } .swap-l.out { display: none; } }
+/* reduced motion: no slides, but what changed still shows itself with a short fade in place */
+@keyframes calm-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .roll-d::before, .swap-l.in, .swap-l.out { animation: none; } .roll-d::before { content: none; } .swap-l.out { display: none; }
+  .roll-new, .swap-l.calm, .tab-page:not(.leaving) { animation: calm-in 0.2s ease both; }
+}
 
 /* a section that folds under its title (kit Section fold) */
 .section-fold { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; min-width: 0; }
@@ -1655,6 +1725,8 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .fold-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s cubic-bezier(0.45, 0, 0.1, 1); }
 .section.open .fold-body { grid-template-rows: 1fr; }
 .fold-inner { min-height: 0; overflow: hidden; }
+/* open: a few pixels of room so focus rings at the edges are not cut (margin takes them back, nothing moves) */
+.section.open .fold-inner { padding: 4px; margin: -4px; }
 .section.foldable:not(.open) .fold-inner { visibility: hidden; transition: visibility 0s 0.3s; }
 @media (prefers-reduced-motion: reduce) { .fold-body, .section-fold svg { transition: none; } }
 

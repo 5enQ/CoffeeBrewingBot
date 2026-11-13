@@ -76,8 +76,14 @@ The app looks like filter paper with a coffee-leaf green: quiet surfaces, one ac
 - Old content in a transition is not text the app reads (`Roll` draws the old digit with CSS), and a running clock's
   re-renders never cancel a transition (keep timers in refs).
 - Nothing pops in or blinks out; a list that grows makes room as the new row arrives.
-- Ambient motion (holiday decorations, card scenes, drip-timer water) loops seamlessly and stays behind content.
-- `prefers-reduced-motion`: the new state just stands there; always check it.
+- Ambient motion (holiday decorations, card scenes, drip-timer water) loops seamlessly and stays behind content,
+  and stops with «Анимация фонов» (`html[data-still]`): a new looping background honors that switch too.
+- `prefers-reduced-motion`: nothing slides, scales or loops, but a change in place still shows itself with a 0.2 s
+  opacity fade (`calm-in`); always check it.
+- Focus is always visible: a field you type into gets a 2 px accent ring (inset), never only a darker fill; the
+  page scrolls with room for the sticky title and the bottom bar.
+  Inside a card that clips (`overflow: hidden`, a scroller) the ring goes inside the control; a new scroller or
+  clipping card leaves room for it. `tests/e2e/keyboard.py` walks the main screens with Tab and fails on a cut ring.
 
 ## Checking a change
 

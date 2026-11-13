@@ -205,6 +205,9 @@ export function Swap({ id, children, className }: { id: string | number; childre
   const [old, setOld] = useState<{ id: string | number; node: ReactNode } | null>(null);
   // the old layer leaves on its own timer: re-renders in between (a running clock) must not cancel it
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // with reduced motion nothing slides, but a replaced line still fades in briefly, so the change is seen
+  const firstId = useRef(id);
+  const calm = id !== firstId.current && reduceMotion();
   useEffect(() => () => clearTimeout(timer.current), []);
   useLayoutEffect(() => {
     if (last.current.id !== id && !reduceMotion()) {
@@ -217,7 +220,7 @@ export function Swap({ id, children, className }: { id: string | number; childre
   return (
     <span className={'swap' + (className ? ' ' + className : '')}>
       {old && <span className="swap-l out" key={'o' + old.id} aria-hidden="true">{old.node}</span>}
-      <span className={'swap-l' + (old ? ' in' : '')} key={'n' + id}>{children}</span>
+      <span className={'swap-l' + (old ? ' in' : calm ? ' calm' : '')} key={'n' + id}>{children}</span>
     </span>
   );
 }

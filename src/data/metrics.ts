@@ -6,6 +6,7 @@
 export const EVENTS = {
   'timer.start': 'Запуск таймера',
   'timer.skip': '«Следующий шаг»',
+  'timer.hold': '«Ждать» в таймере',
   'brew.timer': 'Заварка с таймером',
   'brew.manual': 'Заварка без таймера',
   'brew.rated': 'Оценка своей чашки',

@@ -83,16 +83,18 @@ export function useTabPill(navRef: RefObject<HTMLElement | null>, pillRef: RefOb
       pill.style.top = `${btn.offsetTop}px`;
       pill.style.height = `${btn.offsetHeight}px`;
       pill.style.width = `${w}px`;
-      pill.style.transform = `translateX(${x}px)`;
+      pill.style.left = `${x}px`;
       const from = last.current;
       last.current = { x, w };
       if (!animate || !from || (from.x === x && from.w === w) || reduceMotion()) return;
       const left = Math.min(from.x, x);
       const span = Math.abs(x - from.x) + Math.max(w, from.w);
+      // left and width together, both on the main thread: a compositor-run transform beside a main-thread width
+      // drifted apart whenever the new tab was busy rendering — the far edge shot past the tab and shook back
       pill.animate([
-        { transform: `translateX(${from.x}px)`, width: `${from.w}px` },
-        { transform: `translateX(${left}px)`, width: `${span}px`, offset: 0.45 },
-        { transform: `translateX(${x}px)`, width: `${w}px` },
+        { left: `${from.x}px`, width: `${from.w}px` },
+        { left: `${left}px`, width: `${span}px`, offset: 0.45 },
+        { left: `${x}px`, width: `${w}px` },
       ], { duration: 420, easing: EASE });
     };
     place(true);

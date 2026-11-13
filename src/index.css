@@ -161,7 +161,7 @@ button { cursor: pointer; }
   transition: color 0.25s ease;
 }
 .tabbar button.on { color: var(--pill-fg); }
-.tab-pill { position: absolute; left: 0; top: 6px; height: 48px; width: 0; border-radius: 16px; background: var(--pill-bg); pointer-events: none; z-index: 0; opacity: 0; will-change: transform, width; }
+.tab-pill { position: absolute; left: 0; top: 6px; height: 48px; width: 0; border-radius: 16px; background: var(--pill-bg); pointer-events: none; z-index: 0; opacity: 0; }
 
 /* ---------- Tab transitions ---------- */
 .tab-pages { position: relative; }

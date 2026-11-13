@@ -5,6 +5,9 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Fixed
+- The tab bar's bubble shook when switching tabs (seen in Telegram on a Mac): it moved by a transform run off the main thread while its width changed on it, so while the new tab was rendering the far edge shot past the tab and jumped back. It now moves by left and width together.
+
 ## v1.7.4 — Keep Pouring (2026-11-13)
 
 ### Added

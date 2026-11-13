@@ -117,6 +117,7 @@ type Box = { x: number; y: number; w: number };
 export function useFlip(ref: RefObject<HTMLElement | null>, skip?: string | null) {
   const prev = useRef(new Map<string, Box>());
   const snap = useRef<Map<string, Box> | null>(null);
+  const boxWidth = useRef<number | null>(null);
 
   const snapshot = useCallback(() => {
     const box = ref.current;
@@ -137,7 +138,11 @@ export function useFlip(ref: RefObject<HTMLElement | null>, skip?: string | null
     // Keep the last real positions, or coming back would animate the tiles from a zero size in the corner.
     if (!box.getClientRects().length) { snap.current = null; return; }
     const next = new Map<string, Box>();
-    const calm = reduceMotion();
+    // the container changed width (the window is being resized): tiles take their new places at once — gliding
+    // after every resize step made them lag behind the window and drift apart
+    const resized = boxWidth.current !== null && Math.abs(boxWidth.current - box.clientWidth) > 0.5;
+    boxWidth.current = box.clientWidth;
+    const calm = reduceMotion() || resized;
     box.querySelectorAll<HTMLElement>('[data-flip]').forEach((el) => {
       const id = el.dataset.flip!;
       const now = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth };

@@ -7,6 +7,8 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ### Fixed
 - The tab bar's bubble shook when switching tabs (seen in Telegram on a Mac): it moved by a transform run off the main thread while its width changed on it, so while the new tab was rendering the far edge shot past the tab and jumped back. It now moves by left and width together.
+- Resizing the window on a computer: the method tiles glided after every step of the resize, lagging behind and drifting apart; they now take their new size at once (the glide stays for pinning and rearranging).
+- On a Mac the window's right edge did not respond to resizing where expected: the page's styled 10 px scrollbar sat there and caught the mouse. On a Mac the system's own scrollbars are kept.
 
 ## v1.7.4 — Keep Pouring (2026-11-13)
 

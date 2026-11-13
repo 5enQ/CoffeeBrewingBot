@@ -5,6 +5,8 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.7.4 — Keep Pouring (2026-11-13)
+
 ### Added
 - «Ждать» in the timer, beside «Дальше»: a step goes slower than planned — the clock keeps running, the next step (and every one after it) waits until «Ждать» is pressed again; the line shows «Ждём · +0:12». The added time stays in the plan, and the brew is written down with the steps as they actually went (also after «Дальше»). Keyboard: W.
 - «Заварить» in the footer of a bean card: beans — by the method this coffee was last brewed with («Заварить · V60»), drips — «Заварить дрип» (drip boxes had no way to start brewing from the card). The other methods open from a round button left of it: a grid over the footer (the methods already used with this coffee tinted), closed by ×, a tap outside or Esc — no swipe. A finished pack has no footer and keeps the grid in the card.

@@ -89,6 +89,18 @@ async def main():
         await V('[aria-label="Готово, записать"]').click(); await pg.wait_for_timeout(600)
         check((await pg.evaluate('document.title')).startswith('Как получилось'), 'the brew goes on to be written down')
         check(not errors, f'no page errors {errors}')
+
+        # a computer: right click pins a method, a second right click unpins it, a left click still opens it
+        pg2, err2 = await page(b, width=1280, height=800, db=DB)
+        tile = pg2.locator('.method-card:visible:has-text("Кемекс")').first
+        pins = lambda: pg2.locator('.method-card.pinned:visible').count()
+        await tile.click(button='right'); await pg2.wait_for_timeout(1200)
+        check(await pins() == 1, 'right click pins the method')
+        await pg2.locator('.method-card:visible:has-text("Кемекс")').first.click(button='right'); await pg2.wait_for_timeout(1200)
+        check(await pins() == 0, 'a second right click unpins it')
+        await pg2.locator('.method-card:visible:has-text("Кемекс")').first.click(); await pg2.wait_for_timeout(600)
+        check((await pg2.evaluate('document.title')).startswith('Кемекс'), 'and a left click after it opens the method')
+        check(not err2, f'no page errors {err2}')
         await b.close()
     done()
 

@@ -54,7 +54,9 @@ async def main():
                 await pg.evaluate("() => getComputedStyle(document.querySelector('.metric-reload svg')).animationName")]
         check(busy[0].strip() == 'Обновляем…' and busy[1] and busy[2] == 1 and busy[3] != 'none', f'while it asks: the arrow turns, the numbers dim {busy}')
         await pg.locator('.section:has(.metric-tiles)').first.screenshot(path='out/metrics-loading.png')
-        await pg.wait_for_timeout(1300)
+        # «Обновлено» stays 2.5 s: wait for the answer itself, not a guessed time (a loaded machine is slower)
+        try: await pg.wait_for_function("() => !document.querySelector('.metric-body.stale')", timeout=5000)
+        except Exception: pass
         done_ = [await btn.inner_text(), await pg.locator('.metric-body.stale').count()]
         check(done_[0].strip() == 'Обновлено' and done_[1] == 0, f'then «Обновлено» and the numbers are back {done_}')
         await pg.wait_for_timeout(2700)

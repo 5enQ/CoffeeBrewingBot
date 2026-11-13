@@ -1231,7 +1231,7 @@
 "w": 184,
 "x": 103
 },
-"main.content › div.stock-card › p.muted \"Списано заварками : 30 г\"": {
+"main.content › div.stock-card › p.muted \"Списано заварками: 30 г\"": {
 "align": "start",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",

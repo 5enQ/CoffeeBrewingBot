@@ -69,7 +69,8 @@ export function StockBar({ bean, compact = false }: { bean: Bean; compact?: bool
         {!done && <StockIcons unit="pcs" left={st.left} total={st.total} />}
         <div className="stock-text">
           <span><b>{st.left}</b> из {st.total} {plural(st.total, ['дрипа', 'дрипов', 'дрипов'])}</span>
-          <span>{st.left <= 0 ? 'закончились' : st.used ? `заварено ${st.used}` : 'ещё не заваривали'}</span>
+          {/* «N из M дрипов» already says how many went; no separate «заварено N» */}
+          {(st.left <= 0 || !st.used) && <span>{st.left <= 0 ? 'закончились' : 'ещё не заваривали'}</span>}
         </div>
       </div>
     );
@@ -316,7 +317,7 @@ export function BeanDetail({ id }: { id: string }) {
         ) : (
           <StockBar bean={b} />
         )}
-        {st.total > 0 && (!drip || !!b.adjust) && <p className="muted">{drip ? 'Заварено' : 'Списано заварками'}: {fmtNum(st.used, 1)} {unit}{b.adjust ? ` · поправка ${b.adjust > 0 ? '+' : ''}${fmtNum(b.adjust, 1)} ${unit}` : ''}</p>}
+        {st.total > 0 && !drip && <p className="muted">Списано заварками: {fmtNum(st.used, 1)} {unit}{b.adjust ? ` · поправка ${b.adjust > 0 ? '+' : ''}${fmtNum(b.adjust, 1)} ${unit}` : ''}</p>}
         {!st.total && <Button kind="secondary" onClick={() => push({ name: 'beanEdit', bean: b, isNew: false })}>{drip ? 'Указать, сколько дрипов' : 'Указать вес пачки'}</Button>}
         <div className="stock-actions">
           {st.total > 0 && <Button kind="ghost" onClick={toggleFinished}>{finished ? 'Вернуть на полку' : 'Допито'}</Button>}

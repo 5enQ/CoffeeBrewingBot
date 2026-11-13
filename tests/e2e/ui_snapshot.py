@@ -18,6 +18,7 @@ from common import KEY, URL, async_playwright, check, done
 
 BASE = pathlib.Path(__file__).resolve().parent / 'ui-baseline'
 UPDATE = os.environ.get('UPDATE') == '1'
+LIST = int(os.environ.get('LIST', '40'))  # LIST=999 prints every difference
 NOW = 1794301200000  # 2026-11-10 12:00 MSK — dates and «days after roast» stay the same on every run
 DAY = 86400000
 
@@ -200,7 +201,7 @@ async def main():
                 check(False, f'{name}: the same {len(lines)} difference(s) as {screen}-{VARIANTS[0][0]}, in its colors')
                 continue
             reported.setdefault(screen, places)
-            check(not lines, f'{name}: same as the baseline' + ('' if not lines else f' — {len(lines)} difference(s):\n' + '\n'.join(lines[:40]) + ('\n  …' if len(lines) > 40 else '')))
+            check(not lines, f'{name}: same as the baseline' + ('' if not lines else f' — {len(lines)} difference(s):\n' + '\n'.join(lines[:LIST]) + ('\n  …' if len(lines) > LIST else '')))
 
         # the autotests check themselves: the v1.7.2 slip (a label rule that also caught the rolling number) must be caught
         clean, _ = await snapshot(b, 'journal')

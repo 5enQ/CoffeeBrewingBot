@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 npm run build:single >/dev/null
 cd tests/e2e
 status=0
-for t in smoke.py drip.py loss.py owner.py card.py sync.py timer.py timer_sync.py home_back.py locks.py tds.py glass.py holiday.py pointer_tilt.py scenes.py drip_pours.py metrics.py invite.py press.py recipes_own.py profile_look.py polish.py tg_theme.py a11y.py keyboard.py ui_snapshot.py; do
+for t in smoke.py drip.py loss.py owner.py card.py sync.py timer.py timer_sync.py home_back.py locks.py tds.py glass.py holiday.py pointer_tilt.py scenes.py drip_pours.py metrics.py invite.py press.py recipes_own.py profile_look.py polish.py tg_theme.py a11y.py keyboard.py shelf_brew.py ui_snapshot.py; do
   echo "== $t"
   python3 "$t" || status=1
 done

@@ -1,5 +1,5 @@
 {
-"[Заварить] section.section › div.quick-methods › button": {
+"[Другим способом] section.section › div.quick-methods › button": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": 8,
@@ -12,7 +12,7 @@
 "w": 67,
 "x": 16
 },
-"[Заварить] section.section › div.quick-methods › button #10": {
+"[Другим способом] section.section › div.quick-methods › button #10": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": -62.5,
@@ -25,7 +25,7 @@
 "w": 67,
 "x": 307
 },
-"[Заварить] section.section › div.quick-methods › button #11": {
+"[Другим способом] section.section › div.quick-methods › button #11": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": 6,
@@ -38,7 +38,7 @@
 "w": 67,
 "x": 16
 },
-"[Заварить] section.section › div.quick-methods › button #12": {
+"[Другим способом] section.section › div.quick-methods › button #12": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": -62.5,
@@ -51,7 +51,7 @@
 "w": 67,
 "x": 89
 },
-"[Заварить] section.section › div.quick-methods › button #2": {
+"[Другим способом] section.section › div.quick-methods › button #2": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": -75.5,
@@ -64,7 +64,7 @@
 "w": 67,
 "x": 89
 },
-"[Заварить] section.section › div.quick-methods › button #3": {
+"[Другим способом] section.section › div.quick-methods › button #3": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": -75.5,
@@ -77,7 +77,7 @@
 "w": 67,
 "x": 161.5
 },
-"[Заварить] section.section › div.quick-methods › button #4": {
+"[Другим способом] section.section › div.quick-methods › button #4": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": -75.5,
@@ -90,7 +90,7 @@
 "w": 67,
 "x": 234.5
 },
-"[Заварить] section.section › div.quick-methods › button #5": {
+"[Другим способом] section.section › div.quick-methods › button #5": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": -75.5,
@@ -103,7 +103,7 @@
 "w": 67,
 "x": 307
 },
-"[Заварить] section.section › div.quick-methods › button #6": {
+"[Другим способом] section.section › div.quick-methods › button #6": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": 6,
@@ -116,7 +116,7 @@
 "w": 67,
 "x": 16
 },
-"[Заварить] section.section › div.quick-methods › button #7": {
+"[Другим способом] section.section › div.quick-methods › button #7": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": -62.5,
@@ -129,7 +129,7 @@
 "w": 67,
 "x": 89
 },
-"[Заварить] section.section › div.quick-methods › button #8": {
+"[Другим способом] section.section › div.quick-methods › button #8": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": -62.5,
@@ -142,7 +142,7 @@
 "w": 67,
 "x": 161.5
 },
-"[Заварить] section.section › div.quick-methods › button #9": {
+"[Другим способом] section.section › div.quick-methods › button #9": {
 "bg": "rgb(255, 255, 255)",
 "border": "",
 "gap": -62.5,
@@ -155,7 +155,7 @@
 "w": 67,
 "x": 234.5
 },
-"[Заварить] section.section › div.quick-methods › span \"V60\"": {
+"[Другим способом] section.section › div.quick-methods › span \"V60\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -173,7 +173,7 @@
 "w": 21.5,
 "x": 23
 },
-"[Заварить] section.section › div.quick-methods › span \"Аэропресс\"": {
+"[Другим способом] section.section › div.quick-methods › span \"Аэропресс\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -191,7 +191,7 @@
 "w": 59.5,
 "x": 3.5
 },
-"[Заварить] section.section › div.quick-methods › span \"Батч брю\"": {
+"[Другим способом] section.section › div.quick-methods › span \"Батч брю\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -209,7 +209,7 @@
 "w": 50.5,
 "x": 8
 },
-"[Заварить] section.section › div.quick-methods › span \"Джезва\"": {
+"[Другим способом] section.section › div.quick-methods › span \"Джезва\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -227,7 +227,7 @@
 "w": 42,
 "x": 12.5
 },
-"[Заварить] section.section › div.quick-methods › span \"Каппинг\"": {
+"[Другим способом] section.section › div.quick-methods › span \"Каппинг\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -245,7 +245,7 @@
 "w": 44.5,
 "x": 11
 },
-"[Заварить] section.section › div.quick-methods › span \"Кемекс\"": {
+"[Другим способом] section.section › div.quick-methods › span \"Кемекс\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -263,7 +263,7 @@
 "w": 40.5,
 "x": 13.5
 },
-"[Заварить] section.section › div.quick-methods › span \"Клевер\"": {
+"[Другим способом] section.section › div.quick-methods › span \"Клевер\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -281,7 +281,7 @@
 "w": 39.5,
 "x": 13.5
 },
-"[Заварить] section.section › div.quick-methods › span \"Колд брю\"": {
+"[Другим способом] section.section › div.quick-methods › span \"Колд брю\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -299,7 +299,7 @@
 "w": 52.5,
 "x": 7
 },
-"[Заварить] section.section › div.quick-methods › span \"Мока\"": {
+"[Другим способом] section.section › div.quick-methods › span \"Мока\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -317,7 +317,7 @@
 "w": 28.5,
 "x": 19
 },
-"[Заварить] section.section › div.quick-methods › span \"Сифон\"": {
+"[Другим способом] section.section › div.quick-methods › span \"Сифон\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -335,7 +335,7 @@
 "w": 35,
 "x": 16
 },
-"[Заварить] section.section › div.quick-methods › span \"Френч-пресс\"": {
+"[Другим способом] section.section › div.quick-methods › span \"Френч-пресс\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -353,7 +353,7 @@
 "w": 63,
 "x": 2
 },
-"[Заварить] section.section › div.quick-methods › span \"Эспрессо\"": {
+"[Другим способом] section.section › div.quick-methods › span \"Эспрессо\"": {
 "align": "center",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -371,7 +371,7 @@
 "w": 53,
 "x": 7
 },
-"[Заварить] section.section › div.quick-methods › svg": {
+"[Другим способом] section.section › div.quick-methods › svg": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -385,7 +385,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.quick-methods › svg #10": {
+"[Другим способом] section.section › div.quick-methods › svg #10": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -399,7 +399,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.quick-methods › svg #11": {
+"[Другим способом] section.section › div.quick-methods › svg #11": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -413,7 +413,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.quick-methods › svg #12": {
+"[Другим способом] section.section › div.quick-methods › svg #12": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -427,7 +427,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.quick-methods › svg #2": {
+"[Другим способом] section.section › div.quick-methods › svg #2": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -441,7 +441,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.quick-methods › svg #3": {
+"[Другим способом] section.section › div.quick-methods › svg #3": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -455,7 +455,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.quick-methods › svg #4": {
+"[Другим способом] section.section › div.quick-methods › svg #4": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -469,7 +469,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.quick-methods › svg #5": {
+"[Другим способом] section.section › div.quick-methods › svg #5": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -483,7 +483,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.quick-methods › svg #6": {
+"[Другим способом] section.section › div.quick-methods › svg #6": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -497,7 +497,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.quick-methods › svg #7": {
+"[Другим способом] section.section › div.quick-methods › svg #7": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -511,7 +511,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.quick-methods › svg #8": {
+"[Другим способом] section.section › div.quick-methods › svg #8": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -525,7 +525,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.quick-methods › svg #9": {
+"[Другим способом] section.section › div.quick-methods › svg #9": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": 10,
@@ -539,7 +539,7 @@
 "w": 26,
 "x": 20.5
 },
-"[Заварить] section.section › div.section-head › h2 \"Заварить\"": {
+"[Другим способом] section.section › div.section-head › h2 \"Другим способом\"": {
 "align": "start",
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -554,7 +554,7 @@
 "radius": "0px",
 "shadow": "",
 "tt": "uppercase",
-"w": 78.5,
+"w": 152.5,
 "x": 20
 },
 "[Заварки · 2] button.row › span.row-chev › svg": {
@@ -1373,6 +1373,51 @@
 "w": 20,
 "x": 18
 },
+"div.footer › div.footer-actions › button.btn.btn-primary.wide": {
+"bg": "rgb(44, 106, 76)",
+"border": "",
+"gap": 11,
+"h": 50,
+"opacity": "1",
+"outline": "",
+"pad": "0px 16px",
+"radius": "13px",
+"shadow": "",
+"w": 358,
+"x": 16
+},
+"div.footer-actions › button.btn.btn-primary.wide › span \"Заварить · V60\"": {
+"align": "center",
+"bg": "rgba(0, 0, 0, 0)",
+"border": "",
+"color": "rgb(255, 255, 255)",
+"font": "16px 650 / 22.4px",
+"gap": -21,
+"h": 22.5,
+"ls": "normal",
+"opacity": "1",
+"outline": "",
+"pad": "0px",
+"radius": "0px",
+"shadow": "",
+"tt": "none",
+"w": 121.5,
+"x": 132
+},
+"div.footer-actions › button.btn.btn-primary.wide › svg": {
+"bg": "rgba(0, 0, 0, 0)",
+"border": "",
+"gap": 15,
+"h": 20,
+"opacity": "1",
+"outline": "",
+"pad": "0px",
+"radius": "0px",
+"shadow": "",
+"stroke": "rgb(255, 255, 255) 1.8px rgb(255, 255, 255)",
+"w": 20,
+"x": 104
+},
 "div.screen › header.topbar › button.icon-btn.back": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -1398,6 +1443,19 @@
 "shadow": "",
 "w": 358,
 "x": 16
+},
+"div.stack-screen › div.screen › div.footer": {
+"bg": "color(srgb 0.937255 0.945098 0.92549 / 0.92)",
+"border": "1px rgba(27, 33, 29, 0.09)",
+"gap": -542,
+"h": 71,
+"opacity": "1",
+"outline": "",
+"pad": "10px 16px",
+"radius": "0px",
+"shadow": "",
+"w": 390,
+"x": 0
 },
 "div.stack-screen › div.screen › header.topbar": {
 "bg": "color(srgb 0.937255 0.945098 0.92549 / 0.88)",

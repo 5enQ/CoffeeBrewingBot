@@ -6,9 +6,14 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Added
+- «Ждать» in the timer, beside «Дальше»: a step goes slower than planned — the clock keeps running, the next step (and every one after it) waits until «Ждать» is pressed again; the line shows «Ждём · +0:12». The added time stays in the plan, and the brew is written down with the steps as they actually went (also after «Дальше»). Keyboard: W.
+- «Заварить» in the footer of a bean card: beans — by the method this coffee was last brewed with («Заварить · V60»), drips — «Заварить дрип» (drip boxes had no way to start brewing from the card). The other methods stay below as «Другим способом». A finished pack has no footer.
 - «Анимация фонов» in «Вид интерфейса»: switched off, the moving card backgrounds (the lighthouse, rare lots, the volume card's sky) and the holiday decorations stand still. A per-device setting, like the theme.
 
 ### Changed
+- «Купить ещё» on a finished pack opens «Ещё пачка»: the roast date first (with the weight), the rest folded as «Как у прошлой пачки» — one tap to change it.
+- A drip box: the 1 / 5 / 6 … шт presets are gone, only the count field remains.
+- The timer's next step: its grams («до 150 г», quieter) go under the name when the line is short, without a stray «·» at the start.
 - «Повторить» on the brew tab opens the brew's card, the same as in the journal (delete, «Изменить», «Повторить»). It used to open the method screen, which for a brew made by an own recipe looked like that recipe's page and otherwise like a new brew.
 - The timer keeps every control on one screen while you brew: «Дальше» (the next step) sits beside what comes next («Через 0:43 / Первый пролив · до 150 г») instead of on its own line below, and on a shorter phone the ring gets smaller, so the step card and «Дальше» stay above the bottom buttons without scrolling. A long name of the next step wraps to a second line instead of being cut.
 - Rating a cup: «Измерения» (TDS) comes after «Дескрипторы».

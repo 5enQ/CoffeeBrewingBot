@@ -39,7 +39,7 @@ function renderRoute(r: Route) {
     case 'brewEdit': return <BrewEdit draft={r.draft} isNew={r.isNew} openCupping={r.openCupping} manual={r.manual} />;
     case 'brew': return <BrewDetail id={r.id} fresh={r.fresh} />;
     case 'bean': return <BeanDetail id={r.id} />;
-    case 'beanEdit': return <BeanEdit bean={r.bean} isNew={r.isNew} scanOnOpen={r.scanOnOpen} />;
+    case 'beanEdit': return <BeanEdit bean={r.bean} isNew={r.isNew} scanOnOpen={r.scanOnOpen} again={r.again} />;
     case 'methodEdit': return <MethodEdit method={r.method} isNew={r.isNew} />;
     case 'recipeEdit': return <RecipeEdit recipe={r.recipe} isNew={r.isNew} />;
     case 'badgeEdit': return <BadgeEdit badge={r.badge} isNew={r.isNew} />;

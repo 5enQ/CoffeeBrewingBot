@@ -18,7 +18,7 @@ export type Route =
   /** fresh — just brewed: a "Home" button instead of "Repeat" */
   | { name: 'brew'; id: string; fresh?: boolean }
   | { name: 'bean'; id: string }
-  | { name: 'beanEdit'; bean: Bean; isNew: boolean; scanOnOpen?: boolean }
+  | { name: 'beanEdit'; bean: Bean; isNew: boolean; scanOnOpen?: boolean; again?: boolean }
   | { name: 'gearEdit'; gear: Gear; isNew: boolean }
   | { name: 'recipeEdit'; recipe: CustomRecipe; isNew: boolean }
   | { name: 'methodEdit'; method: CustomMethod; isNew: boolean }

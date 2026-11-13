@@ -4,7 +4,7 @@ import { contributeCoffee, filledLabels, lookupCode, mergeEmpty } from '../data/
 import { allMethods, methodById, fmtRatio, fmtNum } from '../data/methods';
 import { beanSca, brewBeanIds } from '../data/cva';
 import { emptyBean, isDrip, newDripItem, uid, useStore, type Bean, type BlendPart, type DripItem } from '../data/store';
-import { beanStock, dripItemLeft, dripTotal, finishedOn, isFinished, DRIP_COUNTS, PACK_SIZES } from '../data/stock';
+import { beanStock, dripItemLeft, dripTotal, finishedOn, isFinished, PACK_SIZES } from '../data/stock';
 import { platform } from '../platform';
 import { useBackGuard, useRouter, useSelected } from '../router';
 import { MethodIcon, Icon } from '../ui/icons';
@@ -209,8 +209,13 @@ export function BeanDetail({ id }: { id: string }) {
   const buyAgain = () => {
     const { id: _id, createdAt: _c, roastDate: _r, adjust: _a, finished: _f, finishedAt: _fa, sample: _s, ...rest } = b;
     // an assorted copy gets new kind ids: brews of the old box do not belong to them
-    push({ name: 'beanEdit', bean: { ...emptyBean(), ...rest, drips: rest.drips?.map((d) => ({ ...d, id: uid() })) }, isNew: true });
+    push({ name: 'beanEdit', bean: { ...emptyBean(), ...rest, drips: rest.drips?.map((d) => ({ ...d, id: uid() })) }, isNew: true, again: true });
   };
+
+  // «Заварить» in the footer: the method this coffee was last brewed by (drips — the drip), else the last one used at all
+  const lastOf = (list: typeof brews) => [...list].filter((x) => x.methodId !== 'cupping' && x.methodId !== 'drip').sort((x, y) => y.date - x.date)[0]?.methodId;
+  const brewWith = methodById(drip ? 'drip' : lastOf(mine) ?? lastOf(brews) ?? 'v60');
+  const brewIt = () => push({ name: 'recipes', methodId: brewWith.id, beanId: b.id });
 
   const remove = async () => {
     if (!(await platform.confirm(`Удалить «${beanTitle(b)}»? Заварки останутся в дневнике.`))) return;
@@ -231,6 +236,11 @@ export function BeanDetail({ id }: { id: string }) {
 
   return (
     <Screen title={beanTitle(b)} subtitle={beanOrigin(b)}
+      footer={finished ? undefined : (
+        <div className="footer-actions">
+          <Button icon="brew" wide onClick={brewIt}>{drip ? 'Заварить дрип' : `Заварить · ${brewWith.name}`}</Button>
+        </div>
+      )}
       action={<button type="button" className="icon-btn" onClick={() => push({ name: 'beanEdit', bean: b, isNew: false })} aria-label="Изменить"><Icon name="edit" /></button>}>
       <div className="bean-hero">
         <RestBadge roastDate={b.roastDate} until={finishedOn(b, st, brews)} />
@@ -260,7 +270,7 @@ export function BeanDetail({ id }: { id: string }) {
       </div>
 
       {/* drips are brewed only as drips — there is no method to choose */}
-      {!drip && <Section title="Заварить" plain>
+      {!drip && <Section title={finished ? 'Заварить' : 'Другим способом'} plain>
         <div className="quick-methods">
           {allMethods().filter((m) => (m.id === 'drip') === drip && !(drip && m.id === 'cupping')).map((m) => (
             <button type="button" key={m.id} onClick={() => push({ name: 'recipes', methodId: m.id, beanId: b.id })}>
@@ -330,7 +340,13 @@ export function BeanDetail({ id }: { id: string }) {
 
 const COUNTRIES = ['Эфиопия', 'Кения', 'Руанда', 'Бурунди', 'Танзания', 'Уганда', 'Колумбия', 'Бразилия', 'Перу', 'Эквадор', 'Боливия', 'Коста-Рика', 'Панама', 'Гватемала', 'Гондурас', 'Сальвадор', 'Никарагуа', 'Мексика', 'Йемен', 'Индонезия', 'Индия', 'Вьетнам', 'Китай', 'Папуа — Новая Гвинея'];
 
-export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boolean; scanOnOpen?: boolean }) {
+/** what a repeat pack keeps from the last one, in one line */
+function sameAsBefore(b: Bean): string {
+  const origin = b.isBlend ? 'бленд' : b.assorted ? 'ассорти' : [b.country, b.region].filter(Boolean).join(', ');
+  return [b.roaster, origin, b.process, b.variety, b.roastLevel ? `обжарка ${b.roastLevel.toLowerCase()}` : ''].filter(Boolean).join(' · ') || 'описание кофе';
+}
+
+export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew: boolean; scanOnOpen?: boolean; again?: boolean }) {
   const { saveBean, patchBean, beans, brews } = useStore();
   const { back } = useRouter();
   // the type can be changed while nothing has been brewed from the pack
@@ -339,6 +355,8 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
   const [scan, setScan] = useState(!!scanOnOpen);
   const [status, setStatus] = useState('');
   const [leftText, setLeftText] = useState('');
+  // «Купить ещё»: a new pack of the same coffee — what usually changes comes first, the rest is folded as it was
+  const [showRest, setShowRest] = useState(!again);
   const dirty = JSON.stringify(b) !== JSON.stringify(bean);
   useBackGuard(dirty, 'Выйти без сохранения?');
 
@@ -426,9 +444,29 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
   };
 
   return (
-    <Screen title={drip ? (isNew ? 'Новые дрипы' : 'Редактировать дрипы') : isNew ? 'Новая пачка' : 'Редактировать пачку'}
+    <Screen title={again ? (drip ? 'Ещё коробка' : 'Ещё пачка') : drip ? (isNew ? 'Новые дрипы' : 'Редактировать дрипы') : isNew ? 'Новая пачка' : 'Редактировать пачку'}
       footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={(!isNew && !dirty) || (!b.name && !b.country && !b.barcode && !(b.parts ?? []).some((p) => p.country) && !(b.drips ?? []).some((d) => d.name || d.country))}>Сохранить</Button></div>}>
 
+      {again && (
+        <>
+          <Section title="Новая пачка">
+            {f('roastDate', 'Дата обжарки', { type: 'date', max: new Date().toISOString().slice(0, 10) })}
+            {!drip && f('weight', 'Вес пачки, г', { inputMode: 'numeric', placeholder: '250' })}
+            {drip && !b.assorted && numField('Дрипов в коробке', 'bean-drip-count', b.dripCount, (n) => set({ dripCount: n === undefined ? undefined : Math.round(n) }), 'шт')}
+            {!drip && b.weight && (
+              <Field label="Осталось сейчас, г" id="bean-left" inputMode="decimal" placeholder={b.weight}
+                value={leftText} onChange={(e) => setLeftText(e.target.value)} />
+            )}
+          </Section>
+          {!showRest && (
+            <Section title="Как у прошлой пачки" plain>
+              <div className="group"><Row label={beanTitle(b)} hint={sameAsBefore(b)} chevron onClick={() => setShowRest(true)} /></div>
+              <p className="muted pad small-note">Остаётся без изменений. Нажмите, если у этой пачки что-то другое.</p>
+            </Section>
+          )}
+        </>
+      )}
+      {showRest && <>
       {!kindLocked && (
         <Segmented value={drip ? 'drip' : 'beans'} onChange={(v) => setKind(v)}
           options={[{ value: 'beans', label: 'Зерно' }, { value: 'drip', label: 'Дрип-пакеты' }]} />
@@ -450,13 +488,8 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
         <Section title="Коробка" plain>
           <Segmented value={b.assorted ? 'mix' : 'same'} onChange={(v) => setAssorted(v === 'mix')}
             options={[{ value: 'same', label: 'Все дрипы одинаковые' }, { value: 'mix', label: 'Разные' }]} />
-          {!b.assorted && <>
-            <p className="muted pad small-note">Сколько дрипов в коробке</p>
-            <Chips options={DRIP_COUNTS.map((n) => `${n} шт`)} value={b.dripCount ? [`${b.dripCount} шт`] : []}
-              onToggle={(v) => set({ dripCount: b.dripCount === parseInt(v) ? undefined : parseInt(v) })} />
-          </>}
           <div className="group" style={{ marginTop: 10 }}>
-            {!b.assorted && numField('Дрипов в коробке', 'bean-drip-count', b.dripCount, (n) => set({ dripCount: n === undefined ? undefined : Math.round(n) }), 'шт')}
+            {!b.assorted && !again && numField('Дрипов в коробке', 'bean-drip-count', b.dripCount, (n) => set({ dripCount: n === undefined ? undefined : Math.round(n) }), 'шт')}
             {isNew && (
               <Field label="Осталось сейчас, шт" id="bean-left" inputMode="numeric" placeholder={String(dripTotal(b) || '')}
                 value={leftText} onChange={(e) => setLeftText(e.target.value)} />
@@ -560,9 +593,9 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
       <Section title="Обжарка" plain>
         <Chips options={ROAST_LEVELS} value={[b.roastLevel]} onToggle={(p) => set({ roastLevel: b.roastLevel === p ? '' : p })} />
         <div className="group" style={{ marginTop: 10 }}>
-          {f('roastDate', 'Дата обжарки', { type: 'date', max: new Date().toISOString().slice(0, 10) })}
-          {!drip && f('weight', 'Вес пачки, г', { inputMode: 'numeric', placeholder: '250' })}
-          {!drip && isNew && b.weight && (
+          {!again && f('roastDate', 'Дата обжарки', { type: 'date', max: new Date().toISOString().slice(0, 10) })}
+          {!again && !drip && f('weight', 'Вес пачки, г', { inputMode: 'numeric', placeholder: '250' })}
+          {!again && !drip && isNew && b.weight && (
             <Field label="Осталось сейчас, г" id="bean-left" inputMode="decimal" placeholder={b.weight}
               value={leftText} onChange={(e) => setLeftText(e.target.value)} />
           )}
@@ -591,6 +624,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen }: { bean: Bean; isNew: boole
         } })}
         <textarea id="bean-comment" className="notes" rows={3} aria-label="Заметки" placeholder="Где купил, цена, впечатления" value={b.comment} onChange={(e) => set({ comment: e.target.value })} />
       </Section>
+      </>}
 
       {scan && <Scanner onResult={onCode} onClose={() => setScan(false)} />}
     </Screen>

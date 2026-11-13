@@ -36,7 +36,7 @@ async def main():
             st = V('button:has-text("Старт")')
             if await st.count(): await st.first.click()
             await pg.wait_for_timeout(600)
-            h = await V('.step-next b').first.evaluate('e => e.getBoundingClientRect().height')
+            h = await V('.step-next-title').first.evaluate('e => e.getBoundingClientRect().height')  # the grams may go under it, whole
             check(h < 30 or (w < 375 and h < 50), f'{w}px: the name of the next step takes one line, two on a narrow phone ({h:.0f}px)')
             t = await V('.step-next-title').first.evaluate('e => e.scrollWidth <= e.clientWidth')
             check(t, f'{w}px: and is not cut short')

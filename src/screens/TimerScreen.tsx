@@ -3,7 +3,7 @@ import { Roll, Swap } from '../ui/motion';
 import { track } from '../data/track';
 import { methodById, fmtTime, fmtNum } from '../data/methods';
 import { effectivePlan, shiftPlan, type Skip } from '../data/recipes';
-import type { Brew } from '../data/store';
+import { useStore, type Brew } from '../data/store';
 import { platform } from '../platform';
 import { useBackGuard, useRouter } from '../router';
 import { useLayout } from '../layout';
@@ -44,6 +44,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   const basePlan = effectivePlan(draft.methodId, draft.plan);
   const long = basePlan.total >= LONG_TIMER;
   const { replace, reset: home, setTab } = useRouter();
+  const { saveBrew } = useStore();
   const [elapsed, setElapsed] = useState(() => (stored ? elapsedOf(stored) : 0));
   // «Ждать»: a step goes slower than planned — the clock runs on, the next step (and all after it) waits with it
   const [hold, setHold] = useState<{ i: number; from: number } | null>(() => stored?.hold ?? null);
@@ -213,7 +214,10 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     closed.current = true;
     dropReminder(); clearTimer(draft.id);
     platform.haptic('success'); track('brew.timer');
-    replace({ name: 'brewEdit', draft: { ...draft, ...(lived ? { plan: lived } : {}), time: Math.round(total || plan.total), date: Date.now() }, isNew: true, openCupping: m.id === 'cupping' });
+    // ✓ writes the brew down at once (stock, stats, journal); rating it on the next screen is optional — until then the journal marks it
+    const brew: Brew = { ...draft, ...(lived ? { plan: lived } : {}), time: Math.round(total || plan.total), date: Date.now(), unrated: true };
+    saveBrew(brew);
+    replace({ name: 'brewEdit', draft: brew, isNew: true, saved: true, openCupping: m.id === 'cupping' });
   };
 
   // poured faster than planned: the next step starts now and the rest of the plan moves up; the clock goes on as it was

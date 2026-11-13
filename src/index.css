@@ -549,6 +549,13 @@ button.row:active { background: var(--fg-soft); }
 .bean-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: var(--hint); border-top: 1px solid var(--sep); padding-top: 8px; margin-top: 2px; }
 .bean-hero { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .pack-notes { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
+/* a brew written down by ✓ in the timer but not rated yet: a tag in the journal, a plaque on its page */
+.unrated-tag { padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--fg); background: color-mix(in srgb, var(--star) 24%, var(--card)); white-space: nowrap; }
+.unrated-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin: 4px 0 16px; padding: 14px 16px;
+  border: 0; border-radius: var(--r); background: color-mix(in srgb, var(--star) 16%, var(--card)); color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.unrated-banner > span:first-child { display: flex; flex-direction: column; gap: 2px; }
+.unrated-banner small { color: var(--hint); font-size: 13px; }
+.unrated-go { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; font-weight: 600; color: var(--accent); }
 /* the bean card's other methods: a grid over the footer, grown from the round button at its left; the page dims
    under it but the footer stays bright, so × is right where the menu was opened */
 .method-menu-shade { position: fixed; inset: 0; z-index: 24; background: rgba(0, 0, 0, 0.22); animation: calm-in 0.15s ease both; }

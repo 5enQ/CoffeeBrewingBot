@@ -11,6 +11,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - «Анимация фонов» in «Вид интерфейса»: switched off, the moving card backgrounds (the lighthouse, rare lots, the volume card's sky) and the holiday decorations stand still. A per-device setting, like the theme.
 
 ### Changed
+- ✓ in the timer writes the brew down at once (journal, stock, stats). Rating it on «Как получилось?» is optional now: leaving that screen asks nothing and keeps the brew, and the journal marks it «не оценена»; its page has «Вы не оценили эту заварку · Оценить». Saving the rating (even unchanged) takes the mark away. Closing Telegram after ✓ no longer loses the brew.
 - Profile: «Настроить» on the left, «Поделиться» (the main one) on the right — the same order as other screens.
 - Owner's metrics: «Обновить» shows it is working — the arrow turns and the numbers dim, then «Обновлено» for a moment (or «Не вышло · ещё раз»); the numbers carry the time they are for.
 - «Купить ещё» on a finished pack opens «Ещё пачка»: the roast date first (with the weight), the rest folded as «Как у прошлой пачки» — one tap to change it.

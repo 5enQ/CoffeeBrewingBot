@@ -88,6 +88,17 @@ async def main():
         check(after[1] == mid[1], 'and the end stays later')
         await V('[aria-label="Готово, записать"]').click(); await pg.wait_for_timeout(600)
         check((await pg.evaluate('document.title')).startswith('Как получилось'), 'the brew goes on to be written down')
+        # ✓ already wrote it down: leaving the rating screen keeps it, the journal marks it «не оценена»
+        await pg.keyboard.press('Escape'); await pg.wait_for_timeout(500)
+        check(await pg.locator('.dialog').count() == 0, 'leaving the rating screen asks nothing — the brew is kept')
+        while await V('[aria-label="Назад"]').count(): await esc()
+        await ns['tab'](pg, 'Дневник'); await pg.wait_for_timeout(600)
+        first = V('.tab-page:not(.leaving) button.row').first
+        check(await first.locator('.unrated-tag').count() == 1, 'the journal shows it «не оценена»')
+        await first.click(); await pg.wait_for_timeout(600)
+        await V('.unrated-banner').click(); await pg.wait_for_timeout(500)
+        await V('.footer .btn-primary').click(); await pg.wait_for_timeout(600)
+        check(await V('.unrated-banner').count() == 0, '«Оценить» → «Сохранить» takes the mark away')
         check(not errors, f'no page errors {errors}')
 
         # a computer: right click pins a method, a second right click unpins it, a left click still opens it

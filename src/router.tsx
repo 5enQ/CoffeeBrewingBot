@@ -14,7 +14,7 @@ export type Route =
   | { name: 'method'; methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }
   /** resume — reopen the timer kept on the device */
   | { name: 'timer'; draft: Brew; resume?: boolean }
-  | { name: 'brewEdit'; draft: Brew; isNew: boolean; openCupping?: boolean; manual?: boolean }
+  | { name: 'brewEdit'; draft: Brew; isNew: boolean; openCupping?: boolean; manual?: boolean; saved?: boolean }
   /** fresh — just brewed: a "Home" button instead of "Repeat" */
   | { name: 'brew'; id: string; fresh?: boolean }
   | { name: 'bean'; id: string }

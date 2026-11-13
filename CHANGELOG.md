@@ -7,7 +7,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ### Added
 - «Ждать» in the timer, beside «Дальше»: a step goes slower than planned — the clock keeps running, the next step (and every one after it) waits until «Ждать» is pressed again; the line shows «Ждём · +0:12». The added time stays in the plan, and the brew is written down with the steps as they actually went (also after «Дальше»). Keyboard: W.
-- «Заварить» in the footer of a bean card: beans — by the method this coffee was last brewed with («Заварить · V60»), drips — «Заварить дрип» (drip boxes had no way to start brewing from the card). The other methods stay below as «Другим способом». A finished pack has no footer.
+- «Заварить» in the footer of a bean card: beans — by the method this coffee was last brewed with («Заварить · V60»), drips — «Заварить дрип» (drip boxes had no way to start brewing from the card). The other methods open from a round button left of it: a grid over the footer (the methods already used with this coffee tinted), closed by ×, a tap outside or Esc — no swipe. A finished pack has no footer and keeps the grid in the card.
 - «Анимация фонов» in «Вид интерфейса»: switched off, the moving card backgrounds (the lighthouse, rare lots, the volume card's sky) and the holiday decorations stand still. A per-device setting, like the theme.
 
 ### Changed

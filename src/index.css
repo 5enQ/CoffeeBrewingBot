@@ -549,6 +549,19 @@ button.row:active { background: var(--fg-soft); }
 .bean-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: var(--hint); border-top: 1px solid var(--sep); padding-top: 8px; margin-top: 2px; }
 .bean-hero { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .pack-notes { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; text-wrap: balance; }
+/* the bean card's other methods: a grid over the footer, grown from the round button at its left; the page dims
+   under it but the footer stays bright, so × is right where the menu was opened */
+.method-menu-shade { position: fixed; inset: 0; z-index: 24; background: rgba(0, 0, 0, 0.22); animation: calm-in 0.15s ease both; }
+.method-menu { position: fixed; z-index: 26; box-sizing: border-box; padding: 6px 6px 8px; border-radius: 18px; background: var(--card);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.28); transform-origin: 24px 100%; animation: menu-in 0.18s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes menu-in { from { opacity: 0; transform: translateY(8px) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) { .method-menu { animation: calm-in 0.15s ease both; } }
+.method-menu-note { margin: 4px 8px 8px; font-size: 13px; color: var(--hint); }
+.method-menu-grid button { background: none; }
+.method-menu-grid button.used { background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
+.method-menu-toggle svg { transform: rotate(-90deg); transition: transform 0.18s; }
+.method-menu-toggle.on svg { transform: none; }
+[data-contrast="high"] .method-menu { outline: 2px solid var(--fg); }
 .quick-methods { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .quick-methods button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 2px; border: 0; border-radius: 12px; background: var(--card); color: var(--accent); }
 .quick-methods span { font-size: 11px; color: var(--fg); text-align: center; line-height: 1.15; }

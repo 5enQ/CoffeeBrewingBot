@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { track } from '../data/track';
 import { contributeCoffee, filledLabels, lookupCode, mergeEmpty } from '../data/lookup';
 import { allMethods, methodById, fmtRatio, fmtNum } from '../data/methods';
@@ -180,6 +180,51 @@ export function Beans() {
 
 /* ---------- Card ---------- */
 
+/** The grid of methods over the footer, bottom-left at the round button; used with this coffee — tinted */
+function MethodMenu({ anchor, used, methods, onPick, onClose }: {
+  anchor: RefObject<HTMLButtonElement | null>; used: Set<string>; methods: ReturnType<typeof allMethods>;
+  onPick(id: string): void; onClose(): void;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<{ left: number; width: number; bottom: number } | null>(null);
+  useLayoutEffect(() => {
+    const place = () => {
+      const row = anchor.current?.closest('.footer-actions'), foot = anchor.current?.closest('.footer');
+      if (!row || !foot) return;
+      const r = row.getBoundingClientRect();
+      setAt({ left: r.left, width: r.width, bottom: window.innerHeight - foot.getBoundingClientRect().top + 8 });
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [anchor]);
+  // focus goes into the menu once it stands in place (hidden until measured, it can't take focus before)
+  useEffect(() => { if (at) box.current?.querySelector('button')?.focus({ preventScroll: true }); }, [!!at]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose(); } };
+    document.addEventListener('keydown', key, true);
+    return () => document.removeEventListener('keydown', key, true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <>
+      <div className="method-menu-shade" onClick={onClose} />
+      <div ref={box} className="method-menu" role="dialog" aria-modal="true" aria-label="Чем заварить"
+        style={at ? { left: at.left, width: at.width, bottom: at.bottom } : { visibility: 'hidden' }}
+        // Tab past the last tile (or before the first) leaves the menu: it closes, nothing is left open behind
+        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node) && e.relatedTarget !== anchor.current) onClose(); }}>
+        <p className="method-menu-note">Чем заварить{used.size ? ' · подсвечены те, что уже были с этим зерном' : ''}</p>
+        <div className="quick-methods method-menu-grid">
+          {methods.map((m) => (
+            <button type="button" key={m.id} className={used.has(m.id) ? 'used' : undefined} onClick={() => onPick(m.id)}>
+              <MethodIcon icon={m.icon} size={26} /><span>{m.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function BeanDetail({ id }: { id: string }) {
   const { beans, brews, deleteBean, saveBean } = useStore();
   const { push, back } = useRouter();
@@ -216,6 +261,10 @@ export function BeanDetail({ id }: { id: string }) {
   const lastOf = (list: typeof brews) => [...list].filter((x) => x.methodId !== 'cupping' && x.methodId !== 'drip').sort((x, y) => y.date - x.date)[0]?.methodId;
   const brewWith = methodById(drip ? 'drip' : lastOf(mine) ?? lastOf(brews) ?? 'v60');
   const brewIt = () => push({ name: 'recipes', methodId: brewWith.id, beanId: b.id });
+  // the other methods: a grid that opens from the round button left of «Заварить» (no swipe to close — tap outside, ×, Esc)
+  const [menu, setMenu] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const usedIds = new Set(mine.map((x) => x.methodId));
 
   const remove = async () => {
     if (!(await platform.confirm(`Удалить «${beanTitle(b)}»? Заварки останутся в дневнике.`))) return;
@@ -238,6 +287,12 @@ export function BeanDetail({ id }: { id: string }) {
     <Screen title={beanTitle(b)} subtitle={beanOrigin(b)}
       footer={finished ? undefined : (
         <div className="footer-actions">
+          {!drip && (
+            <button ref={toggleRef} type="button" className={'round-btn method-menu-toggle' + (menu ? ' on' : '')} onClick={() => setMenu((v) => !v)}
+              aria-expanded={menu} aria-haspopup="dialog" aria-label={menu ? 'Закрыть выбор метода' : 'Другой метод'}>
+              <Icon name={menu ? 'close' : 'chevron'} />
+            </button>
+          )}
           <Button icon="brew" wide onClick={brewIt}>{drip ? 'Заварить дрип' : `Заварить · ${brewWith.name}`}</Button>
         </div>
       )}
@@ -269,8 +324,14 @@ export function BeanDetail({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* drips are brewed only as drips — there is no method to choose */}
-      {!drip && <Section title={finished ? 'Заварить' : 'Другим способом'} plain>
+      {menu && !finished && (
+        <MethodMenu anchor={toggleRef} used={usedIds} methods={allMethods().filter((m) => m.id !== 'drip')}
+          onPick={(id) => { setMenu(false); push({ name: 'recipes', methodId: id, beanId: b.id }); }}
+          onClose={() => { setMenu(false); toggleRef.current?.focus({ preventScroll: true }); }} />
+      )}
+
+      {/* drips are brewed only as drips; a pack on the shelf picks other methods from the menu by «Заварить» */}
+      {!drip && finished && <Section title="Заварить" plain>
         <div className="quick-methods">
           {allMethods().filter((m) => (m.id === 'drip') === drip && !(drip && m.id === 'cupping')).map((m) => (
             <button type="button" key={m.id} onClick={() => push({ name: 'recipes', methodId: m.id, beanId: b.id })}>

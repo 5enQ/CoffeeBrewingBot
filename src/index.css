@@ -177,6 +177,10 @@ button { cursor: pointer; }
 }
 .group { background: var(--card); border-radius: var(--r); overflow: hidden; }
 .group > * + * { border-top: 1px solid var(--sep); }
+/* the card clips its rows to its rounding; giving the first and last rows the same rounding lets a focus ring
+   (an inset shadow or outline on the row) follow the curve instead of being cut at the corners */
+.group > :first-child { border-top-left-radius: var(--r); border-top-right-radius: var(--r); }
+.group > :last-child { border-bottom-left-radius: var(--r); border-bottom-right-radius: var(--r); }
 .row {
   display: flex; align-items: center; gap: 12px; width: 100%;
   padding: 12px 14px; min-height: 48px; background: none; border: 0; text-align: left;
@@ -252,6 +256,9 @@ button.row:active { background: var(--fg-soft); }
 }
 .btn:active { transform: scale(0.97); }
 .btn:disabled { opacity: 0.4; }
+/* an unavailable main button is solid, not see-through: in the footer the page scrolls under it, and its text
+   showed through the button («ПРОИСХОЖДЕНИЕ ✓ Сохранить») */
+.btn-primary:disabled { opacity: 1; background: color-mix(in srgb, var(--accent) 40%, var(--bg)); color: color-mix(in srgb, var(--accent-fg) 55%, var(--bg)); }
 .btn.wide { flex: 1; }
 .btn-primary { background: var(--accent); color: var(--accent-fg); }
 .btn-secondary { background: var(--accent-soft); color: var(--accent); }

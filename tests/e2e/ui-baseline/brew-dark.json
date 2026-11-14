@@ -1092,7 +1092,7 @@
 "opacity": "1",
 "outline": "",
 "pad": "12px 14px",
-"radius": "0px",
+"radius": "14px 14px 0px 0px",
 "shadow": "",
 "w": 358,
 "x": 0
@@ -1118,7 +1118,7 @@
 "opacity": "1",
 "outline": "",
 "pad": "12px 14px",
-"radius": "0px",
+"radius": "0px 0px 14px 14px",
 "shadow": "",
 "w": 358,
 "x": 0

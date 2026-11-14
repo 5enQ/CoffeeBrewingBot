@@ -1224,7 +1224,9 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
   --pc-fg: var(--fg); --pc-muted: var(--hint); --pc-line: rgba(0,0,0,0.08);
   position: relative; isolation: isolate; overflow: hidden; border-radius: 22px; padding: 18px 18px 14px;
   color: var(--pc-fg); background: var(--card); box-shadow: 0 10px 30px -12px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.08);
-  transition: transform 0.05s linear; transform-style: preserve-3d; will-change: transform;
+  /* no CSS transition on the tilt: the script already eases it every frame, and Safari (Telegram on a Mac) restarting
+     a 50 ms transition on each frame flipped the card between two poses — it shook */
+  transform-style: preserve-3d; will-change: transform;
 }
 /* a plain card is as tall as what is on it; achievement and special backgrounds keep room for their art */
 .pcard.tier, .pcard.special { min-height: 196px; }
@@ -1400,7 +1402,6 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 .theme-pick.special-dev { --pc-fg: #e6edf3; background: radial-gradient(80% 80% at 90% 0%, rgba(56,189,248,0.4), transparent 70%), #0d1117; font-family: ui-monospace, Menlo, monospace; }
 @media (prefers-reduced-motion: reduce) { .pcard-code-in, .pcard.special-dev .pcard-tier::after { animation: none; } }
 
-@media (prefers-reduced-motion: reduce) { .pcard { transition: none; } }
 
 /* theme picker */
 .theme-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }

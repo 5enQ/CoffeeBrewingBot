@@ -29,6 +29,8 @@ async def main():
             await pg.route('**/*', mock(c, k))
             await pg.reload(); await pg.wait_for_timeout(1000)
             el = pg.locator('.pcard').first
+            tr = await el.evaluate("e => getComputedStyle(e).transitionProperty + ' ' + getComputedStyle(e).transitionDuration")
+            check(tr.endswith(' 0s'), f'{k}: no CSS transition on the tilt — Safari flipped between two poses with it ({tr})')
             bx = await el.bounding_box()
             # the cursor rests at the very edge of a turned card: the tilt holds still, for longer than the idle delay
             await pg.mouse.move(bx['x'] + bx['width'] - 2, bx['y'] + bx['height'] / 2); await pg.wait_for_timeout(1200)

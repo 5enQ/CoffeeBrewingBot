@@ -7,6 +7,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ### Fixed
 - The tab bar's bubble shook when switching tabs (seen in Telegram on a Mac): it moved by a transform run off the main thread while its width changed on it, so while the new tab was rendering the far edge shot past the tab and jumped back. It now moves by left and width together.
+- The profile card shook under the mouse in Telegram on a Mac: on top of the tilt eased by the script every frame it had a 50 ms CSS transition, and Safari, restarting it each frame, flipped the card between two poses. The transition is gone.
 - Resizing the window on a computer: the method tiles glided after every step of the resize, lagging behind and drifting apart; they now take their new size at once (the glide stays for pinning and rearranging).
 - On a Mac the window's right edge did not respond to resizing where expected: the page's styled 10 px scrollbar sat there and caught the mouse. On a Mac the system's own scrollbars are kept.
 - The ring around a field being typed into was cut square at the rounded corners of its card (the first and last rows of a card): those rows now take the card's rounding, so the ring follows the curve.

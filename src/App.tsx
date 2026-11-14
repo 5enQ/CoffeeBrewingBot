@@ -8,7 +8,7 @@ import { InviteGate } from './ui/InviteGate';
 import { DepthCtx, RouterProvider, useRouter, type Route, type Tab } from './router';
 import { DialogHost } from './ui/kit';
 import { AchievementToast } from './ui/AchievementToast';
-import { LiveRegion, ToastHost } from './ui/toast';
+import { LiveRegion, ToastHost, toast } from './ui/toast';
 import { Icon, MethodIcon } from './ui/icons';
 import { methodById } from './data/methods';
 import { BrewHome } from './screens/BrewHome';
@@ -23,7 +23,7 @@ import { RecipesScreen } from './screens/Recipes';
 import { ShareScreen, SharedRecipeScreen } from './screens/Share';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { LayoutCtx, useLayoutMode } from './layout';
-import { platform } from './platform';
+import { platform, sessionExpired } from './platform';
 import { resolveStartParam } from './data/share';
 import { loadCard } from './data/card';
 import { CardEditScreen, CardShareScreen, CardViewScreen } from './screens/CardScreens';
@@ -77,6 +77,20 @@ function Shell() {
   useTabPill(navRef, pillRef, `${tab}-${stack.length === 0}-${mode}-${ready}`);
 
   useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
+  // Telegram on a computer keeps the app open for days; after a day the server refuses its signature and new brews
+  // stop reaching it (stats, badges, the owner's numbers). Say so once, when the app comes back into view.
+  useEffect(() => {
+    let said = false;
+    const check = () => {
+      if (said || document.visibilityState === 'hidden' || !sessionExpired()) return;
+      said = true; toast('Brewbook открыт больше суток — закройте его и откройте снова, чтобы заварки дошли до сервера');
+    };
+    check();
+    document.addEventListener('visibilitychange', check);
+    const t = setInterval(check, 10 * 60_000);
+    return () => { document.removeEventListener('visibilitychange', check); clearInterval(t); };
+  }, []);
+
   // keyboard focus on a control only half inside its scrolling pane: bring the rest in (browsers leave it cut)
   useEffect(() => {
     const on = (e: FocusEvent) => {

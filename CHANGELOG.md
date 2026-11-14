@@ -11,9 +11,13 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - On a Mac the window's right edge did not respond to resizing where expected: the page's styled 10 px scrollbar sat there and caught the mouse. On a Mac the system's own scrollbars are kept.
 - The ring around a field being typed into was cut square at the rounded corners of its card (the first and last rows of a card): those rows now take the card's rounding, so the ring follows the curve.
 - An unavailable «Сохранить» in the footer was see-through, and the page scrolling under it showed through its text; it is solid now.
+- Telegram on a computer keeps Brewbook open for days, and the server takes Telegram's signature only for 24 hours from opening: after that every request was refused and the app said «нет связи с сервером». Now it says what it is — «Telegram-сессия устарела: закройте Brewbook и откройте снова» — once as a notice when the app comes back into view, and in the owner panel and the tester and owner actions; the owner panel no longer disappears on that refusal (only on «not the owner»).
 
 ### Changed
 - Drip boxes: no «заварено N» on the shelf and in the box — «N из M дрипов» already says it.
+
+### Tests
+- Telegram mocks in the browser suites sign with the current time instead of `auth_date=1` (an expired signature now changes what the app shows).
 
 ## v1.7.4 — Keep Pouring (2026-11-13)
 

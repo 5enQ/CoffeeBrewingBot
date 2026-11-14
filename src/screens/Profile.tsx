@@ -11,7 +11,7 @@ import { GEAR_CATS, catById, type Gear } from '../data/gear';
 import { BADGE_KINDS, CHAMPIONSHIPS, PLACES, Q_TYPES, SCA_EXTRA, SCA_LEVELS, SCA_MODULES, type Badge } from '../data/badges';
 import { BadgeChip } from '../ui/Badges';
 import { useStore, uid } from '../data/store';
-import { platform } from '../platform';
+import { platform, serverTrouble, sessionExpired } from '../platform';
 import { useBackGuard, useRouter, useSelected } from '../router';
 import { Icon, MethodIcon } from '../ui/icons';
 import { Button, Chips, Field, Row, SampleTag, Screen, Section, Segmented } from '../ui/kit';
@@ -275,16 +275,19 @@ function OwnerTools() {
     adminCall().then((d) => {
       setData(d); setState(d ? 'ok' : 'failed');
       if (d) { try { localStorage.setItem(OWNER_SEEN, myTelegramId() ?? ''); } catch { /* no storage */ } }
-      // the server says this account is not the owner: forget the mark, the panel goes
-      else if (adminStatus === 401 || adminStatus === 403) { try { localStorage.removeItem(OWNER_SEEN); } catch { /* no storage */ } setKnown(false); }
+      // the server says this account is not the owner: forget the mark, the panel goes (401 is an expired Telegram
+      // signature — the panel stays and says so)
+      else if (adminStatus === 403) { try { localStorage.removeItem(OWNER_SEEN); } catch { /* no storage */ } setKnown(false); }
     });
   };
   useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (!data) {
     if (!known) return null;
     return (
-      <Panel kind="owner" title="Панель владельца" hint="Нет связи с сервером." summary={state === 'loading' ? 'Загружаем…' : 'Нет связи с сервером'}>
-        <p className="muted pad small-note">{state === 'loading' ? 'Загружаем данные с сервера…' : 'Сервер не ответил. Проверьте интернет; если сервер Cloudflare в вашей сети недоступен, помогает VPN.'}</p>
+      <Panel kind="owner" title="Панель владельца" hint="Нет связи с сервером." summary={state === 'loading' ? 'Загружаем…' : sessionExpired() ? 'Сессия устарела' : 'Нет связи с сервером'}>
+        <p className="muted pad small-note">{state === 'loading' ? 'Загружаем данные с сервера…' : sessionExpired()
+          ? 'Сервер принимает вход из Telegram сутки с момента открытия, а Brewbook открыт дольше. Закройте его и откройте снова.'
+          : 'Сервер не ответил. Проверьте интернет; если сервер Cloudflare в вашей сети недоступен, помогает VPN.'}</p>
         {state === 'failed' && <div className="pad"><Button kind="secondary" icon="reset" onClick={load}>Повторить</Button></div>}
       </Panel>
     );
@@ -341,7 +344,7 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
     const next = await adminCall({ action: 'forget', tg: g.tg });
     setBusy(false);
     if (next) { onChange(next); setEditing(null); platform.haptic('success'); toast('Убрано из списка'); }
-    else toast('Не получилось — нет связи с сервером');
+    else toast(`Не получилось — ${serverTrouble()}`);
   };
   const saveNote = async (id: string) => {
     setBusy(true);
@@ -474,7 +477,7 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
       onChange(next); platform.haptic('success');
       toast(action === 'approve' ? 'Сайт подключён — каталог начнёт заполняться' : action === 'recrawl' ? `Обход ${s.host} запущен` : 'Сайт отклонён');
       if (action !== 'reject') setWatch(s.host);
-    } else toast('Не получилось — нет связи с сервером');
+    } else toast(`Не получилось — ${serverTrouble()}`);
   };
   useEffect(() => {
     if (!watch) return;

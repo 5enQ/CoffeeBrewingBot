@@ -50,3 +50,20 @@ export async function initPlatform() {
   tapFeedback();
   document.documentElement.dataset.platform = platform.kind;
 }
+
+/**
+ * The server takes Telegram's signature for 24 hours from the moment the app was opened (worker: verifyInitData).
+ * Telegram on a computer keeps the app open for days, so after a day every request is refused — that is not a
+ * network problem, and the person only needs to reopen the app.
+ */
+export function sessionExpired(): boolean {
+  try {
+    const d = Number(new URLSearchParams(platform.initData() ?? '').get('auth_date') ?? 0);
+    return !!d && Date.now() / 1000 - d > 86_400 - 60;
+  } catch { return false; }
+}
+
+/** what to say when a server request failed */
+export function serverTrouble(): string {
+  return sessionExpired() ? 'Telegram-сессия устарела: закройте Brewbook и откройте снова' : 'нет связи с сервером';
+}

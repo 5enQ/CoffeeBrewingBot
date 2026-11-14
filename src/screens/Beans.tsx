@@ -8,6 +8,7 @@ import { beanStock, dripItemLeft, dripTotal, finishedOn, isFinished, PACK_SIZES 
 import { platform } from '../platform';
 import { useBackGuard, useRouter, useSelected } from '../router';
 import { MethodIcon, Icon } from '../ui/icons';
+import { toast } from '../ui/toast';
 import { Button, Chips, Empty, Field, Row, SampleTag, ScaleDots, Screen, Section, Segmented, Stars } from '../ui/kit';
 import { SCALES, hasScales } from '../data/scales';
 import { Scanner } from '../ui/Scanner';
@@ -132,6 +133,7 @@ export function Beans() {
     const r = await lookupCode(code, beans);
     if (r.existing) push({ name: 'bean', id: r.existing.id });
     else push({ name: 'beanEdit', bean: mergeEmpty(emptyBean(), r.patch), isNew: true });
+    if (r.kind === 'social') toast(SOCIAL_NOTE);
   };
 
   const list = q
@@ -402,6 +404,9 @@ export function BeanDetail({ id }: { id: string }) {
 
 const COUNTRIES = ['Эфиопия', 'Кения', 'Руанда', 'Бурунди', 'Танзания', 'Уганда', 'Колумбия', 'Бразилия', 'Перу', 'Эквадор', 'Боливия', 'Коста-Рика', 'Панама', 'Гватемала', 'Гондурас', 'Сальвадор', 'Никарагуа', 'Мексика', 'Йемен', 'Индонезия', 'Индия', 'Вьетнам', 'Китай', 'Папуа — Новая Гвинея'];
 
+/** a QR leading to the roaster's Instagram, channel or link page: saved as the link, nothing to fill from it */
+const SOCIAL_NOTE = 'Это ссылка на соцсеть обжарщика — данных о кофе в ней нет. Сохранил её в поле «Ссылка», остальное заполните вручную.';
+
 /** what a repeat pack keeps from the last one, in one line */
 function sameAsBefore(b: Bean): string {
   const origin = b.isBlend ? 'бленд' : b.assorted ? 'ассорти' : [b.country, b.region].filter(Boolean).join(', ');
@@ -475,6 +480,11 @@ export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew
         setStatus('Скопировано с прошлой пачки. Укажите дату обжарки.');
         return;
       }
+    }
+    if (r.kind === 'social') {
+      setB((x) => ({ ...x, link: x.link || r.patch.link || '' }));
+      setStatus(SOCIAL_NOTE);
+      return;
     }
     const before = b;
     const next = mergeEmpty({ ...b, barcode: r.patch.barcode ?? code }, r.patch);

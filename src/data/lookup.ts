@@ -5,7 +5,7 @@ import { SCALES } from './scales';
 
 export interface LookupResult {
   code: string;
-  kind: 'ean' | 'qr-data' | 'url' | 'text';
+  kind: 'ean' | 'qr-data' | 'url' | 'social' | 'text';
   existing?: Bean;
   patch: Partial<Bean>;
   source?: string;
@@ -186,9 +186,29 @@ async function openFoodFacts(code: string): Promise<Partial<Bean> | null> {
   }
 }
 
+/**
+ * The product barcode inside a GS1 DataMatrix — the «Честный знак» marking code: «01» + a 14-digit GTIN, then the
+ * pack's own serial («21…») and check data. The serial is different on every pack, so only the GTIN is kept; a GTIN
+ * of a retail product starts with 0, and without it is the EAN-13 printed on the pack. null — not such a code.
+ */
+export function gtinOf(raw: string): string | null {
+  const c = raw.replace(/^\](d2|C1|Q3|e0)/, '').replace(/[\x1d\u241d]/g, '');
+  const m = c.match(/^01(\d{14})(21|10|17|11|91|93|$)/);
+  if (!m) return null;
+  const g = m[1];
+  return g.startsWith('0') ? g.slice(1) : g;
+}
+
+/** links to a roaster's social pages, chats and link hubs: no coffee data there, and they are not shop pages */
+const SOCIAL = /^(?:[a-z0-9-]+\.)*(?:instagram\.com|instagr\.am|t\.me|telegram\.me|telegram\.dog|vk\.com|vk\.ru|vk\.cc|ok\.ru|facebook\.com|fb\.com|fb\.me|youtube\.com|youtu\.be|tiktok\.com|x\.com|twitter\.com|wa\.me|whatsapp\.com|linktr\.ee|taplink\.cc|taplink\.ws|dzen\.ru|pinterest\.com|threads\.net)$/i;
+export function isSocialLink(url: string): boolean {
+  try { return SOCIAL.test(new URL(url).hostname); } catch { return false; }
+}
+
 export async function lookupCode(raw: string, beans: Bean[], drip = false): Promise<LookupResult> {
-  const code = raw.trim();
-  const existing = beans.find((b) => b.barcode && b.barcode === code);
+  // a «Честный знак» code becomes the barcode it carries; packs saved earlier with the whole marking code still match
+  const code = gtinOf(raw.trim()) ?? raw.trim();
+  const existing = beans.find((b) => b.barcode && (b.barcode === code || gtinOf(b.barcode) === code));
 
   if (/^\d{8,14}$/.test(code)) {
     if (existing) return { code, kind: 'ean', existing, patch: {} };
@@ -198,6 +218,11 @@ export async function lookupCode(raw: string, beans: Bean[], drip = false): Prom
     }
     const off = await openFoodFacts(code);
     return { code, kind: 'ean', patch: { barcode: code, ...(off ?? {}) }, source: off ? 'Open Food Facts' : undefined };
+  }
+  if (/^https?:\/\//i.test(code) && isSocialLink(code)) {
+    // the same link sits on every pack of this roaster: it is kept as the pack's link, not as its code, and the
+    // catalog is not asked (it would only queue a social site for the owner's approval)
+    return { code, kind: 'social', patch: { link: code.slice(0, 300) } };
   }
   if (/^https?:\/\//i.test(code)) {
     if (existing) return { code, kind: 'url', existing, patch: {} };

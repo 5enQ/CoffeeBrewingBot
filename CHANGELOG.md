@@ -15,6 +15,10 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - Telegram on a computer keeps Brewbook open for days, and the server takes Telegram's signature only for 24 hours from opening: after that every request was refused and the app said «нет связи с сервером». Now it says what it is — «Telegram-сессия устарела: закройте Brewbook и откройте снова» — once as a notice when the app comes back into view, and in the owner panel and the tester and owner actions; the owner panel no longer disappears on that refusal (only on «not the owner»).
 
 ### Changed
+- Scanning a pack:
+  - the «Честный знак» marking code (the square DataMatrix) is read as the product barcode inside it; the pack's own serial is dropped, so such packs are found in the catalog and on the shelf (packs saved earlier with the whole marking code still match);
+  - a QR leading to the roaster's Instagram, Telegram channel, VK or link page is kept as the pack's link and not sent to the catalog (it used to land in the owner's queue of sites to approve); the app says there is no coffee data in it;
+  - with several codes in the frame the product barcode wins, then a QR or DataMatrix, last Code 128 (shipping labels); Code 39 is not read at all.
 - Drip boxes: no «заварено N» on the shelf and in the box — «N из M дрипов» already says it.
 
 ### Tests

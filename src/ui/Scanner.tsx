@@ -2,8 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import { platform } from '../platform';
 import { Icon } from './icons';
 
-type Detector = { detect(src: CanvasImageSource | ImageBitmap): Promise<{ rawValue: string }[]> };
-const FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code', 'data_matrix'];
+type Found = { rawValue: string; format?: string };
+type Detector = { detect(src: CanvasImageSource | ImageBitmap): Promise<Found[]> };
+/**
+ * What a coffee pack carries, best first: the product barcode, then a QR (a link or data) and the DataMatrix of
+ * «Честный знак» (the product barcode is inside it), last Code 128 — shipping labels. Code 39 is left out: only
+ * labels and stickers use it, and it was read before the code that mattered.
+ */
+const FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code', 'data_matrix', 'code_128'];
+/** several codes in the frame: take the one highest in FORMATS */
+export function pickCode(found: Found[]): string | null {
+  if (!found.length) return null;
+  const rank = (f?: string) => { const i = FORMATS.indexOf(f ?? ''); return i < 0 ? FORMATS.length : i; };
+  return [...found].sort((a, b) => rank(a.format) - rank(b.format))[0].rawValue;
+}
 
 async function nativeDetector(): Promise<Detector | null> {
   const BD = (window as unknown as { BarcodeDetector?: { new(o: object): Detector; getSupportedFormats(): Promise<string[]> } }).BarcodeDetector;
@@ -15,19 +27,28 @@ async function nativeDetector(): Promise<Detector | null> {
   } catch { return null; }
 }
 
+/** ZXing (no BarcodeDetector) reading the same formats — Code 39 left out */
+async function zxReader() {
+  const [{ BrowserMultiFormatReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([import('@zxing/browser'), import('@zxing/library')]);
+  const hints = new Map();
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
+    BarcodeFormat.QR_CODE, BarcodeFormat.DATA_MATRIX, BarcodeFormat.CODE_128]);
+  return new BrowserMultiFormatReader(hints);
+}
+
 async function decodeImageFile(file: File): Promise<string | null> {
   const det = await nativeDetector();
   if (det) {
     try {
       const bmp = await createImageBitmap(file);
       const r = await det.detect(bmp);
-      if (r[0]) return r[0].rawValue;
+      const best = pickCode(r);
+      if (best) return best;
     } catch { /* try ZXing */ }
   }
   const url = URL.createObjectURL(file);
   try {
-    const { BrowserMultiFormatReader } = await import('@zxing/browser');
-    const res = await new BrowserMultiFormatReader().decodeFromImageUrl(url);
+    const res = await (await zxReader()).decodeFromImageUrl(url);
     return res.getText();
   } catch { return null; } finally { URL.revokeObjectURL(url); }
 }
@@ -73,14 +94,13 @@ export function Scanner({ onResult, onClose }: { onResult(code: string): void; o
             if (cancelled || doneRef.current) return;
             if (t - last > 180 && v.readyState >= 2) {
               last = t;
-              try { const r = await det.detect(v); if (r[0]) return finish(r[0].rawValue); } catch { /* frame not recognized */ }
+              try { const best = pickCode(await det.detect(v)); if (best) return finish(best); } catch { /* frame not recognized */ }
             }
             raf = requestAnimationFrame(tick);
           };
           raf = requestAnimationFrame(tick);
         } else {
-          const { BrowserMultiFormatReader } = await import('@zxing/browser');
-          const reader = new BrowserMultiFormatReader();
+          const reader = await zxReader();
           const controls = await reader.decodeFromConstraints(
             { video: { facingMode: 'environment' }, audio: false }, video.current!,
             (res, _err, ctrl) => { if (res) { ctrl.stop(); finish(res.getText()); } },

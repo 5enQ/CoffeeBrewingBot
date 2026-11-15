@@ -165,6 +165,8 @@ export interface Profile {
   ratingStats?: RatingStats;
   /** profile card theme: a base theme id or 'ach:<achievement id>' for an unlocked metal theme */
   cardTheme?: string;
+  /** secrets this person has opened (synced): 'phosphor' — the green-monitor style (data/phosphor.ts) */
+  secrets?: string[];
   /** gear ids shown on the profile card; undefined — one item per category */
   cardGear?: string[];
   /** verified numbers from the server (cache, per device, not synced): brews per method, liters, diamond number */

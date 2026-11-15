@@ -1,3 +1,4 @@
+import { AsciiStock, pack, useAscii } from '../ui/ascii';
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { track } from '../data/track';
 import { contributeCoffee, filledLabels, lookupCode, mergeEmpty } from '../data/lookup';
@@ -8,6 +9,7 @@ import { beanStock, dripItemLeft, dripTotal, finishedOn, isFinished, PACK_SIZES 
 import { platform } from '../platform';
 import { useBackGuard, useRouter, useSelected } from '../router';
 import { MethodIcon, Icon } from '../ui/icons';
+import { toast } from '../ui/toast';
 import { Button, Chips, Empty, Field, Row, SampleTag, ScaleDots, Screen, Section, Segmented, Stars } from '../ui/kit';
 import { SCALES, hasScales } from '../data/scales';
 import { Scanner } from '../ui/Scanner';
@@ -46,6 +48,10 @@ function DripIcon({ on }: { on: boolean }) {
 
 /** What is left: beans (10 = full pack) or drawn drip bags (one per bag) */
 function StockIcons({ unit, left, total }: { unit: 'g' | 'pcs'; left: number; total: number }) {
+  const ascii = useAscii();
+  if (ascii) return unit === 'pcs'
+    ? <AsciiStock on={total <= 20 ? left : (left / total) * 20} of={Math.min(total, 20)} mark="#" />
+    : <AsciiStock on={total ? (left / total) * 10 : 0} of={10} />;
   if (unit === 'pcs') {
     // more than 20 drips are not drawn one by one — split into 20 equal parts
     const n = Math.min(total, 20);
@@ -69,7 +75,8 @@ export function StockBar({ bean, compact = false }: { bean: Bean; compact?: bool
         {!done && <StockIcons unit="pcs" left={st.left} total={st.total} />}
         <div className="stock-text">
           <span><b>{st.left}</b> из {st.total} {plural(st.total, ['дрипа', 'дрипов', 'дрипов'])}</span>
-          <span>{st.left <= 0 ? 'закончились' : st.used ? `заварено ${st.used}` : 'ещё не заваривали'}</span>
+          {/* «N из M дрипов» already says how many went; no separate «заварено N» */}
+          {(st.left <= 0 || !st.used) && <span>{st.left <= 0 ? 'закончились' : 'ещё не заваривали'}</span>}
         </div>
       </div>
     );
@@ -94,6 +101,7 @@ const plural = (n: number, f: [string, string, string]) => {
 function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
   const { brews } = useStore();
   const sel = useSelected();
+  const ascii = useAscii();
   const active = (sel?.name === 'bean' && sel.id === b.id) || (sel?.name === 'beanEdit' && sel.bean.id === b.id);
   const mine = brews.filter((x) => brewBeanIds(x).includes(b.id));
   const rated = mine.filter((x) => x.rating);
@@ -103,6 +111,7 @@ function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
   const avgScore = scores.length ? scores.reduce((s, x) => s + x, 0) / scores.length : 0;
   return (
     <button type="button" className={'bean-card' + (active ? ' active' : '')} aria-current={active || undefined} onClick={onClick}>
+      {ascii && <pre className="ascii-art ascii-pack" aria-hidden="true">{pack(b.country || b.parts?.[0]?.country || '')}</pre>}
       <div className="bean-card-top">
         <b>{beanTitle(b)}</b>
         {isDrip(b) && <span className="tag tag-drip">дрип</span>}
@@ -129,8 +138,11 @@ export function Beans() {
     setScan(false);
     track('pack.lookup');
     const r = await lookupCode(code, beans);
+    if (r.kind === 'foreign') { toast(foreignNote(r.what)); return; }
     if (r.existing) push({ name: 'bean', id: r.existing.id });
     else push({ name: 'beanEdit', bean: mergeEmpty(emptyBean(), r.patch), isNew: true });
+    if (r.kind === 'social') toast(SOCIAL_NOTE);
+    if (r.kind === 'text') toast(textNote(!!r.patch.barcode));
   };
 
   const list = q
@@ -316,7 +328,7 @@ export function BeanDetail({ id }: { id: string }) {
         ) : (
           <StockBar bean={b} />
         )}
-        {st.total > 0 && (!drip || !!b.adjust) && <p className="muted">{drip ? 'Заварено' : 'Списано заварками'}: {fmtNum(st.used, 1)} {unit}{b.adjust ? ` · поправка ${b.adjust > 0 ? '+' : ''}${fmtNum(b.adjust, 1)} ${unit}` : ''}</p>}
+        {st.total > 0 && !drip && <p className="muted">Списано заварками: {fmtNum(st.used, 1)} {unit}{b.adjust ? ` · поправка ${b.adjust > 0 ? '+' : ''}${fmtNum(b.adjust, 1)} ${unit}` : ''}</p>}
         {!st.total && <Button kind="secondary" onClick={() => push({ name: 'beanEdit', bean: b, isNew: false })}>{drip ? 'Указать, сколько дрипов' : 'Указать вес пачки'}</Button>}
         <div className="stock-actions">
           {st.total > 0 && <Button kind="ghost" onClick={toggleFinished}>{finished ? 'Вернуть на полку' : 'Допито'}</Button>}
@@ -401,6 +413,13 @@ export function BeanDetail({ id }: { id: string }) {
 
 const COUNTRIES = ['Эфиопия', 'Кения', 'Руанда', 'Бурунди', 'Танзания', 'Уганда', 'Колумбия', 'Бразилия', 'Перу', 'Эквадор', 'Боливия', 'Коста-Рика', 'Панама', 'Гватемала', 'Гондурас', 'Сальвадор', 'Никарагуа', 'Мексика', 'Йемен', 'Индонезия', 'Индия', 'Вьетнам', 'Китай', 'Папуа — Новая Гвинея'];
 
+/** a QR leading to the roaster's Instagram, channel or link page: saved as the link, nothing to fill from it */
+const foreignNote = (what?: string) => (what ? `Это ${what}, а не код с пачки кофе` : 'Это не код с пачки кофе') + ' — ничего не сохранил.';
+const textNote = (kept: boolean) => kept
+  ? 'Данных о кофе в этом коде нет. Сохранил его в поле «Штрихкод», остальное заполните вручную.'
+  : 'Данных о кофе в этом коде нет — ничего не сохранил. Заполните пачку вручную.';
+const SOCIAL_NOTE = 'Это ссылка на соцсеть обжарщика — данных о кофе в ней нет. Сохранил её в поле «Ссылка», остальное заполните вручную.';
+
 /** what a repeat pack keeps from the last one, in one line */
 function sameAsBefore(b: Bean): string {
   const origin = b.isBlend ? 'бленд' : b.assorted ? 'ассорти' : [b.country, b.region].filter(Boolean).join(', ');
@@ -474,6 +493,17 @@ export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew
         setStatus('Скопировано с прошлой пачки. Укажите дату обжарки.');
         return;
       }
+    }
+    if (r.kind === 'foreign') { setStatus(foreignNote(r.what)); return; }
+    if (r.kind === 'social') {
+      setB((x) => ({ ...x, link: x.link || r.patch.link || '' }));
+      setStatus(SOCIAL_NOTE);
+      return;
+    }
+    if (r.kind === 'text') {
+      if (r.patch.barcode) setB((x) => ({ ...x, barcode: r.patch.barcode ?? '' }));
+      setStatus(textNote(!!r.patch.barcode));
+      return;
     }
     const before = b;
     const next = mergeEmpty({ ...b, barcode: r.patch.barcode ?? code }, r.patch);

@@ -287,7 +287,7 @@
 "opacity": "1",
 "outline": "",
 "pad": "12px 14px",
-"radius": "0px",
+"radius": "14px",
 "shadow": "",
 "tt": "none",
 "w": 358,
@@ -382,7 +382,7 @@
 "opacity": "1",
 "outline": "",
 "pad": "12px 14px",
-"radius": "0px",
+"radius": "14px",
 "shadow": "",
 "w": 358,
 "x": 0

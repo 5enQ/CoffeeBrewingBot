@@ -8,7 +8,7 @@ import { RATINGS_API } from '../config';
 import { useStore } from '../data/store';
 import { adminCall, type AdminData } from '../data/lookup';
 import { answerCheck, diagnostics, diagText, loadChecks, sendReport, setDiagExtra, shrinkImage, type CheckItem } from '../data/tester';
-import { platform } from '../platform';
+import { platform, serverTrouble } from '../platform';
 import { requestTiltPermission } from '../platform/web';
 import { gravityOf, lookOf, rollOf, tiltInfo } from '../data/tilt';
 import { Button, Section } from '../ui/kit';
@@ -214,7 +214,7 @@ export function OwnerChecks({ checks, onChange }: { checks: AdminData['checks'];
     const next = await adminCall({ action, note: action === 'check_add' ? text : undefined, what: id });
     setBusy(false);
     if (next) { onChange(next); if (action === 'check_add') setText(''); platform.haptic('success'); }
-    else toast('Не получилось — нет связи с сервером');
+    else toast(`Не получилось — ${serverTrouble()}`);
   };
   const list = checks ?? [];
   return (

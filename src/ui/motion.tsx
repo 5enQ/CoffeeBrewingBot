@@ -83,16 +83,18 @@ export function useTabPill(navRef: RefObject<HTMLElement | null>, pillRef: RefOb
       pill.style.top = `${btn.offsetTop}px`;
       pill.style.height = `${btn.offsetHeight}px`;
       pill.style.width = `${w}px`;
-      pill.style.transform = `translateX(${x}px)`;
+      pill.style.left = `${x}px`;
       const from = last.current;
       last.current = { x, w };
       if (!animate || !from || (from.x === x && from.w === w) || reduceMotion()) return;
       const left = Math.min(from.x, x);
       const span = Math.abs(x - from.x) + Math.max(w, from.w);
+      // left and width together, both on the main thread: a compositor-run transform beside a main-thread width
+      // drifted apart whenever the new tab was busy rendering — the far edge shot past the tab and shook back
       pill.animate([
-        { transform: `translateX(${from.x}px)`, width: `${from.w}px` },
-        { transform: `translateX(${left}px)`, width: `${span}px`, offset: 0.45 },
-        { transform: `translateX(${x}px)`, width: `${w}px` },
+        { left: `${from.x}px`, width: `${from.w}px` },
+        { left: `${left}px`, width: `${span}px`, offset: 0.45 },
+        { left: `${x}px`, width: `${w}px` },
       ], { duration: 420, easing: EASE });
     };
     place(true);
@@ -115,6 +117,7 @@ type Box = { x: number; y: number; w: number };
 export function useFlip(ref: RefObject<HTMLElement | null>, skip?: string | null) {
   const prev = useRef(new Map<string, Box>());
   const snap = useRef<Map<string, Box> | null>(null);
+  const boxWidth = useRef<number | null>(null);
 
   const snapshot = useCallback(() => {
     const box = ref.current;
@@ -135,7 +138,11 @@ export function useFlip(ref: RefObject<HTMLElement | null>, skip?: string | null
     // Keep the last real positions, or coming back would animate the tiles from a zero size in the corner.
     if (!box.getClientRects().length) { snap.current = null; return; }
     const next = new Map<string, Box>();
-    const calm = reduceMotion();
+    // the container changed width (the window is being resized): tiles take their new places at once — gliding
+    // after every resize step made them lag behind the window and drift apart
+    const resized = boxWidth.current !== null && Math.abs(boxWidth.current - box.clientWidth) > 0.5;
+    boxWidth.current = box.clientWidth;
+    const calm = reduceMotion() || resized;
     box.querySelectorAll<HTMLElement>('[data-flip]').forEach((el) => {
       const id = el.dataset.flip!;
       const now = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth };

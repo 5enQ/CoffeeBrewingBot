@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { answerInvite } from '../data/stats';
 import { useStore } from '../data/store';
-import { platform } from '../platform';
+import { platform, sessionExpired } from '../platform';
 import { Button } from './kit';
 import { toast } from './toast';
 
@@ -19,7 +19,7 @@ export function InviteGate() {
     setBusy(true);
     const next = await answerInvite('beta', accept);
     setBusy(false);
-    if (!next) { toast('Нет связи с сервером — спросим ещё раз при следующем запуске'); setLater(true); return; }
+    if (!next) { toast(sessionExpired() ? 'Telegram-сессия устарела: закройте Brewbook и откройте снова — спросим ещё раз' : 'Нет связи с сервером — спросим ещё раз при следующем запуске'); setLater(true); return; }
     setServerStats(next);
     platform.haptic(accept ? 'success' : 'light');
     toast(accept ? 'Вы тестировщик — панель тестировщика в Профиле' : 'Хорошо, роль не выдана');

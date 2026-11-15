@@ -85,6 +85,18 @@ The app looks like filter paper with a coffee-leaf green: quiet surfaces, one ac
   Inside a card that clips (`overflow: hidden`, a scroller) the ring goes inside the control; a new scroller or
   clipping card leaves room for it. `tests/e2e/keyboard.py` walks the main screens with Tab and fails on a cut ring.
 
+## «Фосфор» (the green-monitor style)
+
+- A second look of the whole app, on `html[data-style="phosphor"]` (always with the dark theme): its tokens and a
+  short list of overrides at the end of index.css — monospace, square corners, outlined surfaces, scan lines, a glow.
+  A new surface usually needs nothing; if it lifts itself with a shadow or relies on rounding, add it to that list —
+  the list that frames boxes with +----+ (`--phos-frame`, a border-image of characters).
+  The style is drawn in characters (headings, dot leaders, [x], * stars, F-keys — CSS; the timer's digits, bars and
+  pictures — `src/ui/ascii.tsx` with `useAscii()`). A new icon button says what it does there: add its label to the
+  [DEL]/[EDIT] list, or it keeps a glowing icon.
+- Check a changed screen in it too (`tests/e2e/phosphor.py` takes screenshots), and in it with high contrast:
+  no glow, no scan lines.
+
 ## Checking a change
 
 - Screenshot the changed screens at phone width (390) in light and dark; look at the result next to the screen

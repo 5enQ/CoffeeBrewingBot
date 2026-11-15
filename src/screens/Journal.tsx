@@ -1,3 +1,4 @@
+import { StarChar } from '../ui/ascii';
 import { exactMass, extraction } from '../data/extraction';
 import { Roll } from '../ui/motion';
 import { BREWS, plural as pluralOf } from '../data/plural';
@@ -55,7 +56,7 @@ export function Journal() {
         <div className={'stats' + (cuppedScores.length ? '' : ' two')}>
           {/* one line under each number: the three tiles keep one height */}
           <div><b><Roll text={String(brews.length)} /></b><span>{pluralOf(brews.length, BREWS)}</span></div>
-          <div><b><Roll text={avg ? fmtNum(avg) : '—'} />{avg ? <span className="stat-star" aria-hidden="true">★</span> : null}</b><span>в среднем</span></div>
+          <div><b><Roll text={avg ? fmtNum(avg) : '—'} />{avg ? <span className="stat-star" aria-hidden="true"><StarChar /></span> : null}</b><span>в среднем</span></div>
           {cuppedScores.length > 0 && <div><b><Roll text={fmtNum(Math.max(...cuppedScores), 2)} /></b><span>лучший балл</span></div>}
         </div>
       )}
@@ -135,7 +136,7 @@ export function BrewDetail({ id, fresh }: { id: string; fresh?: boolean }) {
       {!b.author && b.shareId && profile.ratingStats?.recipes[b.shareId] && (
         <div className="friends-rating">
           <span>Оценки друзей</span>
-          <b>{fmtNum(profile.ratingStats.recipes[b.shareId].avg)} ★</b>
+          <b>{fmtNum(profile.ratingStats.recipes[b.shareId].avg)} <StarChar /></b>
           <small>{profile.ratingStats.recipes[b.shareId].count} {plural(profile.ratingStats.recipes[b.shareId].count)}</small>
         </div>
       )}

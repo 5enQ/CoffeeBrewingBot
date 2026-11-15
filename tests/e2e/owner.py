@@ -12,7 +12,7 @@ GRANTS = []
 CHECKS = []
 TESTER_LOG = []
 TG = """window.Telegram = { WebApp: {
-  initData: 'query_id=x&user=%7B%22id%22%3A111%7D&auth_date=1&hash=abc', initDataUnsafe: { user: { id: 111, first_name: 'Owner', username: 'owner' } },
+  initData: 'query_id=x&user=%7B%22id%22%3A111%7D&auth_date=' + Math.floor(Date.now() / 1000) + '&hash=abc', initDataUnsafe: { user: { id: 111, first_name: 'Owner', username: 'owner' } },
   version: '6.0', platform: 'tdesktop', colorScheme: 'light', themeParams: {}, isVersionAtLeast: (v) => parseFloat(v) <= 6.0,
   ready() {}, expand() {}, onEvent() {}, offEvent() {}, setHeaderColor() {}, setBackgroundColor() {}, setBottomBarColor() {},
   enableClosingConfirmation() {}, disableClosingConfirmation() {}, disableVerticalSwipes() {},
@@ -179,6 +179,26 @@ async def main():
         await pg2.locator('.role-panel.role-owner').screenshot(path='out/owner-panel.png')
         check(any(x.get('action') == 'approve' and x.get('host') == 'newroaster.ru' and x.get('roaster') == 'Новый обжарщик' for x in log), 'approve request sent with the roaster name')
         check(not errors2, f'no page errors in Telegram mode: {errors2[:3]}')
+
+        # Telegram on a computer kept the app open for more than a day: the server refuses the old signature (401).
+        # That is not «no connection»: the app says to reopen it, and the owner panel stays (only 403 hides it).
+        old = TG.replace("Math.floor(Date.now() / 1000)", "(Math.floor(Date.now() / 1000) - 2 * 86400)")
+        pg3, err3 = await page(b, init=old + "\nlocalStorage.setItem('brewbook.owner', '111');")
+        async def refuse(route):
+            if 'workers.dev' in route.request.url:
+                return await route.fulfill(status=401, content_type='application/json', body='{"error":"unauthorized"}')
+            await route.continue_()
+        await pg3.route('**/*', refuse)
+        await pg3.wait_for_timeout(600)
+        snack = await pg3.locator('.snack').all_inner_texts()
+        check(any('больше суток' in x for x in snack), f'it says once that the app has been open for more than a day {snack}')
+        await pg3.click('.tabbar >> text=Профиль'); await pg3.wait_for_timeout(700)
+        panel = pg3.locator('.role-panel.role-owner')
+        check(await panel.count() == 1, 'the owner panel stays')
+        await panel.locator('.panel-head, summary, button').first.click(); await pg3.wait_for_timeout(300)
+        txt = await panel.inner_text()
+        check('Закройте его и откройте снова' in txt and 'VPN' not in txt, 'and explains reopening instead of blaming the network')
+        check(not err3, f'no page errors {err3[:3]}')
         await b.close()
     done()
 

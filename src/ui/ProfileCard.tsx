@@ -3,7 +3,7 @@
  * diamond is a faceted, iridescent 3D card that turns with the device (or the mouse on a computer).
  */
 import { memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { cardView, type CardData } from '../data/card';
+import { cardView, secretTitle, type CardData } from '../data/card';
 import { catById } from '../data/gear';
 import type { IconKey } from '../data/methods';
 import { platform } from '../platform';
@@ -405,6 +405,16 @@ const CODE = [
 const CODE_LOOP = [...CODE, ...CODE, ...CODE, ...CODE];
 
 /** Terminal-dark card with faint code, a glowing cursor and a "</>" mark in the corner */
+/** «Фосфор»: a monitor's scan lines and a prompt waiting in the corner */
+function PhosphorLayer() {
+  return (
+    <>
+      <div className="pcard-scan" />
+      <div className="pcard-corner pcard-prompt">C:\&gt;<span className="pcard-cursor">█</span></div>
+    </>
+  );
+}
+
 function DevLayer() {
   return (
     <>
@@ -647,6 +657,7 @@ export function ProfileCard({ card, live: liveProp = true }: { card: CardData; l
         {'special' in view.theme && view.theme.special === 'dev' && <DevLayer />}
         {'special' in view.theme && view.theme.special === 'beta' && <BetaLayer />}
         {scene && <SceneLayer id={scene} still={!live} />}
+        {'base' in view.theme && view.theme.base === 'phosphor' && <PhosphorLayer />}
         {icon && !volume && !glass && (
           <div className="pcard-corner">
             {icon === 'star' ? <Icon name="star" size={64} filled /> : <MethodIcon icon={icon as IconKey} size={72} />}
@@ -667,6 +678,7 @@ export function ProfileCard({ card, live: liveProp = true }: { card: CardData; l
           </div>
         </div>
         {('tier' in view.theme || 'special' in view.theme || 'rare' in view.theme) && <div className="pcard-tier">{view.theme.title}</div>}
+        {'base' in view.theme && secretTitle(view.theme.base) && <div className="pcard-tier">{secretTitle(view.theme.base)}</div>}
         {card.about && <p className="pcard-about">{card.about}</p>}
         {view.badges.length > 0 && <BadgeRow badges={view.badges} max={3} />}
         {card.setup.length > 0 && (

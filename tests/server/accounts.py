@@ -203,6 +203,35 @@ st = post('/reminders', {'initData': A, 'status': True})
 ok(st.get('pending') is None and st['last']['state'] == 'cancelled', 'status after cancel: nothing pending, last one cancelled')
 t = post('/reminders', {'initData': A, 'test': True, 'link': LINK})
 ok(t.get('ok') is False and t.get('error'), f'a test message reports Telegram\'s answer (fake token here: {t.get("error")})')
+# the cold brew card in the chat: its buttons come back to the webhook as widget queries
+import hashlib
+SECRET = hashlib.sha256(b'brewbook-webhook:123:TEST').hexdigest()[:48]
+def hook(update):
+    req = urllib.request.Request('http://localhost:8799/tg', data=json.dumps(update).encode(), headers={'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': SECRET})
+    return urllib.request.urlopen(req).status
+end = now + 12 * 3600_000
+card = {'brew': 'cb1', 'start': now - 60_000, 'recipe': '60 г → 1 л', 'bean': 'Эфиопия Гуджи', 'phosphor': False}
+ok(post('/reminders', {'initData': A, 'at': end, 'title': 'Колд брю', 'link': LINK, 'card': card}).get('ok') is True, 'a cold brew reminder with the card in the chat')
+ok(post('/reminders', {'initData': A, 'at': end, 'title': 'Колд брю', 'link': LINK, 'card': {**card, 'brew': 'bad id!'}}).get('ok') is True, 'a bad card is left out, the reminder still set')
+post('/reminders', {'initData': A, 'at': end, 'title': 'Колд брю', 'link': LINK, 'card': card})
+ok(hook({'update_id': 1, 'widget_query': {'id': 'q1', 'from': {'id': 111}, 'data': 'h'}}) == 200, 'a card button reaches the webhook')
+st = post('/reminders', {'initData': A, 'status': True})
+ok(st.get('pending') and abs(st['pending']['at'] - (end + 3600_000)) < 2000, f'«+1 час» moves the reminder an hour on ({st.get("pending")})')
+ok(hook({'update_id': 2, 'widget_query': {'id': 'q2', 'from': {'id': 111}, 'data': 'd'}}) == 200, 'the «Процедить» button reaches the webhook')
+st = post('/reminders', {'initData': A, 'status': True})
+ok(st.get('pending') is None and st['last']['state'] == 'strained', f'«Процедить» ends it: no reminder, the brew strained ({st.get("last")})')
+hook({'update_id': 3, 'widget_query': {'id': 'q3', 'from': {'id': 111}, 'data': 'h'}})
+st = post('/reminders', {'initData': A, 'status': True})
+ok(st.get('pending') is None, 'a strained card does not start again')
+ok(hook({'update_id': 4, 'widget_query': {'id': 'q4', 'from': {'id': 999999}, 'data': 'h'}}) == 200, 'a stranger’s tap is answered and ignored')
+post('/reminders', {'initData': A, 'at': end, 'title': 'Колд брю', 'link': LINK, 'card': {**card, 'brew': 'cb2'}})
+ok(post('/reminders', {'initData': A, 'cancel': 'pause'}).get('ok') is True and post('/reminders', {'initData': A, 'status': True}).get('pending') is None, 'pausing the timer pauses the reminder')
+post('/reminders', {'initData': A, 'cancel': 'finish'})
+try:
+    bad = hook({'update_id': 5, 'widget_query': {'id': 'q5', 'from': {'id': 111}, 'data': 'h'}})
+except urllib.error.HTTPError as e:
+    bad = e.code
+ok(bad == 200 and post('/reminders', {'initData': A, 'status': True}).get('pending') is None, 'a card of a brew already written down ignores its buttons')
 # a real one fires: the local token is fake, so Telegram refuses — the log shows the alarm ran
 ok(post('/reminders', {'initData': B, 'at': int(time.time() * 1000) + 31_000, 'title': 'Колд брю', 'link': LINK}).get('ok') is True, 'short reminder scheduled')
 st = None

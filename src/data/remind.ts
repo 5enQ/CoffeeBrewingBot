@@ -66,10 +66,17 @@ export function explainRefusal(detail?: string | null): string {
   return detail || 'Telegram не принял сообщение';
 }
 
-/** schedule "your brew is ready" at epoch ms `at` */
-export async function scheduleReminder(at: number, title: string): Promise<boolean> {
+/**
+ * The cold brew card in the chat with the bot (worker/src/widget.ts): which brew, when it started, the recipe line
+ * and the bean it shows; null — the person turned the card off (the server removes one already sent).
+ */
+export interface ChatCard { brew: string; start: number; recipe: string; bean: string; phosphor: boolean }
+
+/** schedule "your brew is ready" at epoch ms `at`; `card` — with the cold brew card (undefined: not a cold brew) */
+export async function scheduleReminder(at: number, title: string, card?: ChatCard | null): Promise<boolean> {
   if (!remindersAvailable() || !(await writeAccess())) return false;
-  return call({ at, title, link: timerLink() });
+  return call({ at, title, link: timerLink(), ...(card !== undefined ? { card } : {}) });
 }
 
-export const cancelReminder = () => (remindersAvailable() ? call({ cancel: true }) : Promise.resolve(false));
+/** why: the card in the chat says «на паузе», «в дневнике» or «сброшен» */
+export const cancelReminder = (why: 'pause' | 'finish' | 'stop' = 'stop') => (remindersAvailable() ? call({ cancel: why }) : Promise.resolve(false));

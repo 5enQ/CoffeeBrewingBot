@@ -19,6 +19,8 @@ import { Accounts, sendReminder } from './accounts';
 import { CoffeeCatalog, cleanCoffee, keysFor, type Coffee, type Found, type SiteStatus } from './catalog';
 import { bareUrl, foreignCode, isSocialLink } from './notpack';
 import { shareButton } from './sharebutton';
+import { answerWidget } from './widget';
+import type { CardWish } from './accounts';
 import { aiCoffee, type AiBinding } from './ai';
 import { fetchPage } from './fetch';
 import { PARSER_VERSION, parsePage } from './parse';
@@ -332,11 +334,11 @@ export default {
 
     // ---- bot reminder when a long timer ends ----
     if (req.method === 'POST' && url.pathname === '/reminders') {
-      let body: { initData?: string; at?: unknown; title?: unknown; link?: unknown; cancel?: unknown; status?: unknown; test?: unknown };
+      let body: { initData?: string; at?: unknown; title?: unknown; link?: unknown; cancel?: unknown; status?: unknown; test?: unknown; card?: unknown };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
-      if (body.cancel) return json({ ok: await accounts().cancelReminder('tg', user.id) }, 200, h);
+      if (body.cancel) return json({ ok: await accounts().cancelReminder('tg', user.id, body.cancel === 'pause' || body.cancel === 'finish' ? body.cancel : 'stop') }, 200, h);
       if (body.status) return json({ ok: true, ...(await accounts().reminderStatus('tg', user.id)) }, 200, h);
       // "can the bot write to me?": a message right away, Telegram's answer comes back as is
       if (body.test) {
@@ -350,7 +352,18 @@ export default {
       const link = String(body.link ?? '');
       if (!Number.isFinite(at) || at < now + 30_000 || at > now + 72 * 3_600_000) return json({ error: 'bad time' }, 400, h);
       if (!/^https:\/\/t\.me\/[A-Za-z0-9_]+(\/[A-Za-z0-9_]+)?\?startapp=timer$/.test(link)) return json({ error: 'bad link' }, 400, h);
-      return json({ ok: await accounts().setReminder('tg', user.id, Math.round(at), title, link) }, 200, h);
+      // the cold brew card: off (null), or what to show; anything else — an older app, no card
+      let card: CardWish | null | undefined;
+      if (body.card === null || body.card === false) card = null;
+      else if (body.card && typeof body.card === 'object') {
+        const c = body.card as Record<string, unknown>;
+        const start = Number(c.start);
+        if (typeof c.brew === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(c.brew) && Number.isFinite(start) && start <= now + 60_000 && start > now - 7 * 86_400_000)
+          card = { brew: c.brew, start: Math.round(start), title, recipe: String(c.recipe ?? '').slice(0, 60), bean: String(c.bean ?? '').slice(0, 60), phosphor: c.phosphor === true };
+        // buttons on the card come to the webhook: make sure it listens for them
+        ctx.waitUntil(ensureWebhook(env, url.origin));
+      }
+      return json({ ok: await accounts().setReminder('tg', user.id, Math.round(at), title, link, card) }, 200, h);
     }
 
     const card = url.pathname.match(/^\/cards\/([A-Za-z0-9]{6,16})$/);
@@ -519,14 +532,15 @@ async function webhookSecret(env: Env) {
 
 /** point the bot's webhook at this worker (button presses come here); called when the owner opens their panel */
 async function ensureWebhook(env: Env, origin: string) {
-  if (!env.GH_ISSUES_TOKEN) return;
+  if (!env.BOT_TOKEN || /localhost|127\.0\.0\.1/.test(origin)) return;
   const api = `https://api.telegram.org/bot${env.BOT_TOKEN}`;
+  const want = ['callback_query', 'widget_query'];
   try {
-    const info = await (await fetch(`${api}/getWebhookInfo`)).json() as { result?: { url?: string } };
+    const info = await (await fetch(`${api}/getWebhookInfo`)).json() as { result?: { url?: string; allowed_updates?: string[] } };
     const url = `${origin}/tg`;
-    if (info.result?.url === url) return;
+    if (info.result?.url === url && want.every((u) => info.result?.allowed_updates?.includes(u))) return;
     const res = await (await fetch(`${api}/setWebhook`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, secret_token: await webhookSecret(env), allowed_updates: ['callback_query'] }) })).json() as { ok: boolean; description?: string };
+      body: JSON.stringify({ url, secret_token: await webhookSecret(env), allowed_updates: want }) })).json() as { ok: boolean; description?: string };
     console.log('webhook', res.ok ? 'set' : `not set: ${res.description}`, url);
   } catch (e) { console.log('webhook setup failed', e); }
 }
@@ -581,7 +595,16 @@ async function handOver(env: Env, rid: string): Promise<{ url?: string; error?: 
 /** Telegram webhook: only button presses of the owner are handled */
 async function telegramUpdate(req: Request, env: Env): Promise<Response> {
   if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== await webhookSecret(env)) return new Response('forbidden', { status: 403 });
-  const u = await req.json().catch(() => null) as { callback_query?: { id: string; data?: string; from: { id: number }; message?: { chat: { id: number }; message_id: number } } } | null;
+  const u = await req.json().catch(() => null) as { callback_query?: { id: string; data?: string; from: { id: number }; message?: { chat: { id: number }; message_id: number } };
+    widget_query?: { id: string; data?: string; from: { id: number } } } | null;
+  // a button on the cold brew card: answer at once (the card waits 15 s at most), then do it
+  const wq = u?.widget_query;
+  if (wq) {
+    await answerWidget(env.BOT_TOKEN, wq.id);
+    const done = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('all')).brewCardQuery(String(wq.from.id), String(wq.data ?? ''));
+    console.log('card button', wq.data, done);
+    return new Response('ok');
+  }
   const q = u?.callback_query;
   if (!q) return new Response('ok');
   const api = `https://api.telegram.org/bot${env.BOT_TOKEN}`;

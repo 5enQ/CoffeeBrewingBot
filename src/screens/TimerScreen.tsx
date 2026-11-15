@@ -13,7 +13,10 @@ import { Icon } from '../ui/icons';
 import { DripFlow } from '../ui/DripFlow';
 import { LONG_TIMER, clearTimer, elapsedOf, loadTimer, onTimerChange, saveTimer } from '../data/timer';
 import { toast } from '../ui/toast';
-import { cancelReminder, explainRefusal, reminderStatus, remindersAvailable, scheduleReminder } from '../data/remind';
+import { cancelReminder, explainRefusal, reminderStatus, remindersAvailable, scheduleReminder, type ChatCard } from '../data/remind';
+import { activeStyle } from '../appearance';
+import { beanTitle } from './beanUtils';
+import { Toggle } from './Share';
 
 let audio: AudioContext | null = null;
 function beep(freq = 880, ms = 140) {
@@ -46,7 +49,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   const basePlan = effectivePlan(draft.methodId, draft.plan);
   const long = basePlan.total >= LONG_TIMER;
   const { replace, reset: home, setTab } = useRouter();
-  const { saveBrew } = useStore();
+  const { saveBrew, beans, profile, saveProfile } = useStore();
   const [elapsed, setElapsed] = useState(() => (stored ? elapsedOf(stored) : 0));
   // «Ждать»: a step goes slower than planned — the clock runs on, the next step (and all after it) waits with it
   const [hold, setHold] = useState<{ i: number; from: number } | null>(() => stored?.hold ?? null);
@@ -82,18 +85,31 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     saveTimer({ draft, base: base.current, startedAt: on ? startedAt.current : null, total: shiftPlan(basePlan, skipsRef.current).total, remind: rem === 'on' || rem === 'pending', ...(skipsRef.current.length ? { skips: skipsRef.current } : {}), ...(holdRef.current ? { hold: holdRef.current } : {}) });
   };
 
+  // cold brew: a card in the chat with the bot that counts down by itself (worker/src/widget.ts); on unless turned off
+  const coldbrew = m.id === 'coldbrew';
+  const cardOn = coldbrew && profile.chatCard !== false;
+  const chatCard = (on = cardOn): ChatCard | null | undefined => {
+    if (!coldbrew) return undefined;
+    if (!on) return null;
+    const bean = beans.find((b) => b.id === draft.beanId);
+    return {
+      brew: draft.id, start: startedAt.current - base.current * 1000,
+      recipe: `${fmtNum(draft.dose, 0)}\u00a0г → ${draft.water >= 1000 ? `${fmtNum(draft.water / 1000, 1)}\u00a0л` : `${fmtNum(draft.water, 0)}\u00a0г`}`,
+      bean: bean ? beanTitle(bean) : '', phosphor: activeStyle() === 'phosphor',
+    };
+  };
   // the bot writes when a long timer ends — the app may be closed by then
-  const armReminder = async () => {
+  const armReminder = async (card = chatCard()) => {
     const left = shiftPlan(basePlan, skipsRef.current).total - base.current;
     if (!long || left < 60 || !remindersAvailable()) return;
     setRemind('pending');
-    const ok = await scheduleReminder(startedAt.current + left * 1000, draft.plan ? `${m.name} · ${draft.plan.name}` : m.name);
+    const ok = await scheduleReminder(startedAt.current + left * 1000, draft.plan ? `${m.name} · ${draft.plan.name}` : m.name, card);
     if (closed.current) return;
     setRemind(ok ? 'on' : 'fail');
     if (loadTimer()?.draft.id === draft.id) persist(true, ok ? 'on' : 'fail');
   };
   // the reminder may have been set on another device: cancel on the server whatever this screen thinks
-  const dropReminder = () => { if (long && remindersAvailable()) void cancelReminder(); setRemind('off'); };
+  const dropReminder = (why: 'pause' | 'finish' | 'stop' = 'stop') => { if (long && remindersAvailable()) void cancelReminder(why); setRemind('off'); };
 
   // opening a running long timer: ask the server what it holds; nothing there — set it again (self-repair)
   useEffect(() => {
@@ -103,6 +119,11 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
       if (gone || !st) return;
       const end = startedAt.current + (plan.total - base.current) * 1000;
       if (st.pending && Math.abs(st.pending.at - end) < 120_000) { setRemind('on'); return; }
+      // «+1 час» on the card in the chat moved the end: the timer here waits as long
+      if (st.pending && st.pending.at - end >= 120_000) {
+        skipsRef.current = [...skipsRef.current, { i: plan.steps.length, by: -Math.round((st.pending.at - end) / 1000) }];
+        setSkips(skipsRef.current); persist(true); setRemind('on'); return;
+      }
       if (st.last?.state === 'failed' && Math.abs(st.last.at - end) < 120_000) { setRemind('fail'); setRemindNote(explainRefusal(st.last.detail)); return; }
       if (end - Date.now() > 60_000) void armReminder();
     });
@@ -170,7 +191,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     if (running) {
       live.current = false;
       base.current += (Date.now() - startedAt.current) / 1000; setElapsed(base.current);
-      persist(false); dropReminder();
+      persist(false); dropReminder('pause');
     } else {
       if (elapsed === 0) { lastStep.current = 0; if (sound) beep(); track('timer.start'); }
       startedAt.current = Date.now();
@@ -203,7 +224,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     }
     persist(running);
     // a long timer ends later now (or again on time): move its reminder
-    if (running && long) { dropReminder(); if (!holdRef.current) void armReminder(); }
+    if (running && long) { if (holdRef.current) dropReminder('pause'); else void armReminder(); }
   };
 
   const finish = () => {
@@ -214,7 +235,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     const lived = skipsRef.current.length ? { ...shiftPlan(basePlan, skipsRef.current) } : null;
     setRunning(false);
     closed.current = true;
-    dropReminder(); clearTimer(draft.id);
+    dropReminder('finish'); clearTimer(draft.id);
     platform.haptic('success'); track('brew.timer');
     // ✓ writes the brew down at once (stock, stats, journal); rating it on the next screen is optional — until then the journal marks it
     const brew: Brew = { ...draft, ...(lived ? { plan: lived } : {}), time: Math.round(total || plan.total), date: Date.now(), unrated: true };
@@ -238,7 +259,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     lastStep.current = j; // the step was asked for: no beep
     persist(running);
     // a long timer ends sooner now: move its reminder
-    if (running && long) { dropReminder(); void armReminder(); }
+    if (running && long) void armReminder();
   };
 
   // Keyboard (desktop): space — start/pause, R — reset, Enter — done
@@ -333,6 +354,13 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
           {remind === 'pending' && <p>Ставим напоминание…</p>}
           {remind === 'fail' && <p className="warn">{remindNote ? `Бот не смог написать: ${remindNote}.` : `Не получилось поставить напоминание в Telegram${platform.kind === 'telegram' ? ' — разрешите боту писать вам и нажмите «Пауза» и «Продолжить»' : ''}.`}</p>}
           {remind === 'off' && running && !remindersAvailable() && <p>Напоминание от бота работает в Telegram.</p>}
+          {coldbrew && remindersAvailable() && (
+            <div className="group timer-card-toggle">
+              <Toggle id="chat-card" label="Карточка в чате с ботом" checked={cardOn}
+                hint="Отсчёт и кнопки «+1 час» и «Процедить» прямо в Telegram"
+                onChange={(v) => { saveProfile({ ...profile, chatCard: v }); if (running) void armReminder(chatCard(v)); }} />
+            </div>
+          )}
           {elapsed > 0 && <Button kind="secondary" onClick={() => { setTab('brew'); home(); }}>Свернуть</Button>}
         </div>
       )}

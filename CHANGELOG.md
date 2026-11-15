@@ -5,6 +5,9 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Added
+- Cold brew: a live card in the chat with the bot (Telegram widgets, Bot API 10.4). Started with the switch «Карточка в чате с ботом» on (it is, until turned off), the bot sends a card that counts down by itself — no network needed — with when it was poured and when it is ready, the recipe and the bean. «+1 час» moves the end and the bot's reminder (the timer in the app follows when opened), «Процедить» ends it. The card says «на паузе», «пора процедить», «процежено», «в дневнике» or «сброшен» as the brew goes, in «Фосфор» it is the green monitor. The «время вышло» message still comes (a changed card gives no notification). Only for cold brew.
+
 ### Fixed
 - A shared profile came to the chat with an «Открыть рецепт» button; the button under a profile now says «Открыть профиль» (recipes keep theirs).
 - Telegram on a computer (macOS, Windows, the web versions) in full screen: no black band over the app. Telegram reports room for its buttons but draws them in its own bar above the app, so that room is no longer kept empty.

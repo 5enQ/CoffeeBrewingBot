@@ -11,6 +11,10 @@ import { RARE_IDS } from '../../src/data/rare.ts';
 import { EVENT_CAP, EVENT_NAMES, type MetricEvent, type Metrics } from '../../src/data/metrics.ts';
 import { countStats, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, type BrewStat, type Level, type Stats, type Tier } from '../../src/data/levels.ts';
 import type { Env } from './index';
+import { deleteMessage, editWidget, sendWidget, type WidgetState } from './widget';
+
+/** what the app asks for with a cold brew reminder: a card in the chat (widget.ts) for this brew */
+export interface CardWish { brew: string; start: number; title: string; recipe: string; bean: string; phosphor: boolean }
 
 export interface AccountStats extends Stats { account: string; at: number; diamondNo?: number; grants: string[];
   /** roles offered to this person that wait for their answer (see INVITE) */
@@ -63,6 +67,8 @@ export class Accounts extends DurableObject<Env> {
     // one pending "your brew is ready" message per account; the alarm fires at the earliest one
     sql.exec(`CREATE TABLE IF NOT EXISTS reminder (account TEXT PRIMARY KEY, chat TEXT NOT NULL, at INTEGER NOT NULL, title TEXT NOT NULL, link TEXT NOT NULL)`);
     sql.exec('CREATE INDEX IF NOT EXISTS reminder_at ON reminder (at)');
+    // the cold brew card in the chat with the bot (widget.ts): its message, the brew it follows, its state
+    sql.exec(`CREATE TABLE IF NOT EXISTS brew_widget (account TEXT PRIMARY KEY, chat TEXT NOT NULL, msg INTEGER, brew TEXT NOT NULL, link TEXT NOT NULL, title TEXT NOT NULL, data TEXT NOT NULL)`);
     // what happened to each person's last reminder (scheduled / cancelled / sent / failed + Telegram's answer)
     // testers: what to check in this version, each tester's answer, and a daily cap on reports
     sql.exec(`CREATE TABLE IF NOT EXISTS check_item (id TEXT PRIMARY KEY, text TEXT NOT NULL, ord INTEGER NOT NULL, created INTEGER NOT NULL)`);
@@ -391,7 +397,7 @@ export class Accounts extends DurableObject<Env> {
   /* ---------- bot reminders (a long timer ended, the app may be closed) ---------- */
 
   /** schedule (or move) this person's reminder; the Telegram chat with the bot is the user id */
-  async setReminder(provider: string, subject: string, at: number, title: string, link: string) {
+  async setReminder(provider: string, subject: string, at: number, title: string, link: string, card?: CardWish | null) {
     const acc = this.resolve(provider, subject);
     const chat = provider === 'tg' ? subject : this.tgOf(acc.id);
     if (!chat) return false;
@@ -400,7 +406,70 @@ export class Accounts extends DurableObject<Env> {
     this.log(acc.id, at, 'scheduled');
     await this.nextAlarm();
     console.log('reminder scheduled', acc.id, new Date(at).toISOString());
+    // the card: undefined — an app that knows nothing of it; null — the person turned it off
+    if (card === null) await this.dropBrewCard(acc.id);
+    else if (card) await this.putBrewCard(acc.id, chat, at, title, link, card);
     return true;
+  }
+
+  /* ---------- the cold brew card (widget.ts) ---------- */
+
+  private brewCard(account: string) {
+    const r = this.sql.exec<{ chat: string; msg: number | null; brew: string; link: string; title: string; data: string }>('SELECT chat, msg, brew, link, title, data FROM brew_widget WHERE account = ?', account).toArray()[0];
+    return r ? { ...r, w: JSON.parse(r.data) as WidgetState } : null;
+  }
+  private saveBrewCard(account: string, chat: string, msg: number | null, brew: string, link: string, title: string, w: WidgetState) {
+    this.sql.exec('INSERT INTO brew_widget (account, chat, msg, brew, link, title, data) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(account) DO UPDATE SET chat = excluded.chat, msg = excluded.msg, brew = excluded.brew, link = excluded.link, title = excluded.title, data = excluded.data',
+      account, chat, msg, brew, link, title, JSON.stringify(w));
+  }
+  /** a card for this brew: the same brew again (resumed, moved) — its card is updated; another brew — a new card */
+  private async putBrewCard(account: string, chat: string, at: number, title: string, link: string, c: CardWish) {
+    const old = this.brewCard(account);
+    const same = old && old.brew === c.brew;
+    const w: WidgetState = { s: same ? old.w.s : c.start, e: at, st: 'run', t: c.title, r: c.recipe, b: c.bean, ...(c.phosphor ? { p: 1 as const } : {}) };
+    let msg = same ? old.msg : null;
+    if (old && !same && old.msg && (old.w.st === 'run' || old.w.st === 'pause')) await editWidget(this.env.BOT_TOKEN, old.chat, old.msg, { ...old.w, st: 'stop' });
+    if (msg) { if (!(await editWidget(this.env.BOT_TOKEN, chat, msg, w))) msg = null; }
+    if (!msg) msg = await sendWidget(this.env.BOT_TOKEN, chat, w, link);
+    this.saveBrewCard(account, chat, msg, c.brew, link, title, w);
+  }
+  private async dropBrewCard(account: string) {
+    const old = this.brewCard(account);
+    if (!old) return;
+    if (old.msg) await deleteMessage(this.env.BOT_TOKEN, old.chat, old.msg);
+    this.sql.exec('DELETE FROM brew_widget WHERE account = ?', account);
+  }
+  /** the app paused, reset or finished the brew: the card says so */
+  private async brewCardTo(account: string, st: WidgetState['st']) {
+    const old = this.brewCard(account);
+    if (!old || old.w.st === st || old.w.st === 'strained' || old.w.st === 'done') return;
+    const w: WidgetState = { ...old.w, st, ...(st === 'pause' ? { pz: Date.now() } : {}) };
+    if (st !== 'pause') delete w.pz;
+    if (old.msg) await editWidget(this.env.BOT_TOKEN, old.chat, old.msg, w);
+    this.saveBrewCard(account, old.chat, old.msg, old.brew, old.link, old.title, w);
+  }
+
+  /** a button on the card: «h» — an hour more, «d» — strained; what happened, for the log */
+  async brewCardQuery(tgId: string, data: string): Promise<string> {
+    const row = this.sql.exec<{ account: string }>("SELECT account FROM identity WHERE provider = 'tg' AND subject = ?", tgId).toArray()[0];
+    const c = row && this.brewCard(row.account);
+    if (!row || !c || !(c.w.st === 'run' || c.w.st === 'ready')) return 'no card';
+    const now = Date.now();
+    let w: WidgetState;
+    if (data === 'h') {
+      w = { ...c.w, st: 'run', e: Math.max(c.w.e, now) + 3_600_000 };
+      this.sql.exec('INSERT INTO reminder (account, chat, at, title, link) VALUES (?, ?, ?, ?, ?) ON CONFLICT(account) DO UPDATE SET chat = excluded.chat, at = excluded.at, title = excluded.title, link = excluded.link',
+        row.account, c.chat, w.e, c.title, c.link);
+      this.log(row.account, w.e, 'scheduled');
+    } else if (data === 'd') {
+      w = { ...c.w, st: 'strained' };
+      this.sql.exec('DELETE FROM reminder WHERE account = ?', row.account);
+      this.log(row.account, c.w.e, 'strained');
+    } else return 'unknown';
+    await this.nextAlarm();
+    if (c.msg) await editWidget(this.env.BOT_TOKEN, c.chat, c.msg, w);
+    this.saveBrewCard(row.account, c.chat, c.msg, c.brew, c.link, c.title, w);
+    return data === 'h' ? 'extended' : 'strained';
   }
 
   private log(account: string, at: number, state: string, detail: string | null = null) {
@@ -417,11 +486,13 @@ export class Accounts extends DurableObject<Env> {
     return { pending, last };
   }
 
-  async cancelReminder(provider: string, subject: string) {
+  /** why: 'pause' — the timer is paused, 'finish' — the brew was written down, 'stop' — reset (and older apps) */
+  async cancelReminder(provider: string, subject: string, why: 'pause' | 'finish' | 'stop' = 'stop') {
     const row = this.sql.exec<{ account: string }>('SELECT account FROM identity WHERE provider = ? AND subject = ?', provider, subject).toArray()[0];
     if (row) {
       const had = this.sql.exec<{ at: number }>('SELECT at FROM reminder WHERE account = ?', row.account).toArray()[0];
       if (had) { this.sql.exec('DELETE FROM reminder WHERE account = ?', row.account); this.log(row.account, had.at, 'cancelled'); }
+      await this.brewCardTo(row.account, why === 'finish' ? 'done' : why);
     }
     await this.nextAlarm();
     return true;
@@ -524,6 +595,8 @@ export class Accounts extends DurableObject<Env> {
       this.sql.exec('DELETE FROM reminder WHERE account = ? AND at = ?', r.account, r.at);
       const res = await sendReminder(this.env.BOT_TOKEN, r.chat, r.title, r.link);
       this.log(r.account, r.at, res.ok ? 'sent' : 'failed', res.error ?? null);
+      // the card turns to «Пора процедить» (it does by itself on screen; this keeps its saved state true too)
+      await this.brewCardTo(r.account, 'ready');
     }
     await this.nextAlarm();
   }

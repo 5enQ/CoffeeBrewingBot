@@ -82,7 +82,8 @@ async def main():
 
         # kept on this device before the data is read: no plain flash on start
         await pg.reload(wait_until='domcontentloaded'); await pg.wait_for_selector('#root > *', state='attached')
-        check(await pg.evaluate(style) == 'phosphor', 'on again from the first frame after a restart')
+        dbg = await pg.evaluate("() => [document.documentElement.dataset.style || null, localStorage.getItem('brewbook.appearance'), JSON.parse(localStorage.getItem('brewbook.db.v1')).profile.cardTheme, document.querySelector('#root').innerHTML.slice(0, 60)]")
+        check(dbg[0] == 'phosphor', f'on again from the first frame after a restart {dbg}')
         check(not errors, f'no page errors {errors[:3]}')
 
         # a friend who never found it opens a card in this style: the app is green while it is open

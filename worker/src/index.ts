@@ -18,6 +18,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { Accounts, sendReminder } from './accounts';
 import { CoffeeCatalog, cleanCoffee, keysFor, type Coffee, type Found, type SiteStatus } from './catalog';
 import { bareUrl, foreignCode, isSocialLink } from './notpack';
+import { shareButton } from './sharebutton';
 import { aiCoffee, type AiBinding } from './ai';
 import { fetchPage } from './fetch';
 import { PARSER_VERSION, parsePage } from './parse';
@@ -431,7 +432,7 @@ export default {
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-/** savePreparedInlineMessage: link, empty line, bold title, recipe and an "Открыть рецепт" button */
+/** savePreparedInlineMessage: link, empty line, bold title, text and a button saying what the link opens */
 async function prepareMessage(token: string, userId: string, title: string, text: string, link: string) {
   const html = `${esc(link)}\n\n<b>${esc(title)}</b>\n${esc(text)}`;
   const res = await fetch(`https://api.telegram.org/bot${token}/savePreparedInlineMessage`, {
@@ -445,7 +446,7 @@ async function prepareMessage(token: string, userId: string, title: string, text
         title,
         description: text.split('\n').find((l) => l.trim()) ?? '',
         input_message_content: { message_text: html, parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
-        reply_markup: { inline_keyboard: [[{ text: '☕ Открыть рецепт', url: link }]] },
+        reply_markup: { inline_keyboard: [[{ text: shareButton(link), url: link }]] },
       },
       allow_user_chats: true, allow_bot_chats: true, allow_group_chats: true, allow_channel_chats: true,
     }),

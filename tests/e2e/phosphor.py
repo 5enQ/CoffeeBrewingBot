@@ -50,6 +50,13 @@ async def main():
         look = await pg.evaluate("() => { const s = getComputedStyle(document.body); return [s.backgroundColor, s.color, s.fontFamily.split(',')[0]]; }")
         check(look[0] == 'rgb(5, 8, 6)' and look[1] == 'rgb(139, 227, 155)' and 'mono' in look[2].lower(), f'green text on black in a monospace font {look}')
         await pg.screenshot(path=str(OUT / 'phosphor-profile.png'))
+        # drawn in characters, as in the mockups
+        await pg.click('.tabbar >> text=Заварить'); await pg.wait_for_timeout(600)
+        sym = await pg.evaluate('''() => { const css = (e, p) => e ? getComputedStyle(e, p).content : null, v = (s) => [...document.querySelectorAll(s)].find((e) => e.getClientRects().length);
+          return { hello: !!v('.ascii-hello pre'), tab: css(document.querySelector('.tabbar button'), '::before'), head: css(v('.section-head h2'), '::after'),
+                   back: null, star: css(v('.star-fill'), '::before'), icon: getComputedStyle(document.querySelector('.method-card .method-icon')).display }; }''')
+        check(sym['hello'] and sym['tab'] == '"F1"' and '=====' in (sym['head'] or '') and sym['star'] == '"*"' and sym['icon'] == 'none',
+              f'a cup in symbols, F-key tabs, «== … ====» headings, * stars, methods as a text menu {sym}')
         for tab in ('Заварить', 'Дневник', 'Полка'):
             await pg.click(f'.tabbar >> text={tab}'); await pg.wait_for_timeout(600)
             await pg.screenshot(path=str(OUT / f'phosphor-{tab}.png'))
@@ -84,6 +91,17 @@ async def main():
         check(await pv.evaluate(style) is None, 'back from it, the friend’s app is as it was')
         check('phosphor' not in json.dumps((await local(pv))['profile']), 'looking at it opens nothing for the friend')
         check(not err, f'no page errors (friend) {err[:3]}')
+
+        # the timer in characters (a fresh page: leaving a timer asks to confirm)
+        pt, et = await page(b, db={**DB, 'profile': {**DB['profile'], 'secrets': ['phosphor'], 'cardTheme': 'phosphor'}})
+        T = lambda s: pt.locator(s + ':visible')
+        await T('.method-card:has-text("V60")').first.click(); await pt.wait_for_timeout(500)
+        await T('.recipe-tile').first.click(); await pt.wait_for_timeout(400)
+        await T('button:has-text("Начать")').last.click(); await pt.wait_for_timeout(500)
+        dig = await T('.ascii-digits').first.inner_text() if await T('.ascii-digits').count() else ''
+        check(dig.count('\n') == 4 and '#' in dig and await T('.ascii-bar').count() == 1, 'the timer: block digits of # and a [====>....] bar')
+        await pt.screenshot(path=str(OUT / 'phosphor-timer.png'))
+        check(not et, f'no page errors (timer) {et[:3]}')
 
         # reduced motion: no tube flash or typing, a short fade; any key skips
         pr, er = await page(b, db=DB)

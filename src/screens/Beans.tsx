@@ -1,3 +1,4 @@
+import { AsciiStock, pack, useAscii } from '../ui/ascii';
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { track } from '../data/track';
 import { contributeCoffee, filledLabels, lookupCode, mergeEmpty } from '../data/lookup';
@@ -47,6 +48,10 @@ function DripIcon({ on }: { on: boolean }) {
 
 /** What is left: beans (10 = full pack) or drawn drip bags (one per bag) */
 function StockIcons({ unit, left, total }: { unit: 'g' | 'pcs'; left: number; total: number }) {
+  const ascii = useAscii();
+  if (ascii) return unit === 'pcs'
+    ? <AsciiStock on={total <= 20 ? left : (left / total) * 20} of={Math.min(total, 20)} mark="#" />
+    : <AsciiStock on={total ? (left / total) * 10 : 0} of={10} />;
   if (unit === 'pcs') {
     // more than 20 drips are not drawn one by one — split into 20 equal parts
     const n = Math.min(total, 20);
@@ -96,6 +101,7 @@ const plural = (n: number, f: [string, string, string]) => {
 function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
   const { brews } = useStore();
   const sel = useSelected();
+  const ascii = useAscii();
   const active = (sel?.name === 'bean' && sel.id === b.id) || (sel?.name === 'beanEdit' && sel.bean.id === b.id);
   const mine = brews.filter((x) => brewBeanIds(x).includes(b.id));
   const rated = mine.filter((x) => x.rating);
@@ -105,6 +111,7 @@ function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
   const avgScore = scores.length ? scores.reduce((s, x) => s + x, 0) / scores.length : 0;
   return (
     <button type="button" className={'bean-card' + (active ? ' active' : '')} aria-current={active || undefined} onClick={onClick}>
+      {ascii && <pre className="ascii-art ascii-pack" aria-hidden="true">{pack(b.country || b.parts?.[0]?.country || '')}</pre>}
       <div className="bean-card-top">
         <b>{beanTitle(b)}</b>
         {isDrip(b) && <span className="tag tag-drip">дрип</span>}

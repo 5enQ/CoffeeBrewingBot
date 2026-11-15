@@ -237,7 +237,8 @@ export function Stars({ value, onChange, size = 28 }: { value: number; onChange?
   const v = Math.round((value || 0) * 2) / 2;
   const label = `Оценка ${String(v).replace('.', ',')} из 5`;
   return (
-    <div className={'stars' + (onChange ? ' editable' : '')} aria-label={label} role={onChange ? 'group' : 'img'}>
+    // --stars-size is for the «Фосфор» style, where the stars are characters (* and -): as big as the drawn ones
+    <div className={'stars' + (onChange ? ' editable' : '')} aria-label={label} role={onChange ? 'group' : 'img'} style={{ ['--stars-size' as string]: `${Math.round(size * (onChange ? 0.7 : 0.85))}px` }}>
       {[1, 2, 3, 4, 5].map((i) => {
         const fill = v >= i ? 100 : v >= i - 0.5 ? 50 : 0;
         const visual = (

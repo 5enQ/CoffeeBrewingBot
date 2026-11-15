@@ -2,7 +2,7 @@
 the style is a profile card — choosing another card turns it off, choosing it again on; a friend's shared card in
 this style shows their profile in it, and the app turns back on leaving it."""
 import asyncio, json
-from common import OUT, async_playwright, check, done, local, page
+from common import OUT, URL, async_playwright, check, done, local, page
 
 src = open('card.py').read().split('async def main')[0]
 ns = {'__file__': 'card.py'}; exec(src, ns)
@@ -77,14 +77,20 @@ async def main():
         check(await pg.evaluate(style) is None, 'another card turns the style off')
         await tile.click(); await pg.wait_for_timeout(300)
         check(await pg.evaluate(style) == 'phosphor', 'the card turns it on again')
-        # the data is written a moment after a change: wait for it, then restart
-        await pg.wait_for_function("() => JSON.parse(localStorage.getItem('brewbook.db.v1')).profile.cardTheme === 'phosphor'")
-
-        # kept on this device before the data is read: no plain flash on start
-        await pg.reload(wait_until='domcontentloaded'); await pg.wait_for_selector('#root > *', state='attached')
-        dbg = await pg.evaluate("() => [document.documentElement.dataset.style || null, localStorage.getItem('brewbook.appearance'), JSON.parse(localStorage.getItem('brewbook.db.v1')).profile.cardTheme, document.querySelector('#root').innerHTML.slice(0, 60)]")
-        check(dbg[0] == 'phosphor', f'on again from the first frame after a restart {dbg}')
         check(not errors, f'no page errors {errors[:3]}')
+        await pg.context.close()
+
+        # on start the style comes from this device's own setting, before the data is read: no plain flash
+        # (a fresh page with what the app saved: reloading a file:// page in Chromium now and then loses its storage)
+        ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+        saved = {**DB, 'profile': {**DB['profile'], 'secrets': ['phosphor'], 'cardTheme': 'phosphor'}}
+        await ctx.add_init_script("localStorage.setItem('brewbook.db.v1', " + json.dumps(json.dumps(saved)) + "); localStorage.setItem('brewbook.appearance', '{\"theme\":\"auto\",\"contrast\":false,\"style\":\"phosphor\"}')")
+        ps = await ctx.new_page()
+        await ps.goto(URL, wait_until='domcontentloaded'); await ps.wait_for_selector('#root > *', state='attached')
+        first = await ps.evaluate(style)
+        await ps.wait_for_timeout(800)
+        check(first == 'phosphor' and await ps.evaluate(style) == 'phosphor', f'green from the first frame of a start, and still once the data is read ({first})')
+        await ctx.close()
 
         # a friend who never found it opens a card in this style: the app is green while it is open
         pv, err = await page(b, init=TG + "\nlocation.hash = '#r=pphos1';", db=DB)

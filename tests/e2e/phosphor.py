@@ -107,6 +107,21 @@ async def main():
         await pt.screenshot(path=str(OUT / 'phosphor-timer.png'))
         check(not et, f'no page errors (timer) {et[:3]}')
 
+        # a wide window: F1–F4 work as the tabs they sign; the empty half shows a picture in symbols
+        pw, ew = await page(b, width=1280, height=800, db={**DB, 'profile': {**DB['profile'], 'secrets': ['phosphor'], 'cardTheme': 'phosphor'}})
+        on = "() => document.querySelector('.side-nav button.on')?.innerText"
+        await pw.keyboard.press('F3'); await pw.wait_for_timeout(400)
+        a = await pw.evaluate(on)
+        await pw.keyboard.press('F2'); await pw.wait_for_timeout(400)
+        b2 = await pw.evaluate(on)
+        check('Полка' in (a or '') and 'Дневник' in (b2 or ''), f'F3 and F2 open the shelf and the journal ({a!r}, {b2!r})')
+        check(await pw.locator('.placeholder-art:visible').count() == 1, 'the empty half shows a picture in symbols')
+        await pw.screenshot(path=str(OUT / 'phosphor-wide.png'))
+        check(not ew, f'no page errors (wide) {ew[:3]}')
+        pn, en = await page(b, width=1280, height=800, db=DB)
+        await pn.keyboard.press('F3'); await pn.wait_for_timeout(300)
+        check('Заварить' in (await pn.evaluate(on) or ''), 'in the plain style F-keys stay the browser’s')
+
         # reduced motion: no tube flash or typing, a short fade; any key skips
         pr, er = await page(b, db=DB)
         await pr.emulate_media(reduced_motion='reduce')

@@ -67,3 +67,18 @@ export const starChar = () => (isAscii() ? '*' : '★');
 export function StarChar() {
   return <>{useAscii() ? '*' : '★'}</>;
 }
+
+/** an open diary, for the empty half of the journal on a wide screen */
+export const BOOK = `  _______ _______
+ /       Y       \\
+|  ----  |  ---- |
+|  ----  |  ---- |
+|  ----  |  ---- |
+ \\_______|_______/`;
+
+/** a person at a terminal, for the empty half of the profile */
+export const PERSON = `    .---.
+   ( o o )
+    \\ - /
+  .--'-'--.
+ /  [___]  \\`;

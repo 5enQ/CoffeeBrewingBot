@@ -29,6 +29,8 @@ import { loadCard } from './data/card';
 import { CardEditScreen, CardShareScreen, CardViewScreen } from './screens/CardScreens';
 import { PhosphorBoot, usePhosphor } from './ui/PhosphorBoot';
 import { BOOK, CUP, pack, PERSON, useAscii } from './ui/ascii';
+import { cardLook, sendCardLook } from './data/remind';
+import { onAppearance } from './appearance';
 import { t } from './i18n';
 
 function renderRoute(r: Route) {
@@ -81,6 +83,17 @@ function Shell() {
   useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
   // «Фосфор»: the style follows the profile card; the Konami code on the profile tab opens it
   const phosphor = usePhosphor(ready && tab === 'profile');
+  // a cold brew card is out in the chat with the bot: when the theme or «Фосфор» changes here, the bot repaints it
+  useEffect(() => {
+    let last = cardLook();
+    return onAppearance(() => {
+      const now = cardLook();
+      if (now === last) return;
+      last = now;
+      const t = loadTimer();
+      if (t?.remind && t.startedAt !== null && t.draft.methodId === 'coldbrew' && profile.chatCard !== false) void sendCardLook(now);
+    });
+  }, [profile.chatCard]);
   // the tabs are signed F1–F4 in that style: on a keyboard the keys work as the tabs do (the browser's own F1 help,
   // F3 search are not opened then)
   const ascii = useAscii();

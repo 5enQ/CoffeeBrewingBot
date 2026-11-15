@@ -4,6 +4,7 @@
  */
 import { RATINGS_API, TELEGRAM_APP, TELEGRAM_BOT } from '../config';
 import { platform } from '../platform';
+import { getAppearance } from '../appearance';
 
 export const remindersAvailable = () => !!RATINGS_API && !!TELEGRAM_BOT && !!platform.initData();
 /** the button in the bot's message opens the timer ("timer" launch parameter) */
@@ -70,7 +71,12 @@ export function explainRefusal(detail?: string | null): string {
  * The cold brew card in the chat with the bot (worker/src/widget.ts): which brew, when it started, the recipe line
  * and the bean it shows; null — the person turned the card off (the server removes one already sent).
  */
-export interface ChatCard { brew: string; start: number; recipe: string; bean: string; phosphor: boolean }
+export interface ChatCard { brew: string; start: number; recipe: string; bean: string; look: CardLook }
+/** the card's look follows the app's: its theme (auto — Telegram's own colors) or «Фосфор» */
+export type CardLook = 'auto' | 'light' | 'dark' | 'phosphor';
+export const cardLook = (): CardLook => (getAppearance().style === 'phosphor' ? 'phosphor' : getAppearance().theme);
+/** the look changed while a cold brew card is out: the bot repaints it */
+export const sendCardLook = (look: CardLook) => (remindersAvailable() ? call({ look }) : Promise.resolve(false));
 
 /** schedule "your brew is ready" at epoch ms `at`; `card` — with the cold brew card (undefined: not a cold brew) */
 export async function scheduleReminder(at: number, title: string, card?: ChatCard | null): Promise<boolean> {

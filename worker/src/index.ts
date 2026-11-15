@@ -19,7 +19,9 @@ import { Accounts, sendReminder } from './accounts';
 import { CoffeeCatalog, cleanCoffee, keysFor, type Coffee, type Found, type SiteStatus } from './catalog';
 import { bareUrl, foreignCode, isSocialLink } from './notpack';
 import { shareButton } from './sharebutton';
-import { answerWidget } from './widget';
+import { answerWidget, type CardLook } from './widget';
+/** the app's look for the cold brew card; anything unknown — Telegram's own colors */
+const cardLook = (v: unknown): CardLook => (v === 'light' || v === 'dark' || v === 'phosphor' ? v : 'auto');
 import type { CardWish } from './accounts';
 import { aiCoffee, type AiBinding } from './ai';
 import { fetchPage } from './fetch';
@@ -334,12 +336,13 @@ export default {
 
     // ---- bot reminder when a long timer ends ----
     if (req.method === 'POST' && url.pathname === '/reminders') {
-      let body: { initData?: string; at?: unknown; title?: unknown; link?: unknown; cancel?: unknown; status?: unknown; test?: unknown; card?: unknown };
+      let body: { initData?: string; at?: unknown; title?: unknown; link?: unknown; cancel?: unknown; status?: unknown; test?: unknown; card?: unknown; look?: unknown };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
       if (body.cancel) return json({ ok: await accounts().cancelReminder('tg', user.id, body.cancel === 'pause' || body.cancel === 'finish' ? body.cancel : 'stop') }, 200, h);
       if (body.status) return json({ ok: true, ...(await accounts().reminderStatus('tg', user.id)) }, 200, h);
+      if (body.look !== undefined) return json({ ok: await accounts().brewCardLook('tg', user.id, cardLook(body.look)) }, 200, h);
       // "can the bot write to me?": a message right away, Telegram's answer comes back as is
       if (body.test) {
         const link = String(body.link ?? '');
@@ -359,7 +362,7 @@ export default {
         const c = body.card as Record<string, unknown>;
         const start = Number(c.start);
         if (typeof c.brew === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(c.brew) && Number.isFinite(start) && start <= now + 60_000 && start > now - 7 * 86_400_000)
-          card = { brew: c.brew, start: Math.round(start), title, recipe: String(c.recipe ?? '').slice(0, 60), bean: String(c.bean ?? '').slice(0, 60), phosphor: c.phosphor === true };
+          card = { brew: c.brew, start: Math.round(start), title, recipe: String(c.recipe ?? '').slice(0, 60), bean: String(c.bean ?? '').slice(0, 60), look: cardLook(c.look ?? (c.phosphor === true ? 'phosphor' : 'auto')) };
         // buttons on the card come to the webhook: make sure it listens for them
         ctx.waitUntil(ensureWebhook(env, url.origin));
       }

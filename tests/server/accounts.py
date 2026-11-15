@@ -210,10 +210,12 @@ def hook(update):
     req = urllib.request.Request('http://localhost:8799/tg', data=json.dumps(update).encode(), headers={'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': SECRET})
     return urllib.request.urlopen(req).status
 end = now + 12 * 3600_000
-card = {'brew': 'cb1', 'start': now - 60_000, 'recipe': '60 г → 1 л', 'bean': 'Эфиопия Гуджи', 'phosphor': False}
+card = {'brew': 'cb1', 'start': now - 60_000, 'recipe': '60 г → 1 л', 'bean': 'Эфиопия Гуджи', 'look': 'light'}
 ok(post('/reminders', {'initData': A, 'at': end, 'title': 'Колд брю', 'link': LINK, 'card': card}).get('ok') is True, 'a cold brew reminder with the card in the chat')
 ok(post('/reminders', {'initData': A, 'at': end, 'title': 'Колд брю', 'link': LINK, 'card': {**card, 'brew': 'bad id!'}}).get('ok') is True, 'a bad card is left out, the reminder still set')
 post('/reminders', {'initData': A, 'at': end, 'title': 'Колд брю', 'link': LINK, 'card': card})
+ok(post('/reminders', {'initData': A, 'look': 'dark'}).get('ok') is True, 'the app\'s new look repaints the card')
+ok(post('/reminders', {'initData': B, 'look': 'phosphor'}).get('ok') is False, 'no card — nothing to repaint')
 ok(hook({'update_id': 1, 'widget_query': {'id': 'q1', 'from': {'id': 111}, 'data': 'h'}}) == 200, 'a card button reaches the webhook')
 st = post('/reminders', {'initData': A, 'status': True})
 ok(st.get('pending') and abs(st['pending']['at'] - (end + 3600_000)) < 2000, f'«+1 час» moves the reminder an hour on ({st.get("pending")})')

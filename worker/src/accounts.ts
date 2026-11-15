@@ -11,10 +11,10 @@ import { RARE_IDS } from '../../src/data/rare.ts';
 import { EVENT_CAP, EVENT_NAMES, type MetricEvent, type Metrics } from '../../src/data/metrics.ts';
 import { countStats, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, type BrewStat, type Level, type Stats, type Tier } from '../../src/data/levels.ts';
 import type { Env } from './index';
-import { deleteMessage, editWidget, sendWidget, type WidgetState } from './widget';
+import { deleteMessage, editWidget, lookFields, sendWidget, withLook, type CardLook, type WidgetState } from './widget';
 
 /** what the app asks for with a cold brew reminder: a card in the chat (widget.ts) for this brew */
-export interface CardWish { brew: string; start: number; title: string; recipe: string; bean: string; phosphor: boolean }
+export interface CardWish { brew: string; start: number; title: string; recipe: string; bean: string; look: CardLook }
 
 export interface AccountStats extends Stats { account: string; at: number; diamondNo?: number; grants: string[];
   /** roles offered to this person that wait for their answer (see INVITE) */
@@ -426,7 +426,7 @@ export class Accounts extends DurableObject<Env> {
   private async putBrewCard(account: string, chat: string, at: number, title: string, link: string, c: CardWish) {
     const old = this.brewCard(account);
     const same = old && old.brew === c.brew;
-    const w: WidgetState = { s: same ? old.w.s : c.start, e: at, st: 'run', t: c.title, r: c.recipe, b: c.bean, ...(c.phosphor ? { p: 1 as const } : {}) };
+    const w: WidgetState = { s: same ? old.w.s : c.start, e: at, st: 'run', t: c.title, r: c.recipe, b: c.bean, ...lookFields(c.look) };
     let msg = same ? old.msg : null;
     if (old && !same && old.msg && (old.w.st === 'run' || old.w.st === 'pause')) await editWidget(this.env.BOT_TOKEN, old.chat, old.msg, { ...old.w, st: 'stop' });
     if (msg) { if (!(await editWidget(this.env.BOT_TOKEN, chat, msg, w))) msg = null; }
@@ -447,6 +447,18 @@ export class Accounts extends DurableObject<Env> {
     if (st !== 'pause') delete w.pz;
     if (old.msg) await editWidget(this.env.BOT_TOKEN, old.chat, old.msg, w);
     this.saveBrewCard(account, old.chat, old.msg, old.brew, old.link, old.title, w);
+  }
+
+  /** the look changed in the app (theme or «Фосфор»): the card follows */
+  async brewCardLook(provider: string, subject: string, look: CardLook) {
+    const row = this.sql.exec<{ account: string }>('SELECT account FROM identity WHERE provider = ? AND subject = ?', provider, subject).toArray()[0];
+    const c = row && this.brewCard(row.account);
+    if (!row || !c) return false;
+    const w = withLook(c.w, look);
+    if (JSON.stringify(w) === JSON.stringify(c.w)) return true;
+    if (c.msg) await editWidget(this.env.BOT_TOKEN, c.chat, c.msg, w);
+    this.saveBrewCard(row.account, c.chat, c.msg, c.brew, c.link, c.title, w);
+    return true;
   }
 
   /** a button on the card: «h» — an hour more, «d» — strained; what happened, for the log */

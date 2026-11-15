@@ -13,8 +13,7 @@ import { Icon } from '../ui/icons';
 import { DripFlow } from '../ui/DripFlow';
 import { LONG_TIMER, clearTimer, elapsedOf, loadTimer, onTimerChange, saveTimer } from '../data/timer';
 import { toast } from '../ui/toast';
-import { cancelReminder, explainRefusal, reminderStatus, remindersAvailable, scheduleReminder, type ChatCard } from '../data/remind';
-import { activeStyle } from '../appearance';
+import { cancelReminder, cardLook, explainRefusal, reminderStatus, remindersAvailable, scheduleReminder, type ChatCard } from '../data/remind';
 import { beanTitle } from './beanUtils';
 import { Toggle } from './Share';
 
@@ -95,7 +94,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     return {
       brew: draft.id, start: startedAt.current - base.current * 1000,
       recipe: `${fmtNum(draft.dose, 0)}\u00a0г → ${draft.water >= 1000 ? `${fmtNum(draft.water / 1000, 1)}\u00a0л` : `${fmtNum(draft.water, 0)}\u00a0г`}`,
-      bean: bean ? beanTitle(bean) : '', phosphor: activeStyle() === 'phosphor',
+      bean: bean ? beanTitle(bean) : '', look: cardLook(),
     };
   };
   // the bot writes when a long timer ends — the app may be closed by then

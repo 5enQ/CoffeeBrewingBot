@@ -16,7 +16,8 @@
 import { RARE_IDS } from '../../src/data/rare.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Accounts, sendReminder } from './accounts';
-import { CoffeeCatalog, cleanCoffee, keysFor, type Found, type SiteStatus } from './catalog';
+import { CoffeeCatalog, cleanCoffee, keysFor, type Coffee, type Found, type SiteStatus } from './catalog';
+import { aiCoffee, type AiBinding } from './ai';
 import { fetchPage } from './fetch';
 import { PARSER_VERSION, parsePage } from './parse';
 
@@ -34,6 +35,8 @@ export interface Env {
   BUILT_AT?: string;
   /** Telegram ids of the bot owner(s), comma-separated: they approve roaster sites */
   OWNER_IDS?: string;
+  /** Workers AI (wrangler.toml [ai]); absent in local tests (wrangler dev --local) */
+  AI?: AiBinding;
   /** local tests only: route crawler requests through a fixture server */
   CRAWL_PROXY?: string;
   CRAWL_STEP_MS?: string;
@@ -213,7 +216,8 @@ export default {
       if (!keys.length) return json({ error: 'bad request' }, 400, h);
       const catalog = env.CATALOG.get(env.CATALOG.idFromName('all'));
       const found = await catalog.find(keys);
-      const stale = found && found.source === 'page' && found.confirms === 0 && (found.pv ?? 0) < PARSER_VERSION && pageUrl;
+      // a lot the model filled is not refreshed by a newer parser: the rules found little there, and the model is asked once
+      const stale = found && found.source === 'page' && found.confirms === 0 && !found.coffee.ai && (found.pv ?? 0) < PARSER_VERSION && pageUrl;
       if (found && !stale) return json(publicFound(found), 200, h);
       if (!pageUrl) return json({ source: 'none' }, 200, h);
       // not in the catalog — open the roaster page, but only on approved sites
@@ -238,9 +242,17 @@ export default {
       }
       const again = page.url !== pageUrl ? await catalog.find(keys) : null;
       if (again) return json(publicFound(again), 200, h);
-      const useful = ['country', 'region', 'variety', 'process', 'altitude', 'packNotes', 'farm'].filter((k) => (coffee as Record<string, unknown>)[k]).length;
-      if (useful < 2) return json({ source: 'none', coffee }, 200, h);
-      const saved = await catalog.savePage(keys, coffee, PARSER_VERSION, page.url);
+      const usefulOf = (c: Record<string, unknown>) => ['country', 'region', 'variety', 'process', 'altitude', 'packNotes', 'farm'].filter((k) => c[k]).length;
+      let lot: Coffee = coffee;
+      if (usefulOf(coffee as Record<string, unknown>) < 2) {
+        // the rules found too little: Workers AI reads the page once (approved site, daily cap), the answer is kept
+        const who = await callerHash(req);
+        const read = (await catalog.aiAllow(who)) ? await aiCoffee(env.AI, page.html, page.url, coffee as Record<string, unknown>) : null;
+        const cleaned = read ? cleanCoffee(read) : null;
+        if (!cleaned || usefulOf(cleaned as Record<string, unknown>) < 2) return json({ source: 'none', coffee }, 200, h);
+        lot = { ...cleaned, ai: true };
+      }
+      const saved = await catalog.savePage(keys, lot, PARSER_VERSION, page.url);
       return json({ ...publicFound(saved), source: 'page' }, 200, h);
     }
 
@@ -440,6 +452,13 @@ async function prepareMessage(token: string, userId: string, title: string, text
 }
 
 const publicFound = (f: Found) => ({ source: 'catalog', id: f.id, coffee: f.coffee, confirms: f.confirms, state: f.state, link: f.url });
+
+/** who asks, for the daily AI cap: a hash of the address (anonymous lookups), never the address itself */
+async function callerHash(req: Request): Promise<string> {
+  const ip = req.headers.get('CF-Connecting-IP') ?? 'local';
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`brewbook-ai:${ip}`));
+  return [...new Uint8Array(d).slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 const owners = (env: Env) => (env.OWNER_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 

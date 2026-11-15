@@ -5,6 +5,9 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Added
+- Scanning a link to an approved roaster site whose page the rules read poorly: the server asks Workers AI to read it once and keeps the result in the shared catalog — the next scan of that page fills the pack from the catalog, no model call. The pack says «разобрал ИИ — проверьте поля» until someone saves it. At most 40 pages a day for everyone and 10 per caller (the free allowance).
+
 ### Fixed
 - The tab bar's bubble shook when switching tabs (seen in Telegram on a Mac): it moved by a transform run off the main thread while its width changed on it, so while the new tab was rendering the far edge shot past the tab and jumped back. It now moves by left and width together.
 - The profile card shook under the mouse in Telegram on a Mac: on top of the tilt eased by the script every frame it had a 50 ms CSS transition, and Safari, restarting it each frame, flipped the card between two poses. The transition is gone.

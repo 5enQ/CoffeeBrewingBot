@@ -23,6 +23,8 @@ export type Coffee = Partial<Pick<Bean, typeof COFFEE_TEXT[number] | 'kind' | 'd
   drips?: Partial<NonNullable<Bean['drips']>[number]>[];
   /** also sold as drip boxes of these sizes */
   dripOptions?: number[];
+  /** read from the roaster's page by the server's AI, not by its rules: worth a look */
+  ai?: boolean;
 };
 
 /** on sale · out of stock · in the roaster's archive · removed from the site */
@@ -271,8 +273,9 @@ export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 
 }
 
 function sourceText(r: Remote) {
-  if (r.source === 'catalog') return r.confirms && r.confirms > 1 ? `общий каталог · подтвердили ${r.confirms}` : 'общий каталог';
-  return 'страница обжарщика';
+  const ai = r.coffee?.ai && !(r.confirms && r.confirms > 0) ? ' (разобрал ИИ — проверьте поля)' : '';
+  if (r.source === 'catalog') return (r.confirms && r.confirms > 1 ? `общий каталог · подтвердили ${r.confirms}` : 'общий каталог') + ai;
+  return 'страница обжарщика' + ai;
 }
 
 /** Merge data without overwriting what the user already entered */

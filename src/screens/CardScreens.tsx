@@ -1,9 +1,11 @@
 /** Profile card: the own card in the Profile tab, its settings and sharing, and a card a friend sent */
 import { useEffect, useMemo, useState } from 'react';
 import { track } from '../data/track';
-import { BASE_THEMES, buildCard, cardText, MAX_SETUP, SPECIAL_THEMES, storeCard, unlockedThemes, type CardData, type UnlockedTheme } from '../data/card';
+import { BASE_THEMES, buildCard, cardText, MAX_SETUP, SECRET_THEMES, SPECIAL_THEMES, storeCard, unlockedThemes, type CardData, type UnlockedTheme } from '../data/card';
 import { useStats } from '../data/stats';
 import { RARE } from '../data/rare';
+import { hasPhosphor, PHOSPHOR } from '../data/phosphor';
+import { setVisitStyle } from '../appearance';
 import { MAX_FEATURED, useBadges } from '../data/featured';
 import { GEAR_CATS } from '../data/gear';
 import { TIER_LABEL, type Tier } from '../data/achievements';
@@ -142,6 +144,13 @@ export function CardEditScreen() {
               <span>{t.label}</span>
             </button>
           ))}
+          {/* «Фосфор» — found with the Konami code on the profile tab; choosing it turns the whole app into the green monitor */}
+          {hasPhosphor(profile) && SECRET_THEMES.map((t) => (
+            <button type="button" key={t.id} className={'theme-pick base-' + t.id + (current === t.id ? ' on' : '')} aria-pressed={current === t.id}
+              onClick={() => { platform.haptic('select'); saveProfile({ ...profile, cardTheme: t.id }); }}>
+              <span>{t.label}</span><small>весь Brewbook</small>
+            </button>
+          ))}
           {/* special backgrounds the owner gave this person */}
           {SPECIAL_THEMES.filter((sp) => grants.includes(sp.id)).map((sp) => (
             <button type="button" key={sp.id} className={'theme-pick special-' + sp.id + (current === `special:${sp.id}` ? ' on' : '')} aria-pressed={current === `special:${sp.id}`}
@@ -273,10 +282,18 @@ export function CardShareScreen() {
 }
 
 export function CardViewScreen({ card }: { card: CardData }) {
+  // a friend in the green-monitor style: their profile opens in it, and the app turns back on leaving
+  const style = 'base' in card.theme && card.theme.base === PHOSPHOR ? PHOSPHOR : null;
+  useEffect(() => {
+    if (!style) return;
+    setVisitStyle(style);
+    return () => setVisitStyle(null);
+  }, [style]);
   return (
     <Screen title={card.name} subtitle="Профиль в Brewbook">
       <div className="pcard-stage"><ProfileCard card={card} /></div>
-      {card.username && <Button kind="secondary" wide onClick={() => platform.openLink(`https://t.me/${card.username}`)}>Написать @{card.username}</Button>}
+      {/* in a row of its own: a «wide» button grows along its row, and in the screen's column that was 250 px of height */}
+      {card.username && <div className="card-view-actions"><Button kind="secondary" wide onClick={() => platform.openLink(`https://t.me/${card.username}`)}>Написать @{card.username}</Button></div>}
     </Screen>
   );
 }

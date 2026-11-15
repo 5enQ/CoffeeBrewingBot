@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { tiltInfo } from '../data/tilt';
-import { getAppearance, markRoot, onAppearance } from '../appearance';
+import { activeStyle, getAppearance, markRoot, onAppearance } from '../appearance';
 import type { Platform } from './types';
 import { createWebPlatform, requestWakeLock } from './web';
 
@@ -55,7 +55,8 @@ function applyTheme() {
   const scheme: 'light' | 'dark' = tg().colorScheme;
   rememberParams(scheme, now);
   const want = look.theme === 'auto' ? scheme : look.theme;
-  const p = look.contrast ? null : want === scheme ? now : recalledParams(want);
+  // high contrast and a style of its own (the green monitor) use the app's palette, not Telegram's colors
+  const p = look.contrast || activeStyle() ? null : want === scheme ? now : recalledParams(want);
   markRoot(scheme);
   if (!p) {
     THEME_VARS.forEach((v) => root.removeProperty(v));

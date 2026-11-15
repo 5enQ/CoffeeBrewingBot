@@ -1219,6 +1219,7 @@ kbd { font: 600 12px/1 var(--font); background: var(--card); border: 1px solid v
 
 /* ---------- Profile card ---------- */
 .pcard-stage { padding: 10px 8px 18px; perspective: 900px; }
+.card-view-actions { display: flex; }
 .pcard-open { display: block; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; margin-bottom: 10px; }
 .pcard {
   --pc-fg: var(--fg); --pc-muted: var(--hint); --pc-line: rgba(0,0,0,0.08);
@@ -1776,3 +1777,107 @@ html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) 
 .aff-dot::before { content: ''; position: absolute; inset: -6px -2px; }
 .cup-line .cup { position: relative; }
 .cup-line .cup::before { content: ''; position: absolute; inset: -4px -3px; }
+
+/* ---------- «Фосфор»: the whole app as an old green-phosphor monitor (data/phosphor.ts) ----------
+   Turned on by the profile card «Фосфор» (found with the Konami code), or while a friend's card in it is open.
+   [data-theme] in the selectors: the style always sets the dark theme, and this outweighs the palettes above. */
+:root[data-style="phosphor"][data-theme] {
+  --bg: #050806; --card: #09110b; --fg: #8be39b; --hint: #64a872;
+  --accent: #8be39b; --accent-fg: #041006; --link: #c9ffd3; --danger: #ffb454;
+  --sep: rgba(139, 227, 155, 0.28); --star: #c9ffd3; --cherry: #c9ffd3; --edge: rgba(139, 227, 155, 0.45);
+  --accent-soft: rgba(139, 227, 155, 0.1); --hint-soft: rgba(139, 227, 155, 0.12); --fg-soft: rgba(139, 227, 155, 0.07);
+  --font: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --font-num: var(--font);
+  --phos-glow: 0 0 6px rgba(139, 227, 155, 0.38);
+  color-scheme: dark;
+}
+:root[data-style="phosphor"][data-theme][data-contrast="high"] {
+  --hint: #a6f0b3; --sep: rgba(139, 227, 155, 0.6); --edge: #8be39b; --phos-glow: none;
+}
+:root[data-style="phosphor"] body { text-shadow: var(--phos-glow); }
+:root[data-style="phosphor"] ::selection { background: #8be39b; color: #041006; text-shadow: none; }
+/* scan lines over everything; none in high contrast */
+:root[data-style="phosphor"]:not([data-contrast="high"]) body::after {
+  content: ""; position: fixed; inset: 0; z-index: 990; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.2) 2px 3px);
+}
+/* a terminal has no rounded corners */
+:root[data-style="phosphor"] *, :root[data-style="phosphor"] *::before, :root[data-style="phosphor"] *::after { border-radius: 0 !important; }
+/* photos in the screen's one color */
+:root[data-style="phosphor"] img { filter: grayscale(1) sepia(1) hue-rotate(68deg) saturate(2.4) brightness(0.9); }
+/* surfaces are outlined, not lifted */
+:root[data-style="phosphor"] :is(.group, .stats > div, .param-grid > div, .method-card, .recipe-tile, .step-now, .step-card, .stock-card, .dialog,
+  .rating-card, .rate-block, .method-menu, .wheel, .recipe-head, .recipe-block, .cva-card, .holiday-card, .drip-item, .pour-steps li, .profile-card,
+  .search, .badge-pick, .quick-methods button, .friends-rating, .detail-head, .toast, .snack) {
+  box-shadow: inset 0 0 0 1px var(--sep);
+}
+:root[data-style="phosphor"] .topbar { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--bg); }
+:root[data-style="phosphor"] .topbar h1 { text-transform: uppercase; font-size: 22px; letter-spacing: 0; font-weight: 700; }
+:root[data-style="phosphor"] .topbar h1::after { content: "█"; margin-left: 2px; animation: phos-blink 1.1s steps(1) infinite; }
+:root[data-style="phosphor"] .section h2::before { content: "== "; }
+:root[data-style="phosphor"] .btn-primary { text-transform: uppercase; text-shadow: none; }
+:root[data-style="phosphor"] .btn-secondary { background: transparent; box-shadow: inset 0 0 0 1px var(--sep); }
+:root[data-style="phosphor"] .chip.on, :root[data-style="phosphor"] .segmented button.on { background: var(--accent); color: var(--accent-fg); text-shadow: none; }
+:root[data-style="phosphor"] .segmented { box-shadow: inset 0 0 0 1px var(--sep); background: transparent; }
+:root[data-style="phosphor"] .switch span { box-shadow: inset 0 0 0 1px var(--sep); background: transparent; }
+:root[data-style="phosphor"] .switch span::after { background: var(--hint); box-shadow: none; }
+:root[data-style="phosphor"] .switch input:checked + span { background: var(--accent); }
+:root[data-style="phosphor"] .switch input:checked + span::after { background: var(--accent-fg); }
+:root[data-style="phosphor"] .tabbar { background: var(--bg); }
+:root[data-style="phosphor"] .tabbar button.on { text-shadow: none; }
+:root[data-style="phosphor"] .side-nav button.on { background: var(--accent); color: var(--accent-fg); text-shadow: none; }
+:root[data-style="phosphor"] .side-nav button.on svg { color: var(--accent-fg); }
+:root[data-style="phosphor"] .tabbar button svg, :root[data-style="phosphor"] .icon-btn svg { filter: drop-shadow(var(--phos-glow, none)); }
+@keyframes phos-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { :root[data-style="phosphor"] .topbar h1::after, .pcard-cursor, .phos-cursor { animation: none; } }
+:root[data-still] .pcard-cursor { animation: none; }
+:root[data-style="phosphor"][data-still] .topbar h1::after { animation: none; }
+
+/* the card itself */
+.pcard.base-phosphor, .theme-pick.base-phosphor {
+  --pc-fg: #8be39b; --pc-muted: #64a872; --pc-line: rgba(139, 227, 155, 0.28); --pc-chip: rgba(139, 227, 155, 0.1);
+  background: radial-gradient(120% 90% at 50% 40%, #0c140e, #030504); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  text-shadow: 0 0 6px rgba(139, 227, 155, 0.45);
+}
+.pcard.base-phosphor { border: 1px solid rgba(139, 227, 155, 0.4); box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.5); }
+/* the decorations' layer is clipped to the card's rounding: square in this style, or the card's corners show through */
+:root[data-style="phosphor"] .pcard-clip { clip-path: none; }
+.pcard.base-phosphor .pcard-name b { text-transform: uppercase; }
+.pcard.base-phosphor .pcard-avatar { background: transparent; color: #c9ffd3; box-shadow: inset 0 0 0 1px rgba(139, 227, 155, 0.5); border-radius: 0; }
+.pcard.base-phosphor img.pcard-avatar { filter: grayscale(1) sepia(1) hue-rotate(68deg) saturate(2.4) brightness(0.9); }
+.pcard-scan { position: absolute; inset: 0; background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.25) 2px 3px); }
+.pcard-prompt { opacity: 0.8; font-size: 13px; filter: none; color: #c9ffd3; }
+.pcard-cursor { animation: phos-blink 1.1s steps(1) infinite; }
+.theme-pick.base-phosphor::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.3) 2px 3px); }
+
+/* the old computer starting up (ui/PhosphorBoot.tsx) */
+.phos-boot { position: fixed; inset: 0; z-index: 1000; background: #000; display: grid; place-items: stretch; transition: opacity 0.45s ease; }
+.phos-boot.leaving { opacity: 0; }
+.phos-boot.calm { transition-duration: 0.2s; }
+.phos-tube {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
+  padding: calc(var(--inset-top) + 28px) max(20px, var(--gutter-r)) calc(var(--inset-bottom) + 24px) max(20px, var(--gutter-l));
+  background: radial-gradient(120% 90% at 50% 40%, #0c140e, #030504);
+  color: #8be39b; text-shadow: 0 0 7px rgba(139, 227, 155, 0.5);
+  font: 14px/1.6 ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  animation: phos-on 0.65s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.phos-tube::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.22) 2px 3px); }
+.phos-boot.calm .phos-tube { animation: none; }
+@keyframes phos-on {
+  0% { transform: scale(0, 0.004); filter: brightness(5); }
+  45% { transform: scale(1, 0.004); filter: brightness(4); }
+  100% { transform: scale(1, 1); filter: brightness(1); }
+}
+.phos-text { display: flex; flex-direction: column; gap: 2px; max-width: 560px; }
+.phos-title { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #c9ffd3; }
+.phos-line { display: flex; align-items: baseline; gap: 6px; }
+.phos-line i { flex: 1; min-width: 12px; border-bottom: 2px dotted rgba(139, 227, 155, 0.35); }
+.phos-line b, .phos-title b { font-weight: 700; }
+.phos-bar { margin-top: 10px; height: 14px; box-shadow: inset 0 0 0 1px #8be39b; padding: 3px; }
+.phos-bar span { display: block; height: 100%; width: 100%; background: repeating-linear-gradient(to right, #8be39b 0 7px, transparent 7px 9px); transform-origin: left; animation: phos-load 0.8s steps(16) both; }
+.phos-boot.calm .phos-bar span { animation: none; }
+@keyframes phos-load { from { transform: scaleX(0); } }
+.phos-prompt { margin-top: 10px; color: #c9ffd3; }
+.phos-cursor { animation: phos-blink 1.1s steps(1) infinite; }
+.phos-hint { color: #64a872; font-size: 12px; }

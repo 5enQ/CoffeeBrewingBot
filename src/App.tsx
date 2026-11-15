@@ -27,6 +27,7 @@ import { platform, sessionExpired } from './platform';
 import { resolveStartParam } from './data/share';
 import { loadCard } from './data/card';
 import { CardEditScreen, CardShareScreen, CardViewScreen } from './screens/CardScreens';
+import { PhosphorBoot, usePhosphor } from './ui/PhosphorBoot';
 import { t } from './i18n';
 
 function renderRoute(r: Route) {
@@ -77,6 +78,8 @@ function Shell() {
   useTabPill(navRef, pillRef, `${tab}-${stack.length === 0}-${mode}-${ready}`);
 
   useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
+  // «Фосфор»: the style follows the profile card; the Konami code on the profile tab opens it
+  const phosphor = usePhosphor(ready && tab === 'profile');
   // Telegram on a computer keeps the app open for days; after a day the server refuses its signature and new brews
   // stop reaching it (stats, badges, the owner's numbers). Say so once, when the app comes back into view.
   useEffect(() => {
@@ -159,7 +162,7 @@ function Shell() {
       <DepthCtx.Provider value={i + 1}>{renderRoute(r)}</DepthCtx.Provider>
     </div>
   ));
-  const overlays = <><HolidayLayer /><DialogHost /><AchievementToast /><ToastHost /><LiveRegion /></>;
+  const overlays = <><HolidayLayer /><DialogHost /><AchievementToast /><ToastHost /><LiveRegion />{phosphor.boot && <PhosphorBoot onDone={phosphor.endBoot} />}</>;
 
   if (mode === 'desktop') {
     return (

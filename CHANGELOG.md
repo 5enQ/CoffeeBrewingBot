@@ -6,9 +6,11 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 ## Unreleased
 
 ### Added
+- «Фосфор», a secret style: typed on the profile tab with a keyboard, the Konami code (↑ ↑ ↓ ↓ ← → ← → B A) starts an old computer — the tube lights up, the BIOS lists your grinder, dripper and shelf, BREWBOOK.EXE loads — and the whole app turns into a green-phosphor monitor. It is a profile card background: choosing another card turns the style off, choosing «Фосфор» again turns it on (Профиль → Настроить → Фон). A friend who opens a shared card in it sees the profile in the same style; their app turns back on leaving. Found once, it is there on every device of the profile. Reduced motion: no flash, a short fade; any key or tap skips the start-up.
 - Scanning a link to an approved roaster site whose page the rules read poorly: the server asks Workers AI to read it once and keeps the result in the shared catalog — the next scan of that page fills the pack from the catalog, no model call. The pack says «разобрал ИИ — проверьте поля» until someone saves it. At most 40 pages a day for everyone and 10 per caller (the free allowance).
 
 ### Fixed
+- A friend's shared profile: the «Написать @…» button was about 250 px tall; it is an ordinary button again.
 - Scanner: a code that is not from a coffee pack — a Wi‑Fi network, a business card, a phone or email, a 2FA key, a payment QR or a СБП link, a receipt, a bank, Госуслуги, a shared document, a map or a video call — says what it is and saves nothing; nothing is sent to the server. The server ignores such links too (an older app): no site is queued for approval. A long text or several lines with no coffee data no longer land in «Штрихкод», and the message no longer promises it goes to the shared catalog.
 - Privacy: the owner's notice and list of new roaster sites show the page without its query and fragment (they may carry tokens). A social, payment or document link is never used as a catalog key.
 - The tab bar's bubble shook when switching tabs (seen in Telegram on a Mac): it moved by a transform run off the main thread while its width changed on it, so while the new tab was rendering the far edge shot past the tab and jumped back. It now moves by left and width together.

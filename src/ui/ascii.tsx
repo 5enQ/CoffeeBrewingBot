@@ -61,3 +61,9 @@ export const pack = (label: string) => {
 |  .:.  |
 |_______|`;
 };
+
+/** a star written in text (an average «4 ★»): an asterisk on the green monitor */
+export const starChar = () => (isAscii() ? '*' : '★');
+export function StarChar() {
+  return <>{useAscii() ? '*' : '★'}</>;
+}

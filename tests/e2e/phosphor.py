@@ -57,6 +57,9 @@ async def main():
                    back: null, star: css(v('.star-fill'), '::before'), icon: getComputedStyle(document.querySelector('.method-card .method-icon')).display }; }''')
         check(sym['hello'] and sym['tab'] == '"F1"' and '=====' in (sym['head'] or '') and sym['star'] == '"*"' and sym['icon'] == 'none',
               f'a cup in symbols, F-key tabs, «== … ====» headings, * stars, methods as a text menu {sym}')
+        await pg.click('.tabbar >> text=Дневник'); await pg.wait_for_timeout(600)
+        st = await pg.locator('.stat-star:visible').all_inner_texts()
+        check(st == ['*'], f'the average in the journal is written with *, not ★ ({st})')
         for tab in ('Заварить', 'Дневник', 'Полка'):
             await pg.click(f'.tabbar >> text={tab}'); await pg.wait_for_timeout(600)
             await pg.screenshot(path=str(OUT / f'phosphor-{tab}.png'))

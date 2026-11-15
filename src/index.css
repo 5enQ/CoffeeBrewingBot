@@ -1907,6 +1907,7 @@ html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) 
 :root[data-style="phosphor"] .star::before { content: "-"; color: var(--sep); }
 :root[data-style="phosphor"] .star-fill { inset: 0 auto 0 0; overflow: hidden; }
 :root[data-style="phosphor"] .star-fill::before { content: "*"; color: var(--star); }
+:root[data-style="phosphor"] .stat-star { font-size: 0.8em; vertical-align: 0.2em; color: var(--star); font-weight: 700; }
 :root[data-style="phosphor"] .stars { gap: 0; font-size: max(14px, var(--stars-size, 15px)); }
 :root[data-style="phosphor"] .stars.editable { gap: 6px; text-shadow: 0 0 10px rgba(139, 227, 155, 0.7); }
 :root[data-style="phosphor"] .stars.editable .star::before { content: "[ ]"; color: var(--hint); }

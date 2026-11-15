@@ -5,6 +5,10 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+### Fixed
+- Telegram on a computer (macOS, Windows, the web versions) in full screen: no black band over the app. Telegram reports room for its buttons but draws them in its own bar above the app, so that room is no longer kept empty.
+- «Фосфор»: the character frames sit inside each box's edge, so framed and unframed boxes and buttons line up; the profile card has its bottom edge (it was covered by the card's own layers) and stands in line with the buttons under it; the [+] and other word-buttons sit level with their heading; every icon button known by its icon is written as a word ([+], [DEL], [SND]…), the plus of «+ Кофемашина» and a section's fold arrow too.
+
 ## v1.7.5 — Green Screen (2026-11-15)
 
 ### Added

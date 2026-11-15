@@ -129,6 +129,22 @@ async def main():
         await pn.keyboard.press('F3'); await pn.wait_for_timeout(300)
         check('Заварить' in (await pn.evaluate(on) or ''), 'in the plain style F-keys stay the browser’s')
 
+        # frames sit inside the box edge (a framed box lines up with an unframed one), the card has all four sides
+        pf, ef = await page(b, width=390, height=844, db={**DB, 'profile': {**DB['profile'], 'secrets': ['phosphor'], 'cardTheme': 'phosphor'}})
+        await pf.click('.tabbar >> text=Профиль'); await pf.wait_for_timeout(600)
+        geo = await pf.evaluate("""() => { const v = (s) => [...document.querySelectorAll(s)].find((e) => e.getClientRects().length), c = getComputedStyle(v('.pcard')), g = getComputedStyle(v('.group'));
+          const card = v('.pcard').getBoundingClientRect(), btn = v('.my-card-actions .btn').getBoundingClientRect();
+          return [g.borderImageOutset, c.borderBottomWidth, c.borderImageSource.slice(0, 20), Math.round(card.left - btn.left)]; }""")
+        check(geo[0] == '0' and geo[1] == '10px' and geo[2].startswith('url(') and geo[3] == 0, f'frames inside the edges, the card framed on all sides and lined up with the buttons {geo}')
+        check(not ef, f'no page errors (frames) {ef[:3]}')
+
+        # Telegram on a Mac in full screen: its bar is above the app, the room it reports is not left empty
+        mac = TG.replace("platform: 'ios'", "platform: 'macos'") + "\ndocument.addEventListener('DOMContentLoaded', () => document.documentElement.style.setProperty('--tg-content-safe-area-inset-top', '100px'));"
+        pm, em = await page(b, width=1280, height=800, db=DB, init=mac)
+        await mock(pm, []); await pm.reload(); await pm.wait_for_timeout(900)
+        top = await pm.evaluate("() => [document.documentElement.dataset.tgos, Math.round(document.querySelector('.topbar, .side').getBoundingClientRect().top)]")
+        check(top == ['macos', 0], f'no empty band over the app in Telegram for macOS {top}')
+
         # reduced motion: no tube flash or typing, a short fade; any key skips
         pr, er = await page(b, db=DB)
         await pr.emulate_media(reduced_motion='reduce')

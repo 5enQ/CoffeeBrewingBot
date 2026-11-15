@@ -96,6 +96,8 @@ export function createTelegramPlatform(): Platform {
       await loadSdk();
       const app = tg();
       app.ready();
+      // the client's OS: on a computer Telegram draws its full-screen bar above the app, not over it (see index.css)
+      document.documentElement.dataset.tgos = String(app.platform || '');
       app.expand();
       if (can('7.7')) app.disableVerticalSwipes(); // swiping down does not close the app while scrolling
       applyTheme();

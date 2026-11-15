@@ -77,7 +77,8 @@ const UI_PATHS: Record<UiIcon, React.ReactNode> = {
 
 export function Icon({ name, size = 22, filled = false }: { name: UiIcon; size?: number; filled?: boolean }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...P} strokeWidth={1.8} fill={filled ? 'currentColor' : 'none'}>
+    // data-icon: the «Фосфор» style writes some icons as words ([+], [DEL]) and finds them by it
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" data-icon={name} {...P} strokeWidth={1.8} fill={filled ? 'currentColor' : 'none'}>
       {UI_PATHS[name]}
     </svg>
   );

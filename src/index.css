@@ -22,6 +22,12 @@
   --gutter-r: max(16px, env(safe-area-inset-right, 0px));
   color-scheme: light;
 }
+/* Telegram on a computer (macOS, Windows/Linux, the web versions) in full screen still reports the room its own
+   buttons take at the top, but draws them in a bar of its own above the app: that room was a black band. */
+:root:is([data-tgos="macos"], [data-tgos="tdesktop"], [data-tgos="weba"], [data-tgos="webk"], [data-tgos="web"], [data-tgos="unigram"]) {
+  --inset-top: env(safe-area-inset-top, 0px);
+  --inset-bottom: env(safe-area-inset-bottom, 0px);
+}
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0f1311; --card: #1a201c; --fg: #e6ebe7; --hint: #8a958d;
@@ -1956,18 +1962,31 @@ html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) 
 :root[data-style="phosphor"] :is(.tabbar, .side-nav) button:nth-of-type(4)::before { content: "F4"; }
 :root[data-style="phosphor"] .side-logo, :root[data-style="phosphor"] .side-me .avatar { display: none; }
 /* icon buttons say what they do */
-:root[data-style="phosphor"] :is(.icon-btn, .round-btn):is([aria-label="Назад"], [aria-label="Закрыть"], [aria-label^="Удалить"], [aria-label^="Поделиться"],
-  [aria-label^="Изменить"], [aria-label^="Добавить"], [aria-label="Сбросить"], [aria-label^="Готово"], [aria-label^="Скопировать"], [aria-label="Свой метод"]) svg { display: none; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg:is([data-icon="back"], [data-icon="close"], [data-icon="trash"], [data-icon="share"], [data-icon="edit"],
+  [data-icon="plus"], [data-icon="reset"], [data-icon="check"], [data-icon="copy"], [data-icon="sound"], [data-icon="scan"], [data-icon="more"], [data-icon="undo"])) > svg { display: none; }
+/* ::before of an icon button is otherwise an invisible, absolutely placed hit area: here it is the label, in the flow
+   (centered like the icon was), and the button's own 44 px is the target */
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn)::before { position: static; inset: auto; }
 :root[data-style="phosphor"] :is(.icon-btn, .round-btn) { width: auto; min-width: 44px; padding-inline: 6px; font-weight: 700; font-size: 14px; white-space: nowrap; }
-:root[data-style="phosphor"] :is(.icon-btn, .round-btn)[aria-label="Назад"]::before { content: "<ESC"; }
-:root[data-style="phosphor"] :is(.icon-btn, .round-btn)[aria-label="Закрыть"]::before { content: "[X]"; }
-:root[data-style="phosphor"] :is(.icon-btn, .round-btn)[aria-label^="Удалить"]::before { content: "[DEL]"; }
-:root[data-style="phosphor"] :is(.icon-btn, .round-btn)[aria-label^="Поделиться"]::before { content: "[SHARE]"; }
-:root[data-style="phosphor"] :is(.icon-btn, .round-btn)[aria-label^="Изменить"]::before { content: "[EDIT]"; }
-:root[data-style="phosphor"] :is(.icon-btn, .round-btn):is([aria-label^="Добавить"], [aria-label="Свой метод"])::before { content: "[+]"; }
-:root[data-style="phosphor"] :is(.icon-btn, .round-btn)[aria-label="Сбросить"]::before { content: "[R]"; }
-:root[data-style="phosphor"] :is(.icon-btn, .round-btn)[aria-label^="Готово"]::before { content: "[OK]"; }
-:root[data-style="phosphor"] :is(.icon-btn, .round-btn)[aria-label^="Скопировать"]::before { content: "[COPY]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="back"])::before { content: "<ESC"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="close"])::before { content: "[X]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="trash"])::before { content: "[DEL]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="share"])::before { content: "[SHARE]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="edit"])::before { content: "[EDIT]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="plus"])::before { content: "[+]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="reset"])::before { content: "[R]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="check"])::before { content: "[OK]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="copy"])::before { content: "[COPY]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="sound"])::before { content: "[SND]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="scan"])::before { content: "[SCAN]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="more"])::before { content: "[...]"; }
+:root[data-style="phosphor"] :is(.icon-btn, .round-btn):has(> svg[data-icon="undo"])::before { content: "[UNDO]"; }
+/* a plus inside a chip («+ Кофемашина») and the fold arrow of a section: characters too */
+:root[data-style="phosphor"] .chip > svg[data-icon="plus"] { display: none; }
+:root[data-style="phosphor"] .chip:has(> svg[data-icon="plus"])::before { content: "+ "; white-space: pre; }
+:root[data-style="phosphor"] .section-fold > svg { display: none; }
+:root[data-style="phosphor"] .section-fold::after { content: ">"; margin-left: 6px; color: var(--hint); }
+:root[data-style="phosphor"] .section-fold[aria-expanded="true"]::after { content: "v"; }
 :root[data-style="phosphor"] .step-hold::before, :root[data-style="phosphor"] .step-skip::before { content: "< "; white-space: pre; }
 :root[data-style="phosphor"] .step-hold::after { content: " >"; white-space: pre; }
 :root[data-style="phosphor"] .step-skip svg { display: none; }
@@ -2004,8 +2023,8 @@ html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) 
 .pcard.base-phosphor { border: 3px double rgba(139, 227, 155, 0.6); }
 
 /* frames of characters: +----+ and | drawn as text in a small picture, laid around a box by border-image
-   (10 px a character; it reaches 4 px outward and 5 px into the padding, so nothing on the screen moves) */
-:root[data-style="phosphor"] {
+   (10 px a character, drawn inside the box's edge, so a framed box lines up with an unframed one beside it) */
+:root {
   --phos-frame: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' font-family='ui-monospace,Menlo,Consolas,monospace' font-size='15' font-weight='700' fill='%238be39b' fill-opacity='.55' text-anchor='middle' dominant-baseline='central'%3E%3Ctext x='5' y='5'%3E+%3C/text%3E%3Ctext x='15' y='5'%3E-%3C/text%3E%3Ctext x='25' y='5'%3E+%3C/text%3E%3Ctext x='5' y='15'%3E|%3C/text%3E%3Ctext x='25' y='15'%3E|%3C/text%3E%3Ctext x='5' y='25'%3E+%3C/text%3E%3Ctext x='15' y='25'%3E-%3C/text%3E%3Ctext x='25' y='25'%3E+%3C/text%3E%3C/svg%3E");
   /* the own card and dialogs: a double frame, #====# and H */
   --phos-frame2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' font-family='ui-monospace,Menlo,Consolas,monospace' font-size='15' font-weight='700' fill='%238be39b' fill-opacity='.7' text-anchor='middle' dominant-baseline='central'%3E%3Ctext x='5' y='5'%3E%23%3C/text%3E%3Ctext x='15' y='5'%3E=%3C/text%3E%3Ctext x='25' y='5'%3E%23%3C/text%3E%3Ctext x='5' y='15'%3EH%3C/text%3E%3Ctext x='25' y='15'%3EH%3C/text%3E%3Ctext x='5' y='25'%3E%23%3C/text%3E%3Ctext x='15' y='25'%3E=%3C/text%3E%3Ctext x='25' y='25'%3E%23%3C/text%3E%3C/svg%3E");
@@ -2016,13 +2035,19 @@ html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) 
 :root[data-style="phosphor"] :is(.group, .stats > div, .param-grid > div, .recipe-tile, .step-now, .step-card, .stock-card,
   .rating-card, .rate-block, .method-menu, .wheel, .recipe-head, .recipe-block, .cva-card, .holiday-card, .drip-item, .pour-steps li, .profile-card,
   .search, .badge-pick, .quick-methods button, .friends-rating, .detail-head, .bean-card, .method-card.wide,
-  .btn-secondary, .segmented, .step-hold:not(.on), .step-skip, .theme-pick, .chip:not(.on)) {
-  box-shadow: none; border: 1px solid transparent; border-image: var(--phos-frame) 10 / 10px / 4px round;
+  .btn-secondary, .segmented, .step-hold:not(.on), .step-skip, .chip:not(.on)) {
+  box-shadow: none; border: 1px solid transparent; border-image: var(--phos-frame) 10 / 10px / 0 round;
 }
-:root[data-style="phosphor"] :is(.dialog, .toast, .snack, .pcard.base-phosphor) {
-  box-shadow: none; border: 1px solid transparent; border-image: var(--phos-frame2) 10 / 10px / 4px round;
+:root[data-style="phosphor"] :is(.dialog, .toast, .snack) {
+  box-shadow: none; border: 1px solid transparent; border-image: var(--phos-frame2) 10 / 10px / 0 round;
 }
+/* the card's frame is its real border: a 10 px border the card's own layers (they fill the padding box) leave alone,
+   so all four sides show; the padding gives back what the border takes */
+.pcard.base-phosphor { border: 10px solid transparent; border-image: var(--phos-frame2) 10 / 10px / 0 round; padding: 9px 9px 5px; }
 /* a box inside a framed box keeps its own frame; the rows of a framed list need no lines of their own */
 :root[data-style="phosphor"] .group > .row + .row, :root[data-style="phosphor"] .group > * + * { border-top-color: var(--sep); }
 
 .placeholder-art { font-size: 14px; margin-bottom: 14px; text-shadow: 0 0 8px rgba(139, 227, 155, 0.6); }
+
+/* the card stands in the column like everything else: no side room kept for a shadow it does not have here */
+:root[data-style="phosphor"] .pcard-stage { padding-inline: 0; }

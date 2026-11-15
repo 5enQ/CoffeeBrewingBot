@@ -62,6 +62,7 @@ button{font:inherit}
 #q .ln{display:flex;white-space:pre}#q .f{flex:1;overflow:hidden;white-space:nowrap}
 #q pre{margin:0;font:inherit;white-space:pre}#q #qt{font-size:14px;line-height:1;letter-spacing:-.04em}
 #q .two{display:flex;gap:14px;align-items:center;margin:4px 0}
+#q i{font-style:normal;text-shadow:0 0 6px rgba(255,170,80,.5)}#q .c1{color:#c97a2e}#q .c2{color:#e39a47}#q .c3{color:#ffbf6b}#q .c4{color:#fff0c8}
 #q button{background:none;border:0;padding:6px 0;color:#8be39b;font:700 12px ui-monospace,Menlo,monospace;text-shadow:inherit;flex:1}
 #q .bq{display:flex;gap:8px;margin-top:6px}
 </style>
@@ -96,8 +97,8 @@ function rep(c,n){return new Array(n+1).join(c)}
 function jar(v,t){var H=6,n=Math.round(v*H),o=[" .-------."," |=======|"];
 for(var i=0;i<H;i++){var b=H-1-i,row;
 if(b>=n)row=rep(" ",7);
-else if(b==n-1)row=t%2?"~-~-~-~":"-~-~-~-";
-else{var c=b<n*.34?"#":b<n*.67?"%":":";row=rep(c,7);if((t+b*3)%5==0){var k=(t*3+b)%7;row=row.slice(0,k)+"o"+row.slice(k+1)}}
+else if(b==n-1)row='<i class="c3">'+(t%2?"~-~-~-~":"-~-~-~-")+"</i>";
+else{var c=b<n*.34?"#":b<n*.67?"%":":",r=rep(c,7);if((t+b*3)%5==0){var k=(t*3+b)%7;r=r.slice(0,k)+'<i class="c4">o</i>'+r.slice(k+1)}row='<i class="'+(c=="#"?"c1":c=="%"?"c2":"c3")+'">'+r+"</i>"}
 o.push(" |"+row+"|")}o.push(" '-------'");return o.join(N)}
 function lead(k,v){return '<div class="ln"><span class="k">'+k+' </span><span class="f o">'+rep(".",60)+'</span><span> '+v+'</span></div>'}
 function esc(s){return String(s).replace(/[&<>]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})}
@@ -120,9 +121,9 @@ $("bb").style.display=live?"":"none";$("bd").textContent=btn;
 }else{
 $("qp").textContent="C:"+String.fromCharCode(92)+"BREWBOOK> COLDBREW.EXE";$("qc").style.visibility=(tk>>1)%2?"hidden":"";
 $("qe").textContent="== "+nm+" - "+E[st]+" ";
-$("qj").textContent=jar(lvl,tk>>1);
+$("qj").innerHTML=jar(lvl,tk>>1);
 $("qt").textContent=st=="run"?big(dur(left)):big1.toUpperCase().replace(" ✓"," [OK]");
-$("qs").textContent=sub.toUpperCase();
+$("qs").textContent=sub.toUpperCase().replace(" · "," - ");
 var W=26,c=Math.round(k*W);$("qb").innerHTML=(c>=W?rep("=",W):c?rep("=",c-1)+"&gt;":"")+'<span class="o">'+rep(".",W-c)+"</span>";$("qn").textContent="] "+Math.round(k*100)+"%";
 $("ql").innerHTML=lead("ЗАЛИТО",esc(hm(d.s)))+(st=="run"||st=="pause"?lead("ГОТОВО",esc(hm(d.e).toUpperCase())):"")+(d.r?lead("РЕЦЕПТ",esc(d.r.replace("→","->"))):"")+(d.b?lead("ЗЕРНО",esc(d.b.toUpperCase())):"");
 $("qq").style.display=live?"":"none";$("qd").textContent=st=="ready"?"[ ПРОЦЕДИЛ ]":"[ ПРОЦЕДИТЬ ]";

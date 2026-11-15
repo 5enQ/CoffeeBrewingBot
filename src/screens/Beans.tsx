@@ -131,9 +131,11 @@ export function Beans() {
     setScan(false);
     track('pack.lookup');
     const r = await lookupCode(code, beans);
+    if (r.kind === 'foreign') { toast(foreignNote(r.what)); return; }
     if (r.existing) push({ name: 'bean', id: r.existing.id });
     else push({ name: 'beanEdit', bean: mergeEmpty(emptyBean(), r.patch), isNew: true });
     if (r.kind === 'social') toast(SOCIAL_NOTE);
+    if (r.kind === 'text') toast(textNote(!!r.patch.barcode));
   };
 
   const list = q
@@ -405,6 +407,10 @@ export function BeanDetail({ id }: { id: string }) {
 const COUNTRIES = ['Эфиопия', 'Кения', 'Руанда', 'Бурунди', 'Танзания', 'Уганда', 'Колумбия', 'Бразилия', 'Перу', 'Эквадор', 'Боливия', 'Коста-Рика', 'Панама', 'Гватемала', 'Гондурас', 'Сальвадор', 'Никарагуа', 'Мексика', 'Йемен', 'Индонезия', 'Индия', 'Вьетнам', 'Китай', 'Папуа — Новая Гвинея'];
 
 /** a QR leading to the roaster's Instagram, channel or link page: saved as the link, nothing to fill from it */
+const foreignNote = (what?: string) => (what ? `Это ${what}, а не код с пачки кофе` : 'Это не код с пачки кофе') + ' — ничего не сохранил.';
+const textNote = (kept: boolean) => kept
+  ? 'Данных о кофе в этом коде нет. Сохранил его в поле «Штрихкод», остальное заполните вручную.'
+  : 'Данных о кофе в этом коде нет — ничего не сохранил. Заполните пачку вручную.';
 const SOCIAL_NOTE = 'Это ссылка на соцсеть обжарщика — данных о кофе в ней нет. Сохранил её в поле «Ссылка», остальное заполните вручную.';
 
 /** what a repeat pack keeps from the last one, in one line */
@@ -481,9 +487,15 @@ export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew
         return;
       }
     }
+    if (r.kind === 'foreign') { setStatus(foreignNote(r.what)); return; }
     if (r.kind === 'social') {
       setB((x) => ({ ...x, link: x.link || r.patch.link || '' }));
       setStatus(SOCIAL_NOTE);
+      return;
+    }
+    if (r.kind === 'text') {
+      if (r.patch.barcode) setB((x) => ({ ...x, barcode: r.patch.barcode ?? '' }));
+      setStatus(textNote(!!r.patch.barcode));
       return;
     }
     const before = b;

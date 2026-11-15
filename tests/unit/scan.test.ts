@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { gtinOf, isSocialLink, lookupCode } from '../../src/data/lookup';
+import { catalogKeys, gtinOf, isSocialLink, lookupCode } from '../../src/data/lookup';
+import { bareUrl, foreignCode } from '../../worker/src/notpack';
 import { pickCode } from '../../src/ui/Scanner';
 import type { Bean } from '../../src/data/store';
 
@@ -59,5 +60,60 @@ describe('several codes in the frame', () => {
     expect(pickCode([{ rawValue: 'LBL-1', format: 'code_128' }, { rawValue: '4607000001234', format: 'ean_13' }])).toBe('4607000001234');
     expect(pickCode([{ rawValue: 'LBL-1', format: 'code_128' }, { rawValue: 'https://roaster.ru/x', format: 'qr_code' }])).toBe('https://roaster.ru/x');
     expect(pickCode([])).toBeNull();
+  });
+});
+
+describe('codes that are not from a coffee pack', () => {
+  const cases: [string, string][] = [
+    ['WIFI:T:WPA;S:Home;P:secret123;;', 'код сети Wi‑Fi'],
+    ['BEGIN:VCARD\nVERSION:3.0\nFN:Иван\nEND:VCARD', 'визитка'],
+    ['MECARD:N:Иван;TEL:+79990000000;;', 'визитка'],
+    ['tel:+79990000000', 'номер телефона'],
+    ['mailto:a@b.ru', 'адрес почты'],
+    ['geo:55.75,37.61', 'место на карте'],
+    ['otpauth://totp/Bank:me?secret=ABC', 'ключ двухфакторной защиты'],
+    ['ST00012|Name=ООО Ромашка|PersonalAcc=40702810000000000000|Sum=10000', 'платёжный QR-код'],
+    ['t=20261115T1803&s=450.00&fn=7380440700000000&i=1234&fp=123456&n=1', 'QR-код с чека'],
+    ['https://qr.nspk.ru/AD10006M8KH234?type=02&bank=100000000111&sum=45000', 'ссылка на оплату или банк'],
+    ['https://www.gosuslugi.ru/covid-cert/verify/123', 'ссылка на госуслуги'],
+    ['https://docs.google.com/document/d/abc/edit?usp=sharing', 'ссылка на документ или файл'],
+    ['https://disk.yandex.ru/d/abc', 'ссылка на документ или файл'],
+    ['https://yandex.ru/maps/-/CDabc', 'ссылка на карту'],
+    ['https://maps.app.goo.gl/xyz', 'ссылка на карту'],
+    ['https://zoom.us/j/123?pwd=x', 'ссылка на видеовстречу'],
+  ];
+  it('names what it is', () => {
+    for (const [c, what] of cases) expect(foreignCode(c), c).toBe(what);
+  });
+  it('a pack’s own codes pass', () => {
+    for (const c of ['4607000001234', 'https://tasty-coffee.com/catalog/ethiopia?id=5', 'https://yandex.ru/search?text=coffee', 'Страна: Эфиопия; Обработка: мытая', 'LOT-2026-114', '{"country":"Кения"}'])
+      expect(foreignCode(c), c).toBeNull();
+  });
+  it('nothing is saved and nothing leaves the phone', async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    for (const [c, what] of cases) {
+      const r = await lookupCode(c, [{ id: 'x', barcode: c } as Bean]);
+      expect(r.kind, c).toBe('foreign');
+      expect(r.what).toBe(what);
+      expect(r.patch).toEqual({});
+      expect(r.existing).toBeUndefined();
+    }
+    expect(fetch).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+  it('a short code with no coffee data is kept, a long text is not', async () => {
+    expect((await lookupCode('LOT-2026-114', [])).patch).toEqual({ barcode: 'LOT-2026-114' });
+    expect((await lookupCode('Спасибо, что выбрали нашу обжарку! Подписывайтесь на рассылку и получите скидку', [])).patch).toEqual({});
+    expect((await lookupCode('строка один\nстрока два', [])).patch).toEqual({});
+  });
+  it('a social, payment or document link is never a catalog key', () => {
+    expect(catalogKeys({ link: 'https://instagram.com/roaster', barcode: '' }).url).toBeUndefined();
+    expect(catalogKeys({ link: 'https://docs.google.com/x', barcode: '' }).url).toBeUndefined();
+    expect(catalogKeys({ link: 'https://roaster.ru/kenya', barcode: '' }).url).toBe('https://roaster.ru/kenya');
+  });
+  it('the owner sees the site and page only, never the query that may carry a token', () => {
+    expect(bareUrl('https://shop.ru/p/kenya?token=abc#x')).toBe('https://shop.ru/p/kenya');
+    expect(bareUrl('nope')).toBe('');
   });
 });

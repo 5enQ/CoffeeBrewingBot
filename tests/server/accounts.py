@@ -213,5 +213,16 @@ for _ in range(25):
 ok(st.get('pending') is None and st['last']['state'] in ('sent', 'failed'), f'the alarm tries to send the bot message when the time comes ({st["last"]["state"]})')
 ok(st['last']['state'] == 'failed' and st['last']['detail'], f'the result is kept with Telegram\'s reason (fake token here: {st["last"]["detail"]})')
 
+# scanned codes that are not a roaster's shop: no site is queued, the owner never sees a private link
+import urllib.parse
+q = lambda u: get('/lookup?url=' + urllib.parse.quote(u, safe=''))
+for u in ['https://qr.nspk.ru/AD1000?sum=45000', 'https://docs.google.com/document/d/secret/edit', 'https://instagram.com/roaster']:
+    ok(q(u) == {'source': 'none'}, f'a payment, document or social link gets nothing and is not queued ({u.split("/")[2]})')
+r = q('https://new-roaster.example/coffee/kenya?utm=1&token=abc')
+ok(r.get('pending') is True, f'a new shop is queued for approval ({r})')
+hosts = {x['host']: x for x in post('/admin', {'initData': A, 'action': 'list'})['sites']}
+ok(not ({'qr.nspk.ru', 'docs.google.com', 'instagram.com'} & set(hosts)), 'no payment, document or social site in the owner\'s list')
+ok(hosts.get('new-roaster.example', {}).get('sample') == 'https://new-roaster.example/coffee/kenya', f'the owner sees the page without its query ({hosts.get("new-roaster.example", {}).get("sample")})')
+
 print('\n' + (f'{len(FAILS)} check(s) failed' if FAILS else 'all checks passed'))
 sys.exit(1 if FAILS else 0)

@@ -17,6 +17,7 @@ import { RARE_IDS } from '../../src/data/rare.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Accounts, sendReminder } from './accounts';
 import { CoffeeCatalog, cleanCoffee, keysFor, type Coffee, type Found, type SiteStatus } from './catalog';
+import { bareUrl, foreignCode, isSocialLink } from './notpack';
 import { aiCoffee, type AiBinding } from './ai';
 import { fetchPage } from './fetch';
 import { PARSER_VERSION, parsePage } from './parse';
@@ -220,6 +221,8 @@ export default {
       const stale = found && found.source === 'page' && found.confirms === 0 && !found.coffee.ai && (found.pv ?? 0) < PARSER_VERSION && pageUrl;
       if (found && !stale) return json(publicFound(found), 200, h);
       if (!pageUrl) return json({ source: 'none' }, 200, h);
+      // a payment, a document, a map or a social page is never a shop: not queued for approval, the owner never sees it
+      if (foreignCode(pageUrl) || isSocialLink(pageUrl)) return json({ source: 'none' }, 200, h);
       // not in the catalog — open the roaster page, but only on approved sites
       const gate = await catalog.siteGate(pageUrl);
       if (gate === 'new') ctx.waitUntil(notifyOwners(env, pageUrl));
@@ -259,7 +262,8 @@ export default {
     if (req.method === 'POST' && url.pathname === '/catalog') {
       let body: { initData?: string; url?: string; code?: string; coffee?: unknown };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
-      const keys = keysFor(body.url, body.code);
+      const keyUrl = body.url && !foreignCode(body.url) && !isSocialLink(body.url) ? body.url : undefined;
+      const keys = keysFor(keyUrl, body.code);
       if (!keys.length) return json({ error: 'bad request' }, 400, h);
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
@@ -595,7 +599,7 @@ async function telegramUpdate(req: Request, env: Env): Promise<Response> {
 /** Tell the owner that a scan hit a site that is not connected yet */
 async function notifyOwners(env: Env, url: string) {
   const host = new URL(url).hostname;
-  const text = `Новый сайт обжарщика: ${host}\n${url}\n\nОдобрить или отклонить: Профиль → Сайты обжарщиков.`;
+  const text = `Новый сайт обжарщика: ${host}\n${bareUrl(url)}\n\nОдобрить или отклонить: Профиль → Сайты обжарщиков.`;
   await Promise.all(owners(env).map((id) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: Number(id), text, link_preview_options: { is_disabled: true } }),

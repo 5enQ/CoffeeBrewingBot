@@ -2,10 +2,13 @@ import { RATINGS_API } from '../config';
 import { platform } from '../platform';
 import { newDripItem, uid, type Bean } from './store';
 import { SCALES } from './scales';
+import { foreignCode, isSocialLink } from '../../worker/src/notpack';
 
 export interface LookupResult {
   code: string;
-  kind: 'ean' | 'qr-data' | 'url' | 'social' | 'text';
+  kind: 'ean' | 'qr-data' | 'url' | 'social' | 'text' | 'foreign';
+  /** kind 'foreign': what the code is instead (a Wi‑Fi network, a payment…) — nothing is saved or sent */
+  what?: string;
   existing?: Bean;
   patch: Partial<Bean>;
   source?: string;
@@ -79,7 +82,8 @@ export function beanToCoffee(b: Bean): Coffee {
 
 /** Catalog keys of a pack: QR link and barcode */
 export function catalogKeys(b: Pick<Bean, 'link' | 'barcode'>) {
-  const url = [b.link, b.barcode].find((x) => /^https?:\/\//i.test(x ?? ''));
+  // a social, payment or document link is not a key of the lot (and is not sent anywhere)
+  const url = [b.link, b.barcode].find((x) => /^https?:\/\//i.test(x ?? '') && !isSocialLink(x!) && !foreignCode(x!));
   const code = /^\d{8,14}$/.test(b.barcode ?? '') ? b.barcode : undefined;
   return { url, code };
 }
@@ -201,15 +205,14 @@ export function gtinOf(raw: string): string | null {
   return g.startsWith('0') ? g.slice(1) : g;
 }
 
-/** links to a roaster's social pages, chats and link hubs: no coffee data there, and they are not shop pages */
-const SOCIAL = /^(?:[a-z0-9-]+\.)*(?:instagram\.com|instagr\.am|t\.me|telegram\.me|telegram\.dog|vk\.com|vk\.ru|vk\.cc|ok\.ru|facebook\.com|fb\.com|fb\.me|youtube\.com|youtu\.be|tiktok\.com|x\.com|twitter\.com|wa\.me|whatsapp\.com|linktr\.ee|taplink\.cc|taplink\.ws|dzen\.ru|pinterest\.com|threads\.net)$/i;
-export function isSocialLink(url: string): boolean {
-  try { return SOCIAL.test(new URL(url).hostname); } catch { return false; }
-}
+export { isSocialLink };
 
 export async function lookupCode(raw: string, beans: Bean[], drip = false): Promise<LookupResult> {
   // a «Честный знак» code becomes the barcode it carries; packs saved earlier with the whole marking code still match
   const code = gtinOf(raw.trim()) ?? raw.trim();
+  // not from a coffee pack (Wi‑Fi, a card, a payment, a private document): nothing is saved, nothing leaves the phone
+  const what = foreignCode(code);
+  if (what) return { code, kind: 'foreign', what, patch: {} };
   const existing = beans.find((b) => b.barcode && (b.barcode === code || gtinOf(b.barcode) === code));
 
   if (/^\d{8,14}$/.test(code)) {
@@ -235,7 +238,9 @@ export async function lookupCode(raw: string, beans: Bean[], drip = false): Prom
   }
   const parsed = parseQrText(code);
   if (Object.keys(parsed).length) return { code, kind: 'qr-data', existing, patch: { barcode: code.slice(0, 64), ...parsed }, source: 'QR-код на пачке' };
-  return { code, kind: 'text', existing, patch: { barcode: code } };
+  // a short lot or batch code is kept; a long text or several lines with no coffee data in it is not a pack code
+  const short = code.length <= 64 && !/[\r\n]/.test(code);
+  return { code, kind: 'text', existing: short ? existing : undefined, patch: short ? { barcode: code } : {} };
 }
 
 /* ---------- Owner tools: roaster sites ---------- */

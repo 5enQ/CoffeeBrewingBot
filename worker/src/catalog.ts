@@ -12,6 +12,7 @@
  * Lots that leave the sitemap during such a pass are kept and marked "gone".
  */
 import { DurableObject } from 'cloudflare:workers';
+import { bareUrl } from './notpack';
 import { SEED_SITES, canonicalUrl, hostOf, isArchive, normHost, parseRobots, parseSitemap, robotsAllows, usefulCount, wanted, type Robots, type SiteRules } from './crawl';
 import { fetchText, setCrawlProxy } from './fetch';
 import type { Env } from './index';
@@ -349,7 +350,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
       if (s.status === 'approved' && s.robots && !robotsAllows(s.robots, new URL(url).pathname + new URL(url).search)) return 'rejected';
       return s.status;
     }
-    this.sql.exec("INSERT INTO site (host, status, added, requests, sample) VALUES (?, 'pending', ?, 1, ?)", host, Date.now(), url.slice(0, 500));
+    this.sql.exec("INSERT INTO site (host, status, added, requests, sample) VALUES (?, 'pending', ?, 1, ?)", host, Date.now(), bareUrl(url).slice(0, 500));
     return 'new';
   }
 
@@ -364,7 +365,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
       const s = this.site(host as string)!;
       const p = Object.fromEntries(pages.filter((x) => x.host === s.host).map((x) => [x.status, x.n]));
       const l = Object.fromEntries(lots.filter((x) => x.host === s.host).map((x) => [x.state, x.n]));
-      return { host: s.host, roaster: s.roaster, status: s.status, added: s.added, requests: s.requests, sample: s.sample, crawled: s.crawled, crawling: !!s.crawlStart, fails: s.fails, retryAt: s.retryAt, failed: s.fails >= MAX_FAILS, pages: p, lots: l };
+      return { host: s.host, roaster: s.roaster, status: s.status, added: s.added, requests: s.requests, sample: s.sample && bareUrl(s.sample), crawled: s.crawled, crawling: !!s.crawlStart, fails: s.fails, retryAt: s.retryAt, failed: s.fails >= MAX_FAILS, pages: p, lots: l };
     });
   }
 

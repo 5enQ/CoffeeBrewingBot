@@ -74,7 +74,8 @@ async def main():
         check(await pg.evaluate(style) is None, 'another card turns the style off')
         await tile.click(); await pg.wait_for_timeout(300)
         check(await pg.evaluate(style) == 'phosphor', 'the card turns it on again')
-        await pg.wait_for_timeout(700)  # the data is written a moment after a change
+        # the data is written a moment after a change: wait for it, then restart
+        await pg.wait_for_function("() => JSON.parse(localStorage.getItem('brewbook.db.v1')).profile.cardTheme === 'phosphor'")
 
         # kept on this device before the data is read: no plain flash on start
         await pg.reload(wait_until='domcontentloaded'); await pg.wait_for_selector('#root > *', state='attached')

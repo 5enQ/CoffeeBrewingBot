@@ -89,7 +89,8 @@ The app looks like filter paper with a coffee-leaf green: quiet surfaces, one ac
 
 - A second look of the whole app, on `html[data-style="phosphor"]` (always with the dark theme): its tokens and a
   short list of overrides at the end of index.css — monospace, square corners, outlined surfaces, scan lines, a glow.
-  A new surface usually needs nothing; if it lifts itself with a shadow or relies on rounding, add it to that list.
+  A new surface usually needs nothing; if it lifts itself with a shadow or relies on rounding, add it to that list —
+  the list that frames boxes with +----+ (`--phos-frame`, a border-image of characters).
   The style is drawn in characters (headings, dot leaders, [x], * stars, F-keys — CSS; the timer's digits, bars and
   pictures — `src/ui/ascii.tsx` with `useAscii()`). A new icon button says what it does there: add its label to the
   [DEL]/[EDIT] list, or it keeps a glowing icon.

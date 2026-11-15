@@ -4,6 +4,7 @@
  */
 import { memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cardView, secretTitle, type CardData } from '../data/card';
+import { PhosphorFish } from './ascii';
 import { catById } from '../data/gear';
 import type { IconKey } from '../data/methods';
 import { platform } from '../platform';
@@ -668,7 +669,9 @@ export function ProfileCard({ card, live: liveProp = true }: { card: CardData; l
       {tier === 'diamond' && card.no !== undefined && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}
       <div className="pcard-body">
         <div className="pcard-head">
-          {card.photo && photoOk
+          {/* «Фосфор»: Brewbook's easter-egg fish in a glass takes the place of the whole avatar */}
+          {'base' in view.theme && view.theme.base === 'phosphor' ? <PhosphorFish still={!live} />
+            : card.photo && photoOk
             ? <img className="pcard-avatar" src={card.photo} alt="" onError={() => setPhotoOk(false)} referrerPolicy="no-referrer" />
             : <span className="pcard-avatar">{initials(card.name)}</span>}
           <div className="pcard-name">

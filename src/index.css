@@ -2051,3 +2051,7 @@ html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) 
 
 /* the card stands in the column like everything else: no side room kept for a shadow it does not have here */
 :root[data-style="phosphor"] .pcard-stage { padding-inline: 0; }
+
+/* the easter-egg fish in a glass, in place of the avatar on the «Фосфор» card (ui/ascii.tsx) */
+.pcard-fish { margin: 0; flex-shrink: 0; font: 700 9px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre;
+  color: #8be39b; text-shadow: 0 0 6px rgba(139, 227, 155, 0.6); letter-spacing: 0; }

@@ -67,6 +67,9 @@ async def main():
         # the card turns it off and on
         await pg.click('.tabbar >> text=Профиль'); await pg.wait_for_timeout(500)
         check(await V('.pcard.base-phosphor .pcard-prompt').count() == 1, 'the own card is the green monitor')
+        f1 = await V('.pcard.base-phosphor .pcard-fish').inner_text(); await pg.wait_for_timeout(800)
+        f2 = await V('.pcard.base-phosphor .pcard-fish').inner_text()
+        check(await V('.pcard.base-phosphor .pcard-avatar').count() == 0 and f1 != f2 and '|' in f1, 'a fish swimming in a glass takes the place of the avatar')
         await V('.my-card-actions button:has-text("Настроить")').click(); await pg.wait_for_timeout(500)
         tile = V('.theme-pick.base-phosphor')
         check(await tile.count() == 1 and await tile.get_attribute('aria-pressed') == 'true', '«Фосфор» is among the backgrounds, chosen')
@@ -97,6 +100,7 @@ async def main():
         await mock(pv, [])
         await pv.reload(); await pv.wait_for_timeout(1200)
         check(await pv.locator('.pcard.base-phosphor:visible').count() == 1 and await pv.evaluate(style) == 'phosphor', 'a shared «Фосфор» card shows the profile in the style')
+        check(await pv.locator('.pcard.base-phosphor .pcard-fish:visible').count() == 1, 'the friend sees the fish too')
         await pv.screenshot(path=str(OUT / 'phosphor-shared.png'))
         await pv.evaluate('window.__tgBack()'); await pv.wait_for_timeout(400)
         check(await pv.evaluate(style) is None, 'back from it, the friend’s app is as it was')

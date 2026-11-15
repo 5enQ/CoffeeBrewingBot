@@ -3,7 +3,7 @@
  * pictures made of symbols, beans as «oooooooo..». Everything else of the style is in index.css
  * (`html[data-style="phosphor"]`); these are used only while it is on (useAscii).
  */
-import { useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { activeStyle, onAppearance } from '../appearance';
 
 const isAscii = () => activeStyle() === 'phosphor';
@@ -82,3 +82,36 @@ export const PERSON = `    .---.
     \\ - /
   .--'-'--.
  /  [___]  \\`;
+
+/**
+ * Brewbook's own easter-egg fish: a small fish of symbols swimming to and fro in a glass, bubbles rising to a
+ * rippling surface. On the «Фосфор» card it takes the place of the whole avatar. A frame for tick `t`.
+ */
+export function fishFrame(t: number): string {
+  const W = 11, H = 5; // inside the glass
+  const at = (u: number) => { const p = ((u % 12) + 12) % 12; return { x: p < 6 ? p : 12 - p, right: p < 6 }; };
+  const rows = Array.from({ length: H }, () => Array(W).fill(' ') as string[]);
+  const y = (t >> 3) % 2 ? 2 : 3;
+  const f = at(t);
+  // two bubbles in the water: let out from the mouth every 4 ticks, a row up each tick, popping at the surface
+  for (let k = 0; k < 2; k++) {
+    const age = (t % 4) + 4 * k, fe = at(t - age), row = y - 1 - age;
+    const col = Math.max(0, Math.min(W - 1, fe.right ? fe.x + 5 : fe.x - 1));
+    if (row >= 0) rows[row][col] = age < 2 ? 'o' : '.';
+  }
+  const fish = f.right ? '><(o>' : '<o)><';
+  for (let i = 0; i < 5; i++) rows[y][f.x + i] = fish[i];
+  const surface = t % 2 ? '~-~-~-~-~-~' : '-~-~-~-~-~-';
+  return ['.' + surface + '.', ...rows.map((r) => '|' + r.join('') + '|'), ' \\' + '_'.repeat(W - 2) + '/ '].join('\n');
+}
+
+/** the fish, moving unless the backgrounds are still (Профиль → Вид интерфейса) or motion is reduced */
+export function PhosphorFish({ still = false }: { still?: boolean }) {
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    if (still || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    const id = setInterval(() => setT((x) => x + 1), 350);
+    return () => clearInterval(id);
+  }, [still]);
+  return <pre className="pcard-fish" role="img" aria-label="Рыбка в стакане">{fishFrame(t)}</pre>;
+}

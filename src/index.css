@@ -1911,6 +1911,11 @@ html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) 
 :root[data-style="phosphor"] .stars.editable { gap: 6px; text-shadow: 0 0 10px rgba(139, 227, 155, 0.7); }
 :root[data-style="phosphor"] .stars.editable .star::before { content: "[ ]"; color: var(--hint); }
 :root[data-style="phosphor"] .stars.editable .star-fill::before { content: "[*]"; }
+/* a half is its own character, not half of an asterisk: ***½- and [½] */
+:root[data-style="phosphor"] .star.half .star-fill { clip-path: none; }
+:root[data-style="phosphor"] .star.half::before { visibility: hidden; }
+:root[data-style="phosphor"] .star.half .star-fill::before { content: "½"; }
+:root[data-style="phosphor"] .stars.editable .star.half .star-fill::before { content: "[½]"; }
 /* taste: [######....] */
 :root[data-style="phosphor"] :is(.taste-bars, .cup-bars) i { height: auto; width: 22ch; justify-self: start; background: none; overflow: hidden; white-space: nowrap; font-style: normal; line-height: 1.4; }
 :root[data-style="phosphor"] :is(.taste-bars, .cup-bars) > div { grid-template-columns: minmax(0, 1fr) auto 24px; }

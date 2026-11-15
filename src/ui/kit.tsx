@@ -242,7 +242,7 @@ export function Stars({ value, onChange, size = 28 }: { value: number; onChange?
       {[1, 2, 3, 4, 5].map((i) => {
         const fill = v >= i ? 100 : v >= i - 0.5 ? 50 : 0;
         const visual = (
-          <span className="star" style={{ ['--fill' as string]: `${fill}%`, width: size, height: size }}>
+          <span className={'star' + (fill === 50 ? ' half' : '')} style={{ ['--fill' as string]: `${fill}%`, width: size, height: size }}>
             <Icon name="star" size={size} />
             <span className="star-fill"><Icon name="star" size={size} filled /></span>
           </span>

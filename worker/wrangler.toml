@@ -51,3 +51,7 @@ GH_REPO = "5enQ/brewbook-bugs"
 # Heartbeat for the catalog crawler (it schedules its own steps; this only makes sure it keeps running)
 [triggers]
 crons = ["23 */6 * * *"]
+
+# Workers AI: reads a roaster page the rule parser could not (on approved sites, once per page, daily cap)
+[ai]
+binding = "AI"

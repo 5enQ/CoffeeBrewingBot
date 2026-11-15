@@ -1,3 +1,4 @@
+import { AsciiBar, AsciiDigits, useAscii } from '../ui/ascii';
 import { useEffect, useRef, useState } from 'react';
 import { Roll, Swap } from '../ui/motion';
 import { track } from '../data/track';
@@ -32,6 +33,7 @@ function beep(freq = 880, ms = 140) {
 type RemindState = 'off' | 'pending' | 'on' | 'fail';
 
 export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: boolean }) {
+  const ascii = useAscii();
   // a timer left running (the app was closed, or a long one in the background) picks up where it was
   const [stored] = useState(() => { const t = loadTimer(); return t && (resume || t.draft.id === given.id) ? t : null; });
   const draft = stored?.draft ?? given;
@@ -278,6 +280,13 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
           <button type="button" className={'round-btn' + (done ? ' accent' : '')} onClick={finish} aria-label="Готово, записать"><Icon name="check" /></button>
         </div>
       }>
+      {ascii ? (
+        <div className="timer ascii-timer">
+          <AsciiDigits text={fmtTime(elapsed)} />
+          <div className="timer-total">{done ? 'ВРЕМЯ ВЫШЛО, ДОЖДИТЕСЬ СЛИВА' : `ИЗ ${fmtTime(plan.total)}`}</div>
+          <AsciiBar share={progress} after={`${Math.round(progress * 100)}%`} />
+        </div>
+      ) : (
       <div className={'timer' + (skipping ? ' skipping' : '')}>
         <svg viewBox="0 0 260 260" className="timer-ring" aria-hidden="true">
           {/* a drip: water runs down the circle while you pour, drops fall in the pauses */}
@@ -295,6 +304,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
           <div className="timer-total">{done ? 'время вышло — дождитесь слива' : `из ${fmtTime(plan.total)}`}</div>
         </div>
       </div>
+      )}
 
       {/* the card stays; what changed moves: the step number rolls, the title and hint slide in, the grams roll */}
       <div className={'step-now' + (running || elapsed > 0 ? ' live' : '')}>

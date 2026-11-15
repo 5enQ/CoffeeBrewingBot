@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { sessionExpired } from '../platform';
 import { EVENTS, EVENT_NAMES, type Metrics } from '../data/metrics';
 import { fmtNum, methodById } from '../data/methods';
 import { loadMetrics } from '../data/track';
@@ -24,7 +25,7 @@ export function OwnerMetrics() {
   useEffect(load, []);
   if (!m) return (
     <Section title="Метрики">
-      <p className="muted pad small-note">{state === 'loading' ? 'Считаем…' : 'Сервер не ответил.'}</p>
+      <p className="muted pad small-note">{state === 'loading' ? 'Считаем…' : sessionExpired() ? 'Telegram-сессия устарела: закройте Brewbook и откройте снова.' : 'Сервер не ответил.'}</p>
       {state === 'failed' && <div className="pad"><Button kind="secondary" icon="reset" onClick={load}>Повторить</Button></div>}
     </Section>
   );

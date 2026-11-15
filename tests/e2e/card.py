@@ -31,7 +31,7 @@ CARDS = {
 SERVER = {'account': 'acc1', 'methods': {'v60': 60, 'kalita': 100}, 'liters': 40, 'ratings': 0, 'at': 1}
 TG = """window.__shared = [];
 window.Telegram = { WebApp: {
-  initData: 'query_id=x&user=%7B%22id%22%3A111%7D&auth_date=1&hash=abc', initDataUnsafe: { user: { id: 111, first_name: 'Аня', username: 'anya_brews' } },
+  initData: 'query_id=x&user=%7B%22id%22%3A111%7D&auth_date=' + Math.floor(Date.now() / 1000) + '&hash=abc', initDataUnsafe: { user: { id: 111, first_name: 'Аня', username: 'anya_brews' } },
   version: '6.0', platform: 'ios', colorScheme: 'light', themeParams: {}, isVersionAtLeast: (v) => parseFloat(v) <= 6.0,
   ready() {}, expand() {}, onEvent() {}, offEvent() {}, setHeaderColor() {}, setBackgroundColor() {}, setBottomBarColor() {},
   enableClosingConfirmation() {}, disableClosingConfirmation() {}, disableVerticalSwipes() {}, openTelegramLink(u) { window.__shared.push(u); }, openLink(u) { window.__shared.push(u); },

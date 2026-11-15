@@ -5,6 +5,34 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 
 ## Unreleased
 
+## v1.7.5 — Green Screen (2026-11-15)
+
+### Added
+- «Фосфор», a secret style: typed on the profile tab with a keyboard, the Konami code (↑ ↑ ↓ ↓ ← → ← → B A) starts an old computer — the tube lights up, the BIOS lists your grinder, dripper and shelf, BREWBOOK.EXE loads — and the whole app turns into a green-phosphor monitor. It is a profile card background: choosing another card turns the style off, choosing «Фосфор» again turns it on (Профиль → Настроить → Фон). The screens are drawn in characters, as in the mockups: boxes and buttons framed with +----+ and | (the own card, dialogs and notices with #====# and H), «C:\BREWBOOK>» over titles, «== РАЗДЕЛ =====» headings, labels leading to values with dots, ratings as ***** and [*] (a half as ½: ***½- and [½]; an average in text, «4 *», too), taste as [######....], scales as [#][#][ ], switches and choices as [x] / [ ], tabs as F1–F4 (on a keyboard the keys F1–F4 open those tabs), icon buttons as <ESC [DEL] [EDIT] [SHARE], methods as a text menu with «> » on the chosen one, a cup in symbols on the brew tab, a doypack and oooooooo.. beans on the shelf, and the timer in big digits of # with a [=====>....] bar; in a wide window the empty half shows a cup, a diary, a doypack or a person in symbols. A friend who opens a shared card in it sees the profile in the same style; their app turns back on leaving. Found once, it is there on every device of the profile. Reduced motion: no flash, a short fade; any key or tap skips the start-up.
+- Scanning a link to an approved roaster site whose page the rules read poorly: the server asks Workers AI to read it once and keeps the result in the shared catalog — the next scan of that page fills the pack from the catalog, no model call. The pack says «разобрал ИИ — проверьте поля» until someone saves it. At most 40 pages a day for everyone and 10 per caller (the free allowance).
+
+### Fixed
+- A friend's shared profile: the «Написать @…» button was about 250 px tall; it is an ordinary button again.
+- Scanner: a code that is not from a coffee pack — a Wi‑Fi network, a business card, a phone or email, a 2FA key, a payment QR or a СБП link, a receipt, a bank, Госуслуги, a shared document, a map or a video call — says what it is and saves nothing; nothing is sent to the server. The server ignores such links too (an older app): no site is queued for approval. A long text or several lines with no coffee data no longer land in «Штрихкод», and the message no longer promises it goes to the shared catalog.
+- Privacy: the owner's notice and list of new roaster sites show the page without its query and fragment (they may carry tokens). A social, payment or document link is never used as a catalog key.
+- The tab bar's bubble shook when switching tabs (seen in Telegram on a Mac): it moved by a transform run off the main thread while its width changed on it, so while the new tab was rendering the far edge shot past the tab and jumped back. It now moves by left and width together.
+- The profile card shook under the mouse in Telegram on a Mac: on top of the tilt eased by the script every frame it had a 50 ms CSS transition, and Safari, restarting it each frame, flipped the card between two poses. The transition is gone.
+- Resizing the window on a computer: the method tiles glided after every step of the resize, lagging behind and drifting apart; they now take their new size at once (the glide stays for pinning and rearranging).
+- On a Mac the window's right edge did not respond to resizing where expected: the page's styled 10 px scrollbar sat there and caught the mouse. On a Mac the system's own scrollbars are kept.
+- The ring around a field being typed into was cut square at the rounded corners of its card (the first and last rows of a card): those rows now take the card's rounding, so the ring follows the curve.
+- An unavailable «Сохранить» in the footer was see-through, and the page scrolling under it showed through its text; it is solid now.
+- Telegram on a computer keeps Brewbook open for days, and the server takes Telegram's signature only for 24 hours from opening: after that every request was refused and the app said «нет связи с сервером». Now it says what it is — «Telegram-сессия устарела: закройте Brewbook и откройте снова» — once as a notice when the app comes back into view, and in the owner panel and the tester and owner actions; the owner panel no longer disappears on that refusal (only on «not the owner»).
+
+### Changed
+- Scanning a pack:
+  - the «Честный знак» marking code (the square DataMatrix) is read as the product barcode inside it; the pack's own serial is dropped, so such packs are found in the catalog and on the shelf (packs saved earlier with the whole marking code still match);
+  - a QR leading to the roaster's Instagram, Telegram channel, VK or link page is kept as the pack's link and not sent to the catalog (it used to land in the owner's queue of sites to approve); the app says there is no coffee data in it;
+  - with several codes in the frame the product barcode wins, then a QR or DataMatrix, last Code 128 (shipping labels); Code 39 is not read at all.
+- Drip boxes: no «заварено N» on the shelf and in the box — «N из M дрипов» already says it.
+
+### Tests
+- Telegram mocks in the browser suites sign with the current time instead of `auth_date=1` (an expired signature now changes what the app shows).
+
 ## v1.7.4 — Keep Pouring (2026-11-13)
 
 ### Added

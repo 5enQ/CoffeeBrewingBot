@@ -2,10 +2,13 @@ import { RATINGS_API } from '../config';
 import { platform } from '../platform';
 import { newDripItem, uid, type Bean } from './store';
 import { SCALES } from './scales';
+import { foreignCode, isSocialLink } from '../../worker/src/notpack';
 
 export interface LookupResult {
   code: string;
-  kind: 'ean' | 'qr-data' | 'url' | 'text';
+  kind: 'ean' | 'qr-data' | 'url' | 'social' | 'text' | 'foreign';
+  /** kind 'foreign': what the code is instead (a Wi‑Fi network, a payment…) — nothing is saved or sent */
+  what?: string;
   existing?: Bean;
   patch: Partial<Bean>;
   source?: string;
@@ -23,6 +26,8 @@ export type Coffee = Partial<Pick<Bean, typeof COFFEE_TEXT[number] | 'kind' | 'd
   drips?: Partial<NonNullable<Bean['drips']>[number]>[];
   /** also sold as drip boxes of these sizes */
   dripOptions?: number[];
+  /** read from the roaster's page by the server's AI, not by its rules: worth a look */
+  ai?: boolean;
 };
 
 /** on sale · out of stock · in the roaster's archive · removed from the site */
@@ -77,7 +82,8 @@ export function beanToCoffee(b: Bean): Coffee {
 
 /** Catalog keys of a pack: QR link and barcode */
 export function catalogKeys(b: Pick<Bean, 'link' | 'barcode'>) {
-  const url = [b.link, b.barcode].find((x) => /^https?:\/\//i.test(x ?? ''));
+  // a social, payment or document link is not a key of the lot (and is not sent anywhere)
+  const url = [b.link, b.barcode].find((x) => /^https?:\/\//i.test(x ?? '') && !isSocialLink(x!) && !foreignCode(x!));
   const code = /^\d{8,14}$/.test(b.barcode ?? '') ? b.barcode : undefined;
   return { url, code };
 }
@@ -186,9 +192,28 @@ async function openFoodFacts(code: string): Promise<Partial<Bean> | null> {
   }
 }
 
+/**
+ * The product barcode inside a GS1 DataMatrix — the «Честный знак» marking code: «01» + a 14-digit GTIN, then the
+ * pack's own serial («21…») and check data. The serial is different on every pack, so only the GTIN is kept; a GTIN
+ * of a retail product starts with 0, and without it is the EAN-13 printed on the pack. null — not such a code.
+ */
+export function gtinOf(raw: string): string | null {
+  const c = raw.replace(/^\](d2|C1|Q3|e0)/, '').replace(/[\x1d\u241d]/g, '');
+  const m = c.match(/^01(\d{14})(21|10|17|11|91|93|$)/);
+  if (!m) return null;
+  const g = m[1];
+  return g.startsWith('0') ? g.slice(1) : g;
+}
+
+export { isSocialLink };
+
 export async function lookupCode(raw: string, beans: Bean[], drip = false): Promise<LookupResult> {
-  const code = raw.trim();
-  const existing = beans.find((b) => b.barcode && b.barcode === code);
+  // a «Честный знак» code becomes the barcode it carries; packs saved earlier with the whole marking code still match
+  const code = gtinOf(raw.trim()) ?? raw.trim();
+  // not from a coffee pack (Wi‑Fi, a card, a payment, a private document): nothing is saved, nothing leaves the phone
+  const what = foreignCode(code);
+  if (what) return { code, kind: 'foreign', what, patch: {} };
+  const existing = beans.find((b) => b.barcode && (b.barcode === code || gtinOf(b.barcode) === code));
 
   if (/^\d{8,14}$/.test(code)) {
     if (existing) return { code, kind: 'ean', existing, patch: {} };
@@ -199,6 +224,11 @@ export async function lookupCode(raw: string, beans: Bean[], drip = false): Prom
     const off = await openFoodFacts(code);
     return { code, kind: 'ean', patch: { barcode: code, ...(off ?? {}) }, source: off ? 'Open Food Facts' : undefined };
   }
+  if (/^https?:\/\//i.test(code) && isSocialLink(code)) {
+    // the same link sits on every pack of this roaster: it is kept as the pack's link, not as its code, and the
+    // catalog is not asked (it would only queue a social site for the owner's approval)
+    return { code, kind: 'social', patch: { link: code.slice(0, 300) } };
+  }
   if (/^https?:\/\//i.test(code)) {
     if (existing) return { code, kind: 'url', existing, patch: {} };
     const remote = await remoteLookup({ url: code });
@@ -208,7 +238,9 @@ export async function lookupCode(raw: string, beans: Bean[], drip = false): Prom
   }
   const parsed = parseQrText(code);
   if (Object.keys(parsed).length) return { code, kind: 'qr-data', existing, patch: { barcode: code.slice(0, 64), ...parsed }, source: 'QR-код на пачке' };
-  return { code, kind: 'text', existing, patch: { barcode: code } };
+  // a short lot or batch code is kept; a long text or several lines with no coffee data in it is not a pack code
+  const short = code.length <= 64 && !/[\r\n]/.test(code);
+  return { code, kind: 'text', existing: short ? existing : undefined, patch: short ? { barcode: code } : {} };
 }
 
 /* ---------- Owner tools: roaster sites ---------- */
@@ -246,8 +278,9 @@ export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 
 }
 
 function sourceText(r: Remote) {
-  if (r.source === 'catalog') return r.confirms && r.confirms > 1 ? `общий каталог · подтвердили ${r.confirms}` : 'общий каталог';
-  return 'страница обжарщика';
+  const ai = r.coffee?.ai && !(r.confirms && r.confirms > 0) ? ' (разобрал ИИ — проверьте поля)' : '';
+  if (r.source === 'catalog') return (r.confirms && r.confirms > 1 ? `общий каталог · подтвердили ${r.confirms}` : 'общий каталог') + ai;
+  return 'страница обжарщика' + ai;
 }
 
 /** Merge data without overwriting what the user already entered */

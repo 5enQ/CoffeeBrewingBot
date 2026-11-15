@@ -11,7 +11,7 @@ DARK = {'bg_color': '#212121', 'secondary_bg_color': '#0f0f0f', 'section_bg_colo
 def tg(scheme, params):
     import json
     return f"""window.__bars = []; window.Telegram = {{ WebApp: {{
-  initData: 'query_id=x&auth_date=1&hash=abc', initDataUnsafe: {{}}, version: '7.0', platform: 'android', colorScheme: '{scheme}', themeParams: {json.dumps(params)},
+  initData: 'query_id=x&auth_date=' + Math.floor(Date.now() / 1000) + '&hash=abc', initDataUnsafe: {{}}, version: '7.0', platform: 'android', colorScheme: '{scheme}', themeParams: {json.dumps(params)},
   isVersionAtLeast: (v) => parseFloat(v) <= 7.0, ready() {{}}, expand() {{}}, onEvent() {{}}, offEvent() {{}},
   setHeaderColor(c) {{ window.__bars.push(c); }}, setBackgroundColor() {{}}, setBottomBarColor() {{}}, disableVerticalSwipes() {{}},
   BackButton: {{ show() {{}}, hide() {{}}, onClick() {{}}, offClick() {{}} }}, HapticFeedback: {{ impactOccurred() {{}}, notificationOccurred() {{}}, selectionChanged() {{}} }},

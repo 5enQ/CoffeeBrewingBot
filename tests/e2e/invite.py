@@ -3,7 +3,7 @@ import asyncio, json
 from common import async_playwright, check, done, page
 
 TG = """window.Telegram = { WebApp: {
-  initData: 'query_id=x&user=%7B%22id%22%3A444%7D&auth_date=1&hash=abc', initDataUnsafe: { user: { id: 444, first_name: 'Owner', username: 'owner' } },
+  initData: 'query_id=x&user=%7B%22id%22%3A444%7D&auth_date=' + Math.floor(Date.now() / 1000) + '&hash=abc', initDataUnsafe: { user: { id: 444, first_name: 'Owner', username: 'owner' } },
   version: '6.0', platform: 'tdesktop', colorScheme: 'light', themeParams: {}, isVersionAtLeast: (v) => parseFloat(v) <= 6.0,
   ready() {}, expand() {}, onEvent() {}, offEvent() {}, setHeaderColor() {}, setBackgroundColor() {}, setBottomBarColor() {},
   enableClosingConfirmation() {}, disableClosingConfirmation() {}, disableVerticalSwipes() {},

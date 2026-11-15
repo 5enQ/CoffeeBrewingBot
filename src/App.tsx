@@ -8,7 +8,7 @@ import { InviteGate } from './ui/InviteGate';
 import { DepthCtx, RouterProvider, useRouter, type Route, type Tab } from './router';
 import { DialogHost } from './ui/kit';
 import { AchievementToast } from './ui/AchievementToast';
-import { LiveRegion, ToastHost } from './ui/toast';
+import { LiveRegion, ToastHost, toast } from './ui/toast';
 import { Icon, MethodIcon } from './ui/icons';
 import { methodById } from './data/methods';
 import { BrewHome } from './screens/BrewHome';
@@ -23,10 +23,12 @@ import { RecipesScreen } from './screens/Recipes';
 import { ShareScreen, SharedRecipeScreen } from './screens/Share';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { LayoutCtx, useLayoutMode } from './layout';
-import { platform } from './platform';
+import { platform, sessionExpired } from './platform';
 import { resolveStartParam } from './data/share';
 import { loadCard } from './data/card';
 import { CardEditScreen, CardShareScreen, CardViewScreen } from './screens/CardScreens';
+import { PhosphorBoot, usePhosphor } from './ui/PhosphorBoot';
+import { BOOK, CUP, pack, PERSON, useAscii } from './ui/ascii';
 import { t } from './i18n';
 
 function renderRoute(r: Route) {
@@ -77,6 +79,36 @@ function Shell() {
   useTabPill(navRef, pillRef, `${tab}-${stack.length === 0}-${mode}-${ready}`);
 
   useEffect(() => { document.documentElement.dataset.layout = mode; }, [mode]);
+  // «Фосфор»: the style follows the profile card; the Konami code on the profile tab opens it
+  const phosphor = usePhosphor(ready && tab === 'profile');
+  // the tabs are signed F1–F4 in that style: on a keyboard the keys work as the tabs do (the browser's own F1 help,
+  // F3 search are not opened then)
+  const ascii = useAscii();
+  useEffect(() => {
+    if (!ascii) return;
+    const key = (e: KeyboardEvent) => {
+      const i = ['F1', 'F2', 'F3', 'F4'].indexOf(e.key);
+      if (i < 0 || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || document.querySelector('.dialog, .phos-boot')) return;
+      e.preventDefault();
+      setTab(TABS[i].id);
+    };
+    addEventListener('keydown', key);
+    return () => removeEventListener('keydown', key);
+  }, [ascii, setTab]);
+  // Telegram on a computer keeps the app open for days; after a day the server refuses its signature and new brews
+  // stop reaching it (stats, badges, the owner's numbers). Say so once, when the app comes back into view.
+  useEffect(() => {
+    let said = false;
+    const check = () => {
+      if (said || document.visibilityState === 'hidden' || !sessionExpired()) return;
+      said = true; toast('Brewbook открыт больше суток — закройте его и откройте снова, чтобы заварки дошли до сервера');
+    };
+    check();
+    document.addEventListener('visibilitychange', check);
+    const t = setInterval(check, 10 * 60_000);
+    return () => { document.removeEventListener('visibilitychange', check); clearInterval(t); };
+  }, []);
+
   // keyboard focus on a control only half inside its scrolling pane: bring the rest in (browsers leave it cut)
   useEffect(() => {
     const on = (e: FocusEvent) => {
@@ -145,7 +177,7 @@ function Shell() {
       <DepthCtx.Provider value={i + 1}>{renderRoute(r)}</DepthCtx.Provider>
     </div>
   ));
-  const overlays = <><HolidayLayer /><DialogHost /><AchievementToast /><ToastHost /><LiveRegion /></>;
+  const overlays = <><HolidayLayer /><DialogHost /><AchievementToast /><ToastHost /><LiveRegion />{phosphor.boot && <PhosphorBoot onDone={phosphor.endBoot} />}</>;
 
   if (mode === 'desktop') {
     return (
@@ -206,9 +238,12 @@ function Placeholder({ tab }: { tab: Tab }) {
     profile: [<Icon name="profile" size={44} />, 'Профиль', 'Рецепты, значки и оборудование открываются здесь для редактирования.'],
   };
   const [icon, title, hint] = text[tab];
+  // the green monitor draws its picture in symbols
+  const ascii = useAscii();
+  const art = { brew: CUP, journal: BOOK, beans: pack('BREW'), profile: PERSON }[tab];
   return (
     <div className="placeholder">
-      <span className="placeholder-icon">{icon}</span>
+      {ascii ? <pre className="ascii-art placeholder-art" aria-hidden="true">{art}</pre> : <span className="placeholder-icon">{icon}</span>}
       <h2>{title}</h2>
       <p>{hint}</p>
     </div>

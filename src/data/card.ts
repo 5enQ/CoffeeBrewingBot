@@ -12,6 +12,7 @@ import { sortBadges, type BadgeLite } from './badges';
 import { catById, GEAR_CATS, type Gear, type GearCat } from './gear';
 import { backgroundLook, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, TIER_ORDER, type Level, type Stats, type Tier } from './levels';
 import { allMethods, methodById } from './methods';
+import { hasPhosphor, PHOSPHOR } from './phosphor';
 import { RARE, type RareId } from './rare';
 import type { Profile } from './store';
 
@@ -29,10 +30,16 @@ export const BASE_THEMES = [
   { id: 'cascara', label: 'Каскара' },
   { id: 'ristretto', label: 'Ристретто' },
 ] as const;
+/** Backgrounds opened by a secret, not listed with the others until found (data/phosphor.ts) */
+export const SECRET_THEMES = [
+  { id: 'phosphor', label: 'Фосфор', title: 'Терминал Brewbook' },
+] as const;
 /** retired backgrounds → the ones that took their place (cards saved before keep a look close to the old one) */
 const RENAMED: Record<string, string> = { ocean: 'cascara', graphite: 'ristretto', glass: 'paper' };
-const baseOf = (id?: string) => (BASE_THEMES.find((t) => t.id === (id && RENAMED[id] ? RENAMED[id] : id))?.id ?? 'paper') as BaseTheme;
-export type BaseTheme = typeof BASE_THEMES[number]['id'];
+const baseOf = (id?: string) => ([...BASE_THEMES, ...SECRET_THEMES].find((t) => t.id === (id && RENAMED[id] ? RENAMED[id] : id))?.id ?? 'paper') as BaseTheme;
+export type BaseTheme = typeof BASE_THEMES[number]['id'] | typeof SECRET_THEMES[number]['id'];
+/** the title a secret background writes on the card */
+export const secretTitle = (base: string) => SECRET_THEMES.find((t) => t.id === base)?.title;
 
 /** Backgrounds the owner gives by hand (Profile → owner tools); the server checks them on every shared card */
 export const SPECIAL_THEMES = [
@@ -142,7 +149,7 @@ export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite 
   const theme: CardData['theme'] = special ? { special: special.id }
     : rare ? { rare: rare.id }
     : chosen && themeLevel && givesBackground(chosen, themeLevel.tier) ? (chosenTier ? { ach: chosen, tier: themeLevel.tier } : { ach: chosen })
-    : { base: baseOf(p.cardTheme) };
+    : { base: p.cardTheme === PHOSPHOR && !hasPhosphor(p) ? 'paper' : baseOf(p.cardTheme) };
   const earned: Record<string, Level> = Object.fromEntries(ach.map((k) => [k, levels[k]]));
   if ('ach' in theme && themeLevel) earned[theme.ach] = themeLevel;
   return {

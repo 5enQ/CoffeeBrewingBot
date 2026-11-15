@@ -12,6 +12,7 @@
  * Lots that leave the sitemap during such a pass are kept and marked "gone".
  */
 import { DurableObject } from 'cloudflare:workers';
+import { bareUrl } from './notpack';
 import { SEED_SITES, canonicalUrl, hostOf, isArchive, normHost, parseRobots, parseSitemap, robotsAllows, usefulCount, wanted, type Robots, type SiteRules } from './crawl';
 import { fetchText, setCrawlProxy } from './fetch';
 import type { Env } from './index';
@@ -32,6 +33,8 @@ export type Coffee = Partial<Record<typeof TEXT[number], string>> & {
   /** also sold as drip boxes of these sizes */
   dripOptions?: number[];
   image?: string;
+  /** filled by Workers AI from the page (ai.ts): shown as such, never sent to the model again */
+  ai?: true;
 };
 
 /** Lot availability: on sale, out of stock, in the roaster's archive, removed from the site */
@@ -97,6 +100,9 @@ export function keysFor(url?: string | null, code?: string | null): string[] {
   if (/^\d{8,14}$/.test(digits)) keys.push(`ean:${digits}`);
   return keys;
 }
+
+/** Workers AI pages a day for the whole app and for one caller (see aiAllow) */
+export const AI_PER_DAY = 40, AI_PER_CALLER = 10;
 
 export interface Found { id: string; coffee: Coffee; source: 'page' | 'user'; confirms: number; pv?: number; state: LotState; url?: string }
 
@@ -174,6 +180,8 @@ export class CoffeeCatalog extends DurableObject<Env> {
       url TEXT PRIMARY KEY, host TEXT NOT NULL, lastmod TEXT, seen INTEGER NOT NULL, fetched INTEGER,
       attempts INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL, coffee TEXT)`);
     sql.exec('CREATE INDEX IF NOT EXISTS page_queue ON page (status, host)');
+    // Workers AI use per day: one row for everyone ('*') and one per caller (a hash, kept for the day only)
+    sql.exec('CREATE TABLE IF NOT EXISTS ai_use (day TEXT NOT NULL, who TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, who))');
     if (version < 3) {
       // v1.3.1: one pass per site, retries after failures
       for (const col of ['retry_at INTEGER', 'fails INTEGER NOT NULL DEFAULT 0']) {
@@ -303,6 +311,22 @@ export class CoffeeCatalog extends DurableObject<Env> {
     return found.id;
   }
 
+  /* ---------- Workers AI budget ---------- */
+
+  /**
+   * May one more page be read by the model today? Counts it if so. The free allowance of Workers AI is about 10 000
+   * «neurons» a day; one page costs a few hundred with the 70B model, so the whole app gets AI_PER_DAY pages a day and
+   * one caller AI_PER_CALLER of them. Yesterday's rows are dropped.
+   */
+  aiAllow(who: string): boolean {
+    const day = new Date().toISOString().slice(0, 10);
+    const n = (k: string) => this.sql.exec<{ n: number }>('SELECT n FROM ai_use WHERE day = ? AND who = ?', day, k).toArray()[0]?.n ?? 0;
+    if (n('*') >= AI_PER_DAY || n(who) >= AI_PER_CALLER) return false;
+    for (const k of ['*', who]) this.sql.exec('INSERT INTO ai_use (day, who, n) VALUES (?, ?, 1) ON CONFLICT(day, who) DO UPDATE SET n = n + 1', day, k);
+    this.sql.exec('DELETE FROM ai_use WHERE day < ?', day);
+    return true;
+  }
+
   /* ---------- sites ---------- */
 
   private site(host: string): SiteRow | null {
@@ -326,7 +350,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
       if (s.status === 'approved' && s.robots && !robotsAllows(s.robots, new URL(url).pathname + new URL(url).search)) return 'rejected';
       return s.status;
     }
-    this.sql.exec("INSERT INTO site (host, status, added, requests, sample) VALUES (?, 'pending', ?, 1, ?)", host, Date.now(), url.slice(0, 500));
+    this.sql.exec("INSERT INTO site (host, status, added, requests, sample) VALUES (?, 'pending', ?, 1, ?)", host, Date.now(), bareUrl(url).slice(0, 500));
     return 'new';
   }
 
@@ -341,7 +365,7 @@ export class CoffeeCatalog extends DurableObject<Env> {
       const s = this.site(host as string)!;
       const p = Object.fromEntries(pages.filter((x) => x.host === s.host).map((x) => [x.status, x.n]));
       const l = Object.fromEntries(lots.filter((x) => x.host === s.host).map((x) => [x.state, x.n]));
-      return { host: s.host, roaster: s.roaster, status: s.status, added: s.added, requests: s.requests, sample: s.sample, crawled: s.crawled, crawling: !!s.crawlStart, fails: s.fails, retryAt: s.retryAt, failed: s.fails >= MAX_FAILS, pages: p, lots: l };
+      return { host: s.host, roaster: s.roaster, status: s.status, added: s.added, requests: s.requests, sample: s.sample && bareUrl(s.sample), crawled: s.crawled, crawling: !!s.crawlStart, fails: s.fails, retryAt: s.retryAt, failed: s.fails >= MAX_FAILS, pages: p, lots: l };
     });
   }
 

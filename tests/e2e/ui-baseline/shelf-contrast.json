@@ -745,20 +745,6 @@
 "w": 12,
 "x": 304
 },
-"span.star › span.star-fill › svg #5": {
-"bg": "rgba(0, 0, 0, 0)",
-"border": "",
-"gap": -12,
-"h": 12,
-"opacity": "1",
-"outline": "",
-"pad": "0px",
-"radius": "0px",
-"shadow": "",
-"stroke": "rgb(125, 76, 8) 1.8px rgb(125, 76, 8)",
-"w": 12,
-"x": 318
-},
 "span.star-cell › span.star › svg": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
@@ -815,7 +801,7 @@
 "w": 12,
 "x": 304
 },
-"span.star-cell › span.star › svg #5": {
+"span.star-cell › span.star.half › svg": {
 "bg": "rgba(0, 0, 0, 0)",
 "border": "",
 "gap": -12,
@@ -826,6 +812,20 @@
 "radius": "0px",
 "shadow": "",
 "stroke": "rgb(53, 61, 56) 1.8px rgb(53, 61, 56)",
+"w": 12,
+"x": 318
+},
+"span.star.half › span.star-fill › svg": {
+"bg": "rgba(0, 0, 0, 0)",
+"border": "",
+"gap": -12,
+"h": 12,
+"opacity": "1",
+"outline": "",
+"pad": "0px",
+"radius": "0px",
+"shadow": "",
+"stroke": "rgb(125, 76, 8) 1.8px rgb(125, 76, 8)",
 "w": 12,
 "x": 318
 }

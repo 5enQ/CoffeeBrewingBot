@@ -88,21 +88,37 @@ export const PERSON = `    .---.
  * rippling surface. On the «Фосфор» card it takes the place of the whole avatar. A frame for tick `t`.
  */
 export function fishFrame(t: number): string {
-  const W = 11, H = 5; // inside the glass
-  const at = (u: number) => { const p = ((u % 12) + 12) % 12; return { x: p < 6 ? p : 12 - p, right: p < 6 }; };
-  const rows = Array.from({ length: H }, () => Array(W).fill(' ') as string[]);
-  const y = (t >> 3) % 2 ? 2 : 3;
+  const W = 13; // inside the glass
+  // to and fro between the shine on the left wall and the right wall
+  const at = (u: number) => { const p = ((u % 14) + 14) % 14; return { x: 1 + (p < 7 ? p : 14 - p), right: p < 7 }; };
+  // four rows of water: the fish swims in the upper three, the bottom one has a weed and pebbles
+  const water = Array.from({ length: 4 }, () => Array(W).fill(' ') as string[]);
+  for (let r = 0; r < 3; r++) water[r][0] = r === 0 ? "'" : ':';
+  water[3][2] = ','; water[3][3] = (t >> 1) % 2 ? ')' : '(';
+  water[3][8] = '.'; water[3][9] = '_'; water[3][10] = '.';
+  const y = (t >> 3) % 2 ? 1 : 2;
   const f = at(t);
-  // two bubbles in the water: let out from the mouth every 4 ticks, a row up each tick, popping at the surface
+  // bubbles: let out from the mouth every 4 ticks, a row up each tick; one reaching the surface pops on it
+  let pop = -1;
   for (let k = 0; k < 2; k++) {
     const age = (t % 4) + 4 * k, fe = at(t - age), row = y - 1 - age;
-    const col = Math.max(0, Math.min(W - 1, fe.right ? fe.x + 5 : fe.x - 1));
-    if (row >= 0) rows[row][col] = age < 2 ? 'o' : '.';
+    const col = Math.max(1, Math.min(W - 1, fe.right ? fe.x + 5 : fe.x - 1));
+    if (row >= 0) water[row][col] = age < 2 ? 'o' : '.';
+    else if (row === -1) pop = col;
   }
-  const fish = f.right ? '><(o>' : '<o)><';
-  for (let i = 0; i < 5; i++) rows[y][f.x + i] = fish[i];
-  const surface = t % 2 ? '~-~-~-~-~-~' : '-~-~-~-~-~-';
-  return ['.' + surface + '.', ...rows.map((r) => '|' + r.join('') + '|'), ' \\' + '_'.repeat(W - 2) + '/ '].join('\n');
+  const fish = f.right ? '><(8>' : '<8)><';
+  for (let i = 0; i < 5; i++) water[y][f.x + i] = fish[i];
+  const surface = (t % 2 ? '~-~-~-~-~-~-~' : '-~-~-~-~-~-~-').split('');
+  if (pop >= 0) surface[pop] = '*';
+  return [
+    '.-------------.',
+    "|          '  |",
+    '|' + surface.join('') + '|',
+    ...water.map((r) => '|' + r.join('') + '|'),
+    '|.:,:.:.,:.:.:|',
+    "'-------------'",
+    ' \\___________/ ',
+  ].join('\n');
 }
 
 /** the fish, moving unless the backgrounds are still (Профиль → Вид интерфейса) or motion is reduced */

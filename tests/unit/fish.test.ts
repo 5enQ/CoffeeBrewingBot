@@ -34,3 +34,27 @@ describe('the steam over the cup', () => {
     expect(new Set(f).size).toBeGreaterThan(2);
   });
 });
+
+describe('the coffee tree', () => {
+  it('four stages by the brews of two weeks', async () => {
+    const { treeStage } = await import('../../src/ui/ascii');
+    expect([0, 1, 3, 4, 9, 10, 30].map(treeStage)).toEqual([1, 2, 2, 3, 3, 4, 4]);
+  });
+  it('a lush tree has far more leaves than a dying one, which is yellow and drops them', async () => {
+    const { treeFrame } = await import('../../src/ui/ascii');
+    const count = (st: 1 | 2 | 3 | 4, k: string) => treeFrame(st, 0).flat().filter(([, c]) => c === k).reduce((n, [s]) => n + s.replace(/ /g, '').length, 0);
+    const leaves = (st: 1 | 2 | 3 | 4) => count(st, 'l') + count(st, 'd') + count(st, 'y');
+    expect(leaves(4)).toBeGreaterThan(leaves(3));
+    expect(leaves(3)).toBeGreaterThan(leaves(2));
+    expect(leaves(2)).toBeGreaterThan(leaves(1));
+    expect(count(1, 'l') + count(1, 'd')).toBe(0);
+    expect(Array.from({ length: 8 }, (_, t) => count(1, 'f') + treeFrame(1, t).flat().filter(([, c]) => c === 'f').length).some((n) => n > 0)).toBe(true);
+  });
+  it('sways: frames differ, the pot and trunk stay', async () => {
+    const { treeFrame } = await import('../../src/ui/ascii');
+    const txt = (t: number) => treeFrame(4, t).map((r) => r.map(([s]) => s).join('')).join('\n');
+    expect(txt(0)).not.toBe(txt(3));
+    expect(txt(0).split('\n').slice(17).join()).toBe(txt(3).split('\n').slice(17).join());
+    for (const row of treeFrame(4, 5)) expect(row.map(([s]) => s).join('')).toHaveLength(48);
+  });
+});

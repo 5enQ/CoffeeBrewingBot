@@ -2055,3 +2055,14 @@ html[data-still] :is(.pcard-clip, .holiday-top, .holiday-ground, .holiday-card) 
 /* the easter-egg fish in a glass, in place of the avatar on the «Фосфор» card (ui/ascii.tsx) */
 .pcard-fish { margin: 0; flex-shrink: 0; font: 700 8px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre;
   color: #8be39b; text-shadow: 0 0 6px rgba(139, 227, 155, 0.6); letter-spacing: 0; }
+
+/* the coffee tree in the empty half of the profile («Фосфор», ui/ascii.tsx): bark amber, leaves green, a grey pot */
+.coffee-tree { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.bonsai { margin: 0; font: 700 12px/1.12 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre; letter-spacing: 0; }
+.bonsai .t { color: #d6a64a; text-shadow: 0 0 6px rgba(214, 166, 74, 0.45); }
+.bonsai .l { color: #8be39b; }
+.bonsai .d { color: #4e9a5f; }
+.bonsai .y, .bonsai .f { color: #c98a3e; text-shadow: 0 0 6px rgba(201, 138, 62, 0.45); }
+.bonsai .p { color: #a7b0a9; text-shadow: none; }
+.coffee-tree figcaption { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--hint); }
+.coffee-tree figcaption span:first-child { color: var(--fg); font-weight: 700; }

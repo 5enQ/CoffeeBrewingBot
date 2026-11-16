@@ -28,7 +28,7 @@ import { resolveStartParam } from './data/share';
 import { loadCard } from './data/card';
 import { CardEditScreen, CardShareScreen, CardViewScreen } from './screens/CardScreens';
 import { PhosphorBoot, usePhosphor } from './ui/PhosphorBoot';
-import { BOOK, CUP, pack, PERSON, SteamCup, useAscii } from './ui/ascii';
+import { BOOK, CoffeeTree, CUP, pack, SteamCup, useAscii } from './ui/ascii';
 import { cardLook, sendCardLook } from './data/remind';
 import { onAppearance } from './appearance';
 import { t } from './i18n';
@@ -253,7 +253,13 @@ function Placeholder({ tab }: { tab: Tab }) {
   const [icon, title, hint] = text[tab];
   // the green monitor draws its picture in symbols
   const ascii = useAscii();
-  const art = { brew: CUP, journal: BOOK, beans: pack('BREW'), profile: PERSON }[tab];
+  const art = { brew: CUP, journal: BOOK, beans: pack('BREW') }[tab as 'brew' | 'journal' | 'beans'];
+  // the profile in that style: a coffee tree, lush or dying by the brews of the last two weeks
+  const { brews } = useStore();
+  if (ascii && tab === 'profile') {
+    const since = Date.now() - 14 * 86_400_000;
+    return <div className="placeholder"><CoffeeTree brews={brews.filter((b) => b.date >= since).length} /></div>;
+  }
   return (
     <div className="placeholder">
       {ascii ? (tab === 'brew' ? <SteamCup className="placeholder-art" /> : <pre className="ascii-art placeholder-art" aria-hidden="true">{art}</pre>) : <span className="placeholder-icon">{icon}</span>}

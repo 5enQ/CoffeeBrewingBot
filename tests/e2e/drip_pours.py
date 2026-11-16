@@ -38,7 +38,7 @@ async def main():
         water = await V('.stepper:has-text("Вода") .stepper-value').inner_text()
         check('160' in water, f'the method screen takes the water from the recipe: {water!r}')
 
-        check(await V('[aria-label="Удалить рецепт"]').count() == 1 and await V('.footer-actions button:has-text("Изменить")').count() == 1, 'an own recipe: delete, change, brew')
+        check(await V('[aria-label="Удалить рецепт"]').count() == 1 and await V('.footer-actions button:has-text("Изменить")').count() == 0, 'an own recipe: delete, brew; no «Изменить»')
         await V('button:has-text("Заварить")').click(); await pg.wait_for_timeout(300)
         check(await V('.step-skip').count() == 0, 'no skip before the start')
         await V('button:has-text("Старт")').click(); await pg.wait_for_timeout(1200)

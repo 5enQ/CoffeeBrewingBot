@@ -4,16 +4,16 @@ import { useEffect, useRef, useState } from 'react';
 import { track } from '../data/track';
 import { methodById, fmtRatio, fmtTime, fmtNum } from '../data/methods';
 import { emptyCupping } from '../data/cupping';
-import { isDrip, useStore, uid, type Brew } from '../data/store';
+import { isDrip, useStore, uid, type Bean, type Brew } from '../data/store';
 import { useRouter } from '../router';
-import { MethodIcon } from '../ui/icons';
-import { type StepperLock, Button, Row, Screen, Section, Stepper } from '../ui/kit';
+import { Icon, MethodIcon } from '../ui/icons';
+import { type StepperLock, Button, Screen, Section, Stepper } from '../ui/kit';
 import { beanMeta, brewBeanTitle } from './beanUtils';
 import { BeanPicker, DripPicker } from './BeanPicker';
 import { GearPicker, defaultGear } from '../ui/GearPicker';
 import type { GearRef } from '../data/gear';
 import { effectivePlan, planFromRecipe, recipeFromStandard, type BrewPlan } from '../data/recipes';
-import { beanStock, dripItemLeft } from '../data/stock';
+import { beanStock, dripItemLeft, isFinished } from '../data/stock';
 import { GRIND_RULES, fmtGrind, grinderOf, unitOf } from '../data/grind';
 import { GrindField } from '../ui/GrindField';
 import { LOCKED_TEXT, loadLock, saveLock, solve, type Lock } from '../data/ratio';
@@ -22,7 +22,7 @@ import { PpmField } from '../ui/WaterFields';
 
 export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }) {
   const m = methodById(methodId);
-  const { recipes, saveRecipe, beans, brews, gear: myGear, custom, deleteCustom, profile, saveProfile } = useStore();
+  const { recipes, saveRecipe, beans, brews, gear: myGear, custom, saveCustom, deleteCustom, profile, saveProfile } = useStore();
   const { push, back } = useRouter();
   const saved = recipes[m.id];
   const mine = custom.filter((r) => r.methodId === m.id);
@@ -66,11 +66,13 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   }, [grinderKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const drip = m.id === 'drip';
   const [bean, setBean] = useState<string | null>(() => {
-    const ok = (id?: string | null) => !!id && beans.some((b) => b.id === id && isDrip(b) === drip);
+    // only a pack that still has coffee in it: an empty or finished one is never picked for the user
+    const left = (b: Bean) => isDrip(b) === drip && !isFinished(b, beanStock(b, brews));
+    const ok = (id?: string | null) => !!id && beans.some((b) => b.id === id && left(b));
     if (ok(beanId)) return beanId!;
     if (ok(from?.beanId)) return from!.beanId;
-    const pool = beans.filter((b) => isDrip(b) === drip && !b.finished && beanStock(b, brews).left !== 0);
-    return pool.find((b) => !b.sample)?.id ?? pool[0]?.id ?? (drip ? null : beans.find((b) => !isDrip(b))?.id ?? null);
+    const pool = beans.filter(left);
+    return pool.find((b) => !b.sample)?.id ?? pool[0]?.id ?? null;
   });
   const [dripId, setDripId] = useState<string | undefined>(() => {
     const box = beans.find((b) => b.id === bean);
@@ -116,8 +118,12 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     else createRecipe();
   };
 
-  // On repeat the beans are the same as last time; the picker opens with "Сменить"
-  const [changeBean, setChangeBean] = useState(false);
+  // On repeat the beans are the same as last time; a tap or a long press on them opens the picker.
+  // The last pack is empty — the picker is open from the start.
+  const [changeBean, setChangeBean] = useState(() => !!from && bean !== from.beanId);
+  const press = useRef(0);
+  const openPicker = () => { if (!changeBean) { platform.haptic('select'); setChangeBean(true); } };
+  const unpress = () => window.clearTimeout(press.current);
   const beanObj = beans.find((x) => x.id === bean);
   const beanSt = beanObj ? beanStock(beanObj, brews) : null;
   // grinder loss: the pack gives dose + loss, the brewer gets the dose (not for drips and cupping)
@@ -165,6 +171,25 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
     grindBy: grinder && grindUnit && grindValue !== undefined ? { ...(saved?.grindBy ?? {}), [`${grinder.id}:${grindUnit}`]: grindValue } : saved?.grindBy,
   });
 
+  // Every change on this screen is kept: in the own recipe, and as this method's last settings.
+  // Not on opening (a repeated brew brings its own numbers) — only once the user changes something.
+  const edited = JSON.stringify([dose, ratio, temp, grind, grindValue, gear.map((g) => g.id)]);
+  const firstEdit = useRef(edited);
+  useEffect(() => {
+    if (firstEdit.current === edited) return;
+    firstEdit.current = '';
+    const t = window.setTimeout(() => {
+      rememberRecipe();
+      if (!active) return;
+      // a drip recipe keeps its own coffee: only the water it gives changes
+      const next = drip
+        ? { ...active, ratio: (dose * ratio) / active.dose, temp }
+        : { ...active, dose, ratio, temp, grind };
+      if (Math.abs(next.dose * next.ratio - active.dose * active.ratio) > 0.01 || next.dose !== active.dose || next.temp !== active.temp || next.grind !== active.grind) saveCustom(next);
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [edited]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const startTimer = () => { remember(); push({ name: 'timer', draft: draft() }); };
   const noTimer = () => { remember(); track('brew.manual'); push({ name: 'brewEdit', draft: draft(), isNew: true, manual: true }); };
   const removeRecipe = async () => {
@@ -177,11 +202,11 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   return (
     <Screen title={m.name} subtitle={choice === 'std' ? 'Стандартный рецепт' : `Рецепт: ${plan.name}${active?.author ? ` · от ${active.author.name || '@' + active.author.username}` : ''}`}
       footer={
-        // an own recipe: delete it, change it, brew it (like a brew in the journal); «Без таймера» moves below the steps
+        // an own recipe: delete it, brew it; its numbers are edited right here and kept as they change
         active ? (
           <div className="footer-actions">
             <button type="button" className="round-btn" onClick={removeRecipe} aria-label="Удалить рецепт"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" /></svg></button>
-            <Button kind="secondary" icon="edit" onClick={editRecipe}>Изменить</Button>
+            <Button kind="secondary" disabled={drip && !bean} onClick={noTimer}>Без таймера</Button>
             <Button icon="play" wide disabled={drip && !bean} onClick={startTimer}>Заварить</Button>
           </div>
         ) : (
@@ -203,12 +228,19 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
 
       {active?.notes && <p className="muted pad">{active.notes}</p>}
 
-      <Section title={drip ? 'Дрип' : 'Зерно'} aside={from && !changeBean ? <button type="button" className="link-btn" onClick={() => setChangeBean(true)}>Сменить</button> : undefined} plain>
+      <Section title={drip ? 'Дрип' : 'Зерно'} aside={from && !changeBean ? <button type="button" className="link-btn" onClick={openPicker}>Сменить</button> : undefined} plain>
         {from && !changeBean ? (
           <div className="group">
-            <Row label={beanObj ? brewBeanTitle({ beanId: bean, dripId }, beanObj) : drip ? 'Дрип не выбран' : 'Без зерна'}
-              hint={beanObj ? [beanMeta(beanObj), beanSt?.total ? `осталось ${fmtNum(beanSt.left, 0)} из ${fmtNum(beanSt.total, 0)} ${beanSt.unit === 'pcs' ? 'шт' : 'г'}` : ''].filter(Boolean).join(' · ') : 'как в прошлый раз'}
-              chevron={false} />
+            <button type="button" className="row bean-now"
+              onClick={openPicker} onContextMenu={(e) => { e.preventDefault(); openPicker(); }}
+              onPointerDown={() => { unpress(); press.current = window.setTimeout(openPicker, 450); }}
+              onPointerUp={unpress} onPointerLeave={unpress} onPointerCancel={unpress}>
+              <span className="row-main">
+                <span className="row-label">{beanObj ? brewBeanTitle({ beanId: bean, dripId }, beanObj) : drip ? 'Дрип не выбран' : 'Без зерна'}</span>
+                <span className="row-hint">{beanObj ? [beanMeta(beanObj), beanSt?.total ? `осталось ${fmtNum(beanSt.left, 0)} из ${fmtNum(beanSt.total, 0)} ${beanSt.unit === 'pcs' ? 'шт' : 'г'}` : ''].filter(Boolean).join(' · ') : 'как в прошлый раз'}</span>
+              </span>
+              <span className="row-chev"><Icon name="chevron" size={18} /></span>
+            </button>
           </div>
         ) : drip ? (
           <DripPicker value={bean} dripId={dripId} onChange={(id, d) => { setBean(id); setDripId(d); }} />
@@ -242,7 +274,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
       </Section>
 
       <Section title={choice === 'std' ? 'Шаги' : `Шаги · ${plan.name}`} aside={
-        <button type="button" className="link-btn" onClick={editRecipe}>{active ? 'Изменить' : 'Изменить под себя'}</button>
+        <button type="button" className="link-btn" onClick={editRecipe}>{active ? 'Изменить шаги' : 'Изменить под себя'}</button>
       }>
         <ol className={'steps-preview' + (plan.total >= 3600 ? ' long' : '')}>
           {plan.steps.map((s, i) => (
@@ -258,7 +290,6 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
           <li className="done"><time>{fmtTime(plan.total)}</time><div><b>Готово</b></div></li>
         </ol>
       </Section>
-      {active && <div className="pad no-timer"><button type="button" className="link-btn" disabled={drip && !bean} onClick={noTimer}>Записать без таймера</button></div>}
 
       <Section title="Если что-то не так">
         <ul className="tips">{m.tips.map((t) => <li key={t}>{t}</li>)}</ul>

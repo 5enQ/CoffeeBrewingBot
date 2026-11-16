@@ -80,6 +80,8 @@
 html, body { margin: 0; background: var(--bg); color: var(--fg); }
 /* nothing may shift the page sideways: otherwise in Telegram the whole tab "slides" together with the bottom bar */
 html, body { overflow-x: clip; }
+/* no double-tap or pinch zoom: panning only (iOS also gets nozoom.ts) */
+html { touch-action: pan-x pan-y; }
 /* keyboard focus never scrolls under the sticky title or the bottom bar (WCAG 2.4.11) */
 html { scroll-padding-top: calc(var(--inset-top) + 72px); scroll-padding-bottom: calc(var(--inset-bottom) + 88px); }
 body {

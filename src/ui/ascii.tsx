@@ -4,7 +4,7 @@
  * (`html[data-style="phosphor"]`); these are used only while it is on (useAscii).
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { activeStyle, onAppearance } from '../appearance';
+import { activeStyle, getAppearance, onAppearance } from '../appearance';
 
 const isAscii = () => activeStyle() === 'phosphor';
 /** the green-monitor style is on screen (one's own, or a friend's card being looked at) */
@@ -130,4 +130,38 @@ export function PhosphorFish({ still = false }: { still?: boolean }) {
     return () => clearInterval(id);
   }, [still]);
   return <pre className="pcard-fish" role="img" aria-label="Рыбка в стакане">{fishFrame(t)}</pre>;
+}
+
+/**
+ * The cup on the brew tab with its steam rising: two wisps of ( and ), each a step up per tick, fading into
+ * ' and . at the top. A frame for tick `t` (the cup itself is CUP without its still steam).
+ */
+export function steamFrame(t: number): string {
+  const rows = [Array(10).fill(' '), Array(10).fill(' '), Array(10).fill(' ')] as string[][];
+  [[3, 0], [6, 1]].forEach(([col, ph]) => {
+    for (let r = 0; r < 3; r++) {
+      const s = t - r + ph * 2, odd = ((s % 2) + 2) % 2 === 1;
+      const ch = r === 0 ? (((s % 3) + 3) % 3 === 0 ? ' ' : odd ? "'" : '.') : odd ? ')' : '(';
+      rows[r][col + (odd ? 1 : 0)] = ch;
+    }
+  });
+  return [...rows.map((r) => r.join('').replace(/\s+$/, '')), ...CUP.split('\n').slice(2)].join('\n');
+}
+
+/** ticks while motion is welcome: none with «Анимация фонов» off or reduced motion */
+function useTick(ms: number) {
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    const calm = () => getAppearance().still || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (calm()) return;
+    const id = setInterval(() => { if (!calm() && !document.hidden) setT((x) => x + 1); }, ms);
+    return () => clearInterval(id);
+  }, [ms]);
+  return t;
+}
+
+/** the cup with its steam rising (brew tab, the empty half of a wide window) */
+export function SteamCup({ className = '' }: { className?: string }) {
+  const t = useTick(450);
+  return <pre className={'ascii-art ' + className} aria-hidden="true">{steamFrame(t)}</pre>;
 }

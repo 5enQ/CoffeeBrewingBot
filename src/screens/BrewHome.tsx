@@ -1,4 +1,4 @@
-import { CUP, useAscii } from '../ui/ascii';
+import { SteamCup, useAscii } from '../ui/ascii';
 import { allMethods, methodById, fmtNum } from '../data/methods';
 import { newCustomMethod } from '../data/recipes';
 import { uid } from '../data/store';
@@ -305,7 +305,7 @@ export function BrewHome() {
   const ascii = useAscii();
   return (
     <Screen title="Что завариваем?" root>
-      {ascii && <div className="ascii-hello" aria-hidden="true"><pre className="ascii-art">{CUP}</pre><span>BREWBOOK · READY.</span></div>}
+      {ascii && <div className="ascii-hello" aria-hidden="true"><SteamCup /><span>BREWBOOK · READY.</span></div>}
       <HolidayBanner />
       <TimerBanner />
       {recent.length > 0 && (

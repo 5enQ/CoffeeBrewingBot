@@ -19,3 +19,18 @@ describe('the fish in a glass', () => {
     for (let t = 0; t < 30; t++) expect(fishFrame(t)).toMatch(/^[\x20-\x7e\n]+$/);
   });
 });
+
+describe('the steam over the cup', () => {
+  it('rises: three rows of ( ) over the cup, changing every tick, fading at the top', async () => {
+    const { steamFrame, CUP } = await import('../../src/ui/ascii');
+    const f = Array.from({ length: 6 }, (_, t) => steamFrame(t));
+    for (const x of f) {
+      const l = x.split('\n');
+      expect(l).toHaveLength(3 + CUP.split('\n').length - 2);
+      expect(l.slice(3).join('\n')).toBe(CUP.split('\n').slice(2).join('\n'));
+      expect(l[1] + l[2]).toMatch(/[()]/);
+      expect(l[0]).not.toMatch(/[()]/);
+    }
+    expect(new Set(f).size).toBeGreaterThan(2);
+  });
+});

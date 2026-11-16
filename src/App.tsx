@@ -28,7 +28,7 @@ import { resolveStartParam } from './data/share';
 import { loadCard } from './data/card';
 import { CardEditScreen, CardShareScreen, CardViewScreen } from './screens/CardScreens';
 import { PhosphorBoot, usePhosphor } from './ui/PhosphorBoot';
-import { BOOK, CUP, pack, PERSON, useAscii } from './ui/ascii';
+import { BOOK, CUP, pack, PERSON, SteamCup, useAscii } from './ui/ascii';
 import { cardLook, sendCardLook } from './data/remind';
 import { onAppearance } from './appearance';
 import { t } from './i18n';
@@ -256,7 +256,7 @@ function Placeholder({ tab }: { tab: Tab }) {
   const art = { brew: CUP, journal: BOOK, beans: pack('BREW'), profile: PERSON }[tab];
   return (
     <div className="placeholder">
-      {ascii ? <pre className="ascii-art placeholder-art" aria-hidden="true">{art}</pre> : <span className="placeholder-icon">{icon}</span>}
+      {ascii ? (tab === 'brew' ? <SteamCup className="placeholder-art" /> : <pre className="ascii-art placeholder-art" aria-hidden="true">{art}</pre>) : <span className="placeholder-icon">{icon}</span>}
       <h2>{title}</h2>
       <p>{hint}</p>
     </div>

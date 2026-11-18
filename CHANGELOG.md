@@ -14,6 +14,7 @@ Work in progress is collected under **Unreleased** and becomes a version on rele
 - A repeated brew shows its beans as one row: a tap or a long press on it opens the picker (the «Сменить» link stays).
 
 ### Fixed
+- Brew page: the parameter tiles no longer leave a gray hole at the end of an unfinished row (7 tiles with water ppm, for one) — the last tile takes the rest of the row, on the phone and in the wide detail pane (brewbook-bugs#1).
 - iPhone: the app no longer zooms with two fingers (nor with a double tap, nor on a focused field); iOS ignores the page's «no zoom», so the pinch is stopped by the app itself.
 - The recipe screen never picks an empty or finished pack: not the last brew's, not the one the home screen had, not as a fallback. A repeat of a brew whose pack ran out opens with the picker and a pack that still has coffee.
 - A shared profile came to the chat with an «Открыть рецепт» button; the button under a profile now says «Открыть профиль» (recipes keep theirs).

@@ -535,6 +535,9 @@ button.row:active { background: var(--fg-soft); }
 .param-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--sep); border-radius: var(--r); overflow: hidden; }
 .param-grid > div { background: var(--card); padding: 12px; min-width: 0; }
 .param-grid dd { font-size: 16px; overflow-wrap: break-word; hyphens: auto; }
+/* the last tile of an unfinished row takes the rest of it — no gray hole showing the separator color (brewbook-bugs#1) */
+.param-grid > div:last-child:nth-child(3n + 1) { grid-column: span 3; }
+.param-grid > div:last-child:nth-child(3n + 2) { grid-column: span 2; }
 .taste-bars, .cup-bars { display: flex; flex-direction: column; gap: 10px; padding: 14px; }
 .taste-bars > div, .cup-bars > div { display: grid; grid-template-columns: 112px 1fr 44px; align-items: center; gap: 10px; font-size: 14px; }
 .taste-bars i, .cup-bars i { height: 8px; border-radius: 99px; background: var(--sep); position: relative; overflow: hidden; }
@@ -951,6 +954,12 @@ button.row:active { background: var(--fg-soft); }
 .pane-detail { container-type: inline-size; }
 @container (min-width: 760px) {
   .param-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .param-grid > div:last-child { grid-column: auto; }
+  .param-grid > div:last-child:nth-child(6n + 1) { grid-column: span 6; }
+  .param-grid > div:last-child:nth-child(6n + 2) { grid-column: span 5; }
+  .param-grid > div:last-child:nth-child(6n + 3) { grid-column: span 4; }
+  .param-grid > div:last-child:nth-child(6n + 4) { grid-column: span 3; }
+  .param-grid > div:last-child:nth-child(6n + 5) { grid-column: span 2; }
 }
 .desk .pane-detail .quick-methods { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .desk .pane-detail .method-hero { padding: 20px; }

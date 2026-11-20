@@ -9,6 +9,7 @@
 import type { Bean, Brew } from './store';
 import type { Cupping } from './cupping';
 import { cupScore } from './cupping';
+import { N_, tr } from '../i18n';
 
 /* ---------- 102: preparation protocol (fixed) ---------- */
 
@@ -36,23 +37,23 @@ export const dosePerCup = (volumeMl: number) => Math.round((volumeMl * PROTOCOL.
 
 /** Preparation rules — shown as locked parameters */
 export const PROTOCOL_RULES: { label: string; value: string; hint?: string }[] = [
-  { label: 'Соотношение', value: '8,25 г на 150 мл', hint: 'Доза считается от объёма чашки до края, точность весов 0,1 г, допуск ±0,2 г' },
-  { label: 'Вода', value: '93 ± 3 °C', hint: 'Лить до края, создавая лёгкую турбулентность' },
-  { label: 'Помол', value: '70–75 % проходит сито 850 мкм', hint: '20 US mesh — чуть крупнее, чем для фильтра. Каждую чашку молоть отдельно, мельницу прочищать новым образцом' },
-  { label: 'Обжарка', value: 'Средняя · Agtron 63', hint: 'Agtron «Gourmet» 63, CIELAB L* 26–29, плитка Agtron/SCA №65. Без недоразвитости, подгорания и «запечённости»' },
-  { label: 'Отдых', value: '8–24 ч после обжарки', hint: 'Остывание воздухом до ~20 °C, хранение герметично, в прохладном тёмном месте' },
-  { label: 'Чашки', value: '200–350 мл', hint: 'Стекло или керамика, диаметр 75–90 мм, все одинаковые' },
-  { label: 'Состав воды', value: 'без хлора · pH 6–8', hint: 'Кальциевая жёсткость 50–175 ppm CaCO₃, щёлочность около 40–70 ppm CaCO₃' },
-  { label: 'Сессия', value: 'до 6 образцов', hint: 'Все образцы завариваются и оцениваются параллельно' },
+  { label: tr('Соотношение'), value: tr('8,25 г на 150 мл'), hint: tr('Доза считается от объёма чашки до края, точность весов 0,1 г, допуск ±0,2 г') },
+  { label: tr('Вода'), value: '93 ± 3 °C', hint: tr('Лить до края, создавая лёгкую турбулентность') },
+  { label: tr('Помол'), value: tr('70–75 % проходит сито 850 мкм'), hint: tr('20 US mesh — чуть крупнее, чем для фильтра. Каждую чашку молоть отдельно, мельницу прочищать новым образцом') },
+  { label: tr('Обжарка'), value: tr('Средняя · Agtron 63'), hint: tr('Agtron «Gourmet» 63, CIELAB L* 26–29, плитка Agtron/SCA №65. Без недоразвитости, подгорания и «запечённости»') },
+  { label: tr('Отдых'), value: tr('8–24 ч после обжарки'), hint: tr('Остывание воздухом до ~20 °C, хранение герметично, в прохладном тёмном месте') },
+  { label: tr('Чашки'), value: tr('200–350 мл'), hint: tr('Стекло или керамика, диаметр 75–90 мм, все одинаковые') },
+  { label: tr('Состав воды'), value: tr('без хлора · pH 6–8'), hint: tr('Кальциевая жёсткость 50–175 ppm CaCO₃, щёлочность около 40–70 ppm CaCO₃') },
+  { label: tr('Сессия'), value: tr('до 6 образцов'), hint: tr('Все образцы завариваются и оцениваются параллельно') },
 ];
 
 /* ---------- Assessment mode ---------- */
 
 export type CvaMode = 'affective' | 'descriptive' | 'combined';
 export const MODES: { id: CvaMode; label: string; hint: string }[] = [
-  { id: 'affective', label: 'Аффективная', hint: 'Впечатление о качестве 1–9 и итоговый балл (SCA 104). 5 чашек на образец' },
-  { id: 'descriptive', label: 'Дескриптивная', hint: 'Интенсивность 0–15 и дескрипторы, без балла (SCA 103). 3–5 чашек' },
-  { id: 'combined', label: 'Обе', hint: 'Обе формы параллельно, раздел за разделом. 5 чашек' },
+  { id: 'affective', label: tr('Аффективная'), hint: tr('Впечатление о качестве 1–9 и итоговый балл (SCA 104). 5 чашек на образец') },
+  { id: 'descriptive', label: tr('Дескриптивная'), hint: tr('Интенсивность 0–15 и дескрипторы, без балла (SCA 103). 3–5 чашек') },
+  { id: 'combined', label: tr('Обе'), hint: tr('Обе формы параллельно, раздел за разделом. 5 чашек') },
 ];
 export const cupsFor = (mode: CvaMode, wanted?: number) =>
   mode === 'descriptive' ? Math.min(PROTOCOL.cupsDescriptiveMax, Math.max(PROTOCOL.cupsDescriptiveMin, wanted ?? 5)) : PROTOCOL.cupsAffective;
@@ -64,27 +65,27 @@ export const hasDescriptive = (m: CvaMode) => m !== 'affective';
 export type AffKey = 'fragrance' | 'aroma' | 'flavor' | 'aftertaste' | 'acidity' | 'sweetness' | 'mouthfeel' | 'overall';
 
 export const AFF_SECTIONS: { key: AffKey; label: string; step: 1 | 2 | 3; hint: string }[] = [
-  { key: 'fragrance', label: 'Сухой аромат', step: 1, hint: 'Запах молотого кофе до заливки (fragrance)' },
-  { key: 'aroma', label: 'Аромат', step: 2, hint: 'Запах настоя: нетронутая корочка и её разбивание (aroma)' },
-  { key: 'flavor', label: 'Вкус', step: 3, hint: 'Вкус и ретроназальный аромат, пока настой во рту (flavor)' },
-  { key: 'aftertaste', label: 'Послевкусие', step: 3, hint: 'Что остаётся после того, как кофе сплюнули или проглотили' },
-  { key: 'acidity', label: 'Кислотность', step: 3, hint: 'Восприятие кислого вкуса' },
-  { key: 'sweetness', label: 'Сладость', step: 3, hint: 'Вкусовая и ретроназальная сладость' },
-  { key: 'mouthfeel', label: 'Тактильность', step: 3, hint: 'Плотность, текстура, вяжущесть (mouthfeel)' },
-  { key: 'overall', label: 'Общее', step: 3, hint: 'Целостное впечатление, в т. ч. баланс и личное предпочтение' },
+  { key: 'fragrance', label: tr('Сухой аромат'), step: 1, hint: tr('Запах молотого кофе до заливки (fragrance)') },
+  { key: 'aroma', label: tr('Аромат'), step: 2, hint: tr('Запах настоя: нетронутая корочка и её разбивание (aroma)') },
+  { key: 'flavor', label: tr('Вкус'), step: 3, hint: tr('Вкус и ретроназальный аромат, пока настой во рту (flavor)') },
+  { key: 'aftertaste', label: tr('Послевкусие'), step: 3, hint: tr('Что остаётся после того, как кофе сплюнули или проглотили') },
+  { key: 'acidity', label: tr('Кислотность'), step: 3, hint: tr('Восприятие кислого вкуса') },
+  { key: 'sweetness', label: tr('Сладость'), step: 3, hint: tr('Вкусовая и ретроназальная сладость') },
+  { key: 'mouthfeel', label: tr('Тактильность'), step: 3, hint: tr('Плотность, текстура, вяжущесть (mouthfeel)') },
+  { key: 'overall', label: tr('Общее'), step: 3, hint: tr('Целостное впечатление, в т. ч. баланс и личное предпочтение') },
 ];
 
 /** "Impression of quality" scale, 1–9 (center 5 — neither high nor low) */
 export const IMPRESSION: Record<number, string> = {
-  1: 'Крайне низкое', 2: 'Очень низкое', 3: 'Умеренно низкое', 4: 'Слегка низкое', 5: 'Ни высокое, ни низкое',
-  6: 'Слегка высокое', 7: 'Умеренно высокое', 8: 'Очень высокое', 9: 'Крайне высокое',
+  1: tr('Крайне низкое'), 2: tr('Очень низкое'), 3: tr('Умеренно низкое'), 4: tr('Слегка низкое'), 5: tr('Ни высокое, ни низкое'),
+  6: tr('Слегка высокое'), 7: tr('Умеренно высокое'), 8: tr('Очень высокое'), 9: tr('Крайне высокое'),
 };
 
 export type DefectType = 'moldy' | 'phenolic' | 'potato';
 export const DEFECT_TYPES: { id: DefectType; label: string }[] = [
-  { id: 'moldy', label: 'Плесневый' },
-  { id: 'phenolic', label: 'Фенольный' },
-  { id: 'potato', label: 'Картофельный' },
+  { id: 'moldy', label: tr('Плесневый') },
+  { id: 'phenolic', label: tr('Фенольный') },
+  { id: 'potato', label: tr('Картофельный') },
 ];
 
 export interface Affective {
@@ -131,26 +132,26 @@ export function syncUniformity(a: Affective): Affective {
 
 export type DescKey = 'fragrance' | 'aroma' | 'flavor' | 'aftertaste' | 'acidity' | 'sweetness' | 'mouthfeel';
 export const DESC_SECTIONS: { key: DescKey; label: string }[] = [
-  { key: 'fragrance', label: 'Сухой аромат' },
-  { key: 'aroma', label: 'Аромат' },
-  { key: 'flavor', label: 'Вкус' },
-  { key: 'aftertaste', label: 'Послевкусие' },
-  { key: 'acidity', label: 'Кислотность' },
-  { key: 'sweetness', label: 'Сладость' },
-  { key: 'mouthfeel', label: 'Тактильность' },
+  { key: 'fragrance', label: tr('Сухой аромат') },
+  { key: 'aroma', label: tr('Аромат') },
+  { key: 'flavor', label: tr('Вкус') },
+  { key: 'aftertaste', label: tr('Послевкусие') },
+  { key: 'acidity', label: tr('Кислотность') },
+  { key: 'sweetness', label: tr('Сладость') },
+  { key: 'mouthfeel', label: tr('Тактильность') },
 ];
 
 /** Olfactory lexicon: category and refinements. Both the category and a refinement can be checked. */
 export const OLFACTORY: { id: string; label: string; tone: string; children?: { id: string; label: string; tone?: string }[] }[] = [
-  { id: 'floral', label: 'Цветочный', tone: 'floral' },
-  { id: 'fruity', label: 'Фруктовый', tone: 'fruit', children: [{ id: 'berry', label: 'Ягодный' }, { id: 'dried-fruit', label: 'Сухофрукты' }, { id: 'citrus', label: 'Цитрусовый', tone: 'citrus' }] },
-  { id: 'sour-fermented', label: 'Кислый/ферментированный', tone: 'ferment', children: [{ id: 'sour', label: 'Кислый' }, { id: 'fermented', label: 'Ферментированный' }] },
-  { id: 'green', label: 'Зелёный/растительный', tone: 'green' },
-  { id: 'other', label: 'Другое', tone: 'defect', children: [{ id: 'chemical', label: 'Химический' }, { id: 'musty', label: 'Затхлый/землистый' }, { id: 'woody', label: 'Древесный' }] },
-  { id: 'roasted', label: 'Обжарочный', tone: 'roast', children: [{ id: 'cereal', label: 'Злаковый' }, { id: 'burnt', label: 'Жжёный' }, { id: 'tobacco', label: 'Табачный' }] },
-  { id: 'nutty-cocoa', label: 'Орехи/какао', tone: 'nut', children: [{ id: 'nutty', label: 'Ореховый' }, { id: 'cocoa', label: 'Какао' }] },
-  { id: 'spice', label: 'Пряный', tone: 'spice' },
-  { id: 'sweet', label: 'Сладкий', tone: 'sweet', children: [{ id: 'vanilla', label: 'Ваниль/ванилин' }, { id: 'brown-sugar', label: 'Коричневый сахар' }] },
+  { id: 'floral', label: tr('Цветочный'), tone: 'floral' },
+  { id: 'fruity', label: tr('Фруктовый'), tone: 'fruit', children: [{ id: 'berry', label: tr('Ягодный') }, { id: 'dried-fruit', label: tr('Сухофрукты') }, { id: 'citrus', label: tr('Цитрусовый'), tone: 'citrus' }] },
+  { id: 'sour-fermented', label: tr('Кислый/ферментированный'), tone: 'ferment', children: [{ id: 'sour', label: tr('Кислый') }, { id: 'fermented', label: tr('Ферментированный') }] },
+  { id: 'green', label: tr('Зелёный/растительный'), tone: 'green' },
+  { id: 'other', label: tr('Другое'), tone: 'defect', children: [{ id: 'chemical', label: tr('Химический') }, { id: 'musty', label: tr('Затхлый/землистый') }, { id: 'woody', label: tr('Древесный') }] },
+  { id: 'roasted', label: tr('Обжарочный'), tone: 'roast', children: [{ id: 'cereal', label: tr('Злаковый') }, { id: 'burnt', label: tr('Жжёный') }, { id: 'tobacco', label: tr('Табачный') }] },
+  { id: 'nutty-cocoa', label: tr('Орехи/какао'), tone: 'nut', children: [{ id: 'nutty', label: tr('Ореховый') }, { id: 'cocoa', label: tr('Какао') }] },
+  { id: 'spice', label: tr('Пряный'), tone: 'spice' },
+  { id: 'sweet', label: tr('Сладкий'), tone: 'sweet', children: [{ id: 'vanilla', label: tr('Ваниль/ванилин') }, { id: 'brown-sugar', label: tr('Коричневый сахар') }] },
 ];
 export const OLFACTORY_LABEL: Record<string, string> = Object.fromEntries(
   OLFACTORY.flatMap((c) => [[c.id, c.label], ...(c.children ?? []).map((x) => [x.id, x.label])]),
@@ -161,22 +162,22 @@ export const OLFACTORY_TONE: Record<string, string> = Object.fromEntries(
 export const MAX_OLFACTORY = 5;
 
 export const MAIN_TASTES = [
-  { id: 'salty', label: 'Солёный', tone: 'defect' }, { id: 'sour', label: 'Кислый', tone: 'citrus' }, { id: 'sweet', label: 'Сладкий', tone: 'sweet' },
-  { id: 'bitter', label: 'Горький', tone: 'roast' }, { id: 'umami', label: 'Умами', tone: 'spice' },
+  { id: 'salty', label: tr('Солёный'), tone: 'defect' }, { id: 'sour', label: tr('Кислый'), tone: 'citrus' }, { id: 'sweet', label: tr('Сладкий'), tone: 'sweet' },
+  { id: 'bitter', label: tr('Горький'), tone: 'roast' }, { id: 'umami', label: tr('Умами'), tone: 'spice' },
 ];
 export const MAX_MAIN_TASTES = 2;
 
 export const MOUTHFEEL_CATA = [
-  { id: 'rough', label: 'Грубое', hint: 'зернистое, меловое, песчаное' },
-  { id: 'oily', label: 'Маслянистое' },
-  { id: 'smooth', label: 'Гладкое', hint: 'бархатистое, шелковистое, сиропистое' },
-  { id: 'drying', label: 'Вяжущее', hint: 'сушит рот' },
-  { id: 'metallic', label: 'Металлическое' },
+  { id: 'rough', label: tr('Грубое'), hint: tr('зернистое, меловое, песчаное') },
+  { id: 'oily', label: tr('Маслянистое') },
+  { id: 'smooth', label: tr('Гладкое'), hint: tr('бархатистое, шелковистое, сиропистое') },
+  { id: 'drying', label: tr('Вяжущее'), hint: tr('сушит рот') },
+  { id: 'metallic', label: tr('Металлическое') },
 ];
 export const MAX_MOUTHFEEL = 2;
 
 /** Visual roast level assessment before tasting (103, 6.1a) */
-export const ROAST_LEVELS = ['Очень светлая', 'Светлая', 'Средняя', 'Средне-тёмная', 'Тёмная'];
+export const ROAST_LEVELS = [N_('Очень светлая'), N_('Светлая'), N_('Средняя'), N_('Средне-тёмная'), N_('Тёмная')];
 
 export interface Descriptive {
   roast: string;
@@ -202,26 +203,26 @@ export const emptyDescriptive = (): Descriptive => ({
 export interface ExtrinsicGroup { id: 'farming' | 'processing' | 'trading' | 'certification' | 'other'; label: string; items: { id: string; label: string; sub?: boolean }[] }
 
 export const EXTRINSIC: ExtrinsicGroup[] = [
-  { id: 'farming', label: 'Выращивание', items: [
-    { id: 'country', label: 'Страна' }, { id: 'region', label: 'Регион', sub: true }, { id: 'farm', label: 'Ферма или кооператив' },
-    { id: 'producer', label: 'Производитель' }, { id: 'species', label: 'Вид' }, { id: 'variety', label: 'Сорт или смесь сортов', sub: true },
-    { id: 'harvest', label: 'Дата/год урожая' }, { id: 'farming-other', label: 'Другое' },
+  { id: 'farming', label: tr('Выращивание'), items: [
+    { id: 'country', label: tr('Страна') }, { id: 'region', label: tr('Регион'), sub: true }, { id: 'farm', label: tr('Ферма или кооператив') },
+    { id: 'producer', label: tr('Производитель') }, { id: 'species', label: tr('Вид') }, { id: 'variety', label: tr('Сорт или смесь сортов'), sub: true },
+    { id: 'harvest', label: tr('Дата/год урожая') }, { id: 'farming-other', label: tr('Другое') },
   ] },
-  { id: 'processing', label: 'Обработка', items: [
-    { id: 'processor', label: 'Переработчик' }, { id: 'wet-mill', label: 'Станция мокрой обработки', sub: true }, { id: 'dry-mill', label: 'Сухая мельница', sub: true },
-    { id: 'processor-other', label: 'Другое', sub: true }, { id: 'process-type', label: 'Тип обработки' }, { id: 'washed', label: 'Мытая', sub: true },
-    { id: 'natural', label: 'Натуральная', sub: true }, { id: 'process-other', label: 'Другая', sub: true },
-    { id: 'decaf', label: 'Без кофеина' }, { id: 'process-description', label: 'Описание обработки' },
+  { id: 'processing', label: tr('Обработка'), items: [
+    { id: 'processor', label: tr('Переработчик') }, { id: 'wet-mill', label: tr('Станция мокрой обработки'), sub: true }, { id: 'dry-mill', label: tr('Сухая мельница'), sub: true },
+    { id: 'processor-other', label: tr('Другое'), sub: true }, { id: 'process-type', label: tr('Тип обработки') }, { id: 'washed', label: tr('Мытая'), sub: true },
+    { id: 'natural', label: tr('Натуральная'), sub: true }, { id: 'process-other', label: tr('Другая'), sub: true },
+    { id: 'decaf', label: tr('Без кофеина') }, { id: 'process-description', label: tr('Описание обработки') },
   ] },
-  { id: 'trading', label: 'Торговля', items: [
-    { id: 'grade', label: 'Грейд' }, { id: 'ico', label: 'Номер ICO' }, { id: 'importer', label: 'Импортёр' }, { id: 'exporter', label: 'Экспортёр' },
-    { id: 'farm-gate', label: 'Цена у ворот фермы' }, { id: 'lot-size', label: 'Размер лота' }, { id: 'trading-other', label: 'Другое' },
+  { id: 'trading', label: tr('Торговля'), items: [
+    { id: 'grade', label: tr('Грейд') }, { id: 'ico', label: tr('Номер ICO') }, { id: 'importer', label: tr('Импортёр') }, { id: 'exporter', label: tr('Экспортёр') },
+    { id: 'farm-gate', label: tr('Цена у ворот фермы') }, { id: 'lot-size', label: tr('Размер лота') }, { id: 'trading-other', label: tr('Другое') },
   ] },
-  { id: 'certification', label: 'Сертификаты', items: [
-    { id: '4c', label: '4C' }, { id: 'fairtrade', label: 'Fairtrade' }, { id: 'organic', label: 'Органик' },
-    { id: 'rainforest', label: 'Rainforest Alliance' }, { id: 'food-safety', label: 'Пищевая безопасность' }, { id: 'cert-other', label: 'Другое' },
+  { id: 'certification', label: tr('Сертификаты'), items: [
+    { id: '4c', label: '4C' }, { id: 'fairtrade', label: 'Fairtrade' }, { id: 'organic', label: tr('Органик') },
+    { id: 'rainforest', label: 'Rainforest Alliance' }, { id: 'food-safety', label: tr('Пищевая безопасность') }, { id: 'cert-other', label: tr('Другое') },
   ] },
-  { id: 'other', label: 'Другое', items: [{ id: 'awards', label: 'Награды' }] },
+  { id: 'other', label: tr('Другое'), items: [{ id: 'awards', label: tr('Награды') }] },
 ];
 
 export interface Extrinsic {
@@ -247,7 +248,7 @@ export function extrinsicFromBean(b?: Bean | null): Extrinsic {
     if (procs.some((p) => p.includes('натур') || p.includes('natur'))) c.add('natural');
     if (procs.some((p) => !(p.includes('мыт') || p.includes('wash') || p.includes('натур') || p.includes('natur')))) c.add('process-other');
   }
-  const farming = b ? [b.isBlend ? 'Бленд' : '', b.altitude && `высота ${b.altitude}`].filter(Boolean).join(', ') : '';
+  const farming = b ? [b.isBlend ? tr('Бленд') : '', b.altitude && tr('высота {0}', b.altitude)].filter(Boolean).join(', ') : '';
   const processing = b ? [b.process].filter(Boolean).join(', ') : '';
   return { checked: [...c], notes: { farming, processing } };
 }

@@ -6,6 +6,7 @@ import { platform } from '../platform';
 import { beanTitle, blendSummary, dripMeta, dripTitle, RestBadge } from './beanUtils';
 import { beanStock, dripItemLeft, isFinished } from '../data/stock';
 import { fmtNum } from '../data/methods';
+import { tr } from '../i18n';
 
 /** Horizontal bean picker + "new" and "scan" */
 export function BeanPicker({ value, onChange, dose }: { value: string | null; onChange(id: string | null): void; dose?: number }) {
@@ -28,10 +29,10 @@ export function BeanPicker({ value, onChange, dose }: { value: string | null; on
   return (
     <div className="bean-picker">
       <button type="button" className="bean-pick action" onClick={() => create(true)}>
-        <Icon name="scan" /><span>Скан пачки</span>
+        <Icon name="scan" /><span>{tr('Скан пачки')}</span>
       </button>
       <button type="button" className="bean-pick action" onClick={() => create(false)}>
-        <Icon name="plus" /><span>Новое</span>
+        <Icon name="plus" /><span>{tr('Новое')}</span>
       </button>
       {beans.filter((b) => b.id === value || (!isDrip(b) && !isFinished(b, beanStock(b, brews)))).map((b) => {
         const st = beanStock(b, brews);
@@ -39,15 +40,15 @@ export function BeanPicker({ value, onChange, dose }: { value: string | null; on
           <button type="button" key={b.id} className={'bean-pick' + (b.id === value ? ' on' : '')}
             onClick={() => { platform.haptic('select'); onChange(b.id); }}>
             <b>{beanTitle(b)}</b>
-            <span>{b.isBlend ? `Бленд · ${blendSummary(b)}` : [b.country, b.process].filter(Boolean).join(' · ') || b.roaster || '—'}</span>
+            <span>{b.isBlend ? tr('Бленд · {0}', blendSummary(b)) : [b.country, b.process].filter(Boolean).join(' · ') || b.roaster || '—'}</span>
             {st.total > 0
-              ? <span className={'pick-stock' + (dose && st.left < dose ? ' short' : '')}><i style={{ ['--w' as string]: `${st.ratio * 100}%` }} />{fmtNum(st.left, 0)} из {fmtNum(st.total, 0)} г</span>
+              ? <span className={'pick-stock' + (dose && st.left < dose ? ' short' : '')}><i style={{ ['--w' as string]: `${st.ratio * 100}%` }} />{tr('{0} из {1} г', fmtNum(st.left, 0), fmtNum(st.total, 0))}</span>
               : <RestBadge roastDate={b.roastDate} />}
           </button>
         );
       })}
       <button type="button" className={'bean-pick' + (value === null ? ' on' : '')} onClick={() => onChange(null)}>
-        <b>Без зерна</b><span>не привязывать</span>
+        <b>{tr('Без зерна')}</b><span>{tr('не привязывать')}</span>
       </button>
     </div>
   );
@@ -92,27 +93,27 @@ export function DripPicker({ value, dripId, onChange }: {
     <>
       <div className="bean-picker">
         <button type="button" className="bean-pick action" onClick={() => create(true)}>
-          <Icon name="scan" /><span>Скан коробки</span>
+          <Icon name="scan" /><span>{tr('Скан коробки')}</span>
         </button>
         <button type="button" className="bean-pick action" onClick={() => create(false)}>
-          <Icon name="plus" /><span>Новый дрип</span>
+          <Icon name="plus" /><span>{tr('Новый дрип')}</span>
         </button>
         {boxes.map((b) => {
           const st = beanStock(b, brews);
           return (
             <button type="button" key={b.id} className={'bean-pick' + (b.id === value ? ' on' : '')} onClick={() => pick(b)}>
               <b>{beanTitle(b)}</b>
-              <span>{b.assorted ? `Ассорти · ${(b.drips ?? []).length} вид.` : [b.country, b.process].filter(Boolean).join(' · ') || b.roaster || '—'}</span>
+              <span>{b.assorted ? tr('Ассорти · {0} вид.', (b.drips ?? []).length) : [b.country, b.process].filter(Boolean).join(' · ') || b.roaster || '—'}</span>
               {st.total > 0
-                ? <span className={'pick-stock' + (st.left < 1 ? ' short' : '')}><i style={{ ['--w' as string]: `${st.ratio * 100}%` }} />{st.left} из {st.total} шт</span>
+                ? <span className={'pick-stock' + (st.left < 1 ? ' short' : '')}><i style={{ ['--w' as string]: `${st.ratio * 100}%` }} />{tr('{0} из {1} шт', st.left, st.total)}</span>
                 : <RestBadge roastDate={b.roastDate} />}
             </button>
           );
         })}
       </div>
-      {boxes.length === 0 && <p className="muted pad small-note">На полке пока нет дрипов — добавьте коробку или один дрип.</p>}
+      {boxes.length === 0 && <p className="muted pad small-note">{tr('На полке пока нет дрипов — добавьте коробку или один дрип.')}</p>}
       {box?.assorted && (
-        <div className="drip-items" role="radiogroup" aria-label="Какой дрип из коробки">
+        <div className="drip-items" role="radiogroup" aria-label={tr('Какой дрип из коробки')}>
           {(box.drips ?? []).map((d) => {
             const left = dripItemLeft(box, d.id, brews);
             return (
@@ -121,7 +122,7 @@ export function DripPicker({ value, dripId, onChange }: {
                 onClick={() => { platform.haptic('select'); onChange(box.id, d.id); }}>
                 <b>{dripTitle(d)}</b>
                 <span>{dripMeta(d) || d.notes || '—'}</span>
-                <small>{left ? `осталось ${left} из ${d.count}` : 'закончились'}</small>
+                <small>{left ? tr('осталось {0} из {1}', left, d.count) : tr('закончились')}</small>
               </button>
             );
           })}

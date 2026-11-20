@@ -2,6 +2,7 @@ import { badgeTone, sortBadges, type BadgeLite } from '../data/badges';
 import type { Author } from '../data/store';
 import { platform } from '../platform';
 import { Icon } from './icons';
+import { tr, trValue } from '../i18n';
 
 export function BadgeChip({ b, onClick }: { b: BadgeLite; onClick?: () => void }) {
   const inner = (
@@ -9,7 +10,7 @@ export function BadgeChip({ b, onClick }: { b: BadgeLite; onClick?: () => void }
       <span className="badge-medal"><Icon name="medal" size={18} /></span>
       <span className="badge-text">
         <b>{b.title}</b>
-        {(b.detail || b.year) && <small>{[b.detail, b.year].filter(Boolean).join(' · ')}</small>}
+        {(b.detail || b.year) && <small>{[trValue(b.detail), b.year].filter(Boolean).join(' · ')}</small>}
       </span>
     </>
   );
@@ -32,8 +33,8 @@ export function BadgeRow({ badges, max = 3 }: { badges: BadgeLite[]; max?: numbe
 const initials = (s: string) => s.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 
 /** Recipe author: name, Telegram link (if the author allowed it), badges */
-export function AuthorBlock({ author, label = 'Рецепт от' }: { author: Author; label?: string }) {
-  const name = author.name || (author.username ? '@' + author.username : 'Без имени');
+export function AuthorBlock({ author, label = tr('Рецепт от') }: { author: Author; label?: string }) {
+  const name = author.name || (author.username ? '@' + author.username : tr('Без имени'));
   return (
     <div className="author-block">
       <div className="author">

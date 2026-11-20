@@ -5,6 +5,7 @@
 import { RATINGS_API, TELEGRAM_APP, TELEGRAM_BOT } from '../config';
 import { platform } from '../platform';
 import { getAppearance } from '../appearance';
+import { getLocale, tr } from '../i18n';
 
 export const remindersAvailable = () => !!RATINGS_API && !!TELEGRAM_BOT && !!platform.initData();
 /** the button in the bot's message opens the timer ("timer" launch parameter) */
@@ -14,7 +15,7 @@ async function call(body: Record<string, unknown>): Promise<boolean> {
   const initData = platform.initData();
   if (!RATINGS_API || !initData) return false;
   try {
-    const r = await fetch(`${RATINGS_API}/reminders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, ...body }) });
+    const r = await fetch(`${RATINGS_API}/reminders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, lang: getLocale(), ...body }) });
     return r.ok && !!(await r.json())?.ok;
   } catch { return false; }
 }
@@ -51,20 +52,20 @@ export async function reminderStatus(): Promise<ReminderStatus | null> {
 /** a test message from the bot right now; error — Telegram's answer ("bot was blocked by the user"…) */
 export async function testReminder(): Promise<{ ok: boolean; error?: string }> {
   const initData = platform.initData();
-  if (!RATINGS_API || !initData) return { ok: false, error: 'Работает только в Telegram' };
+  if (!RATINGS_API || !initData) return { ok: false, error: tr('Работает только в Telegram') };
   await writeAccess();
   try {
-    const r = await fetch(`${RATINGS_API}/reminders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, test: true, link: timerLink() }) });
-    return r.ok ? await r.json() : { ok: false, error: `сервер ответил ${r.status}` };
-  } catch { return { ok: false, error: 'нет связи с сервером' }; }
+    const r = await fetch(`${RATINGS_API}/reminders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData, lang: getLocale(), test: true, link: timerLink() }) });
+    return r.ok ? await r.json() : { ok: false, error: tr('сервер ответил {0}', r.status) };
+  } catch { return { ok: false, error: tr('нет связи с сервером') }; }
 }
 
 /** a Telegram refusal in words a person understands */
 export function explainRefusal(detail?: string | null): string {
   const d = (detail ?? '').toLowerCase();
-  if (d.includes('blocked')) return 'бот заблокирован — разблокируйте его в чате с ботом';
-  if (d.includes("can't initiate") || d.includes('chat not found') || d.includes('forbidden')) return 'бот ещё не может вам писать — откройте чат с ботом и нажмите «Старт»';
-  return detail || 'Telegram не принял сообщение';
+  if (d.includes('blocked')) return tr('бот заблокирован — разблокируйте его в чате с ботом');
+  if (d.includes("can't initiate") || d.includes('chat not found') || d.includes('forbidden')) return tr('бот ещё не может вам писать — откройте чат с ботом и нажмите «Старт»');
+  return detail || tr('Telegram не принял сообщение');
 }
 
 /**

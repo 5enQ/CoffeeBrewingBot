@@ -16,6 +16,7 @@ import { toast } from '../ui/toast';
 import { cancelReminder, cardLook, explainRefusal, reminderStatus, remindersAvailable, scheduleReminder, type ChatCard } from '../data/remind';
 import { beanTitle } from './beanUtils';
 import { Toggle } from './Share';
+import { intlLocale, tr } from '../i18n';
 
 let audio: AudioContext | null = null;
 function beep(freq = 880, ms = 140) {
@@ -93,7 +94,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     const bean = beans.find((b) => b.id === draft.beanId);
     return {
       brew: draft.id, start: startedAt.current - base.current * 1000,
-      recipe: `${fmtNum(draft.dose, 0)}\u00a0г → ${draft.water >= 1000 ? `${fmtNum(draft.water / 1000, 1)}\u00a0л` : `${fmtNum(draft.water, 0)}\u00a0г`}`,
+      recipe: tr('{0} г → {1}', fmtNum(draft.dose, 0), draft.water >= 1000 ? tr('{0} л', fmtNum(draft.water / 1000, 1)) : tr('{0} г', fmtNum(draft.water, 0))),
       bean: bean ? beanTitle(bean) : '', look: cardLook(),
     };
   };
@@ -149,7 +150,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
       closed.current = true;
       live.current = false;
       setRunning(false);
-      toast('Таймер остановлен на другом устройстве');
+      toast(tr('Таймер остановлен на другом устройстве'));
       setTab('brew');
     }
   }), [draft.id, running]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -165,7 +166,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     if (!long && !closed.current) clearTimer(draft.id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useBackGuard(elapsed > 0 && !long, 'Прервать заварку? Время не сохранится.');
+  useBackGuard(elapsed > 0 && !long, tr('Прервать заварку? Время не сохранится.'));
 
   const idx = plan.steps.reduce((acc, s, i) => (s.at <= elapsed ? i : acc), -1);
   const step = idx >= 0 ? plan.steps[idx] : plan.steps[0];
@@ -199,7 +200,7 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
     setRunning(!running);
   };
   const reset = async () => {
-    if (elapsed > 0 && !(await platform.confirm('Сбросить таймер?'))) return;
+    if (elapsed > 0 && !(await platform.confirm(tr('Сбросить таймер?')))) return;
     setRunning(false); base.current = 0; skipsRef.current = []; setSkips([]); holdRef.current = null; setHold(null); setElapsed(0); lastStep.current = -1; finished.current = false;
     dropReminder(); clearTimer(draft.id);
   };
@@ -284,26 +285,26 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
   const target = step.to !== undefined ? draft.water * step.to : null;
 
   return (
-    <Screen title={draft.plan ? `${m.name} · ${draft.plan.name}` : m.name} subtitle={`${m.id === 'drip' ? '' : `${fmtNum(draft.dose, 2)} г · `}${fmtNum(draft.water)} г · ${draft.temp ? fmtNum(draft.temp) + '°C' : 'холодная вода'}`}
+    <Screen title={draft.plan ? `${m.name} · ${draft.plan.name}` : m.name} subtitle={tr('{0}{1} г · {2}', m.id === 'drip' ? '' : tr('{0} г · ', fmtNum(draft.dose, 2)), fmtNum(draft.water), draft.temp ? fmtNum(draft.temp) + '°C' : tr('холодная вода'))}
       action={
-        <button type="button" className="icon-btn" onClick={() => setSound((s) => !s)} aria-pressed={sound} aria-label="Звук"
-          title={sound ? 'Звук включён' : 'Звук выключен'}>
+        <button type="button" className="icon-btn" onClick={() => setSound((s) => !s)} aria-pressed={sound} aria-label={tr('Звук')}
+          title={sound ? tr('Звук включён') : tr('Звук выключен')}>
           <Icon name={sound ? 'sound' : 'sound-off'} />
         </button>
       }
       footer={
         <div className="footer-actions">
-          <button type="button" className="round-btn" onClick={reset} aria-label="Сбросить"><Icon name="reset" /></button>
+          <button type="button" className="round-btn" onClick={reset} aria-label={tr('Сбросить')}><Icon name="reset" /></button>
           <Button icon={running ? 'pause' : 'play'} wide onClick={toggle}>
-            {running ? 'Пауза' : elapsed > 0 ? 'Продолжить' : 'Старт'}
+            {running ? tr('Пауза') : elapsed > 0 ? tr('Продолжить') : tr('Старт')}
           </Button>
-          <button type="button" className={'round-btn' + (done ? ' accent' : '')} onClick={finish} aria-label="Готово, записать"><Icon name="check" /></button>
+          <button type="button" className={'round-btn' + (done ? ' accent' : '')} onClick={finish} aria-label={tr('Готово, записать')}><Icon name="check" /></button>
         </div>
       }>
       {ascii ? (
         <div className="timer ascii-timer">
           <AsciiDigits text={fmtTime(elapsed)} />
-          <div className="timer-total">{done ? 'ВРЕМЯ ВЫШЛО, ДОЖДИТЕСЬ СЛИВА' : `ИЗ ${fmtTime(plan.total)}`}</div>
+          <div className="timer-total">{done ? tr('ВРЕМЯ ВЫШЛО, ДОЖДИТЕСЬ СЛИВА') : tr('ИЗ {0}', fmtTime(plan.total))}</div>
           <AsciiBar share={progress} after={`${Math.round(progress * 100)}%`} />
         </div>
       ) : (
@@ -321,49 +322,49 @@ export function TimerScreen({ draft: given, resume }: { draft: Brew; resume?: bo
         </svg>
         <div className="timer-center">
           <div className="timer-time">{fmtTime(elapsed)}</div>
-          <div className="timer-total">{done ? 'время вышло — дождитесь слива' : `из ${fmtTime(plan.total)}`}</div>
+          <div className="timer-total">{done ? tr('время вышло — дождитесь слива') : tr('из {0}', fmtTime(plan.total))}</div>
         </div>
       </div>
       )}
 
       {/* the card stays; what changed moves: the step number rolls, the title and hint slide in, the grams roll */}
       <div className={'step-now' + (running || elapsed > 0 ? ' live' : '')}>
-        <span className="eyebrow">{elapsed === 0 ? 'Первый шаг' : done ? 'Финиш' : <>Шаг <Roll text={String(idx + 1)} /> из {plan.steps.length}</>}</span>
-        <h2><Swap id={done ? 'done' : idx}>{done ? 'Готово' : step.title}</Swap></h2>
-        {!done && target !== null && <div className="pour-big">до <b><Roll text={fmtNum(target, 0)} /></b> г</div>}
+        <span className="eyebrow">{elapsed === 0 ? tr('Первый шаг') : done ? tr('Финиш') : <>{tr('Шаг')} <Roll text={String(idx + 1)} /> {tr('из {0}', plan.steps.length)}</>}</span>
+        <h2><Swap id={done ? 'done' : idx}>{done ? tr('Готово') : step.title}</Swap></h2>
+        {!done && target !== null && <div className="pour-big">{tr('до')} <b><Roll text={fmtNum(target, 0)} /></b> {tr('г')}</div>}
         {!done && step.hint && <p><Swap id={idx}>{step.hint}</Swap></p>}
-        {done && <p>Нажмите ✓, чтобы записать результат и оценить чашку.</p>}
+        {done && <p>{tr('Нажмите ✓, чтобы записать результат и оценить чашку.')}</p>}
       </div>
 
       {next && !done && (
         <div className="step-next">
-          <span>{hold ? <>Ждём · +{fmtTime(held)}</> : <>Через {fmtTime(next.at - elapsed)}</>}</span>
+          <span>{hold ? <>{tr('Ждём · +{0}', fmtTime(held))}</> : <>{tr('Через {0}', fmtTime(next.at - elapsed))}</>}</span>
           {/* the name and its grams (quieter); on a narrow line the grams move under the name, whole */}
-          <b><Swap id={idx}><span className="step-next-title">{next.title}</span>{next.to !== undefined && <span className="step-next-g">{`до\u00a0${fmtNum(draft.water * next.to, 0)}\u00a0г`}</span>}</Swap></b>
+          <b><Swap id={idx}><span className="step-next-title">{next.title}</span>{next.to !== undefined && <span className="step-next-g">{tr('до {0} г', fmtNum(draft.water * next.to, 0))}</span>}</Swap></b>
           {/* on the same line as what comes next, so it stays on screen above the footer while you pour */}
           {elapsed > 0 && <button type="button" className={'step-hold' + (hold ? ' on' : '')} onClick={toggleHold} aria-pressed={!!hold}
-            title="Шаг идёт дольше: следующий подождёт, время идёт">Ждать</button>}
-          {elapsed > 0 && <button type="button" className="step-skip" onClick={skip} title="Следующий шаг">Дальше<Icon name="chevron" size={16} /></button>}
+            title={tr('Шаг идёт дольше: следующий подождёт, время идёт')}>{tr('Ждать')}</button>}
+          {elapsed > 0 && <button type="button" className="step-skip" onClick={skip} title={tr('Следующий шаг')}>{tr('Дальше')}<Icon name="chevron" size={16} /></button>}
         </div>
       )}
       {long && (
         <div className="timer-long">
-          <p>Таймер идёт и без приложения — его можно закрыть, время не собьётся.</p>
-          {remind === 'on' && <p className="ok">Бот пришлёт сообщение в Telegram в {new Date(startedAt.current + (plan.total - base.current) * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}.</p>}
-          {remind === 'pending' && <p>Ставим напоминание…</p>}
-          {remind === 'fail' && <p className="warn">{remindNote ? `Бот не смог написать: ${remindNote}.` : `Не получилось поставить напоминание в Telegram${platform.kind === 'telegram' ? ' — разрешите боту писать вам и нажмите «Пауза» и «Продолжить»' : ''}.`}</p>}
-          {remind === 'off' && running && !remindersAvailable() && <p>Напоминание от бота работает в Telegram.</p>}
+          <p>{tr('Таймер идёт и без приложения — его можно закрыть, время не собьётся.')}</p>
+          {remind === 'on' && <p className="ok">{tr('Бот пришлёт сообщение в Telegram в {0}.', new Date(startedAt.current + (plan.total - base.current) * 1000).toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' }))}</p>}
+          {remind === 'pending' && <p>{tr('Ставим напоминание…')}</p>}
+          {remind === 'fail' && <p className="warn">{remindNote ? tr('Бот не смог написать: {0}.', remindNote) : tr('Не получилось поставить напоминание в Telegram{0}.', platform.kind === 'telegram' ? tr(' — разрешите боту писать вам и нажмите «Пауза» и «Продолжить»') : '')}</p>}
+          {remind === 'off' && running && !remindersAvailable() && <p>{tr('Напоминание от бота работает в Telegram.')}</p>}
           {coldbrew && remindersAvailable() && (
             <div className="group timer-card-toggle">
-              <Toggle id="chat-card" label="Карточка в чате с ботом" checked={cardOn}
-                hint="Отсчёт и кнопки «+1 час» и «Процедить» прямо в Telegram"
+              <Toggle id="chat-card" label={tr('Карточка в чате с ботом')} checked={cardOn}
+                hint={tr('Отсчёт и кнопки «+1 час» и «Процедить» прямо в Telegram')}
                 onChange={(v) => { saveProfile({ ...profile, chatCard: v }); if (running) void armReminder(chatCard(v)); }} />
             </div>
           )}
-          {elapsed > 0 && <Button kind="secondary" onClick={() => { setTab('brew'); home(); }}>Свернуть</Button>}
+          {elapsed > 0 && <Button kind="secondary" onClick={() => { setTab('brew'); home(); }}>{tr('Свернуть')}</Button>}
         </div>
       )}
-      {layout === 'desktop' && <p className="kbd-hint"><kbd>Пробел</kbd> старт / пауза · <kbd>R</kbd> сброс · <kbd>→</kbd> следующий шаг · <kbd>W</kbd> ждать · <kbd>Enter</kbd> записать</p>}
+      {layout === 'desktop' && <p className="kbd-hint"><kbd>{tr('Пробел')}</kbd> {tr('старт / пауза ·')} <kbd>R</kbd> {tr('сброс ·')} <kbd>→</kbd> {tr('следующий шаг ·')} <kbd>W</kbd> {tr('ждать ·')} <kbd>Enter</kbd> {tr('записать')}</p>}
     </Screen>
   );
 }

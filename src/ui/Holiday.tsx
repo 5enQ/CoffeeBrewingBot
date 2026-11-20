@@ -8,6 +8,7 @@ import { activeHoliday, bannerHidden, fireworksDue, fireworksShown, hideBanner, 
 import { reduceMotion } from './motion';
 import { useAppearance } from '../appearance';
 import { toast } from './toast';
+import { tr } from '../i18n';
 
 export function useHoliday(): Holiday | null {
   const [h, setH] = useState(() => activeHoliday());
@@ -43,7 +44,7 @@ export function HolidayLayer() {
   return (
     <>
       {h === 'newyear' && <Snow />}
-      {boom && <Fireworks onDone={() => { setBoom(false); toast('С Новым годом! Пусть каждая чашка удаётся ☕'); }} />}
+      {boom && <Fireworks onDone={() => { setBoom(false); toast(tr('С Новым годом! Пусть каждая чашка удаётся ☕')); }} />}
     </>
   );
 }
@@ -461,9 +462,9 @@ function Fireworks({ onDone }: { onDone(): void }) {
 /* ---------- the greeting card on the brew tab ---------- */
 
 const TEXT: Record<Holiday, { title: string; text: string }> = {
-  halloween: { title: 'Хеллоуин', text: 'Тыквенный латте сам себя не сварит. Только без паутины в кофемолке.' },
-  newyear: { title: 'С Новым годом!', text: 'Пусть в новом году каждая чашка будет такой, как задумано.' },
-  coffeeday: { title: 'Международный день кофе', text: '1 октября — спасибо всем, кто выращивает и собирает кофе, обжаривает его и варит для нас.' },
+  halloween: { title: tr('Хеллоуин'), text: tr('Тыквенный латте сам себя не сварит. Только без паутины в кофемолке.') },
+  newyear: { title: tr('С Новым годом!'), text: tr('Пусть в новом году каждая чашка будет такой, как задумано.') },
+  coffeeday: { title: tr('Международный день кофе'), text: tr('1 октября — спасибо всем, кто выращивает и собирает кофе, обжаривает его и варит для нас.') },
 };
 
 export function HolidayBanner() {
@@ -472,7 +473,7 @@ export function HolidayBanner() {
   if (!h || bannerHidden(h)) return null;
   return (
     <div className={`holiday-card holiday-${h}`}>
-      <button type="button" className="holiday-close" aria-label="Скрыть поздравление" onClick={() => { hideBanner(h); re((n) => n + 1); }}>×</button>
+      <button type="button" className="holiday-close" aria-label={tr('Скрыть поздравление')} onClick={() => { hideBanner(h); re((n) => n + 1); }}>×</button>
       <div className="holiday-art" aria-hidden="true">
         {h === 'halloween' && <div className="pumpkins"><Pumpkin size={44} face={false} /><Pumpkin size={64} /><Pumpkin size={40} /></div>}
         {h === 'newyear' && <Garland />}
@@ -507,7 +508,7 @@ function Garland() {
  */
 export function CoffeeDayScene() {
   return (
-    <svg viewBox="0 0 340 140" className="coffee-scene" role="img" aria-label="Фермер собирает кофе, бариста варит кофе">
+    <svg viewBox="0 0 340 140" className="coffee-scene" role="img" aria-label={tr('Фермер собирает кофе, бариста варит кофе')}>
       <defs>
         <linearGradient id="cd-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fdf3e1" /><stop offset="1" stopColor="#e9f1dc" /></linearGradient>
         <linearGradient id="cd-cup" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7b4a2a" /><stop offset="1" stopColor="#4a2b18" /></linearGradient>

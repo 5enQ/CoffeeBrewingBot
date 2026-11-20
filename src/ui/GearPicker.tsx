@@ -4,6 +4,7 @@ import { useStore, uid } from '../data/store';
 import { platform } from '../platform';
 import { useRouter } from '../router';
 import { Icon } from './icons';
+import { tr } from '../i18n';
 
 /** Gear picker for a brew: one item per category */
 export function GearPicker({ methodId, value, onChange }: { methodId: string; value: GearRef[]; onChange(v: GearRef[]): void }) {
@@ -49,8 +50,8 @@ export function GearPicker({ methodId, value, onChange }: { methodId: string; va
                   {g.name}
                 </button>
               ))}
-              <button type="button" className="chip chip-add" onClick={() => add(c.id)} aria-label={`Добавить: ${c.one}`}>
-                <Icon name="plus" size={16} />{items.length ? '' : <span>Добавить</span>}
+              <button type="button" className="chip chip-add" onClick={() => add(c.id)} aria-label={tr('Добавить: {0}', c.one)}>
+                <Icon name="plus" size={16} />{items.length ? '' : <span>{tr('Добавить')}</span>}
               </button>
             </div>
           </div>
@@ -58,7 +59,7 @@ export function GearPicker({ methodId, value, onChange }: { methodId: string; va
       })}
       {extra && (
         <button type="button" className="gear-more" onClick={() => setAll((a) => !a)}>
-          {all ? 'Только нужное для метода' : 'Показать всё оборудование'}
+          {all ? tr('Только нужное для метода') : tr('Показать всё оборудование')}
         </button>
       )}
     </div>

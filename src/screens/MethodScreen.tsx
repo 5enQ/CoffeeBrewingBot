@@ -19,6 +19,7 @@ import { GrindField } from '../ui/GrindField';
 import { LOCKED_TEXT, loadLock, saveLock, solve, type Lock } from '../data/ratio';
 import { toast } from '../ui/toast';
 import { PpmField } from '../ui/WaterFields';
+import { tr } from '../i18n';
 
 export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: string; beanId?: string | null; from?: Brew; recipeId?: string }) {
   const m = methodById(methodId);
@@ -111,7 +112,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const createRecipe = () => {
     known.current = new Set(custom.map((r) => r.id));
     const steps = plan.steps.map((st) => ({ ...st }));
-    push({ name: 'recipeEdit', isNew: true, recipe: recipeFromStandard(m.id, uid(), { dose, ratio, temp, grind, steps, total: plan.total, name: choice === 'std' ? `Мой ${m.name}` : `${plan.name} (копия)` }) });
+    push({ name: 'recipeEdit', isNew: true, recipe: recipeFromStandard(m.id, uid(), { dose, ratio, temp, grind, steps, total: plan.total, name: choice === 'std' ? tr('Мой {0}', m.name) : tr('{0} (копия)', plan.name) }) });
   };
   const editRecipe = () => {
     if (active) push({ name: 'recipeEdit', isNew: false, recipe: active });
@@ -133,7 +134,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const dripLeft = drip && beanObj ? (beanObj.assorted && dripId ? dripItemLeft(beanObj, dripId, brews) : beanSt?.total ? beanSt.left : null) : null;
 
   const water = Math.round(dose * ratio * (m.id === 'espresso' ? 10 : 1)) / (m.id === 'espresso' ? 10 : 1);
-  const waterLabel = m.yieldLabel ?? 'Вода';
+  const waterLabel = m.yieldLabel ?? tr('Вода');
   const espresso = m.id === 'espresso';
 
   // coffee / water / ratio: one of them is locked, the other two move each other (see data/ratio.ts)
@@ -146,7 +147,7 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const lockFor = (field: Lock): StepperLock => ({
     on: lock === field,
     onToggle: () => { setLock(field); saveLock(m.id, field); toast(LOCKED_TEXT[field]); },
-    onLockedTap: () => toast(`${LOCKED_TEXT[field]} — чтобы менять, закрепите другой параметр`),
+    onLockedTap: () => toast(tr('{0} — чтобы менять, закрепите другой параметр', LOCKED_TEXT[field])),
   });
 
   const draft = (): Brew => ({
@@ -193,42 +194,42 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
   const startTimer = () => { remember(); push({ name: 'timer', draft: draft() }); };
   const noTimer = () => { remember(); track('brew.manual'); push({ name: 'brewEdit', draft: draft(), isNew: true, manual: true }); };
   const removeRecipe = async () => {
-    if (!active || !(await platform.confirm(`Удалить рецепт «${active.name}»? Заварки останутся в дневнике.`))) return;
+    if (!active || !(await platform.confirm(tr('Удалить рецепт «{0}»? Заварки останутся в дневнике.', active.name)))) return;
     platform.haptic('warning');
     back(true);
     deleteCustom(active.id);
   };
 
   return (
-    <Screen title={m.name} subtitle={choice === 'std' ? 'Стандартный рецепт' : `Рецепт: ${plan.name}${active?.author ? ` · от ${active.author.name || '@' + active.author.username}` : ''}`}
+    <Screen title={m.name} subtitle={choice === 'std' ? tr('Стандартный рецепт') : tr('Рецепт: {0}{1}', plan.name, active?.author ? tr(' · от {0}', active.author.name || '@' + active.author.username) : '')}
       footer={
         // an own recipe: delete it, brew it; its numbers are edited right here and kept as they change
         active ? (
           <div className="footer-actions">
-            <button type="button" className="round-btn" onClick={removeRecipe} aria-label="Удалить рецепт"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" /></svg></button>
-            <Button kind="secondary" disabled={drip && !bean} onClick={noTimer}>Без таймера</Button>
-            <Button icon="play" wide disabled={drip && !bean} onClick={startTimer}>Заварить</Button>
+            <button type="button" className="round-btn" onClick={removeRecipe} aria-label={tr('Удалить рецепт')}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" /></svg></button>
+            <Button kind="secondary" disabled={drip && !bean} onClick={noTimer}>{tr('Без таймера')}</Button>
+            <Button icon="play" wide disabled={drip && !bean} onClick={startTimer}>{tr('Заварить')}</Button>
           </div>
         ) : (
           <div className="footer-actions">
-            <Button kind="secondary" disabled={drip && !bean} onClick={noTimer}>Без таймера</Button>
-            <Button icon="play" wide disabled={drip && !bean} onClick={startTimer}>Начать</Button>
+            <Button kind="secondary" disabled={drip && !bean} onClick={noTimer}>{tr('Без таймера')}</Button>
+            <Button icon="play" wide disabled={drip && !bean} onClick={startTimer}>{tr('Начать')}</Button>
           </div>
         )
       }>
       <div className="method-hero">
         <span className="method-hero-icon"><MethodIcon icon={m.icon} size={44} /></span>
         <dl className="recipe-sum">
-          <div><dt>Кофе</dt><dd><Roll text={fmtNum(dose, 2)} /> г</dd></div>
-          <div><dt>{waterLabel}</dt><dd><Roll text={fmtNum(water)} /> г</dd></div>
-          <div><dt>Пропорция</dt><dd><Roll text={fmtRatio(ratio)} /></dd></div>
-          <div><dt>Время</dt><dd><Roll text={fmtTime(plan.total)} /></dd></div>
+          <div><dt>{tr('Кофе')}</dt><dd><Roll text={fmtNum(dose, 2)} />{"\u00a0"}{tr('г')}</dd></div>
+          <div><dt>{waterLabel}</dt><dd><Roll text={fmtNum(water)} />{"\u00a0"}{tr('г')}</dd></div>
+          <div><dt>{tr('Пропорция')}</dt><dd><Roll text={fmtRatio(ratio)} /></dd></div>
+          <div><dt>{tr('Время')}</dt><dd><Roll text={fmtTime(plan.total)} /></dd></div>
         </dl>
       </div>
 
       {active?.notes && <p className="muted pad">{active.notes}</p>}
 
-      <Section title={drip ? 'Дрип' : 'Зерно'} aside={from && !changeBean ? <button type="button" className="link-btn" onClick={openPicker}>Сменить</button> : undefined} plain>
+      <Section title={drip ? tr('Дрип') : tr('Зерно')} aside={from && !changeBean ? <button type="button" className="link-btn" onClick={openPicker}>{tr('Сменить')}</button> : undefined} plain>
         {from && !changeBean ? (
           <div className="group">
             <button type="button" className="row bean-now"
@@ -236,8 +237,8 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
               onPointerDown={() => { unpress(); press.current = window.setTimeout(openPicker, 450); }}
               onPointerUp={unpress} onPointerLeave={unpress} onPointerCancel={unpress}>
               <span className="row-main">
-                <span className="row-label">{beanObj ? brewBeanTitle({ beanId: bean, dripId }, beanObj) : drip ? 'Дрип не выбран' : 'Без зерна'}</span>
-                <span className="row-hint">{beanObj ? [beanMeta(beanObj), beanSt?.total ? `осталось ${fmtNum(beanSt.left, 0)} из ${fmtNum(beanSt.total, 0)} ${beanSt.unit === 'pcs' ? 'шт' : 'г'}` : ''].filter(Boolean).join(' · ') : 'как в прошлый раз'}</span>
+                <span className="row-label">{beanObj ? brewBeanTitle({ beanId: bean, dripId }, beanObj) : drip ? tr('Дрип не выбран') : tr('Без зерна')}</span>
+                <span className="row-hint">{beanObj ? [beanMeta(beanObj), beanSt?.total ? tr('осталось {0} из {1} {2}', fmtNum(beanSt.left, 0), fmtNum(beanSt.total, 0), beanSt.unit === 'pcs' ? tr('шт') : tr('г')) : ''].filter(Boolean).join(' · ') : tr('как в прошлый раз')}</span>
               </span>
               <span className="row-chev"><Icon name="chevron" size={18} /></span>
             </button>
@@ -247,34 +248,34 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
         ) : (
           <BeanPicker value={bean} onChange={setBean} dose={dose} />
         )}
-        {dripLeft === 0 && <p className="status warn pad">{beanObj?.assorted ? 'Таких дрипов в коробке не осталось' : 'В коробке не осталось дрипов'} — заварка всё равно запишется.</p>}
-        {lowStock && <p className="status warn pad">В пачке осталось {fmtNum(lowStock.left, 0)} г — на эту заварку не хватит {fmtNum(dose - lowStock.left, 1)} г.</p>}
+        {dripLeft === 0 && <p className="status warn pad">{beanObj?.assorted ? tr('Таких дрипов в коробке не осталось') : tr('В коробке не осталось дрипов')} {tr('— заварка всё равно запишется.')}</p>}
+        {lowStock && <p className="status warn pad">{tr('В пачке осталось {0} г — на эту заварку не хватит {1} г.', fmtNum(lowStock.left, 0), fmtNum(dose - lowStock.left, 1))}</p>}
       </Section>
 
-      <Section title="Параметры">
+      <Section title={tr('Параметры')}>
         {/* a drip's coffee is pre-measured in the bag — only water changes */}
-        {!drip && <Stepper label="Кофе" value={dose} onChange={(v) => change('dose', v)} step={espresso ? 0.5 : m.id === 'cupping' ? 0.25 : 0.5} min={1} max={100} unit="г" format={(v) => fmtNum(v, 2)}
+        {!drip && <Stepper label={tr('Кофе')} value={dose} onChange={(v) => change('dose', v)} step={espresso ? 0.5 : m.id === 'cupping' ? 0.25 : 0.5} min={1} max={100} unit={tr('г')} format={(v) => fmtNum(v, 2)}
           lock={lockFor('dose')} />}
-        {loss > 0 && <p className="muted pad small-note grind-loss">Из пачки {fmtNum(fromPack, 1)} г → в воронку {fmtNum(dose, 2)} г · потери кофемолки {fmtNum(loss, 1)} г</p>}
-        <Stepper label={waterLabel} value={water} step={espresso ? 1 : 10} min={espresso ? 10 : 30} max={2000} unit="г"
+        {loss > 0 && <p className="muted pad small-note grind-loss">{tr('Из пачки {0} г → в воронку {1} г · потери кофемолки {2} г', fmtNum(fromPack, 1), fmtNum(dose, 2), fmtNum(loss, 1))}</p>}
+        <Stepper label={waterLabel} value={water} step={espresso ? 1 : 10} min={espresso ? 10 : 30} max={2000} unit={tr('г')}
           format={(v) => fmtNum(v)}
           onChange={(w) => (drip ? setRatio(Math.max(1, w / dose)) : change('water', w))} lock={drip ? undefined : lockFor('water')} />
         {/* the coffee in a bag is not known exactly, so a ratio says nothing — only the water */}
-        {!drip && <Stepper label="Пропорция" value={ratio} step={espresso ? 0.1 : 0.5} min={1} max={25} format={fmtRatio}
+        {!drip && <Stepper label={tr('Пропорция')} value={ratio} step={espresso ? 0.1 : 0.5} min={1} max={25} format={fmtRatio}
           onChange={(r) => change('ratio', r)} lock={lockFor('ratio')} />}
-        <Stepper label="Температура" value={temp} step={0.1} min={0} max={100} unit={temp ? '°C' : ''}
-          format={(v) => (v === 0 ? 'холодная' : fmtNum(v))} onChange={setTemp} />
+        <Stepper label={tr('Температура')} value={temp} step={0.1} min={0} max={100} unit={temp ? '°C' : ''}
+          format={(v) => (v === 0 ? tr('холодная') : fmtNum(v))} onChange={setTemp} />
         {m.id !== 'cupping' && <PpmField value={ppm} onChange={setPpm} />}
         {!drip && <GrindField id="grind" unit={grindUnit} value={grindValue} text={grind} onValue={setGrindValue} onText={setGrind}
           grinderName={gear.find((g) => g.cat === 'grinder')?.name} />}
       </Section>
 
-      <Section title="Оборудование" plain>
+      <Section title={tr('Оборудование')} plain>
         <GearPicker methodId={m.id} value={gear} onChange={setGear} />
       </Section>
 
-      <Section title={choice === 'std' ? 'Шаги' : `Шаги · ${plan.name}`} aside={
-        <button type="button" className="link-btn" onClick={editRecipe}>{active ? 'Изменить шаги' : 'Изменить под себя'}</button>
+      <Section title={choice === 'std' ? tr('Шаги') : tr('Шаги · {0}', plan.name)} aside={
+        <button type="button" className="link-btn" onClick={editRecipe}>{active ? tr('Изменить шаги') : tr('Изменить под себя')}</button>
       }>
         <ol className={'steps-preview' + (plan.total >= 3600 ? ' long' : '')}>
           {plan.steps.map((s, i) => (
@@ -282,16 +283,16 @@ export function MethodScreen({ methodId, beanId, from, recipeId }: { methodId: s
               <time>{fmtTime(s.at)}</time>
               <div>
                 <b>{s.title}</b>
-                {s.to !== undefined && <span className="pour">до {fmtNum(water * s.to, 0)} г</span>}
+                {s.to !== undefined && <span className="pour">{tr('до {0} г', fmtNum(water * s.to, 0))}</span>}
                 {s.hint && <p>{s.hint}</p>}
               </div>
             </li>
           ))}
-          <li className="done"><time>{fmtTime(plan.total)}</time><div><b>Готово</b></div></li>
+          <li className="done"><time>{fmtTime(plan.total)}</time><div><b>{tr('Готово')}</b></div></li>
         </ol>
       </Section>
 
-      <Section title="Если что-то не так">
+      <Section title={tr('Если что-то не так')}>
         <ul className="tips">{m.tips.map((t) => <li key={t}>{t}</li>)}</ul>
       </Section>
     </Screen>

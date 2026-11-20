@@ -9,6 +9,7 @@
  */
 import { PACKS, plural } from './plural';
 import type { Profile } from './store';
+import { tr } from '../i18n';
 
 export const PHOSPHOR = 'phosphor';
 
@@ -35,11 +36,11 @@ export const phosphorOn = (p: Pick<Profile, 'secrets' | 'cardTheme'>) => p.cardT
 export function bootLines(o: { version: string; grinder?: string; brewer?: string; packs: number; grams: number; brews: number }): [string, string][] {
   return [
     [`BREWBOOK BIOS v${o.version}`, '(c) 2026'],
-    ['Проверка памяти', '640K OK'],
-    ['Кофемолка', o.grinder || 'не найдена'],
-    ['Воронка', o.brewer || 'не найдена'],
-    ['Зерно на полке', o.packs ? `${o.packs}\u00a0${plural(o.packs, PACKS)} · ${o.grams}\u00a0г` : 'пусто'],
-    ['Заварок в дневнике', String(o.brews)],
-    ['Загрузка', 'BREWBOOK.EXE'],
+    [tr('Проверка памяти'), '640K OK'],
+    [tr('Кофемолка'), o.grinder || tr('не найдена')],
+    [tr('Воронка'), o.brewer || tr('не найдена')],
+    [tr('Зерно на полке'), o.packs ? tr('{0} {1} · {2} г', o.packs, plural(o.packs, PACKS), o.grams) : tr('пусто')],
+    [tr('Заварок в дневнике'), String(o.brews)],
+    [tr('Загрузка'), 'BREWBOOK.EXE'],
   ];
 }

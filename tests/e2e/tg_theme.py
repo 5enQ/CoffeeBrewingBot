@@ -1,7 +1,7 @@
 """In Telegram, picking the theme other than Telegram's uses the colors of Telegram's other theme, remembered
 from when the app was last opened in it; before that the app's own palette stands in. High contrast: own palette."""
 import asyncio
-from common import URL, async_playwright, check, done
+from common import URL, async_playwright, check, done, LOCALE
 
 LIGHT = {'bg_color': '#ffffff', 'secondary_bg_color': '#f1f1f4', 'section_bg_color': '#fefefe', 'text_color': '#111111', 'hint_color': '#7a7a80',
          'button_color': '#3390ec', 'button_text_color': '#ffffff', 'link_color': '#2481cc'}
@@ -26,7 +26,7 @@ async def pick(pg, label):
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch()
-        ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+        ctx = await b.new_context(locale=LOCALE, viewport={'width': 390, 'height': 844})
         # 1. Telegram dark, never seen light: «Светлая» uses the app's own light palette
         pg = await ctx.new_page()
         await pg.add_init_script(tg('dark', DARK))

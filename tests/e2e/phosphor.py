@@ -2,7 +2,7 @@
 the style is a profile card — choosing another card turns it off, choosing it again on; a friend's shared card in
 this style shows their profile in it, and the app turns back on leaving it."""
 import asyncio, json
-from common import OUT, URL, async_playwright, check, done, local, page
+from common import OUT, URL, async_playwright, check, done, local, page, LOCALE
 
 src = open('card.py').read().split('async def main')[0]
 ns = {'__file__': 'card.py'}; exec(src, ns)
@@ -85,7 +85,7 @@ async def main():
 
         # on start the style comes from this device's own setting, before the data is read: no plain flash
         # (a fresh page with what the app saved: reloading a file:// page in Chromium now and then loses its storage)
-        ctx = await b.new_context(viewport={'width': 390, 'height': 844})
+        ctx = await b.new_context(locale=LOCALE, viewport={'width': 390, 'height': 844})
         saved = {**DB, 'profile': {**DB['profile'], 'secrets': ['phosphor'], 'cardTheme': 'phosphor'}}
         await ctx.add_init_script("localStorage.setItem('brewbook.db.v1', " + json.dumps(json.dumps(saved)) + "); localStorage.setItem('brewbook.appearance', '{\"theme\":\"auto\",\"contrast\":false,\"style\":\"phosphor\"}')")
         ps = await ctx.new_page()

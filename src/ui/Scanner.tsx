@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { platform } from '../platform';
 import { Icon } from './icons';
+import { tr } from '../i18n';
 
 type Found = { rawValue: string; format?: string };
 type Detector = { detect(src: CanvasImageSource | ImageBitmap): Promise<Found[]> };
@@ -126,31 +127,31 @@ export function Scanner({ onResult, onClose }: { onResult(code: string): void; o
     setBusy(true); setError('');
     const code = await decodeImageFile(f);
     setBusy(false);
-    if (code) finish(code); else { platform.haptic('error'); setError('Не нашёл код на фото. Снимите ближе и ровнее, без бликов.'); }
+    if (code) finish(code); else { platform.haptic('error'); setError(tr('Не нашёл код на фото. Снимите ближе и ровнее, без бликов.')); }
   };
 
   const tgQr = async () => {
-    const code = await platform.scanQr?.('Наведите на QR-код на пачке');
+    const code = await platform.scanQr?.(tr('Наведите на QR-код на пачке'));
     if (code) finish(code);
   };
 
   return (
-    <div className="scanner" role="dialog" aria-label="Сканер штрихкода">
+    <div className="scanner" role="dialog" aria-label={tr('Сканер штрихкода')}>
       <div className="scanner-view">
         <video ref={video} playsInline muted hidden={state !== 'live'} />
         {state === 'live' && <div className="scanner-frame"><span /></div>}
-        {state === 'starting' && <p className="scanner-msg">Включаю камеру…</p>}
+        {state === 'starting' && <p className="scanner-msg">{tr('Включаю камеру…')}</p>}
         {state === 'nocam' && (
-          <p className="scanner-msg">Камера недоступна здесь. Сфотографируйте штрихкод или введите цифры под ним.</p>
+          <p className="scanner-msg">{tr('Камера недоступна здесь. Сфотографируйте штрихкод или введите цифры под ним.')}</p>
         )}
-        <button type="button" className="icon-btn scanner-close" onClick={onClose} aria-label="Закрыть"><Icon name="close" /></button>
+        <button type="button" className="icon-btn scanner-close" onClick={onClose} aria-label={tr('Закрыть')}><Icon name="close" /></button>
       </div>
 
       <div className="scanner-panel">
-        {state === 'live' && <p className="muted">Наведите на штрихкод или QR-код на пачке</p>}
+        {state === 'live' && <p className="muted">{tr('Наведите на штрихкод или QR-код на пачке')}</p>}
         <div className="scanner-actions">
           <label className="btn btn-secondary">
-            <Icon name="camera" size={20} /><span>{busy ? 'Распознаю…' : 'Фото пачки'}</span>
+            <Icon name="camera" size={20} /><span>{busy ? tr('Распознаю…') : tr('Фото пачки')}</span>
             <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => fromPhoto(e.target.files?.[0])} />
           </label>
           {platform.scanQr && (
@@ -159,7 +160,7 @@ export function Scanner({ onResult, onClose }: { onResult(code: string): void; o
         </div>
         {error && <p className="error">{error}</p>}
         <form className="manual" onSubmit={(e) => { e.preventDefault(); if (manual.trim()) finish(manual); }}>
-          <input id="manual-code" inputMode="numeric" aria-label="Цифры под штрихкодом" placeholder="Цифры под штрихкодом" value={manual} onChange={(e) => setManual(e.target.value)} />
+          <input id="manual-code" inputMode="numeric" aria-label={tr('Цифры под штрихкодом')} placeholder={tr('Цифры под штрихкодом')} value={manual} onChange={(e) => setManual(e.target.value)} />
           <button type="submit" className="btn btn-primary" disabled={!manual.trim()}>OK</button>
         </form>
       </div>

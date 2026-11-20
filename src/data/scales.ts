@@ -1,3 +1,4 @@
+import { tr } from '../i18n';
 /**
  * Roaster coffee profile: 1–5 scales as shown on sites and packs
  * (dots at Submarine, words "Низкая / Средняя / Высокая" at Kojo).
@@ -7,11 +8,11 @@ export type ScaleKey = 'acidity' | 'sweetness' | 'bitterness' | 'body' | 'fermen
 export type Scales = Partial<Record<ScaleKey, number>>;
 
 export const SCALES: { key: ScaleKey; label: string; aliases: string[] }[] = [
-  { key: 'acidity', label: 'Кислотность', aliases: ['кислотность', 'кислинка'] },
-  { key: 'sweetness', label: 'Сладость', aliases: ['сладость'] },
-  { key: 'bitterness', label: 'Горечь', aliases: ['горечь', 'горчинка'] },
-  { key: 'body', label: 'Плотность', aliases: ['плотность', 'тело', 'насыщенность'] },
-  { key: 'ferment', label: 'Ферментация', aliases: ['фермент', 'ферментация', 'ферментированность'] },
+  { key: 'acidity', label: tr('Кислотность'), aliases: ['кислотность', 'кислинка', 'acidity', 'acid'] }, // i18n-skip
+  { key: 'sweetness', label: tr('Сладость'), aliases: ['сладость', 'sweetness', 'sweet'] }, // i18n-skip
+  { key: 'bitterness', label: tr('Горечь'), aliases: ['горечь', 'горчинка', 'bitterness', 'bitter'] }, // i18n-skip
+  { key: 'body', label: tr('Плотность'), aliases: ['плотность', 'тело', 'насыщенность', 'body'] }, // i18n-skip
+  { key: 'ferment', label: tr('Ферментация'), aliases: ['фермент', 'ферментация', 'ферментированность', 'fermentation', 'ferment'] }, // i18n-skip
 ];
 
 /** Scale label on a site → key */

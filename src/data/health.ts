@@ -1,5 +1,6 @@
 import { HEALTH_CUPS } from './levels';
 import type { Brew } from './store';
+import { tr } from '../i18n';
 
 const KEY = 'brewbook.healthWarned';
 const dayOf = (t: number) => new Date(t).toDateString();
@@ -22,5 +23,5 @@ export function healthWarning(brews: Brew[], saved: Brew, now = Date.now()): str
   if (n <= HEALTH_CUPS) return null;
   const today = dayOf(now);
   try { if (localStorage.getItem(KEY) === today) return null; localStorage.setItem(KEY, today); } catch { /* no storage */ }
-  return `Сегодня уже ${n} заварок. Столько кофе за день — это много для здоровья: обычно советуют не больше 400 мг кофеина в сутки (примерно 3–5 чашек). Сделайте паузу и выпейте воды.`;
+  return tr('Сегодня уже {0} заварок. Столько кофе за день — это много для здоровья: обычно советуют не больше 400 мг кофеина в сутки (примерно 3–5 чашек). Сделайте паузу и выпейте воды.', n);
 }

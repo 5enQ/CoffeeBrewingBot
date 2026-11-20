@@ -2,7 +2,10 @@
 
 - **Design:** any change to how a screen looks or moves follows [`DESIGN.md`](DESIGN.md). Read it first; check the
   change against it (light and dark, phone width, a filmed strip for motion) before handing over.
-- The interface is in Russian; code, comments and commit messages in English.
+- The interface is in Russian and English; code, comments and commit messages in English. Every interface string is
+  written in Russian inside `tr('…')` (or `N_('…')` for a stored value shown with `trValue`), and its English goes into
+  `src/i18n/en-strings.ts` — `tests/unit/i18n.test.ts` fails on a missing one. `node scripts/i18n-wrap.mjs file.tsx`
+  wraps new Russian strings; `node scripts/i18n-keys.mjs --loose` lists Russian left outside `tr()`.
 - Work on `dev`. Releases go dev → test → main; don't release unless asked. Before merging into `test` and again
   before `main`, run **Страж** (`npm run guard`): all checks of the project in one run. Release only when it is all green.
 - After a change: `npx tsc -b`, `npx vitest run`, `npm run build:single`, then the e2e suites in `tests/e2e`

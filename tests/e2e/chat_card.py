@@ -2,7 +2,7 @@
 Telegram's widget sandbox: it counts down by itself, shows each state the bot gives it, follows «Фосфор», and its
 buttons ask the bot. Plus the switch on the cold brew timer that turns it on and off."""
 import asyncio, json, subprocess, time
-from common import OUT, ROOT, async_playwright, check, done, page
+from common import OUT, ROOT, async_playwright, check, done, page, LOCALE
 
 HTML = subprocess.run(['node', '--input-type=module', '-e', "import('./worker/src/widget.ts').then((m) => process.stdout.write(m.WIDGET_HTML))"],
                       cwd=ROOT, capture_output=True, text=True, check=True).stdout
@@ -17,7 +17,7 @@ window.TelegramWidget = { chatData: %s, onEvent(n, f) { window.__h[n] = f; },
 
 
 async def card(b, state, width=320):
-    ctx = await b.new_context(viewport={'width': width, 'height': 420}, device_scale_factor=2)
+    ctx = await b.new_context(locale=LOCALE, viewport={'width': width, 'height': 420}, device_scale_factor=2)
     await ctx.add_init_script(stand_in(state))
     pg = await ctx.new_page()
     errors = []
@@ -62,7 +62,7 @@ async def main():
         tp = await text(pp)
         check(tp[1] == 'Таймер на паузе' and tp[6] == 'none', f'paused: no countdown and no buttons {tp[1]}')
         # «Фосфор»: only characters — block digits, a [===>...] bar, dot leaders, [ buttons ], a jar of symbols that fills up
-        ctx = await b.new_context(viewport={'width': 320, 'height': 420}, device_scale_factor=2)
+        ctx = await b.new_context(locale=LOCALE, viewport={'width': 320, 'height': 420}, device_scale_factor=2)
         await ctx.add_init_script(stand_in({**base, 'st': 'run', 'p': 1}))
         pf = await ctx.new_page(); ef = []
         pf.on('pageerror', lambda e: ef.append(str(e)))

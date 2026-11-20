@@ -1,24 +1,25 @@
+import { tr } from '../i18n';
 /**
  * Anonymous usage counters — shared by the app and the server (worker imports this file). No imports.
  * The app only says «this happened N times»; the server adds it to one number per event per day and
  * does not keep who sent it. Only these names are counted, anything else is dropped.
  */
 export const EVENTS = {
-  'timer.start': 'Запуск таймера',
-  'timer.skip': '«Следующий шаг»',
-  'timer.hold': '«Ждать» в таймере',
-  'brew.timer': 'Заварка с таймером',
-  'brew.manual': 'Заварка без таймера',
-  'brew.rated': 'Оценка своей чашки',
-  'recipe.save': 'Свой рецепт',
-  'recipe.drip': 'Рецепт дрипа по проливам',
-  'method.save': 'Свой метод',
-  'share.recipe': 'Поделились рецептом',
-  'share.card': 'Поделились карточкой',
-  'pack.add': 'Новая пачка',
-  'pack.drip': 'Новая коробка дрипов',
-  'pack.lookup': 'Поиск пачки по коду или ссылке',
-  'cupping.save': 'Каппинг',
+  'timer.start': tr('Запуск таймера'),
+  'timer.skip': tr('«Следующий шаг»'),
+  'timer.hold': tr('«Ждать» в таймере'),
+  'brew.timer': tr('Заварка с таймером'),
+  'brew.manual': tr('Заварка без таймера'),
+  'brew.rated': tr('Оценка своей чашки'),
+  'recipe.save': tr('Свой рецепт'),
+  'recipe.drip': tr('Рецепт дрипа по проливам'),
+  'method.save': tr('Свой метод'),
+  'share.recipe': tr('Поделились рецептом'),
+  'share.card': tr('Поделились карточкой'),
+  'pack.add': tr('Новая пачка'),
+  'pack.drip': tr('Новая коробка дрипов'),
+  'pack.lookup': tr('Поиск пачки по коду или ссылке'),
+  'cupping.save': tr('Каппинг'),
 } as const;
 export type MetricEvent = keyof typeof EVENTS;
 export const EVENT_NAMES = Object.keys(EVENTS) as MetricEvent[];

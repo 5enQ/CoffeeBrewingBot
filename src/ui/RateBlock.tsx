@@ -5,6 +5,7 @@ import { myTelegramId, ratingsEnabled, sendRating } from '../data/ratings';
 import { useStore } from '../data/store';
 import { platform } from '../platform';
 import { Stars } from './kit';
+import { tr } from '../i18n';
 
 /** Rating someone else's recipe: sent to the author via the ratings server */
 export function RateBlock({ rid, author, authorName }: { rid: string; author: string; authorName?: string }) {
@@ -24,7 +25,7 @@ export function RateBlock({ rid, author, authorName }: { rid: string; author: st
     if (res.ok) {
       saveRated(rid, v);
       platform.haptic('success');
-      setState({ msg: `Спасибо! Сейчас у рецепта ${fmtNum(res.avg)} ${starChar()} · ${res.count} ${plural(res.count)}` });
+      setState({ msg: tr('Спасибо! Сейчас у рецепта {0} {1} · {2} {3}', fmtNum(res.avg), starChar(), res.count, plural(res.count)) });
     } else {
       platform.haptic('error');
       setStars(rated[rid] ?? 0);
@@ -35,13 +36,13 @@ export function RateBlock({ rid, author, authorName }: { rid: string; author: st
   return (
     <div className="rate-block">
       <div>
-        <b>{rated[rid] ? 'Ваша оценка' : 'Оцените рецепт'}</b>
-        <small>{authorName ? `${authorName} увидит оценку в профиле` : 'Автор увидит оценку в профиле'}</small>
+        <b>{rated[rid] ? tr('Ваша оценка') : tr('Оцените рецепт')}</b>
+        <small>{authorName ? tr('{0} увидит оценку в профиле', authorName) : tr('Автор увидит оценку в профиле')}</small>
       </div>
       {me ? (
         <Stars value={stars} onChange={state.busy ? undefined : rate} size={32} />
       ) : (
-        <p className="muted">Оценить можно, открыв рецепт в Telegram.</p>
+        <p className="muted">{tr('Оценить можно, открыв рецепт в Telegram.')}</p>
       )}
       {state.msg && <p className={state.error ? 'error' : 'status'}>{state.msg}</p>}
     </div>
@@ -50,7 +51,7 @@ export function RateBlock({ rid, author, authorName }: { rid: string; author: st
 
 export const plural = (n: number) => {
   const m10 = n % 10, m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return 'оценка';
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'оценки';
-  return 'оценок';
+  if (m10 === 1 && m100 !== 11) return tr('оценка');
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return tr('оценки');
+  return tr('оценок');
 };

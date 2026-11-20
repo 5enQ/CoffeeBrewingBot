@@ -1,5 +1,6 @@
 import { methodById, type BrewStep, type IconKey, type Method } from './methods';
 import type { Author } from './store';
+import { tr } from '../i18n';
 
 /** Custom recipe: parameters + its own pour schedule */
 export interface CustomRecipe {
@@ -47,11 +48,11 @@ export function pourPlan(p: Pours): { water: number; total: number; steps: BrewS
   const steps: BrewStep[] = [];
   for (let i = 0; i < p.count; i++) {
     const at = i * (pour + p.pause);
-    steps.push({ at, title: `Пролив ${i + 1}`, to: ((i + 1) * p.ml) / water,
-      hint: i === 0 ? 'Смочите кофе равномерно — тонкой струёй по кругу' : 'Тонкой струёй по кругу, не заливая край фильтра' });
+    steps.push({ at, title: tr('Пролив {0}', i + 1), to: ((i + 1) * p.ml) / water,
+      hint: i === 0 ? tr('Смочите кофе равномерно — тонкой струёй по кругу') : tr('Тонкой струёй по кругу, не заливая край фильтра') });
     const last = i === p.count - 1;
-    steps.push({ at: at + pour, title: last ? 'Дать стечь' : 'Пауза',
-      hint: last ? 'Снимите пакет, когда капли станут редкими' : `Ждём ${p.pause} с, пока вода уходит через пакет` });
+    steps.push({ at: at + pour, title: last ? tr('Дать стечь') : tr('Пауза'),
+      hint: last ? tr('Снимите пакет, когда капли станут редкими') : tr('Ждём {0} с, пока вода уходит через пакет', p.pause) });
   }
   return { water, total: p.count * (pour + p.pause), steps };
 }
@@ -79,14 +80,14 @@ export function planFromRecipe(r: CustomRecipe): BrewPlan {
 export function effectivePlan(methodId: string, plan?: BrewPlan | null): BrewPlan {
   if (plan && plan.steps.length) return plan;
   const m = methodById(methodId);
-  return { name: 'Стандартный', total: m.total, steps: m.steps };
+  return { name: tr('Стандартный'), total: m.total, steps: m.steps };
 }
 
 /** New recipe based on the standard one (or the current parameters) */
 export function recipeFromStandard(methodId: string, id: string, params?: Partial<CustomRecipe>): CustomRecipe {
   const m = methodById(methodId);
   return {
-    id, methodId, name: `Мой ${m.name}`, dose: m.dose, ratio: m.ratio, temp: m.temp, grind: m.grind,
+    id, methodId, name: tr('Мой {0}', m.name), dose: m.dose, ratio: m.ratio, temp: m.temp, grind: m.grind,
     total: m.total, steps: m.steps.map((s) => ({ ...s })), notes: '', createdAt: Date.now(),
     ...params,
   };
@@ -117,7 +118,7 @@ export const toMethod = (c: CustomMethod): Method => ({ ...c, custom: true });
 
 export function newCustomMethod(id: string): CustomMethod {
   return {
-    id, name: '', about: '', icon: 'cup', dose: 15, ratio: 16, temp: 93, grind: 'средний', total: 180,
-    steps: [{ at: 0, title: 'Залить', to: 1 }], tips: [], createdAt: Date.now(),
+    id, name: '', about: '', icon: 'cup', dose: 15, ratio: 16, temp: 93, grind: tr('средний'), total: 180,
+    steps: [{ at: 0, title: tr('Залить'), to: 1 }], tips: [], createdAt: Date.now(),
   };
 }

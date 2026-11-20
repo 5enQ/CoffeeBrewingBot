@@ -1,3 +1,4 @@
+import { tr } from '../i18n';
 /** achieve — awarded automatically (liters, ratings), never created manually */
 export type BadgeKind = 'sca' | 'q' | 'champ' | 'custom' | 'achieve';
 
@@ -15,29 +16,30 @@ export interface Badge {
 export type BadgeLite = Omit<Badge, 'id'>;
 
 export const BADGE_KINDS: { id: BadgeKind; label: string; hint: string }[] = [
-  { id: 'sca', label: 'Сертификат SCA', hint: 'Coffee Skills Program' },
+  { id: 'sca', label: tr('Сертификат SCA'), hint: 'Coffee Skills Program' },
   { id: 'q', label: 'Q Grader', hint: 'Coffee Quality Institute' },
-  { id: 'champ', label: 'Чемпионат', hint: 'Место или выход в финал' },
-  { id: 'custom', label: 'Другое', hint: 'Курсы, звания, работа' },
+  { id: 'champ', label: tr('Чемпионат'), hint: tr('Место или выход в финал') },
+  { id: 'custom', label: tr('Другое'), hint: tr('Курсы, звания, работа') },
 ];
 
 export const SCA_MODULES = [
   'Introduction to Coffee', 'Barista Skills', 'Brewing', 'Sensory Skills', 'Green Coffee', 'Roasting',
 ];
 export const SCA_LEVELS = ['Foundation', 'Intermediate', 'Professional'];
-export const SCA_EXTRA = ['SCA Coffee Skills Diploma', 'AST — авторизованный тренер'];
+export const SCA_EXTRA = ['SCA Coffee Skills Diploma', tr('AST — авторизованный тренер')];
 
 export const Q_TYPES = ['Arabica Q Grader', 'Robusta Q Grader', 'Q Processing Professional'];
 
 export const CHAMPIONSHIPS = [
   'World Brewers Cup', 'World Barista Championship', 'World AeroPress Championship', 'World Cup Tasters',
-  'World Latte Art', 'World Coffee Roasting', 'Coffee in Good Spirits', 'Чемпионат России по бреве',
-  'Чемпионат России бариста', 'Чемпионат России по аэропрессу', 'Чемпионат России по каптестингу',
+  'World Latte Art', 'World Coffee Roasting', 'Coffee in Good Spirits', tr('Чемпионат России по бреве'),
+  tr('Чемпионат России бариста'), tr('Чемпионат России по аэропрессу'), tr('Чемпионат России по каптестингу'),
 ];
-export const PLACES = ['1 место', '2 место', '3 место', 'Финалист', 'Полуфиналист', 'Участник'];
+export const PLACES = [tr('1 место'), tr('2 место'), tr('3 место'), tr('Финалист'), tr('Полуфиналист'), tr('Участник')];
 
 /** Badge tone: gold / silver / bronze for podium places, own color per type */
-const ACHIEVE_TONES: Record<string, string> = { 'Бронза': 'bronze', 'Серебро': 'silver', 'Золото': 'gold', 'Объёмный': 'volume', 'Бриллиант': 'diamond' };
+const ACHIEVE_TONES: Record<string, string> = { 'Бронза': 'bronze', 'Серебро': 'silver', 'Золото': 'gold', 'Объёмный': 'volume', 'Бриллиант': 'diamond',
+  Bronze: 'bronze', Silver: 'silver', Gold: 'gold', Volume: 'volume', Diamond: 'diamond' };
 
 export function badgeTone(b: Pick<Badge, 'kind' | 'detail'>): string {
   if (b.kind === 'achieve') return ACHIEVE_TONES[b.detail] ?? 'bronze';

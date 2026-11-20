@@ -12,6 +12,7 @@ import { CLOUD_LIMITS, type CloudKV } from '../platform/types';
 import { hash, packText, unpackText } from './codec';
 import { FORMAT, fromBuckets, type Remote } from './persist';
 import type { DB } from './store';
+import { tr, UserError } from '../i18n';
 
 const IDX = 'idx';
 const STATE_KEY = 'brewbook.sync.v1';
@@ -87,10 +88,10 @@ export class CloudSync {
     if (!v) return null;
     try {
       const m = JSON.parse(v) as Manifest;
-      if (m.f > FORMAT) throw new Error('Данные в облаке записаны более новой версией приложения — обновите его');
+      if (m.f > FORMAT) throw new UserError(tr('Данные в облаке записаны более новой версией приложения — обновите его'));
       return m;
     } catch (e) {
-      if (e instanceof Error && e.message.startsWith('Данные')) throw e;
+      if (e instanceof UserError) throw e;
       return null;
     }
   }
@@ -159,7 +160,7 @@ export class CloudSync {
     for (const [name, [, n]] of Object.entries(man?.b ?? {})) if (!buckets[name]) removes.push(...range(n).map((i) => partKey(name, i)));
 
     const keys = 1 + Object.values(next.b).reduce((s, [, n]) => s + n, 0);
-    if (keys > CLOUD_LIMITS.keys) throw new CloudFullError('Облачное хранилище Telegram заполнено');
+    if (keys > CLOUD_LIMITS.keys) throw new CloudFullError(tr('Облачное хранилище Telegram заполнено'));
 
     const usage = { chars, keys };
     if (!writes.length && !removes.length && man) {

@@ -3,6 +3,7 @@ import { platform } from '../platform';
 import { newDripItem, uid, type Bean } from './store';
 import { SCALES } from './scales';
 import { foreignCode, isSocialLink } from '../../worker/src/notpack';
+import { tr } from '../i18n';
 
 export interface LookupResult {
   code: string;
@@ -107,9 +108,9 @@ export async function contributeCoffee(b: Bean): Promise<string | null> {
 
 /** Labels of filled fields — for the "Filled in: …" message */
 const FIELD_LABELS: Partial<Record<keyof Bean, string>> = {
-  name: 'название', roaster: 'обжарщик', country: 'страна', region: 'регион', farm: 'ферма', producer: 'производитель',
-  variety: 'сорт', process: 'обработка', altitude: 'высота', roastLevel: 'обжарка', packNotes: 'дескрипторы',
-  parts: 'состав бленда', drips: 'дрипы в коробке', scales: 'профиль от обжарщика',
+  name: tr('название'), roaster: tr('обжарщик'), country: tr('страна'), region: tr('регион'), farm: tr('ферма'), producer: tr('производитель'),
+  variety: tr('сорт'), process: tr('обработка'), altitude: tr('высота'), roastLevel: tr('обжарка'), packNotes: tr('дескрипторы'),
+  parts: tr('состав бленда'), drips: tr('дрипы в коробке'), scales: tr('профиль от обжарщика'),
 };
 export function filledLabels(before: Bean, after: Bean) {
   const out: string[] = [];
@@ -117,7 +118,7 @@ export function filledLabels(before: Bean, after: Bean) {
     const a = (before as unknown as Record<string, unknown>)[k], b = (after as unknown as Record<string, unknown>)[k];
     if (!a && b) out.push(label!);
   }
-  if (before.kind !== 'drip' && after.kind === 'drip') out.unshift(after.dripCount ? `дрип-пакеты, ${after.dripCount} шт` : 'дрип-пакеты');
+  if (before.kind !== 'drip' && after.kind === 'drip') out.unshift(after.dripCount ? tr('дрип-пакеты, {0} шт', after.dripCount) : tr('дрип-пакеты'));
   void SCALES;
   return out;
 }
@@ -237,7 +238,7 @@ export async function lookupCode(raw: string, beans: Bean[], drip = false): Prom
     return { code, kind: 'url', patch, pending: remote?.pending };
   }
   const parsed = parseQrText(code);
-  if (Object.keys(parsed).length) return { code, kind: 'qr-data', existing, patch: { barcode: code.slice(0, 64), ...parsed }, source: 'QR-код на пачке' };
+  if (Object.keys(parsed).length) return { code, kind: 'qr-data', existing, patch: { barcode: code.slice(0, 64), ...parsed }, source: tr('QR-код на пачке') };
   // a short lot or batch code is kept; a long text or several lines with no coffee data in it is not a pack code
   const short = code.length <= 64 && !/[\r\n]/.test(code);
   return { code, kind: 'text', existing: short ? existing : undefined, patch: short ? { barcode: code } : {} };
@@ -278,9 +279,9 @@ export async function adminCall(body: { action: 'list' | 'approve' | 'reject' | 
 }
 
 function sourceText(r: Remote) {
-  const ai = r.coffee?.ai && !(r.confirms && r.confirms > 0) ? ' (разобрал ИИ — проверьте поля)' : '';
-  if (r.source === 'catalog') return (r.confirms && r.confirms > 1 ? `общий каталог · подтвердили ${r.confirms}` : 'общий каталог') + ai;
-  return 'страница обжарщика' + ai;
+  const ai = r.coffee?.ai && !(r.confirms && r.confirms > 0) ? tr(' (разобрал ИИ — проверьте поля)') : '';
+  if (r.source === 'catalog') return (r.confirms && r.confirms > 1 ? tr('общий каталог · подтвердили {0}', r.confirms) : tr('общий каталог')) + ai;
+  return tr('страница обжарщика') + ai;
 }
 
 /** Merge data without overwriting what the user already entered */

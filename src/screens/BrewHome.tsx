@@ -18,6 +18,7 @@ import { elapsedOf, useActiveTimer } from '../data/timer';
 import { HolidayBanner } from '../ui/Holiday';
 import { fmtTime } from '../data/methods';
 import type { TileLayout } from '../data/store';
+import { tr } from '../i18n';
 
 const HOLD_MS = 450;
 /** After pinning, tiles are reordered and the finger ends up over a neighbor.
@@ -43,8 +44,8 @@ function MethodTile({ id, className, onOpen, onPin, pinned, label, children }: {
   const cancel = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
   return (
     <button type="button" className={className} data-flip={id}
-      aria-label={`${label}${pinned ? ', закреплён' : ''}`}
-      title={pinned ? 'Зажмите или правый клик — открепить' : 'Зажмите или правый клик — закрепить'}
+      aria-label={`${label}${pinned ? tr(', закреплён') : ''}`}
+      title={pinned ? tr('Зажмите или правый клик — открепить') : tr('Зажмите или правый клик — закрепить')}
       onPointerDown={(e) => {
         lastPointer = e.pointerType;
         if (e.button !== 0) return;
@@ -80,8 +81,8 @@ function TimerBanner() {
     <button type="button" className={'timer-banner' + (done ? ' done' : '')} onClick={() => push({ name: 'timer', draft: t.draft, resume: true })}>
       <span className="method-icon"><MethodIcon icon={m.icon} size={24} /></span>
       <span className="timer-banner-text">
-        <b>{m.name}{t.startedAt === null ? ' · пауза' : ''}</b>
-        <small>{done ? 'Время вышло — пора процедить и записать' : `${fmtTime(e)} из ${fmtTime(t.total)} · осталось ${fmtTime(t.total - e)}`}</small>
+        <b>{m.name}{t.startedAt === null ? tr(' · пауза') : ''}</b>
+        <small>{done ? tr('Время вышло — пора процедить и записать') : tr('{0} из {1} · осталось {2}', fmtTime(e), fmtTime(t.total), fmtTime(t.total - e))}</small>
       </span>
       <Icon name="chevron" size={18} />
     </button>
@@ -147,7 +148,7 @@ function EditTile({ m, size, shown, selected, pinned, dragging, onSelect, onDrag
 
   return (
     <div data-tile={m.id} data-flip={m.id} role="button" tabIndex={0}
-      aria-label={`${m.name}: ${shown === 2 ? 'большая' : 'маленькая'} плитка${pinned ? ', закреплена' : ''}`} aria-pressed={selected}
+      aria-label={tr('{0}: {1} плитка{2}', m.name, shown === 2 ? tr('большая') : tr('маленькая'), pinned ? tr(', закреплена') : '')} aria-pressed={selected}
       className={'method-card edit' + (shown === 1 ? ' small' : '') + (selected ? ' selected' : '') + (dragging ? ' dragging' : '') + (pinned ? ' pinned' : '')}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { start.current = null; onDragEnd(); }}
       onKeyDown={onKey}>
@@ -155,7 +156,7 @@ function EditTile({ m, size, shown, selected, pinned, dragging, onSelect, onDrag
       <span className="method-name">{m.name}</span>
       {pinned && <span className="pin-mark" aria-hidden="true"><Icon name="pin" size={14} /></span>}
       {selected && (
-        <button type="button" className="tile-handle" aria-label={shown === 2 ? 'Сделать маленькой' : 'Сделать большой'}
+        <button type="button" className="tile-handle" aria-label={shown === 2 ? tr('Сделать маленькой') : tr('Сделать большой')}
           onPointerDown={hDown} onPointerMove={hMove} onPointerUp={hUp} onPointerCancel={() => { handle.current = null; setPreview(null); }}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onResize(size === 2 ? 1 : 2); } }} />
@@ -304,12 +305,12 @@ export function BrewHome() {
 
   const ascii = useAscii();
   return (
-    <Screen title="Что завариваем?" root>
+    <Screen title={tr('Что завариваем?')} root>
       {ascii && <div className="ascii-hello" aria-hidden="true"><SteamCup /><span>BREWBOOK · READY.</span></div>}
       <HolidayBanner />
       <TimerBanner />
       {recent.length > 0 && (
-        <Section title="Повторить">
+        <Section title={tr('Повторить')}>
           {recent.map((b) => {
             const m = methodById(b.methodId);
             const bean = beans.find((x) => x.id === b.beanId);
@@ -317,7 +318,7 @@ export function BrewHome() {
               <Row key={b.id}
                 leading={<MethodIcon icon={m.icon} size={26} />}
                 label={brewBeanTitle(b, bean)}
-                hint={`${m.name}${b.plan ? ` · ${b.plan.name}` : ''} · ${fmtNum(b.dose, 2)} г → ${fmtNum(b.water)} г`}
+                hint={tr('{0}{1} · {2} г → {3} г', m.name, b.plan ? ` · ${b.plan.name}` : '', fmtNum(b.dose, 2), fmtNum(b.water))}
                 value={<BrewScore brew={b} size={14} />}
                 // the same card as in the journal (its «Повторить» leads on to the method), whatever recipe it was brewed by
                 onClick={() => push({ name: 'brew', id: b.id })}
@@ -328,20 +329,20 @@ export function BrewHome() {
         </Section>
       )}
 
-      <Section title="Метод приготовления" aside={editing ? (
+      <Section title={tr('Метод приготовления')} aside={editing ? (
         <span className="aside-actions">
           {/* the button is always rendered so the header does not jump when the first change appears */}
-          <button type="button" className={'icon-btn' + (history.length ? '' : ' invisible')} aria-label="Отменить" aria-hidden={!history.length} tabIndex={history.length ? 0 : -1} onClick={undo} disabled={!history.length}><Icon name="undo" /></button>
-          <button type="button" className="btn btn-primary btn-small" onClick={finish}>Готово</button>
+          <button type="button" className={'icon-btn' + (history.length ? '' : ' invisible')} aria-label={tr('Отменить')} aria-hidden={!history.length} tabIndex={history.length ? 0 : -1} onClick={undo} disabled={!history.length}><Icon name="undo" /></button>
+          <button type="button" className="btn btn-primary btn-small" onClick={finish}>{tr('Готово')}</button>
         </span>
       ) : (
         <span className="aside-actions">
-          <button type="button" className="icon-btn" aria-label="Свой метод"
+          <button type="button" className="icon-btn" aria-label={tr('Свой метод')}
             onClick={() => push({ name: 'methodEdit', isNew: true, method: newCustomMethod('cm' + uid()) })}><Icon name="plus" /></button>
-          <button type="button" className="icon-btn" aria-label="Изменить плитки" onClick={() => { platform.haptic('light'); setEditing(true); }}><Icon name="edit" /></button>
+          <button type="button" className="icon-btn" aria-label={tr('Изменить плитки')} onClick={() => { platform.haptic('light'); setEditing(true); }}><Icon name="edit" /></button>
         </span>
       )} plain>
-        {editing && <p className="muted small-note pad edit-hint">Нажмите на плитку, чтобы выбрать её, и тяните ручку справа — плитка станет больше или меньше. Перетащите плитку, чтобы переставить.</p>}
+        {editing && <p className="muted small-note pad edit-hint">{tr('Нажмите на плитку, чтобы выбрать её, и тяните ручку справа — плитка станет больше или меньше. Перетащите плитку, чтобы переставить.')}</p>}
         <div className={'method-grid' + (editing ? ' editing' : '')} ref={gridRef}>
           {editing && ordered.map((m) => (
             <EditTile key={m.id} m={m} size={sizeOf(m.id)} shown={shownOf(m.id)} onPreview={(s) => previewSize(m.id, s)} selected={selected === m.id} pinned={pinned.includes(m.id)} dragging={drag?.id === m.id}
@@ -356,7 +357,7 @@ export function BrewHome() {
               <MethodTile key={m.id} id={m.id} pinned={isPinned}
                 className={'method-card' + (sizeOf(m.id) === 1 ? ' small' : '') + (isPinned ? ' pinned' : '') + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === m.id ? ' active' : '')}
                 onOpen={() => push({ name: 'recipes', methodId: m.id })}
-                onPin={() => { togglePin(m.id); platform.haptic('success'); toast(isPinned ? `«${m.name}» откреплён` : `«${m.name}» закреплён наверху`); }}
+                onPin={() => { togglePin(m.id); platform.haptic('success'); toast(isPinned ? tr('«{0}» откреплён', m.name) : tr('«{0}» закреплён наверху', m.name)); }}
                 label={m.name}>
                 <span className="method-icon"><MethodIcon icon={m.icon} size={28} /></span>
                 <span className={'method-name' + (sizeOf(m.id) === 1 ? ' sr-only' : '')}>{m.name}</span>
@@ -365,14 +366,14 @@ export function BrewHome() {
             );
           })}
         </div>
-        {!editing && !pinned.some((id) => all.some((m) => m.id === id)) && <p className="muted small-note pad">Зажмите метод, чтобы закрепить его наверху, или нажмите карандаш, чтобы расставить плитки.</p>}
+        {!editing && !pinned.some((id) => all.some((m) => m.id === id)) && <p className="muted small-note pad">{tr('Зажмите метод, чтобы закрепить его наверху, или нажмите карандаш, чтобы расставить плитки.')}</p>}
       </Section>
 
-      <Section title="Оценка кофе" plain>
+      <Section title={tr('Оценка кофе')} plain>
         <button type="button" className={'method-card wide' + (((sel?.name === 'recipes') || (sel?.name === 'method' && !sel.from)) && sel.methodId === 'cupping' ? ' active' : '')}
           onClick={() => push({ name: 'recipes', methodId: 'cupping' })}>
           <span className="method-icon"><MethodIcon icon={cupping.icon} size={28} /></span>
-          <span className="method-name">Каппинг<small>Протокол SCA CVA · до{'\u00a0'}6{'\u00a0'}образцов</small></span>
+          <span className="method-name">{tr('Каппинг')}<small>{tr('Протокол SCA CVA · до')}{'\u00a0'}6{'\u00a0'}{tr('образцов')}</small></span>
         </button>
       </Section>
     </Screen>

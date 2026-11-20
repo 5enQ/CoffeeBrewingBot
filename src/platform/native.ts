@@ -8,6 +8,7 @@
  */
 import type { Platform } from './types';
 import { createWebPlatform } from './web';
+import { tr } from '../i18n';
 
 const cap = () => (window as any).Capacitor;
 const plugin = (name: string) => cap()?.Plugins?.[name];
@@ -62,7 +63,7 @@ export function createNativePlatform(): Platform {
     async confirm(message) {
       const d = plugin('Dialog');
       if (!d) return web.confirm(message);
-      return (await d.confirm({ message, okButtonTitle: 'Да', cancelButtonTitle: 'Отмена' })).value;
+      return (await d.confirm({ message, okButtonTitle: tr('Да'), cancelButtonTitle: tr('Отмена') })).value;
     },
     async alert(message) {
       const d = plugin('Dialog');
@@ -73,7 +74,7 @@ export function createNativePlatform(): Platform {
     async share(text, url) {
       const sh = plugin('Share'); // @capacitor/share
       if (!sh) return web.share(text, url);
-      try { await sh.share({ text, url, dialogTitle: 'Поделиться рецептом' }); return 'shared'; } catch { return 'failed'; }
+      try { await sh.share({ text, url, dialogTitle: tr('Поделиться рецептом') }); return 'shared'; } catch { return 'failed'; }
     },
 
     async keepAwake(on) {

@@ -198,6 +198,7 @@ ok(post('/reminders', {'initData': A, 'at': now + 3600_000, 'title': 'x', 'link'
 ok(post('/reminders', {'initData': 'forged', 'at': now + 3600_000, 'link': LINK}).get('status') == 401, 'unsigned requests are refused')
 st = post('/reminders', {'initData': A, 'status': True})
 ok(st.get('pending') and st['pending']['title'] == 'Колд брю' and st['last']['state'] == 'scheduled', f'status shows the pending reminder ({st})')
+ok(post('/reminders', {'initData': A, 'at': now + 3600_000, 'title': 'Cold brew', 'link': LINK, 'lang': 'en'}).get('ok') is True, 'a reminder in English is scheduled too (the language is kept with it)')
 ok(post('/reminders', {'initData': A, 'cancel': True}).get('ok') is True, 'reminder cancelled')
 st = post('/reminders', {'initData': A, 'status': True})
 ok(st.get('pending') is None and st['last']['state'] == 'cancelled', 'status after cancel: nothing pending, last one cancelled')

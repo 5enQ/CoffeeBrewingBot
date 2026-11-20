@@ -5,6 +5,8 @@ from playwright.async_api import async_playwright  # noqa: F401  (re-exported fo
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 URL = (ROOT / 'dist-single' / 'index.html').as_uri()
 KEY = 'brewbook.db.v1'
+# the browser's language decides the app's outside Telegram: the tests read Russian unless they ask for English
+LOCALE = 'ru-RU'
 OUT = ROOT / 'tests' / 'e2e' / 'out'
 
 FAILS: list[str] = []
@@ -24,9 +26,9 @@ def done():
     print('\nall checks passed')
 
 
-async def page(browser, width=390, height=844, dark=False, db=None, init=None, phone=False):
+async def page(browser, width=390, height=844, dark=False, db=None, init=None, phone=False, locale=LOCALE):
     # phone=True: a touch screen (pointer: coarse) — the app reads the motion sensor only there
-    ctx = await browser.new_context(viewport={'width': width, 'height': height}, color_scheme='dark' if dark else 'light',
+    ctx = await browser.new_context(locale=locale, viewport={'width': width, 'height': height}, color_scheme='dark' if dark else 'light',
                                     **({'is_mobile': True, 'has_touch': True} if phone else {}))
     if init:
         await ctx.add_init_script(init)

@@ -8,6 +8,7 @@ import { methodById, fmtNum, fmtRatio, fmtTime, type BrewStep } from './methods'
 import { effectivePlan, type BrewPlan } from './recipes';
 import { beanTitle, blendLines } from '../screens/beanUtils';
 import type { Author, Bean, Brew } from './store';
+import { tr, trValue } from '../i18n';
 
 /** Recipe sent to a friend. Only what is needed to repeat the brew. */
 export interface SharedRecipe {
@@ -91,7 +92,7 @@ function unpack(o: ReturnType<typeof pack>): SharedRecipe {
     score: typeof o.x === 'number' ? o.x : undefined,
     bean: o.b ?? null,
     plan: Array.isArray(o.p) && Array.isArray(o.p[2]) ? {
-      name: String(o.p[0] ?? 'Рецепт'), total: Number(o.p[1]) || 0,
+      name: String(o.p[0] ?? tr('Рецепт')), total: Number(o.p[1]) || 0,
       steps: (o.p[2] as unknown[][]).map((st): BrewStep => ({
         at: Number(st[0]) || 0, title: String(st[1] ?? ''),
         to: Number(st[2]) >= 0 ? Number(st[2]) / 1000 : undefined, hint: st[3] ? String(st[3]) : undefined,
@@ -170,30 +171,30 @@ export function recipeText(r: SharedRecipe): string {
   const beanName = r.bean ? (r.bean.name || beanTitle(r.bean)) : '';
   const plan = effectivePlan(r.methodId, r.plan as BrewPlan | undefined);
   lines.push(`${m.name}${r.plan ? ` · ${r.plan.name}` : ''}${beanName ? ` — ${beanName}` : ''}`);
-  if (r.author.name || r.author.username) lines.push(`Рецепт от ${[r.author.name, r.author.username && '@' + r.author.username].filter(Boolean).join(' ')}`);
+  if (r.author.name || r.author.username) lines.push(tr('Рецепт от {0}', [r.author.name, r.author.username && '@' + r.author.username].filter(Boolean).join(' ')));
   if (r.author.badges?.length) lines.push(sortBadges(r.author.badges).map(badgeText).join('; '));
   lines.push('');
   if (r.bean) {
     if (r.bean.isBlend) {
-      lines.push(`Зерно: бленд${r.bean.roaster ? ` · обжарщик ${r.bean.roaster}` : ''}`);
+      lines.push(tr('Зерно: бленд{0}', r.bean.roaster ? tr(' · обжарщик {0}', r.bean.roaster) : ''));
       blendLines(r.bean).forEach((l) => lines.push(`• ${[l.share, l.text].filter(Boolean).join(' ')}`));
     } else {
-      const origin = [r.bean.country, r.bean.region, r.bean.farm].filter(Boolean).join(', ');
-      const meta = [origin, r.bean.process, r.bean.variety, r.bean.roaster && `обжарщик ${r.bean.roaster}`].filter(Boolean).join(' · ');
-      if (meta) lines.push(`Зерно: ${meta}`);
+      const origin = [trValue(r.bean.country ?? ''), r.bean.region, r.bean.farm].filter(Boolean).join(', ');
+      const meta = [origin, trValue(r.bean.process ?? ''), r.bean.variety, r.bean.roaster && tr('обжарщик {0}', r.bean.roaster)].filter(Boolean).join(' · ');
+      if (meta) lines.push(tr('Зерно: {0}', meta));
     }
   }
-  lines.push(`${fmtNum(r.dose, 2)} г → ${fmtNum(r.water)} г ${m.yieldLabel ? 'на выходе ' : 'воды '}(${fmtRatio(r.water / r.dose)}), ${r.temp ? fmtNum(r.temp) + '°C' : 'холодная вода'}${r.ppm ? `, вода ${r.ppm} ppm` : ''}, ${fmtTime(r.time)}${r.tds ? `, TDS ${fmtNum(r.tds, 2)} %` : ''}`);
-  if (r.grind) lines.push(`Помол: ${r.grind}`);
+  lines.push(tr('{0} г → {1} г {2}({3}), {4}{5}, {6}{7}', fmtNum(r.dose, 2), fmtNum(r.water), m.yieldLabel ? tr('на выходе ') : tr('воды '), fmtRatio(r.water / r.dose), r.temp ? fmtNum(r.temp) + '°C' : tr('холодная вода'), r.ppm ? tr(', вода {0} ppm', r.ppm) : '', fmtTime(r.time), r.tds ? `, TDS ${fmtNum(r.tds, 2)} %` : ''));
+  if (r.grind) lines.push(tr('Помол: {0}', r.grind));
   if (r.gear.length) {
-    lines.push('', 'Оборудование:');
+    lines.push('', tr('Оборудование:'));
     r.gear.forEach((g) => lines.push(`• ${catById(g.cat).one}: ${g.name}${g.details ? ` (${g.details})` : ''}`));
   }
-  const steps = plan.steps.map((s) => `${fmtTime(s.at)} ${s.title}${s.to !== undefined ? ` — до ${fmtNum(r.water * s.to, 0)} г` : ''}${s.hint ? ` (${s.hint})` : ''}`);
-  steps.push(`${fmtTime(plan.total)} Готово`);
-  lines.push('', 'Шаги:', ...steps);
-  const taste = [r.descriptors.join(', '), r.score !== undefined ? `оценка SCA ${fmtNum(r.score, 2)}` : r.rating ? `${'★'.repeat(Math.floor(r.rating))}${r.rating % 1 ? '½' : ''} ${fmtNum(r.rating)} из 5` : ''].filter(Boolean);
-  if (taste.length) lines.push('', `Вкус: ${taste.join(' · ')}`);
-  if (r.notes) lines.push(`Заметки: ${r.notes}`);
+  const steps = plan.steps.map((s) => `${fmtTime(s.at)} ${s.title}${s.to !== undefined ? tr(' — до {0} г', fmtNum(r.water * s.to, 0)) : ''}${s.hint ? ` (${s.hint})` : ''}`);
+  steps.push(tr('{0} Готово', fmtTime(plan.total)));
+  lines.push('', tr('Шаги:'), ...steps);
+  const taste = [r.descriptors.map(trValue).join(', '), r.score !== undefined ? tr('оценка SCA {0}', fmtNum(r.score, 2)) : r.rating ? tr('{0}{1} {2} из 5', '★'.repeat(Math.floor(r.rating)), r.rating % 1 ? '½' : '', fmtNum(r.rating)) : ''].filter(Boolean);
+  if (taste.length) lines.push('', tr('Вкус: {0}', taste.join(' · ')));
+  if (r.notes) lines.push(tr('Заметки: {0}', r.notes));
   return lines.join('\n');
 }

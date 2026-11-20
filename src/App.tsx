@@ -31,7 +31,7 @@ import { PhosphorBoot, usePhosphor } from './ui/PhosphorBoot';
 import { BOOK, CoffeeTree, CUP, pack, SteamCup, useAscii } from './ui/ascii';
 import { cardLook, sendCardLook } from './data/remind';
 import { onAppearance } from './appearance';
-import { t } from './i18n';
+import { t, tr } from './i18n';
 
 function renderRoute(r: Route) {
   switch (r.name) {
@@ -114,7 +114,7 @@ function Shell() {
     let said = false;
     const check = () => {
       if (said || document.visibilityState === 'hidden' || !sessionExpired()) return;
-      said = true; toast('Brewbook открыт больше суток — закройте его и откройте снова, чтобы заварки дошли до сервера');
+      said = true; toast(tr('Brewbook открыт больше суток — закройте его и откройте снова, чтобы заварки дошли до сервера'));
     };
     check();
     document.addEventListener('visibilitychange', check);
@@ -167,14 +167,14 @@ function Shell() {
     if (param.startsWith('p')) {
       loadCard(param.slice(1)).then((card) => {
         if (card) push({ name: 'card', card });
-        else platform.alert('Не получилось открыть профиль по ссылке. Проверьте интернет и попробуйте ещё раз.');
+        else platform.alert(tr('Не получилось открыть профиль по ссылке. Проверьте интернет и попробуйте ещё раз.'));
         if (location.hash.includes('r=')) history.replaceState(null, '', location.pathname + location.search);
       });
       return;
     }
     resolveStartParam(param).then((recipe) => {
       if (recipe) push({ name: 'shared', recipe });
-      else platform.alert('Не получилось открыть рецепт по ссылке. Проверьте интернет и попробуйте ещё раз.');
+      else platform.alert(tr('Не получилось открыть рецепт по ссылке. Проверьте интернет и попробуйте ещё раз.'));
       if (location.hash.includes('r=')) history.replaceState(null, '', location.pathname + location.search);
     });
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -207,13 +207,13 @@ function Shell() {
             </nav>
             <button type="button" className="side-me" onClick={() => setTab('profile')}>
               <span className="avatar small" aria-hidden="true">{(profile.name || '?').slice(0, 1).toUpperCase()}</span>
-              <span><b>{profile.name || 'Профиль'}</b>{profile.telegram && <small>@{profile.telegram}</small>}</span>
+              <span><b>{profile.name || tr('Профиль')}</b>{profile.telegram && <small>@{profile.telegram}</small>}</span>
             </button>
           </aside>
-          <section className="pane pane-list" aria-label="Список">
+          <section className="pane pane-list" aria-label={tr('Список')}>
             <div className="pane-scroll"><DepthCtx.Provider value={0}>{root}</DepthCtx.Provider></div>
           </section>
-          <section className="pane pane-detail" aria-label="Подробности">
+          <section className="pane pane-detail" aria-label={tr('Подробности')}>
             {top === 0 && <Placeholder tab={tab} />}
             {stackScreens}
           </section>
@@ -245,10 +245,10 @@ function Shell() {
 /** Right pane while nothing is selected */
 function Placeholder({ tab }: { tab: Tab }) {
   const text: Record<Tab, [ReactNode, string, string]> = {
-    brew: [<MethodIcon icon="v60" size={48} />, 'Выберите метод', 'Слева — способы заваривания и последние заварки. Рецепт и таймер откроются здесь.'],
-    journal: [<Icon name="journal" size={44} />, 'Выберите заварку', 'Карточка с параметрами, вкусом и каппингом откроется здесь.'],
-    beans: [<Icon name="beans" size={44} />, 'Выберите пачку', 'Остаток, состав и заварки из этой пачки — здесь.'],
-    profile: [<Icon name="profile" size={44} />, 'Профиль', 'Рецепты, значки и оборудование открываются здесь для редактирования.'],
+    brew: [<MethodIcon icon="v60" size={48} />, tr('Выберите метод'), tr('Слева — способы заваривания и последние заварки. Рецепт и таймер откроются здесь.')],
+    journal: [<Icon name="journal" size={44} />, tr('Выберите заварку'), tr('Карточка с параметрами, вкусом и каппингом откроется здесь.')],
+    beans: [<Icon name="beans" size={44} />, tr('Выберите пачку'), tr('Остаток, состав и заварки из этой пачки — здесь.')],
+    profile: [<Icon name="profile" size={44} />, tr('Профиль'), tr('Рецепты, значки и оборудование открываются здесь для редактирования.')],
   };
   const [icon, title, hint] = text[tab];
   // the green monitor draws its picture in symbols

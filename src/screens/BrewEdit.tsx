@@ -15,6 +15,7 @@ import { CvaEditor } from '../ui/Cva';
 import { MODES } from '../data/cva';
 import { healthWarning } from '../data/health';
 import { CupTdsField, PpmField } from '../ui/WaterFields';
+import { intlLocale, tr } from '../i18n';
 
 
 export function BrewEdit({ draft, isNew, openCupping, manual, saved }: { draft: Brew; isNew: boolean; openCupping?: boolean; manual?: boolean; saved?: boolean }) {
@@ -29,7 +30,7 @@ export function BrewEdit({ draft, isNew, openCupping, manual, saved }: { draft: 
   const dirty = JSON.stringify(b) !== JSON.stringify(draft);
 
   // after ✓ in the timer the brew is already in the journal (marked unrated): leaving keeps it, only unsaved changes are asked about
-  useBackGuard(dirty || (isNew && !saved), saved ? 'Выйти без оценки? Заварка уже в дневнике.' : isNew ? 'Не сохранять эту заварку?' : 'Выйти без сохранения изменений?');
+  useBackGuard(dirty || (isNew && !saved), saved ? tr('Выйти без оценки? Заварка уже в дневнике.') : isNew ? tr('Не сохранять эту заварку?') : tr('Выйти без сохранения изменений?'));
 
   useEffect(() => {
     if (openCupping) setTimeout(() => cuppingRef.current?.scrollIntoView({ behavior: 'smooth' }), 300);
@@ -66,27 +67,27 @@ export function BrewEdit({ draft, isNew, openCupping, manual, saved }: { draft: 
   if (b.cva) {
     const cva = b.cva;
     return (
-      <Screen title={isNew ? 'Оценка каппинга' : 'Редактировать каппинг'} subtitle={`${MODES.find((x) => x.id === cva.mode)?.label} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
-        footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty && !draft.unrated}>Сохранить</Button></div>}>
+      <Screen title={isNew ? tr('Оценка каппинга') : tr('Редактировать каппинг')} subtitle={`${MODES.find((x) => x.id === cva.mode)?.label} · ${new Date(b.date).toLocaleString(intlLocale(), { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
+        footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty && !draft.unrated}>{tr('Сохранить')}</Button></div>}>
         <CvaEditor value={cva} onChange={(v) => set({ cva: v })} />
 
-        <Section title="Цель и заметки">
-          <Field label="Цель сессии" id="cva-purpose" value={cva.purpose} placeholder="например, выбор лота"
+        <Section title={tr('Цель и заметки')}>
+          <Field label={tr('Цель сессии')} id="cva-purpose" value={cva.purpose} placeholder={tr('например, выбор лота')}
             onChange={(e) => set({ cva: { ...cva, purpose: e.target.value } })} />
-          <textarea id="brew-notes" className="notes" rows={3} aria-label="Заметки" value={b.notes} placeholder="Общие заметки о сессии"
+          <textarea id="brew-notes" className="notes" rows={3} aria-label={tr('Заметки')} value={b.notes} placeholder={tr('Общие заметки о сессии')}
             onChange={(e) => set({ notes: e.target.value })} />
         </Section>
 
-        <Section title="Параметры по протоколу" aside={<span className="lock-tag">не меняются</span>}>
+        <Section title={tr('Параметры по протоколу')} aside={<span className="lock-tag">{tr('не меняются')}</span>}>
           <dl className="rules compact">
-            <div><dt>Доза</dt><dd><b>{fmtNum(b.dose, 1)} г на чашку</b></dd></div>
-            <div><dt>Вода</dt><dd><b>{b.water} мл · {fmtNum(b.temp)} °C</b></dd></div>
-            <div><dt>Чашек</dt><dd><b>{cva.cups} на образец · {cva.samples.length} обр.</b></dd></div>
-            <div><dt>Помол</dt><dd><b>{b.grind}</b></dd></div>
+            <div><dt>{tr('Доза')}</dt><dd><b>{tr('{0} г на чашку', fmtNum(b.dose, 1))}</b></dd></div>
+            <div><dt>{tr('Вода')}</dt><dd><b>{tr('{0} мл · {1} °C', b.water, fmtNum(b.temp))}</b></dd></div>
+            <div><dt>{tr('Чашек')}</dt><dd><b>{tr('{0} на образец · {1} обр.', cva.cups, cva.samples.length)}</b></dd></div>
+            <div><dt>{tr('Помол')}</dt><dd><b>{b.grind}</b></dd></div>
           </dl>
         </Section>
 
-        <Section title="Оборудование" plain>
+        <Section title={tr('Оборудование')} plain>
           <GearPicker methodId="cupping" value={b.gear ?? []} onChange={(gear) => set({ gear })} />
         </Section>
       </Screen>
@@ -98,30 +99,30 @@ export function BrewEdit({ draft, isNew, openCupping, manual, saved }: { draft: 
   const setup = (
     <>
       {b.methodId === 'drip' ? (
-        <Section title="Дрип" plain>
+        <Section title={tr('Дрип')} plain>
           <DripPicker value={b.beanId} dripId={b.dripId} onChange={(beanId, dripId) => set({ beanId, dripId })} />
         </Section>
       ) : (
-        <Section title="Зерно" plain>
+        <Section title={tr('Зерно')} plain>
           <BeanPicker value={b.beanId} onChange={(beanId) => set({ beanId, dripId: undefined })} />
         </Section>
       )}
 
-      <Section title="Параметры" aside={<span className="muted">{fmtRatio(b.water / b.dose)}</span>}>
-        <Field label="Метод" id="method">
+      <Section title={tr('Параметры')} aside={<span className="muted">{fmtRatio(b.water / b.dose)}</span>}>
+        <Field label={tr('Метод')} id="method">
           <select id="method" value={b.methodId} onChange={(e) => set({ methodId: e.target.value, plan: undefined, cupping: e.target.value === 'cupping' ? (b.cupping ?? emptyCupping()) : b.cupping })}>
             {allMethods().filter((x) => (x.id !== 'cupping' || isCupping) && (x.id === 'drip') === (b.methodId === 'drip')).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </select>
         </Field>
-        <Stepper label="Кофе" value={b.dose} step={0.25} min={1} max={100} unit="г" format={(v) => String(v).replace('.', ',')}
+        <Stepper label={tr('Кофе')} value={b.dose} step={0.25} min={1} max={100} unit={tr('г')} format={(v) => String(v).replace('.', ',')}
           onChange={(dose) => set({ dose, fromPack: b.fromPack !== undefined ? Math.round((b.fromPack + dose - b.dose) * 10) / 10 : undefined })} />
         {/* what actually left the pack: dose + grinder loss; can be corrected for this brew */}
         {b.beanId && !b.dripId && !b.cva && b.methodId !== 'drip' && (
-          <Stepper label="Из пачки" value={b.fromPack ?? b.dose} step={0.1} min={b.dose} max={b.dose + 20} unit="г" format={(v) => String(Math.round(v * 10) / 10).replace('.', ',')}
+          <Stepper label={tr('Из пачки')} value={b.fromPack ?? b.dose} step={0.1} min={b.dose} max={b.dose + 20} unit={tr('г')} format={(v) => String(Math.round(v * 10) / 10).replace('.', ',')}
             onChange={(v) => { const r = Math.round(v * 10) / 10; set({ fromPack: r > b.dose ? r : undefined }); }} />
         )}
-        <Stepper label={m.yieldLabel ?? 'Вода'} value={b.water} step={b.methodId === 'espresso' ? 1 : 5} min={5} max={2000} unit="г" onChange={(water) => set({ water })} />
-        <Stepper label="Температура" value={b.temp} step={0.1} min={0} max={100} unit={b.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : 'холодная')} onChange={(temp) => set({ temp })} />
+        <Stepper label={m.yieldLabel ?? tr('Вода')} value={b.water} step={b.methodId === 'espresso' ? 1 : 5} min={5} max={2000} unit={tr('г')} onChange={(water) => set({ water })} />
+        <Stepper label={tr('Температура')} value={b.temp} step={0.1} min={0} max={100} unit={b.temp ? '°C' : ''} format={(v) => (v ? fmtNum(v) : tr('холодная'))} onChange={(temp) => set({ temp })} />
         <PpmField value={b.ppm ?? 0} onChange={(v) => set({ ppm: v > 0 ? v : undefined })} />
         {b.methodId !== 'drip' && (() => {
           const grinder = grinderOf(b.gear, myGear);
@@ -135,20 +136,20 @@ export function BrewEdit({ draft, isNew, openCupping, manual, saved }: { draft: 
               onText={(t) => set({ grind: t, grindValue: undefined, grindUnit: undefined })} />
           );
         })()}
-        <Field label="Время" id="edit-time" value={timeText} inputMode="numeric" placeholder="3:10"
+        <Field label={tr('Время')} id="edit-time" value={timeText} inputMode="numeric" placeholder="3:10"
           onChange={(e) => { setTimeText(e.target.value); const t = parseTime(e.target.value); if (t !== null) set({ time: t }); }} />
       </Section>
     </>
   );
 
   return (
-    <Screen title={isNew ? 'Как получилось?' : 'Редактировать'} subtitle={`${m.name} · ${new Date(b.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
-      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty && !draft.unrated}>Сохранить</Button></div>}>
+    <Screen title={isNew ? tr('Как получилось?') : tr('Редактировать')} subtitle={`${m.name} · ${new Date(b.date).toLocaleString(intlLocale(), { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
+      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={!isNew && !dirty && !draft.unrated}>{tr('Сохранить')}</Button></div>}>
 
       {manual && setup}
 
       {!isCupping && (
-        <Section title="Оценка" plain>
+        <Section title={tr('Оценка')} plain>
           <div className="rating-card">
             <Stars value={b.rating} onChange={(rating) => set({ rating })} size={40} />
             <span>{ratingLabel(b.rating)}</span>
@@ -156,14 +157,14 @@ export function BrewEdit({ draft, isNew, openCupping, manual, saved }: { draft: 
         </Section>
       )}
 
-      <Section title="Вкус">
-        <Dots label="Кислотность" left="плоско" right="ярко" value={b.taste.acidity} onChange={(v) => set({ taste: { ...b.taste, acidity: v } })} />
-        <Dots label="Сладость" left="нет" right="много" value={b.taste.sweetness} onChange={(v) => set({ taste: { ...b.taste, sweetness: v } })} />
-        <Dots label="Горечь" left="нет" right="сильная" value={b.taste.bitterness} onChange={(v) => set({ taste: { ...b.taste, bitterness: v } })} />
-        <Dots label="Тело" left="водянистое" right="плотное" value={b.taste.body} onChange={(v) => set({ taste: { ...b.taste, body: v } })} />
+      <Section title={tr('Вкус')}>
+        <Dots label={tr('Кислотность')} left={tr('плоско')} right={tr('ярко')} value={b.taste.acidity} onChange={(v) => set({ taste: { ...b.taste, acidity: v } })} />
+        <Dots label={tr('Сладость')} left={tr('нет')} right={tr('много')} value={b.taste.sweetness} onChange={(v) => set({ taste: { ...b.taste, sweetness: v } })} />
+        <Dots label={tr('Горечь')} left={tr('нет')} right={tr('сильная')} value={b.taste.bitterness} onChange={(v) => set({ taste: { ...b.taste, bitterness: v } })} />
+        <Dots label={tr('Тело')} left={tr('водянистое')} right={tr('плотное')} value={b.taste.body} onChange={(v) => set({ taste: { ...b.taste, body: v } })} />
       </Section>
 
-      <Section title="Дескрипторы" aside={b.descriptors.length ? <span className="count">{b.descriptors.length}</span> : undefined} plain>
+      <Section title={tr('Дескрипторы')} aside={b.descriptors.length ? <span className="count">{b.descriptors.length}</span> : undefined} plain>
         {b.descriptors.length > 0 && (
           <div className="picked"><Chips options={b.descriptors} value={b.descriptors} onToggle={toggleDesc} toneOf={toneOf} /></div>
         )}
@@ -182,25 +183,25 @@ export function BrewEdit({ draft, isNew, openCupping, manual, saved }: { draft: 
 
       {/* the measurement after the taste words: most people describe the cup, fewer reach for a refractometer */
       }{!isCupping && (
-        <Section title="Измерения">
+        <Section title={tr('Измерения')}>
           <CupTdsField brew={b} onChange={(patch) => set(patch)} />
         </Section>
       )}
 
-      <Section title="Заметки">
-        <textarea id="brew-notes" className="notes" rows={3} aria-label="Заметки" value={b.notes} placeholder="Что изменить в следующий раз?"
+      <Section title={tr('Заметки')}>
+        <textarea id="brew-notes" className="notes" rows={3} aria-label={tr('Заметки')} value={b.notes} placeholder={tr('Что изменить в следующий раз?')}
           onChange={(e) => set({ notes: e.target.value })} />
       </Section>
 
       {!manual && setup}
 
-      <Section title="Оборудование" plain>
+      <Section title={tr('Оборудование')} plain>
         <GearPicker methodId={b.methodId} value={b.gear ?? []} onChange={(gear) => set({ gear })} />
       </Section>
 
       <div ref={cuppingRef}>
         {isCupping && (
-          <Section title="Каппинг-анкета SCA" plain>
+          <Section title={tr('Каппинг-анкета SCA')} plain>
             <CuppingForm value={b.cupping ?? emptyCupping()} onChange={(cupping) => set({ cupping })} />
           </Section>
         )}

@@ -13,6 +13,7 @@ import type { RatingStats } from './ratings';
 import { toMethod, type BrewPlan, type CustomMethod, type CustomRecipe } from './recipes';
 import { setCustomMethods } from './methods';
 import type { CvaSession } from './cva';
+import { tr, UserError } from '../i18n';
 
 export interface Bean {
   id: string;
@@ -273,7 +274,7 @@ export const daysSince = (iso: string, until = Date.now()) => {
 function seedGear(): Gear[] {
   return [
     { id: 'sample-grinder', cat: 'grinder', name: 'Comandante C40', details: 'Red Clix', sample: true },
-    { id: 'sample-dripper', cat: 'dripper', name: 'Hario V60 02', details: 'керамика', sample: true },
+    { id: 'sample-dripper', cat: 'dripper', name: 'Hario V60 02', details: tr('керамика'), sample: true },
     { id: 'sample-kettle', cat: 'kettle', name: 'Fellow Stagg EKG', details: '', sample: true },
   ];
 }
@@ -282,17 +283,17 @@ function seed(): Pick<DB, 'beans' | 'brews'> {
   const now = Date.now();
   const iso = (daysAgo: number) => new Date(now - daysAgo * 86_400_000).toISOString().slice(0, 10);
   const b1: Bean = {
-    ...emptyBean(), id: 'sample-eth', name: 'Гуджи Ханджа', roaster: 'Пример обжарщика', country: 'Эфиопия',
-    region: 'Гуджи', farm: 'Станция Ханджа', producer: 'Мелкие фермеры', variety: 'Эфиопские местные',
-    process: 'Мытая', altitude: '2100–2300 м', harvest: '2026', roastLevel: 'Светлая',
-    roastDate: iso(12), weight: '250', barcode: '4600000000017', packNotes: 'бергамот, персик, жасмин',
+    ...emptyBean(), id: 'sample-eth', name: tr('Гуджи Ханджа'), roaster: tr('Пример обжарщика'), country: tr('Эфиопия'),
+    region: tr('Гуджи'), farm: tr('Станция Ханджа'), producer: tr('Мелкие фермеры'), variety: tr('Эфиопские местные'),
+    process: tr('Мытая'), altitude: tr('2100–2300 м'), harvest: '2026', roastLevel: tr('Светлая'),
+    roastDate: iso(12), weight: '250', barcode: '4600000000017', packNotes: tr('бергамот, персик, жасмин'),
     createdAt: now - 12 * 86_400_000, sample: true,
   };
   const b2: Bean = {
-    ...emptyBean(), id: 'sample-col', name: 'Финка Эль Мирадор', roaster: 'Пример обжарщика', country: 'Колумбия',
-    region: 'Уила', farm: 'Эль Мирадор', producer: 'Семья Ортис', variety: 'Кастильо, Катурра',
-    process: 'Анаэробная натуральная', altitude: '1750 м', harvest: '2026', roastLevel: 'Омни',
-    roastDate: iso(20), weight: '250', packNotes: 'клубника, ром, молочный шоколад',
+    ...emptyBean(), id: 'sample-col', name: tr('Финка Эль Мирадор'), roaster: tr('Пример обжарщика'), country: tr('Колумбия'),
+    region: tr('Уила'), farm: tr('Эль Мирадор'), producer: tr('Семья Ортис'), variety: tr('Кастильо, Катурра'),
+    process: tr('Анаэробная натуральная'), altitude: tr('1750 м'), harvest: '2026', roastLevel: tr('Омни'),
+    roastDate: iso(20), weight: '250', packNotes: tr('клубника, ром, молочный шоколад'),
     createdAt: now - 20 * 86_400_000, sample: true,
   };
   const brews: Brew[] = [
@@ -300,12 +301,12 @@ function seed(): Pick<DB, 'beans' | 'brews'> {
       id: 'sample-brew-1', date: now - 2 * 3_600_000, methodId: 'v60', beanId: b1.id, dose: 15, water: 250,
       temp: 95, grind: 'Comandante 24', time: 192, rating: 4,
       taste: { acidity: 4, sweetness: 4, bitterness: 1, body: 2 },
-      descriptors: ['бергамот', 'персик', 'чёрный чай'],
-      notes: 'Яркая, чайная. В следующий раз на 1 клик мельче — чуть водянисто в финише.',
+      descriptors: [tr('бергамот'), tr('персик'), tr('чёрный чай')],
+      notes: tr('Яркая, чайная. В следующий раз на 1 клик мельче — чуть водянисто в финише.'),
       cupping: null, sample: true,
       gear: [
         { id: 'sample-grinder', cat: 'grinder', name: 'Comandante C40', details: 'Red Clix' },
-        { id: 'sample-dripper', cat: 'dripper', name: 'Hario V60 02', details: 'керамика' },
+        { id: 'sample-dripper', cat: 'dripper', name: 'Hario V60 02', details: tr('керамика') },
         { id: 'sample-kettle', cat: 'kettle', name: 'Fellow Stagg EKG' },
       ],
     },
@@ -313,8 +314,8 @@ function seed(): Pick<DB, 'beans' | 'brews'> {
       id: 'sample-brew-2', date: now - 26 * 3_600_000, methodId: 'cupping', beanId: b2.id, dose: 8.25, water: 150,
       temp: 93, grind: 'EK43 · 9', time: 660, rating: 4,
       taste: { acidity: 3, sweetness: 5, bitterness: 2, body: 4 },
-      descriptors: ['клубника', 'ромовый', 'молочный шоколад'],
-      notes: 'Ферментация заметна, но чистая. Лучше раскрывается на остывании.',
+      descriptors: [tr('клубника'), tr('ромовый'), tr('молочный шоколад')],
+      notes: tr('Ферментация заметна, но чистая. Лучше раскрывается на остывании.'),
       cupping: {
         scores: { fragrance: 8.25, flavor: 8.25, aftertaste: 7.75, acidity: 7.75, body: 8, balance: 7.75, overall: 8 },
         intensity: { fragrance: [4, 5], acidity: 3, body: 4 },
@@ -324,8 +325,8 @@ function seed(): Pick<DB, 'beans' | 'brews'> {
           sweetness: [true, true, true, true, true],
         },
         defects: { taintCups: 0, faultCups: 0 },
-        descriptors: ['клубника', 'ромовый', 'молочный шоколад'],
-        notes: 'Одна чашка с винной резкостью.',
+        descriptors: [tr('клубника'), tr('ромовый'), tr('молочный шоколад')],
+        notes: tr('Одна чашка с винной резкостью.'),
       },
       sample: true,
     },
@@ -415,7 +416,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setSync({ state: 'idle', at: Date.now(), usage: s.usage });
     } catch (e) {
       console.warn('Синхронизация не удалась', e);
-      setSync({ state: 'error', at: s.lastAt, usage: s.usage, error: e instanceof CloudFullError ? e.message : e instanceof Error && e.message.startsWith('Данные') ? e.message : 'Нет связи с облаком Telegram — попробуем позже' });
+      setSync({ state: 'error', at: s.lastAt, usage: s.usage, error: e instanceof CloudFullError ? e.message : e instanceof UserError ? e.message : tr('Нет связи с облаком Telegram — попробуем позже') });
     } finally {
       running.current = false;
       if (again.current) { again.current = false; setTimeout(runSync, 500); }
@@ -437,7 +438,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // known hand grinders (Comandante, 1Zpresso, Timemore C…) — grind in clicks right away
       next = { ...next, gear: next.gear.map((g) => (g.cat === 'grinder' && !g.grindType && guessGrindType(g.name) ? { ...g, grindType: guessGrindType(g.name) } : g)) };
       // "Карбоническая мацерация" is now called "Углекислая мацерация"
-      const carb = (s?: string) => (s ?? '').replace(/карбонич\S*\s+мацерац\S*/gi, 'Углекислая мацерация');
+      const carb = (s?: string) => (s ?? '').replace(/карбонич\S*\s+мацерац\S*/gi, 'Углекислая мацерация'); // i18n-skip: stored value
       next = { ...next, beans: next.beans.map((b) => (/карбонич/i.test(JSON.stringify([b.process, b.parts, b.drips]))
         ? { ...b, process: carb(b.process), parts: b.parts?.map((p) => ({ ...p, process: carb(p.process) })), drips: b.drips?.map((d) => ({ ...d, process: carb(d.process) })) }
         : b)) };
@@ -528,8 +529,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const t = text.trim();
       let data: Record<string, unknown> & { beans: Bean[]; brews: Brew[]; recipes?: Record<string, Recipe>; gear?: Gear[]; custom?: CustomRecipe[]; customMethods?: CustomMethod[]; pinned?: string[]; tiles?: TileLayout; profile?: Partial<Profile>; rated?: Record<string, number>; seenAch?: string[] };
       try { data = (t.startsWith('{') ? JSON.parse(t) : fromMarkdown(t)) as typeof data; }
-      catch (e) { throw new Error(e instanceof Error && e.message.startsWith('Не похоже') ? e.message : 'Не получилось прочитать копию — проверьте файл'); }
-      if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error('Это не файл резервной копии');
+      catch (e) { throw new Error(e instanceof UserError ? e.message : tr('Не получилось прочитать копию — проверьте файл')); }
+      if (!Array.isArray(data.beans) || !Array.isArray(data.brews)) throw new Error(tr('Это не файл резервной копии'));
       data = normalizeBackup(data) as typeof data;
       setDb((d) => {
         const next: DB = { ...EMPTY, beans: data.beans, brews: data.brews, recipes: data.recipes ?? {}, gear: data.gear ?? [], custom: data.custom ?? [], customMethods: data.customMethods ?? [], pinned: data.pinned ?? [], tiles: data.tiles, rated: data.rated ?? {}, seenAch: data.seenAch ?? [], profile: { ...EMPTY.profile, ...(data.profile ?? {}) }, seeded: true, gearSeeded: true };

@@ -3,6 +3,7 @@ import { fmtNum } from '../data/methods';
 import { platform } from '../platform';
 import { beanSca, brewSca, type CvaSession } from '../data/cva';
 import { Dots, Stars, Stepper } from './kit';
+import { decSep, tr } from '../i18n';
 
 export function ScoreBadge({ c, big = false }: { c: Cupping; big?: boolean }) {
   const s = cupScore(c);
@@ -19,8 +20,8 @@ export function ScoreBadge({ c, big = false }: { c: Cupping; big?: boolean }) {
 export function CvaBadge({ score, big = false }: { score: number | null; big?: boolean }) {
   return (
     <div className={'score-badge cva' + (big ? ' big' : '')}>
-      <b>{score === null ? '—' : score.toFixed(2).replace('.', ',')}</b>
-      <span>{score === null ? 'без балла' : 'CVA'}</span>
+      <b>{score === null ? '—' : score.toFixed(2).replace('.', decSep())}</b>
+      <span>{score === null ? tr('без балла') : 'CVA'}</span>
     </div>
   );
 }
@@ -40,9 +41,9 @@ export function CuppingForm({ value, onChange }: { value: Cupping; onChange(c: C
       <div className="cupping-total">
         <ScoreBadge c={value} big />
         <dl>
-          <div><dt>Качество</dt><dd>{fmtNum(s.quality, 2)}</dd></div>
-          <div><dt>Чашки</dt><dd>{s.cups}</dd></div>
-          <div><dt>Дефекты</dt><dd>{s.defects ? `−${s.defects}` : '0'}</dd></div>
+          <div><dt>{tr('Качество')}</dt><dd>{fmtNum(s.quality, 2)}</dd></div>
+          <div><dt>{tr('Чашки')}</dt><dd>{s.cups}</dd></div>
+          <div><dt>{tr('Дефекты')}</dt><dd>{s.defects ? `−${s.defects}` : '0'}</dd></div>
         </dl>
       </div>
 
@@ -52,7 +53,7 @@ export function CuppingForm({ value, onChange }: { value: Cupping; onChange(c: C
           <div className="attr" key={q.key}>
             <div className="attr-head">
               <div><b>{q.label}</b><small>{q.hint}</small></div>
-              <output>{v.toFixed(2).replace('.', ',')}</output>
+              <output>{v.toFixed(2).replace('.', decSep())}</output>
             </div>
             <input type="range" id={`score-${q.key}`} aria-label={q.label}
               min={SCORE_MIN} max={SCORE_MAX} step={SCORE_STEP} value={v}
@@ -61,16 +62,16 @@ export function CuppingForm({ value, onChange }: { value: Cupping; onChange(c: C
             <div className="scale"><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>
             {q.intensity && q.key === 'fragrance' && (
               <div className="attr-intensity two">
-                {(['Сухой', 'Влажный'] as const).map((lbl, i) => {
+                {([tr('Сухой'), tr('Влажный')] as const).map((lbl, i) => {
                   const pair = (value.intensity.fragrance as [number, number]) ?? [3, 3];
-                  return <Dots key={lbl} label={lbl} left="слабый" right="яркий" value={pair[i]}
+                  return <Dots key={lbl} label={lbl} left={tr('слабый')} right={tr('яркий')} value={pair[i]}
                     onChange={(n) => { const p: [number, number] = [...pair]; p[i] = n; set({ intensity: { ...value.intensity, fragrance: p } }); }} />;
                 })}
               </div>
             )}
             {q.intensity && q.key !== 'fragrance' && (
               <div className="attr-intensity">
-                <Dots label="Интенсивность" left={q.intensity[0]} right={q.intensity[1]}
+                <Dots label={tr('Интенсивность')} left={q.intensity[0]} right={q.intensity[1]}
                   value={(value.intensity[q.key] as number) ?? 3}
                   onChange={(n) => set({ intensity: { ...value.intensity, [q.key]: n } })} />
               </div>
@@ -87,7 +88,7 @@ export function CuppingForm({ value, onChange }: { value: Cupping; onChange(c: C
           </div>
           <div className="cups">
             {value.cups[a.key].map((ok, i) => (
-              <button type="button" key={i} className={'cup' + (ok ? ' on' : '')} aria-pressed={ok} aria-label={`Чашка ${i + 1}`}
+              <button type="button" key={i} className={'cup' + (ok ? ' on' : '')} aria-pressed={ok} aria-label={tr('Чашка {0}', i + 1)}
                 onClick={() => {
                   platform.haptic('select');
                   const next = [...value.cups[a.key]]; next[i] = !ok;
@@ -99,10 +100,10 @@ export function CuppingForm({ value, onChange }: { value: Cupping; onChange(c: C
       ))}
 
       <div className="attr">
-        <div className="attr-head"><div><b>Дефекты</b><small>Привкус — 2 балла за чашку, порок — 4</small></div></div>
-        <Stepper label="Чашек с привкусом (taint)" value={value.defects.taintCups} min={0} max={5}
+        <div className="attr-head"><div><b>{tr('Дефекты')}</b><small>{tr('Привкус — 2 балла за чашку, порок — 4')}</small></div></div>
+        <Stepper label={tr('Чашек с привкусом (taint)')} value={value.defects.taintCups} min={0} max={5}
           onChange={(n) => set({ defects: { ...value.defects, taintCups: n } })} />
-        <Stepper label="Чашек с пороком (fault)" value={value.defects.faultCups} min={0} max={5}
+        <Stepper label={tr('Чашек с пороком (fault)')} value={value.defects.faultCups} min={0} max={5}
           onChange={(n) => set({ defects: { ...value.defects, faultCups: n } })} />
       </div>
     </div>

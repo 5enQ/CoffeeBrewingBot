@@ -1,8 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import App from './App';
-import { detectLocale, setLocale } from './i18n';
+import { chosenLocale, detectLocale, setLocale } from './i18n';
 import { initPlatform, platform } from './platform';
 import { noPinchZoom } from './platform/nozoom';
 
@@ -12,11 +11,14 @@ try { if (/Mac/.test(navigator.platform) || /Macintosh/.test(navigator.userAgent
 
 noPinchZoom();
 
-initPlatform().finally(() => {
-  // Only locales in ENABLED_LOCALES are picked; today that is Russian only
+initPlatform().finally(async () => {
+  // Telegram's language decides, unless one was picked on this device (Профиль → Вид интерфейса → Язык)
   let lang: string | undefined;
   try { lang = platform.user()?.languageCode; } catch { /* no user outside Telegram */ }
-  setLocale(detectLocale([lang, ...(typeof navigator !== 'undefined' ? navigator.languages ?? [] : [])]));
+  const picked = chosenLocale();
+  setLocale(picked !== 'auto' ? picked : detectLocale([lang, ...(typeof navigator !== 'undefined' ? navigator.languages ?? [] : [])]));
+  // the app's modules load only now: their strings are translated as they load
+  const { default: App } = await import('./App');
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />

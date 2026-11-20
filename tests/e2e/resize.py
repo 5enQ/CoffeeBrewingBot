@@ -2,7 +2,7 @@
 after the window, and on a Mac the page keeps the system's own scrollbars (a styled one sat at the window edge
 and caught the mouse before the window's resize border)."""
 import asyncio
-from common import async_playwright, check, done, page
+from common import async_playwright, check, done, page, LOCALE
 
 src = open('ui_snapshot.py').read().split('# ---------- measuring')[0]
 ns = {'__file__': __file__}; exec(src, ns)
@@ -24,7 +24,7 @@ async def main():
         check(not mac_cls, 'not a Mac: the thin styled scrollbar stays')
         await pg.context.close()
 
-        ctx = await b.new_context(viewport={'width': 420, 'height': 800}, user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko)')
+        ctx = await b.new_context(locale=LOCALE, viewport={'width': 420, 'height': 800}, user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko)')
         pg2 = await ctx.new_page()
         await pg2.goto(ns['URL']); await pg2.wait_for_timeout(400)
         check(await pg2.evaluate("() => document.documentElement.classList.contains('mac')"), 'a Mac: the page leaves the scrollbars to the system')

@@ -21,6 +21,7 @@ import { useRouter } from '../router';
 import { ProfileCard } from '../ui/ProfileCard';
 import { copyText, toast } from '../ui/toast';
 import { Toggle } from './Share';
+import { tr } from '../i18n';
 
 /** The card as it would be sent now (levels from the server's numbers when known) */
 /** telegram — show the @username (on the own profile always; for sharing — as the user chose) */
@@ -51,11 +52,11 @@ export function MyCardBlock() {
   return (
     <div className="my-card">
       <div className="pcard-stage"><ProfileCard card={card} /></div>
-      {!profile.name.trim() && <p className="muted pad small-note">Добавьте имя, значки и фон в «Настроить» — так вас увидят друзья в карточке и в рецептах.</p>}
+      {!profile.name.trim() && <p className="muted pad small-note">{tr('Добавьте имя, значки и фон в «Настроить» — так вас увидят друзья в карточке и в рецептах.')}</p>}
       <div className="my-card-actions">
         {/* as everywhere: the secondary action on the left, the main one on the right, under the thumb */}
-        <Button kind="secondary" icon="edit" wide onClick={() => push({ name: 'cardEdit' })}>Настроить</Button>
-        <Button icon="share" wide onClick={() => push({ name: 'cardShare' })}>Поделиться</Button>
+        <Button kind="secondary" icon="edit" wide onClick={() => push({ name: 'cardEdit' })}>{tr('Настроить')}</Button>
+        <Button icon="share" wide onClick={() => push({ name: 'cardShare' })}>{tr('Поделиться')}</Button>
       </div>
     </div>
   );
@@ -83,13 +84,13 @@ export function CardEditScreen() {
   const toggleGear = (id: string) => {
     platform.haptic('select');
     const on = chosenIds.includes(id);
-    if (!on && chosenIds.length >= MAX_SETUP) { toast(`На карточке до ${MAX_SETUP} предметов`); return; }
+    if (!on && chosenIds.length >= MAX_SETUP) { toast(tr('На карточке до {0} предметов', MAX_SETUP)); return; }
     saveProfile({ ...profile, cardGear: on ? chosenIds.filter((x) => x !== id) : [...chosenIds, id] });
   };
   const toggleFeatured = (key: string) => {
     const cur = badges.featuredKeys;
     if (cur.includes(key)) { setPinMsg(''); saveProfile({ ...profile, featured: cur.filter((k) => k !== key) }); platform.haptic('select'); return; }
-    if (cur.length >= MAX_FEATURED) { platform.haptic('error'); setPinMsg(`На карточке максимум ${MAX_FEATURED} значка — сначала уберите один.`); return; }
+    if (cur.length >= MAX_FEATURED) { platform.haptic('error'); setPinMsg(tr('На карточке максимум {0} значка — сначала уберите один.', MAX_FEATURED)); return; }
     setPinMsg(''); platform.haptic('select');
     saveProfile({ ...profile, featured: [...cur, key] });
   };
@@ -97,28 +98,28 @@ export function CardEditScreen() {
   useCardUpload();
 
   return (
-    <Screen title="Настроить профиль" subtitle="Всё, что видно на карточке">
+    <Screen title={tr('Настроить профиль')} subtitle={tr('Всё, что видно на карточке')}>
       <div className="pcard-stage"><ProfileCard card={card} /></div>
 
-      <Section title="О себе">
-        <Field label="Имя" id="profile-name" name="name" autoComplete="name" placeholder="Как вас подписать" value={profile.name} onChange={(e) => saveProfile({ ...profile, name: e.target.value })} />
-        <Field label="Telegram" id="profile-tg" name="username" autoComplete="username" placeholder="username без @" value={profile.telegram} autoCapitalize="off" autoCorrect="off" spellCheck={false}
+      <Section title={tr('О себе')}>
+        <Field label={tr('Имя')} id="profile-name" name="name" autoComplete="name" placeholder={tr('Как вас подписать')} value={profile.name} onChange={(e) => saveProfile({ ...profile, name: e.target.value })} />
+        <Field label="Telegram" id="profile-tg" name="username" autoComplete="username" placeholder={tr('username без @')} value={profile.telegram} autoCapitalize="off" autoCorrect="off" spellCheck={false}
           onChange={(e) => saveProfile({ ...profile, telegram: e.target.value.replace(/^@/, '').replace(/[^A-Za-z0-9_]/g, '') })} />
-        <textarea id="profile-about" className="profile-about field-area" rows={2} aria-label="О себе" placeholder="Пара слов о себе" maxLength={200}
+        <textarea id="profile-about" className="profile-about field-area" rows={2} aria-label={tr('О себе')} placeholder={tr('Пара слов о себе')} maxLength={200}
           value={profile.about} onChange={(e) => saveProfile({ ...profile, about: e.target.value })} />
       </Section>
 
-      <Section title="Значки" aside={<button type="button" className="icon-btn" onClick={addBadge} aria-label="Добавить значок"><Icon name="plus" /></button>} plain>
+      <Section title={tr('Значки')} aside={<button type="button" className="icon-btn" onClick={addBadge} aria-label={tr('Добавить значок')}><Icon name="plus" /></button>} plain>
         {badges.all.length > 0 ? (
           <>
-            <p className="muted pad">Отметьте до трёх — они видны на карточке и в рецептах, которыми вы делитесь. {badges.featured.length}/{MAX_FEATURED}</p>
+            <p className="muted pad">{tr('Отметьте до трёх — они видны на карточке и в рецептах, которыми вы делитесь. {0}/{1}', badges.featured.length, MAX_FEATURED)}</p>
             <div className="badge-pick-list">
               {badges.all.map((it) => {
                 const on = badges.featuredKeys.includes(it.key);
                 return (
                   <div key={it.key} className={'badge-pick' + (on ? ' on' : '')}>
                     <BadgeChip b={it.badge} onClick={it.own ? () => push({ name: 'badgeEdit', badge: it.own!, isNew: false }) : undefined} />
-                    <button type="button" className="pin" aria-pressed={on} aria-label={on ? 'Убрать с карточки' : 'Показывать на карточке'} onClick={() => toggleFeatured(it.key)}>
+                    <button type="button" className="pin" aria-pressed={on} aria-label={on ? tr('Убрать с карточки') : tr('Показывать на карточке')} onClick={() => toggleFeatured(it.key)}>
                       <Icon name="star" size={20} filled={on} />
                     </button>
                   </div>
@@ -130,13 +131,13 @@ export function CardEditScreen() {
         ) : (
           <button type="button" className="badge-empty" onClick={addBadge}>
             <Icon name="medal" size={28} />
-            <span><b>Добавьте сертификат или награду</b><small>SCA, Q Grader, места на чемпионатах. А за заварки значки появятся сами</small></span>
+            <span><b>{tr('Добавьте сертификат или награду')}</b><small>{tr('SCA, Q Grader, места на чемпионатах. А за заварки значки появятся сами')}</small></span>
           </button>
         )}
       </Section>
 
-      {!verified && platform.initData() && <p className="muted pad small-note">Сверяю заварки с сервером — фоны и значки на карточке подтверждает сервер.</p>}
-      <Section title="Фон" plain>
+      {!verified && platform.initData() && <p className="muted pad small-note">{tr('Сверяю заварки с сервером — фоны и значки на карточке подтверждает сервер.')}</p>}
+      <Section title={tr('Фон')} plain>
         <div className="theme-picks">
           {BASE_THEMES.map((t) => (
             <button type="button" key={t.id} className={'theme-pick ' + swatchClass({ base: t.id }) + (current === t.id ? ' on' : '')} aria-pressed={current === t.id}
@@ -148,7 +149,7 @@ export function CardEditScreen() {
           {hasPhosphor(profile) && SECRET_THEMES.map((t) => (
             <button type="button" key={t.id} className={'theme-pick base-' + t.id + (current === t.id ? ' on' : '')} aria-pressed={current === t.id}
               onClick={() => { platform.haptic('select'); saveProfile({ ...profile, cardTheme: t.id }); }}>
-              <span>{t.label}</span><small>весь Brewbook</small>
+              <span>{t.label}</span><small>{tr('весь Brewbook')}</small>
             </button>
           ))}
           {/* special backgrounds the owner gave this person */}
@@ -169,13 +170,13 @@ export function CardEditScreen() {
           {tiers.map(([tier, list]) => (
             <button type="button" key={tier} className={'theme-pick ' + swatchClass(list[0]) + (currentTier === tier ? ' on' : '')} aria-pressed={currentTier === tier}
               onClick={() => { platform.haptic('select'); if (currentTier !== tier) saveProfile({ ...profile, cardTheme: list[0].key }); }}>
-              <span>{tier === 'glass' ? 'Стакан' : TIER_LABEL[tier]}</span><small>{list.length > 1 ? `${list.length} ${plural(list.length, ['значок', 'значка', 'значков'])}` : list[0].label}</small>
+              <span>{tier === 'glass' ? tr('Стакан') : TIER_LABEL[tier]}</span><small>{list.length > 1 ? `${list.length} ${plural(list.length, [tr('значок'), tr('значка'), tr('значков')])}` : list[0].label}</small>
             </button>
           ))}
         </div>
         {chosenGroup && chosenGroup.length > 1 && (
-          <div className="icon-picks" role="radiogroup" aria-label="Иконка в углу">
-            <p className="muted small-note">Иконка в углу — какое достижение показать:</p>
+          <div className="icon-picks" role="radiogroup" aria-label={tr('Иконка в углу')}>
+            <p className="muted small-note">{tr('Иконка в углу — какое достижение показать:')}</p>
             <div className="icon-pick-row">
               {chosenGroup.map((u) => {
                 const icon = u.icon;
@@ -193,14 +194,14 @@ export function CardEditScreen() {
         )}
       </Section>
 
-      <Section title="Сетап" plain>
+      <Section title={tr('Сетап')} plain>
         {myGear.length ? (
           <div className="chips">
             {myGear.map((g) => (
               <button type="button" key={g.id} className={'chip' + (chosenIds.includes(g.id) ? ' on' : '')} aria-pressed={chosenIds.includes(g.id)} onClick={() => toggleGear(g.id)}>{g.name}</button>
             ))}
           </div>
-        ) : <p className="muted pad">Добавьте оборудование в профиле — оно появится на карточке.</p>}
+        ) : <p className="muted pad">{tr('Добавьте оборудование в профиле — оно появится на карточке.')}</p>}
       </Section>
     </Screen>
   );
@@ -259,24 +260,24 @@ export function CardShareScreen() {
       }
       const res = await platform.share(cardText(card), link);
       if (res !== 'failed') track('share.card');
-      if (res === 'copied') toast('Ссылка на профиль скопирована');
-      if (res === 'failed') toast('Не получилось отправить');
+      if (res === 'copied') toast(tr('Ссылка на профиль скопирована'));
+      if (res === 'failed') toast(tr('Не получилось отправить'));
     } finally { setBusy(false); }
   };
-  const copy = async () => { const ok = await copyText(`${cardText(card)}\n\n${link}`); toast(ok ? 'Скопировано' : 'Не получилось скопировать'); };
+  const copy = async () => { const ok = await copyText(`${cardText(card)}\n\n${link}`); toast(ok ? tr('Скопировано') : tr('Не получилось скопировать')); };
 
   return (
-    <Screen title="Поделиться профилем" subtitle="Так карточку увидят друзья"
+    <Screen title={tr('Поделиться профилем')} subtitle={tr('Так карточку увидят друзья')}
       footer={<div className="footer-actions">
-        <button type="button" className="round-btn" onClick={copy} disabled={!link} aria-label="Скопировать ссылку"><Icon name="copy" /></button>
-        <Button icon="share" wide onClick={send} disabled={!link || busy}>{link ? (platform.kind === 'telegram' ? 'Отправить в Telegram' : 'Поделиться') : platform.initData() ? 'Готовлю ссылку…' : 'Поделиться можно из Telegram'}</Button>
+        <button type="button" className="round-btn" onClick={copy} disabled={!link} aria-label={tr('Скопировать ссылку')}><Icon name="copy" /></button>
+        <Button icon="share" wide onClick={send} disabled={!link || busy}>{link ? (platform.kind === 'telegram' ? tr('Отправить в Telegram') : tr('Поделиться')) : platform.initData() ? tr('Готовлю ссылку…') : tr('Поделиться можно из Telegram')}</Button>
       </div>}>
       <div className="pcard-stage"><ProfileCard card={card} /></div>
       <div className="group">
-        <Toggle id="card-tg" label="Ссылка на мой Telegram" checked={profile.shareTelegram && !!tg} disabled={!tg}
-          hint={tg ? `Друг сможет написать @${tg}` : 'Укажите username в «Настроить»'} onChange={(v) => saveProfile({ ...profile, shareTelegram: v })} />
+        <Toggle id="card-tg" label={tr('Ссылка на мой Telegram')} checked={profile.shareTelegram && !!tg} disabled={!tg}
+          hint={tg ? tr('Друг сможет написать @{0}', tg) : tr('Укажите username в «Настроить»')} onChange={(v) => saveProfile({ ...profile, shareTelegram: v })} />
       </div>
-      <p className="muted pad">Друг получит ссылку: карточка откроется в приложении. Ссылка не меняется — после правок друзья увидят новую версию.</p>
+      <p className="muted pad">{tr('Друг получит ссылку: карточка откроется в приложении. Ссылка не меняется — после правок друзья увидят новую версию.')}</p>
     </Screen>
   );
 }
@@ -290,10 +291,10 @@ export function CardViewScreen({ card }: { card: CardData }) {
     return () => setVisitStyle(null);
   }, [style]);
   return (
-    <Screen title={card.name} subtitle="Профиль в Brewbook">
+    <Screen title={card.name} subtitle={tr('Профиль в Brewbook')}>
       <div className="pcard-stage"><ProfileCard card={card} /></div>
       {/* in a row of its own: a «wide» button grows along its row, and in the screen's column that was 250 px of height */}
-      {card.username && <div className="card-view-actions"><Button kind="secondary" wide onClick={() => platform.openLink(`https://t.me/${card.username}`)}>Написать @{card.username}</Button></div>}
+      {card.username && <div className="card-view-actions"><Button kind="secondary" wide onClick={() => platform.openLink(`https://t.me/${card.username}`)}>{tr('Написать @{0}', card.username)}</Button></div>}
     </Screen>
   );
 }

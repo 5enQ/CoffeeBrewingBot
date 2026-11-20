@@ -6,6 +6,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { activeStyle, getAppearance, onAppearance } from '../appearance';
 import { BREWS, plural } from '../data/plural';
+import { tr } from '../i18n';
 
 const isAscii = () => activeStyle() === 'phosphor';
 /** the green-monitor style is on screen (one's own, or a friend's card being looked at) */
@@ -130,7 +131,7 @@ export function PhosphorFish({ still = false }: { still?: boolean }) {
     const id = setInterval(() => setT((x) => x + 1), 350);
     return () => clearInterval(id);
   }, [still]);
-  return <pre className="pcard-fish" role="img" aria-label="Рыбка в стакане">{fishFrame(t)}</pre>;
+  return <pre className="pcard-fish" role="img" aria-label={tr('Рыбка в стакане')}>{fishFrame(t)}</pre>;
 }
 
 /**
@@ -263,7 +264,7 @@ export function treeFrame(stage: 1 | 2 | 3 | 4, t: number): Cell[][] {
   });
 }
 
-const STAGE_TEXT = { 4: 'пышное', 3: 'крепкое', 2: 'редеет', 1: 'засыхает' } as const;
+const STAGE_TEXT = { 4: tr('пышное'), 3: tr('крепкое'), 2: tr('редеет'), 1: tr('засыхает') } as const;
 /** the tree for a number of brews in the last two weeks, swaying unless motion is unwelcome */
 export function CoffeeTree({ brews }: { brews: number }) {
   const t = useTick(380);
@@ -271,12 +272,12 @@ export function CoffeeTree({ brews }: { brews: number }) {
   const rows = treeFrame(stage, t);
   return (
     <figure className="coffee-tree">
-      <pre className={'bonsai stage-' + stage} role="img" aria-label={`Дерево кофемана: ${STAGE_TEXT[stage]}`}>
+      <pre className={'bonsai stage-' + stage} role="img" aria-label={tr('Дерево кофемана: {0}', STAGE_TEXT[stage])}>
         {rows.map((runs, y) => <span key={y}>{runs.map(([s, k], i) => (k ? <span key={i} className={k}>{s}</span> : s))}{'\n'}</span>)}
       </pre>
       <figcaption>
-        <span>== ДЕРЕВО КОФЕМАНА: {STAGE_TEXT[stage].toUpperCase()} ==</span>
-        <span>{stage === 1 ? 'Две недели без кофе. Заварите что-нибудь — оно оживёт.' : `${brews} ${plural(brews, BREWS)} за две недели.${stage < 4 ? ' Чаще заваривайте — оно разрастётся.' : ''}`}</span>
+        <span>{tr('== ДЕРЕВО КОФЕМАНА: {0} ==', STAGE_TEXT[stage].toUpperCase())}</span>
+        <span>{stage === 1 ? tr('Две недели без кофе. Заварите что-нибудь — оно оживёт.') : tr('{0} {1} за две недели.{2}', brews, plural(brews, BREWS), stage < 4 ? tr(' Чаще заваривайте — оно разрастётся.') : '')}</span>
       </figcaption>
     </figure>
   );

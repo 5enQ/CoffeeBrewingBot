@@ -15,6 +15,7 @@ import { LeavingCtx, reduceMotion } from './motion';
 import { useAppearance } from '../appearance';
 import { gravityOf, lookOf, planeOf, rollOf } from '../data/tilt';
 import { LIGHTHOUSE_T, sceneMarkup, type SceneId } from './scenes';
+import { tr } from '../i18n';
 
 const initials = (s: string) => s.replace(/^@/, '').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 const clamp = (v: number, a = -1, b = 1) => Math.max(a, Math.min(b, v));
@@ -666,7 +667,7 @@ export function ProfileCard({ card, live: liveProp = true }: { card: CardData; l
         )}
       </div>
       {tier === 'diamond' && <div className="pcard-edge" aria-hidden="true" />}
-      {tier === 'diamond' && card.no !== undefined && <div className="pcard-no" aria-label={`Бриллиант № ${card.no}`}><small>№</small>{card.no}</div>}
+      {tier === 'diamond' && card.no !== undefined && <div className="pcard-no" aria-label={tr('Бриллиант № {0}', card.no)}><small>№</small>{card.no}</div>}
       <div className="pcard-body">
         <div className="pcard-head">
           {/* «Фосфор»: Brewbook's easter-egg fish in a glass takes the place of the whole avatar */}

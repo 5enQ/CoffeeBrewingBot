@@ -2,6 +2,7 @@ import { markRoot, onAppearance } from '../appearance';
 import { tiltInfo } from '../data/tilt';
 import type { Platform, HapticKind, ShareResult, CloudKV } from './types';
 import { dialog } from '../ui/dialog';
+import { tr } from '../i18n';
 
 const memory = new Map<string, string>();
 
@@ -40,7 +41,7 @@ export async function webShare(text: string, url: string): Promise<ShareResult> 
 export function webTilt(cb: (beta: number, gamma: number) => void) {
   const on = (e: DeviceOrientationEvent) => {
     if (e.beta === null || e.gamma === null) return;
-    Object.assign(tiltInfo, { source: 'browser', units: 'градусы', beta: e.beta, gamma: e.gamma, at: Date.now() });
+    Object.assign(tiltInfo, { source: 'browser', units: tr('градусы'), beta: e.beta, gamma: e.gamma, at: Date.now() });
     cb(e.beta, e.gamma);
   };
   window.addEventListener('deviceorientation', on);

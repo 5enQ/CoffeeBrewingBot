@@ -26,6 +26,7 @@ import type { CardWish } from './accounts';
 import { aiCoffee, type AiBinding } from './ai';
 import { fetchPage } from './fetch';
 import { PARSER_VERSION, parsePage } from './parse';
+import { langOf, say, type Lang } from './lang.ts';
 
 export { Accounts, CoffeeCatalog };
 
@@ -336,7 +337,7 @@ export default {
 
     // ---- bot reminder when a long timer ends ----
     if (req.method === 'POST' && url.pathname === '/reminders') {
-      let body: { initData?: string; at?: unknown; title?: unknown; link?: unknown; cancel?: unknown; status?: unknown; test?: unknown; card?: unknown; look?: unknown };
+      let body: { initData?: string; at?: unknown; title?: unknown; link?: unknown; cancel?: unknown; status?: unknown; test?: unknown; card?: unknown; look?: unknown; lang?: unknown };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const user = await verifyInitData(body.initData ?? '', env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
@@ -347,11 +348,11 @@ export default {
       if (body.test) {
         const link = String(body.link ?? '');
         if (!/^https:\/\/t\.me\/[A-Za-z0-9_]+(\/[A-Za-z0-9_]+)?\?startapp=timer$/.test(link)) return json({ error: 'bad link' }, 400, h);
-        const res = await sendReminder(env.BOT_TOKEN, user.id, '', link, '☕ Проверка: так бот напишет, когда долгий таймер (колд брю) закончится.');
+        const res = await sendReminder(env.BOT_TOKEN, user.id, '', link, say(langOf(body.lang), '☕ Проверка: так бот напишет, когда долгий таймер (колд брю) закончится.', "☕ A test: this is how the bot writes when a long timer (cold brew) ends."), langOf(body.lang));
         return json(res, 200, h);
       }
       const at = Number(body.at), now = Date.now();
-      const title = String(body.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Заварка';
+      const title = String(body.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 80) || say(langOf(body.lang), 'Заварка', 'Brew');
       const link = String(body.link ?? '');
       if (!Number.isFinite(at) || at < now + 30_000 || at > now + 72 * 3_600_000) return json({ error: 'bad time' }, 400, h);
       if (!/^https:\/\/t\.me\/[A-Za-z0-9_]+(\/[A-Za-z0-9_]+)?\?startapp=timer$/.test(link)) return json({ error: 'bad link' }, 400, h);
@@ -366,7 +367,7 @@ export default {
         // buttons on the card come to the webhook: make sure it listens for them
         ctx.waitUntil(ensureWebhook(env, url.origin));
       }
-      return json({ ok: await accounts().setReminder('tg', user.id, Math.round(at), title, link, card) }, 200, h);
+      return json({ ok: await accounts().setReminder('tg', user.id, Math.round(at), title, link, card, langOf(body.lang)) }, 200, h);
     }
 
     const card = url.pathname.match(/^\/cards\/([A-Za-z0-9]{6,16})$/);
@@ -432,13 +433,13 @@ export default {
     }
 
     if (req.method === 'POST' && url.pathname === '/share') {
-      let body: { initData?: string; title?: string; body?: string; url?: string };
+      let body: { initData?: string; title?: string; body?: string; url?: string; lang?: unknown };
       try { body = await req.json(); } catch { return json({ error: 'bad json' }, 400, h); }
       const { initData = '', title = '', body: text = '', url: link = '' } = body;
       if (!/^https:\/\/t\.me\/[A-Za-z0-9_]+(\/[A-Za-z0-9_]+)?\?startapp=[A-Za-z0-9_-]{1,512}$/.test(link)) return json({ error: 'bad link' }, 400, h);
       const user = await verifyInitData(initData, env.BOT_TOKEN, 7 * 86_400);
       if (!user) return json({ error: 'unauthorized' }, 401, h);
-      const id = await prepareMessage(env.BOT_TOKEN, user.id, title.slice(0, 200), text.slice(0, 3200), link).catch((e) => { console.log('prepare error', e); return null; });
+      const id = await prepareMessage(env.BOT_TOKEN, user.id, title.slice(0, 200), text.slice(0, 3200), link, langOf(body.lang)).catch((e) => { console.log('prepare error', e); return null; });
       return id ? json({ id }, 200, h) : json({ error: 'telegram refused' }, 502, h);
     }
 
@@ -449,7 +450,7 @@ export default {
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** savePreparedInlineMessage: link, empty line, bold title, text and a button saying what the link opens */
-async function prepareMessage(token: string, userId: string, title: string, text: string, link: string) {
+async function prepareMessage(token: string, userId: string, title: string, text: string, link: string, lang: Lang) {
   const html = `${esc(link)}\n\n<b>${esc(title)}</b>\n${esc(text)}`;
   const res = await fetch(`https://api.telegram.org/bot${token}/savePreparedInlineMessage`, {
     method: 'POST',
@@ -462,7 +463,7 @@ async function prepareMessage(token: string, userId: string, title: string, text
         title,
         description: text.split('\n').find((l) => l.trim()) ?? '',
         input_message_content: { message_text: html, parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
-        reply_markup: { inline_keyboard: [[{ text: shareButton(link), url: link }]] },
+        reply_markup: { inline_keyboard: [[{ text: shareButton(link, lang), url: link }]] },
       },
       allow_user_chats: true, allow_bot_chats: true, allow_group_chats: true, allow_channel_chats: true,
     }),

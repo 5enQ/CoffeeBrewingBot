@@ -15,6 +15,7 @@ import { SCALES, hasScales } from '../data/scales';
 import { Scanner } from '../ui/Scanner';
 import { BrewScore } from '../ui/CuppingForm';
 import { beanMeta, beanOrigin, beanTitle, blendLines, brewBeanTitle, dripMeta, dripTitle, PROCESSES, RestBadge, ROAST_LEVELS } from './beanUtils';
+import { decSep, intlLocale, tr, trValue } from '../i18n';
 
 /* ---------- Shelf ---------- */
 
@@ -66,7 +67,7 @@ function StockIcons({ unit, left, total }: { unit: 'g' | 'pcs'; left: number; to
 export function StockBar({ bean, compact = false }: { bean: Bean; compact?: boolean }) {
   const { brews } = useStore();
   const st = beanStock(bean, brews);
-  if (!st.total) return compact ? null : <span className="stock-none">{st.unit === 'pcs' ? 'Сколько дрипов в коробке — не указано' : 'Вес пачки не указан'}</span>;
+  if (!st.total) return compact ? null : <span className="stock-none">{st.unit === 'pcs' ? tr('Сколько дрипов в коробке — не указано') : tr('Вес пачки не указан')}</span>;
   // finished packs — no pictures: no point drawing empty beans
   const done = isFinished(bean, st);
   if (st.unit === 'pcs') {
@@ -74,9 +75,9 @@ export function StockBar({ bean, compact = false }: { bean: Bean; compact?: bool
       <div className={'stock' + (compact ? ' compact' : '') + (st.left > 0 && st.left <= 2 ? ' low' : '') + (st.left <= 0 ? ' empty' : '')}>
         {!done && <StockIcons unit="pcs" left={st.left} total={st.total} />}
         <div className="stock-text">
-          <span><b>{st.left}</b> из {st.total} {plural(st.total, ['дрипа', 'дрипов', 'дрипов'])}</span>
+          <span><b>{st.left}</b> {tr('из {0}', st.total)}{"\u00a0"}{plural(st.total, [tr('дрипа'), tr('дрипов'), tr('дрипов')])}</span>
           {/* «N из M дрипов» already says how many went; no separate «заварено N» */}
-          {(st.left <= 0 || !st.used) && <span>{st.left <= 0 ? 'закончились' : 'ещё не заваривали'}</span>}
+          {(st.left <= 0 || !st.used) && <span>{st.left <= 0 ? tr('закончились') : tr('ещё не заваривали')}</span>}
         </div>
       </div>
     );
@@ -86,8 +87,8 @@ export function StockBar({ bean, compact = false }: { bean: Bean; compact?: bool
     <div className={'stock' + (compact ? ' compact' : '') + (low ? ' low' : '') + (st.left <= 0 ? ' empty' : '')}>
       {!done && <StockIcons unit="g" left={st.left} total={st.total} />}
       <div className="stock-text">
-        <span><b>{fmtNum(st.left, 0)}</b> из {fmtNum(st.total, 0)} г</span>
-        <span>{st.left <= 0 ? 'закончилось' : st.brewsLeft === 0 ? 'меньше чем на заварку' : st.brewsLeft !== null ? `≈ ${st.brewsLeft} ${plural(st.brewsLeft, ['заварка', 'заварки', 'заварок'])}` : 'ещё не заваривали'}</span>
+        <span><b>{fmtNum(st.left, 0)}</b> {tr('из {0} г', fmtNum(st.total, 0))}</span>
+        <span>{st.left <= 0 ? tr('закончилось') : st.brewsLeft === 0 ? tr('меньше чем на заварку') : st.brewsLeft !== null ? `≈ ${st.brewsLeft} ${plural(st.brewsLeft, [tr('заварка'), tr('заварки'), tr('заварок')])}` : tr('ещё не заваривали')}</span>
       </div>
     </div>
   );
@@ -114,10 +115,10 @@ function PackCard({ b, onClick }: { b: Bean; onClick(): void }) {
       {ascii && <pre className="ascii-art ascii-pack" aria-hidden="true">{pack(b.country || b.parts?.[0]?.country || '')}</pre>}
       <div className="bean-card-top">
         <b>{beanTitle(b)}</b>
-        {isDrip(b) && <span className="tag tag-drip">дрип</span>}
+        {isDrip(b) && <span className="tag tag-drip">{tr('дрип')}</span>}
         {b.sample && <SampleTag />}
       </div>
-      <span className="bean-card-origin">{beanMeta(b) || 'Происхождение не указано'}</span>
+      <span className="bean-card-origin">{beanMeta(b) || tr('Происхождение не указано')}</span>
       <StockBar bean={b} />
       <div className="bean-card-foot">
         <span className="one-line-text">{b.roaster || '—'}</span>
@@ -154,32 +155,32 @@ export function Beans() {
   const packs = active.filter((b) => !isDrip(b)).length;
   const drips = active.filter(isDrip).reduce((s, b) => s + beanStock(b, brews).left, 0);
   const subtitle = [
-    packs ? `${packs} ${plural(packs, ['пачка', 'пачки', 'пачек'])} · ${fmtNum(grams / 1000, 2)} кг кофе` : '',
-    drips ? `${drips} ${plural(drips, ['дрип', 'дрипа', 'дрипов'])}` : '',
+    packs ? tr('{0} {1} · {2} кг кофе', packs, plural(packs, [tr('пачка'), tr('пачки'), tr('пачек')]), fmtNum(grams / 1000, 2)) : '',
+    drips ? `${drips} ${plural(drips, [tr('дрип'), tr('дрипа'), tr('дрипов')])}` : '',
   ].filter(Boolean).join(' · ');
 
   return (
-    <Screen title="Полка" subtitle={subtitle || undefined} root
-      action={<button type="button" className="icon-btn" onClick={() => push({ name: 'beanEdit', bean: emptyBean(), isNew: true })} aria-label="Добавить пачку"><Icon name="plus" /></button>}>
+    <Screen title={tr('Полка')} subtitle={subtitle || undefined} root
+      action={<button type="button" className="icon-btn" onClick={() => push({ name: 'beanEdit', bean: emptyBean(), isNew: true })} aria-label={tr('Добавить пачку')}><Icon name="plus" /></button>}>
       <button type="button" className="scan-cta" onClick={() => setScan(true)}>
         <Icon name="scan" size={28} />
-        <span><b>Добавить пачку</b><small>Отсканируйте штрихкод или QR — или введите вручную</small></span>
+        <span><b>{tr('Добавить пачку')}</b><small>{tr('Отсканируйте штрихкод или QR — или введите вручную')}</small></span>
       </button>
 
       {beans.length > 4 && (
-        <input id="bean-search" className="search" type="search" aria-label="Поиск по полке" placeholder="Поиск: страна, обработка, обжарщик" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input id="bean-search" className="search" type="search" aria-label={tr('Поиск по полке')} placeholder={tr('Поиск: страна, обработка, обжарщик')} value={q} onChange={(e) => setQ(e.target.value)} />
       )}
 
-      {active.length === 0 && done.length === 0 && <Empty title="Полка пуста" text="Купили кофе? Добавьте пачку с весом и датой обжарки — остаток будет считаться сам." />}
-      {active.length === 0 && done.length > 0 && <Empty title="Всё допито" text="На полке пусто. Добавьте новую пачку или купите ещё раз одну из допитых." />}
+      {active.length === 0 && done.length === 0 && <Empty title={tr('Полка пуста')} text={tr('Купили кофе? Добавьте пачку с весом и датой обжарки — остаток будет считаться сам.')} />}
+      {active.length === 0 && done.length > 0 && <Empty title={tr('Всё допито')} text={tr('На полке пусто. Добавьте новую пачку или купите ещё раз одну из допитых.')} />}
 
       <div className="bean-list">
         {active.map((b) => <PackCard key={b.id} b={b} onClick={() => push({ name: 'bean', id: b.id })} />)}
       </div>
 
       {done.length > 0 && (
-        <Section title={`Допито · ${done.length}`} aside={
-          <button type="button" className="link-btn" onClick={() => setShowDone((v) => !v)}>{showDone ? 'Скрыть' : 'Показать'}</button>
+        <Section title={tr('Допито · {0}', done.length)} aside={
+          <button type="button" className="link-btn" onClick={() => setShowDone((v) => !v)}>{showDone ? tr('Скрыть') : tr('Показать')}</button>
         } plain>
           {showDone && <div className="bean-list done">{done.map((b) => <PackCard key={b.id} b={b} onClick={() => push({ name: 'bean', id: b.id })} />)}</div>}
         </Section>
@@ -220,11 +221,11 @@ function MethodMenu({ anchor, used, methods, onPick, onClose }: {
   return (
     <>
       <div className="method-menu-shade" onClick={onClose} />
-      <div ref={box} className="method-menu" role="dialog" aria-modal="true" aria-label="Чем заварить"
+      <div ref={box} className="method-menu" role="dialog" aria-modal="true" aria-label={tr('Чем заварить')}
         style={at ? { left: at.left, width: at.width, bottom: at.bottom } : { visibility: 'hidden' }}
         // Tab past the last tile (or before the first) leaves the menu: it closes, nothing is left open behind
         onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node) && e.relatedTarget !== anchor.current) onClose(); }}>
-        <p className="method-menu-note">Чем заварить{used.size ? ' · подсвечены те, что уже были с этим зерном' : ''}</p>
+        <p className="method-menu-note">{tr('Чем заварить')}{used.size ? tr(' · подсвечены те, что уже были с этим зерном') : ''}</p>
         <div className="quick-methods method-menu-grid">
           {methods.map((m) => (
             <button type="button" key={m.id} className={used.has(m.id) ? 'used' : undefined} onClick={() => onPick(m.id)}>
@@ -242,13 +243,13 @@ export function BeanDetail({ id }: { id: string }) {
   const { push, back } = useRouter();
   const [fix, setFix] = useState<string | null>(null);
   const b = beans.find((x) => x.id === id);
-  if (!b) return <Screen title="Пачка удалена"><Empty title="Нет такой пачки" text="Её удалили." /></Screen>;
+  if (!b) return <Screen title={tr('Пачка удалена')}><Empty title={tr('Нет такой пачки')} text={tr('Её удалили.')} /></Screen>;
   const mine = brews.filter((x) => brewBeanIds(x).includes(b.id));
   const st = beanStock(b, brews);
   const finished = isFinished(b, st);
 
   const drip = isDrip(b);
-  const unit = drip ? 'шт' : 'г';
+  const unit = drip ? tr('шт') : tr('г');
   const saveFix = () => {
     const n = parseFloat((fix ?? '').replace(',', '.'));
     if (!isNaN(n) && n >= 0) {
@@ -259,7 +260,7 @@ export function BeanDetail({ id }: { id: string }) {
   };
   const toggleFinished = async () => {
     if (finished && st.total > 0 && st.left <= 0) { setFix(''); return; } // back on the shelf — weigh the remainder first
-    if (!finished && !(await platform.confirm(drip ? 'Отметить коробку законченной? Она переедет в раздел «Допито».' : 'Отметить пачку допитой? Она переедет в раздел «Допито».'))) return;
+    if (!finished && !(await platform.confirm(drip ? tr('Отметить коробку законченной? Она переедет в раздел «Допито».') : tr('Отметить пачку допитой? Она переедет в раздел «Допито».')))) return;
     saveBean({ ...b, finished: !finished, finishedAt: finished ? undefined : Date.now() });
     platform.haptic('success');
   };
@@ -279,20 +280,20 @@ export function BeanDetail({ id }: { id: string }) {
   const usedIds = new Set(mine.map((x) => x.methodId));
 
   const remove = async () => {
-    if (!(await platform.confirm(`Удалить «${beanTitle(b)}»? Заварки останутся в дневнике.`))) return;
+    if (!(await platform.confirm(tr('Удалить «{0}»? Заварки останутся в дневнике.', beanTitle(b))))) return;
     platform.haptic('warning');
     back(true);
     deleteBean(b.id);
   };
 
   const info: [string, string][] = ([
-    ['Обжарщик', b.roaster],
-    ...(drip ? [['Дрипов в коробке', b.assorted ? `${dripTotal(b)} (ассорти)` : b.dripCount ? String(b.dripCount) : '']] : []),
-    ...(b.isBlend || (drip && b.assorted) ? [] : [['Страна', b.country], ['Регион', b.region], ['Ферма / станция', b.farm],
-      ['Производитель', b.producer], ['Сорт', b.variety], ['Обработка', b.process], ['Высота', b.altitude]]),
-    ...(drip ? [] : [['Урожай', b.harvest]]), ['Обжарка', b.roastLevel],
-    ['Дата обжарки', b.roastDate ? new Date(b.roastDate + 'T00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : ''],
-    ['Штрихкод', b.barcode],
+    [tr('Обжарщик'), b.roaster],
+    ...(drip ? [[tr('Дрипов в коробке'), b.assorted ? tr('{0} (ассорти)', dripTotal(b)) : b.dripCount ? String(b.dripCount) : '']] : []),
+    ...(b.isBlend || (drip && b.assorted) ? [] : [[tr('Страна'), trValue(b.country)], [tr('Регион'), b.region], [tr('Ферма / станция'), b.farm],
+      [tr('Производитель'), b.producer], [tr('Сорт'), b.variety], [tr('Обработка'), trValue(b.process)], [tr('Высота'), b.altitude]]),
+    ...(drip ? [] : [[tr('Урожай'), b.harvest]]), [tr('Обжарка'), trValue(b.roastLevel)],
+    [tr('Дата обжарки'), b.roastDate ? new Date(b.roastDate + 'T00:00').toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) : ''],
+    [tr('Штрихкод'), b.barcode],
   ] as [string, string][]).filter(([, v]) => v);
 
   return (
@@ -301,14 +302,14 @@ export function BeanDetail({ id }: { id: string }) {
         <div className="footer-actions">
           {!drip && (
             <button ref={toggleRef} type="button" className={'round-btn method-menu-toggle' + (menu ? ' on' : '')} onClick={() => setMenu((v) => !v)}
-              aria-expanded={menu} aria-haspopup="dialog" aria-label={menu ? 'Закрыть выбор метода' : 'Другой метод'}>
+              aria-expanded={menu} aria-haspopup="dialog" aria-label={menu ? tr('Закрыть выбор метода') : tr('Другой метод')}>
               <Icon name={menu ? 'close' : 'chevron'} />
             </button>
           )}
-          <Button icon="brew" wide onClick={brewIt}>{drip ? 'Заварить дрип' : `Заварить · ${brewWith.name}`}</Button>
+          <Button icon="brew" wide onClick={brewIt}>{drip ? tr('Заварить дрип') : tr('Заварить · {0}', brewWith.name)}</Button>
         </div>
       )}
-      action={<button type="button" className="icon-btn" onClick={() => push({ name: 'beanEdit', bean: b, isNew: false })} aria-label="Изменить"><Icon name="edit" /></button>}>
+      action={<button type="button" className="icon-btn" onClick={() => push({ name: 'beanEdit', bean: b, isNew: false })} aria-label={tr('Изменить')}><Icon name="edit" /></button>}>
       <div className="bean-hero">
         <RestBadge roastDate={b.roastDate} until={finishedOn(b, st, brews)} />
         {b.packNotes && <p className="pack-notes">{b.packNotes}</p>}
@@ -316,23 +317,23 @@ export function BeanDetail({ id }: { id: string }) {
 
       <div className="stock-card">
         <div className="stock-card-head">
-          <span>{drip ? (finished ? 'Коробка закончилась' : 'Осталось в коробке') : finished ? 'Пачка допита' : 'Осталось в пачке'}</span>
-          {st.total > 0 && fix === null && <button type="button" className="link-btn" onClick={() => setFix(String(st.left).replace('.', ','))}>{drip ? 'Пересчитать' : 'Взвесить'}</button>}
+          <span>{drip ? (finished ? tr('Коробка закончилась') : tr('Осталось в коробке')) : finished ? tr('Пачка допита') : tr('Осталось в пачке')}</span>
+          {st.total > 0 && fix === null && <button type="button" className="link-btn" onClick={() => setFix(String(st.left).replace('.', decSep()))}>{drip ? tr('Пересчитать') : tr('Взвесить')}</button>}
         </div>
         {fix !== null ? (
           <form className="stock-fix" onSubmit={(e) => { e.preventDefault(); saveFix(); }}>
-            <input id="stock-fix" autoFocus inputMode={drip ? 'numeric' : 'decimal'} value={fix} onChange={(e) => setFix(e.target.value)} aria-label={`Сколько осталось, ${unit}`} />
-            <span>{unit} осталось</span>
+            <input id="stock-fix" autoFocus inputMode={drip ? 'numeric' : 'decimal'} value={fix} onChange={(e) => setFix(e.target.value)} aria-label={tr('Сколько осталось, {0}', unit)} />
+            <span>{tr('{0} осталось', unit)}</span>
             <button type="submit" className="btn btn-primary">OK</button>
           </form>
         ) : (
           <StockBar bean={b} />
         )}
-        {st.total > 0 && !drip && <p className="muted">Списано заварками: {fmtNum(st.used, 1)} {unit}{b.adjust ? ` · поправка ${b.adjust > 0 ? '+' : ''}${fmtNum(b.adjust, 1)} ${unit}` : ''}</p>}
-        {!st.total && <Button kind="secondary" onClick={() => push({ name: 'beanEdit', bean: b, isNew: false })}>{drip ? 'Указать, сколько дрипов' : 'Указать вес пачки'}</Button>}
+        {st.total > 0 && !drip && <p className="muted">{tr('Списано заварками: {0} {1}', fmtNum(st.used, 1), unit)}{b.adjust ? tr(' · поправка {0}{1} {2}', b.adjust > 0 ? '+' : '', fmtNum(b.adjust, 1), unit) : ''}</p>}
+        {!st.total && <Button kind="secondary" onClick={() => push({ name: 'beanEdit', bean: b, isNew: false })}>{drip ? tr('Указать, сколько дрипов') : tr('Указать вес пачки')}</Button>}
         <div className="stock-actions">
-          {st.total > 0 && <Button kind="ghost" onClick={toggleFinished}>{finished ? 'Вернуть на полку' : 'Допито'}</Button>}
-          <Button kind="secondary" icon="plus" onClick={buyAgain}>Купить ещё</Button>
+          {st.total > 0 && <Button kind="ghost" onClick={toggleFinished}>{finished ? tr('Вернуть на полку') : tr('Допито')}</Button>}
+          <Button kind="secondary" icon="plus" onClick={buyAgain}>{tr('Купить ещё')}</Button>
         </div>
       </div>
 
@@ -343,7 +344,7 @@ export function BeanDetail({ id }: { id: string }) {
       )}
 
       {/* drips are brewed only as drips; a pack on the shelf picks other methods from the menu by «Заварить» */}
-      {!drip && finished && <Section title="Заварить" plain>
+      {!drip && finished && <Section title={tr('Заварить')} plain>
         <div className="quick-methods">
           {allMethods().filter((m) => (m.id === 'drip') === drip && !(drip && m.id === 'cupping')).map((m) => (
             <button type="button" key={m.id} onClick={() => push({ name: 'recipes', methodId: m.id, beanId: b.id })}>
@@ -354,24 +355,24 @@ export function BeanDetail({ id }: { id: string }) {
       </Section>}
 
       {drip && b.assorted && (
-        <Section title={`Дрипы в коробке · ${(b.drips ?? []).length}`}>
+        <Section title={tr('Дрипы в коробке · {0}', (b.drips ?? []).length)}>
           {(b.drips ?? []).map((d) => (
-            <Row key={d.id} label={dripTitle(d)} hint={[dripMeta(d), d.roastLevel, d.notes].filter(Boolean).join(' · ') || undefined}
-              value={`${dripItemLeft(b, d.id, brews)} из ${d.count}`} chevron={false} />
+            <Row key={d.id} label={dripTitle(d)} hint={[dripMeta(d), trValue(d.roastLevel ?? ''), d.notes].filter(Boolean).join(' · ') || undefined}
+              value={tr('{0} из {1}', dripItemLeft(b, d.id, brews), d.count)} chevron={false} />
           ))}
-          {!(b.drips ?? []).length && <p className="muted pad">Дрипы не описаны.</p>}
+          {!(b.drips ?? []).length && <p className="muted pad">{tr('Дрипы не описаны.')}</p>}
         </Section>
       )}
 
       {b.isBlend && (
-        <Section title={`Состав бленда · ${(b.parts ?? []).length}`}>
+        <Section title={tr('Состав бленда · {0}', (b.parts ?? []).length)}>
           {blendLines(b).map((l, i) => <Row key={i} label={l.text} value={l.share || undefined} />)}
-          {!(b.parts ?? []).length && <p className="muted pad">Компоненты не указаны.</p>}
+          {!(b.parts ?? []).length && <p className="muted pad">{tr('Компоненты не указаны.')}</p>}
         </Section>
       )}
 
       {hasScales(b.scales) && (
-        <Section title="Профиль от обжарщика">
+        <Section title={tr('Профиль от обжарщика')}>
           <div className="scales">
             {SCALES.filter((s) => b.scales?.[s.key]).map((s) => <ScaleDots key={s.key} label={s.label} value={b.scales?.[s.key]} />)}
           </div>
@@ -379,51 +380,51 @@ export function BeanDetail({ id }: { id: string }) {
       )}
 
       {(info.length > 0 || b.link || b.comment) && (
-        <Section title={drip ? "О коробке" : "О пачке"}>
+        <Section title={drip ? tr('О коробке') : tr('О пачке')}>
           {info.map(([k, v]) => <Row key={k} label={k} value={v} />)}
-          {b.link && <Row label="Ссылка" value="открыть" onClick={() => platform.openLink(b.link)} />}
+          {b.link && <Row label={tr('Ссылка')} value={tr('открыть')} onClick={() => platform.openLink(b.link)} />}
           {b.comment && <p className="note-text pad">{b.comment}</p>}
         </Section>
       )}
 
-      <Section title={mine.length ? `Заварки · ${mine.length}` : 'Заварки'}>
-        {mine.length === 0 && <p className="muted pad">Пока не заваривали.</p>}
+      <Section title={mine.length ? tr('Заварки · {0}', mine.length) : tr('Заварки')}>
+        {mine.length === 0 && <p className="muted pad">{tr('Пока не заваривали.')}</p>}
         {mine.map((x) => {
           const m = methodById(x.methodId);
           return (
             <Row key={x.id} leading={<MethodIcon icon={m.icon} size={24} />}
               label={x.dripId ? brewBeanTitle(x, b).split(' · ')[0] : m.name}
-              hint={`${new Date(x.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} · ${fmtRatio(x.water / x.dose)} · ${drip ? `${fmtNum(x.water)} г воды` : x.grind || 'помол не указан'}`}
+              hint={`${new Date(x.date).toLocaleDateString(intlLocale(), { day: 'numeric', month: 'short' })} · ${fmtRatio(x.water / x.dose)} · ${drip ? tr('{0} г воды', fmtNum(x.water)) : x.grind || tr('помол не указан')}`}
               value={<BrewScore brew={x} size={13} beanId={b.id} />}
               onClick={() => push({ name: 'brew', id: x.id })} />
           );
         })}
         {(() => {
           const sc = mine.map((x) => beanSca(x, b.id)).filter((x): x is number => x !== null);
-          return sc.length > 0 && <p className="muted pad">Средний каппинг: {(sc.reduce((s, x) => s + x, 0) / sc.length).toFixed(2).replace('.', ',')}</p>;
+          return sc.length > 0 && <p className="muted pad">{tr('Средний каппинг: {0}', (sc.reduce((s, x) => s + x, 0) / sc.length).toFixed(2).replace('.', decSep()))}</p>;
         })()}
       </Section>
 
-      <div className="danger-zone"><Button kind="danger" icon="trash" onClick={remove}>{drip ? 'Удалить коробку' : 'Удалить пачку'}</Button></div>
+      <div className="danger-zone"><Button kind="danger" icon="trash" onClick={remove}>{drip ? tr('Удалить коробку') : tr('Удалить пачку')}</Button></div>
     </Screen>
   );
 }
 
 /* ---------- Editor ---------- */
 
-const COUNTRIES = ['Эфиопия', 'Кения', 'Руанда', 'Бурунди', 'Танзания', 'Уганда', 'Колумбия', 'Бразилия', 'Перу', 'Эквадор', 'Боливия', 'Коста-Рика', 'Панама', 'Гватемала', 'Гондурас', 'Сальвадор', 'Никарагуа', 'Мексика', 'Йемен', 'Индонезия', 'Индия', 'Вьетнам', 'Китай', 'Папуа — Новая Гвинея'];
+const COUNTRIES = [tr('Эфиопия'), tr('Кения'), tr('Руанда'), tr('Бурунди'), tr('Танзания'), tr('Уганда'), tr('Колумбия'), tr('Бразилия'), tr('Перу'), tr('Эквадор'), tr('Боливия'), tr('Коста-Рика'), tr('Панама'), tr('Гватемала'), tr('Гондурас'), tr('Сальвадор'), tr('Никарагуа'), tr('Мексика'), tr('Йемен'), tr('Индонезия'), tr('Индия'), tr('Вьетнам'), tr('Китай'), tr('Папуа — Новая Гвинея')];
 
 /** a QR leading to the roaster's Instagram, channel or link page: saved as the link, nothing to fill from it */
-const foreignNote = (what?: string) => (what ? `Это ${what}, а не код с пачки кофе` : 'Это не код с пачки кофе') + ' — ничего не сохранил.';
+const foreignNote = (what?: string) => (what ? tr('Это {0}, а не код с пачки кофе', trValue(what)) : tr('Это не код с пачки кофе')) + tr(' — ничего не сохранил.');
 const textNote = (kept: boolean) => kept
-  ? 'Данных о кофе в этом коде нет. Сохранил его в поле «Штрихкод», остальное заполните вручную.'
-  : 'Данных о кофе в этом коде нет — ничего не сохранил. Заполните пачку вручную.';
-const SOCIAL_NOTE = 'Это ссылка на соцсеть обжарщика — данных о кофе в ней нет. Сохранил её в поле «Ссылка», остальное заполните вручную.';
+  ? tr('Данных о кофе в этом коде нет. Сохранил его в поле «Штрихкод», остальное заполните вручную.')
+  : tr('Данных о кофе в этом коде нет — ничего не сохранил. Заполните пачку вручную.');
+const SOCIAL_NOTE = tr('Это ссылка на соцсеть обжарщика — данных о кофе в ней нет. Сохранил её в поле «Ссылка», остальное заполните вручную.');
 
 /** what a repeat pack keeps from the last one, in one line */
 function sameAsBefore(b: Bean): string {
-  const origin = b.isBlend ? 'бленд' : b.assorted ? 'ассорти' : [b.country, b.region].filter(Boolean).join(', ');
-  return [b.roaster, origin, b.process, b.variety, b.roastLevel ? `обжарка ${b.roastLevel.toLowerCase()}` : ''].filter(Boolean).join(' · ') || 'описание кофе';
+  const origin = b.isBlend ? tr('бленд') : b.assorted ? tr('ассорти') : [b.country, b.region].filter(Boolean).join(', ');
+  return [b.roaster, origin, trValue(b.process), b.variety, b.roastLevel ? tr('обжарка {0}', trValue(b.roastLevel).toLowerCase()) : ''].filter(Boolean).join(' · ') || tr('описание кофе');
 }
 
 export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew: boolean; scanOnOpen?: boolean; again?: boolean }) {
@@ -438,10 +439,10 @@ export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew
   // «Купить ещё»: a new pack of the same coffee — what usually changes comes first, the rest is folded as it was
   const [showRest, setShowRest] = useState(!again);
   const dirty = JSON.stringify(b) !== JSON.stringify(bean);
-  useBackGuard(dirty, 'Выйти без сохранения?');
+  useBackGuard(dirty, tr('Выйти без сохранения?'));
 
   useEffect(() => {
-    if (bean.barcode && isNew && bean.name) setStatus(bean.catalogId ? 'Данные из общего каталога — проверьте и укажите дату обжарки.' : 'Данные подставлены по коду — проверьте и дополните.');
+    if (bean.barcode && isNew && bean.name) setStatus(bean.catalogId ? tr('Данные из общего каталога — проверьте и укажите дату обжарки.') : tr('Данные подставлены по коду — проверьте и дополните.'));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (patch: Partial<Bean>) => setB((x) => ({ ...x, ...patch }));
@@ -471,7 +472,7 @@ export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew
   const addDrip = () => { platform.haptic('light'); setB((x) => ({ ...x, drips: [...(x.drips ?? []), newDripItem()] })); };
   const removeDrip = (i: number) => { platform.haptic('light'); setB((x) => ({ ...x, drips: (x.drips ?? []).filter((_, j) => j !== i) })); };
   const numField = (label: string, id: string, value: number | undefined, onChange: (n: number | undefined) => void, unit: string) => (
-    <Field label={label} id={id} inputMode="decimal" value={value === undefined ? '' : String(value).replace('.', ',')} suffix={<span className="muted">{unit}</span>}
+    <Field label={label} id={id} inputMode="decimal" value={value === undefined ? '' : String(value).replace('.', decSep())} suffix={<span className="muted">{unit}</span>}
       onChange={(e) => { const n = parseFloat(e.target.value.replace(',', '.')); onChange(isNaN(n) ? undefined : n); }} />
   );
   const shares = (b.parts ?? []).map((p) => parseFloat(p.share.replace(',', '.'))).filter((n) => !isNaN(n));
@@ -482,15 +483,15 @@ export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew
 
   const onCode = async (code: string) => {
     setScan(false);
-    setStatus('Ищу…');
+    setStatus(tr('Ищу…'));
     track('pack.lookup');
     const r = await lookupCode(code, beans.filter((x) => x.id !== b.id), isDrip(b));
     if (r.existing) {
-      const copy = await platform.confirm(`Этот код уже есть у «${beanTitle(r.existing)}». Скопировать данные в новую пачку? Дату обжарки введите заново.`);
+      const copy = await platform.confirm(tr('Этот код уже есть у «{0}». Скопировать данные в новую пачку? Дату обжарки введите заново.', beanTitle(r.existing)));
       if (copy) {
         const { id: _i, createdAt: _c, roastDate: _r, sample: _s, ...rest } = r.existing;
         setB((x) => ({ ...x, ...rest, roastDate: x.roastDate }));
-        setStatus('Скопировано с прошлой пачки. Укажите дату обжарки.');
+        setStatus(tr('Скопировано с прошлой пачки. Укажите дату обжарки.'));
         return;
       }
     }
@@ -512,10 +513,10 @@ export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew
     setB(next);
     const filled = filledLabels(before, next);
     setStatus(r.source && filled.length
-      ? `Найдено: ${r.source}. Заполнено: ${filled.join(', ')}. Проверьте поля и укажите дату обжарки.`
-      : r.source ? `Найдено: ${r.source}. Проверьте поля.`
-      : r.pending ? 'Сайт этого обжарщика пока не подключён к каталогу — мы его проверим и добавим. Сейчас заполните вручную: после сохранения пачка попадёт в общий каталог.'
-      : 'Код сохранён. Данных об этом кофе пока нет — заполните вручную: после сохранения пачка попадёт в общий каталог, и у следующих она заполнится сама.');
+      ? tr('Найдено: {0}. Заполнено: {1}. Проверьте поля и укажите дату обжарки.', r.source, filled.join(', '))
+      : r.source ? tr('Найдено: {0}. Проверьте поля.', r.source)
+      : r.pending ? tr('Сайт этого обжарщика пока не подключён к каталогу — мы его проверим и добавим. Сейчас заполните вручную: после сохранения пачка попадёт в общий каталог.')
+      : tr('Код сохранён. Данных об этом кофе пока нет — заполните вручную: после сохранения пачка попадёт в общий каталог, и у следующих она заполнится сама.'));
   };
 
   const save = () => {
@@ -535,24 +536,24 @@ export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew
   };
 
   return (
-    <Screen title={again ? (drip ? 'Ещё коробка' : 'Ещё пачка') : drip ? (isNew ? 'Новые дрипы' : 'Редактировать дрипы') : isNew ? 'Новая пачка' : 'Редактировать пачку'}
-      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={(!isNew && !dirty) || (!b.name && !b.country && !b.barcode && !(b.parts ?? []).some((p) => p.country) && !(b.drips ?? []).some((d) => d.name || d.country))}>Сохранить</Button></div>}>
+    <Screen title={again ? (drip ? tr('Ещё коробка') : tr('Ещё пачка')) : drip ? (isNew ? tr('Новые дрипы') : tr('Редактировать дрипы')) : isNew ? tr('Новая пачка') : tr('Редактировать пачку')}
+      footer={<div className="footer-actions"><Button icon="check" wide onClick={save} disabled={(!isNew && !dirty) || (!b.name && !b.country && !b.barcode && !(b.parts ?? []).some((p) => p.country) && !(b.drips ?? []).some((d) => d.name || d.country))}>{tr('Сохранить')}</Button></div>}>
 
       {again && (
         <>
-          <Section title="Новая пачка">
-            {f('roastDate', 'Дата обжарки', { type: 'date', max: new Date().toISOString().slice(0, 10) })}
-            {!drip && f('weight', 'Вес пачки, г', { inputMode: 'numeric', placeholder: '250' })}
-            {drip && !b.assorted && numField('Дрипов в коробке', 'bean-drip-count', b.dripCount, (n) => set({ dripCount: n === undefined ? undefined : Math.round(n) }), 'шт')}
+          <Section title={tr('Новая пачка')}>
+            {f('roastDate', tr('Дата обжарки'), { type: 'date', max: new Date().toISOString().slice(0, 10) })}
+            {!drip && f('weight', tr('Вес пачки, г'), { inputMode: 'numeric', placeholder: '250' })}
+            {drip && !b.assorted && numField(tr('Дрипов в коробке'), 'bean-drip-count', b.dripCount, (n) => set({ dripCount: n === undefined ? undefined : Math.round(n) }), tr('шт'))}
             {!drip && b.weight && (
-              <Field label="Осталось сейчас, г" id="bean-left" inputMode="decimal" placeholder={b.weight}
+              <Field label={tr('Осталось сейчас, г')} id="bean-left" inputMode="decimal" placeholder={b.weight}
                 value={leftText} onChange={(e) => setLeftText(e.target.value)} />
             )}
           </Section>
           {!showRest && (
-            <Section title="Как у прошлой пачки" plain>
+            <Section title={tr('Как у прошлой пачки')} plain>
               <div className="group"><Row label={beanTitle(b)} hint={sameAsBefore(b)} chevron onClick={() => setShowRest(true)} /></div>
-              <p className="muted pad small-note">Остаётся без изменений. Нажмите, если у этой пачки что-то другое.</p>
+              <p className="muted pad small-note">{tr('Остаётся без изменений. Нажмите, если у этой пачки что-то другое.')}</p>
             </Section>
           )}
         </>
@@ -560,29 +561,29 @@ export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew
       {showRest && <>
       {!kindLocked && (
         <Segmented value={drip ? 'drip' : 'beans'} onChange={(v) => setKind(v)}
-          options={[{ value: 'beans', label: 'Зерно' }, { value: 'drip', label: 'Дрип-пакеты' }]} />
+          options={[{ value: 'beans', label: tr('Зерно') }, { value: 'drip', label: tr('Дрип-пакеты') }]} />
       )}
 
       <div className="scan-field">
-        <Field label="Штрихкод / QR" id="bean-barcode" value={b.barcode} inputMode="numeric" onChange={(e) => set({ barcode: e.target.value })}
+        <Field label={tr('Штрихкод / QR')} id="bean-barcode" value={b.barcode} inputMode="numeric" onChange={(e) => set({ barcode: e.target.value })}
           onBlur={() => { if (b.barcode && b.barcode !== bean.barcode && (/^\d{8,14}$/.test(b.barcode) || /^https?:\/\/\S+$/i.test(b.barcode))) onCode(b.barcode); }}
-          suffix={<button type="button" className="icon-btn" onClick={() => setScan(true)} aria-label="Сканировать"><Icon name="scan" /></button>} />
+          suffix={<button type="button" className="icon-btn" onClick={() => setScan(true)} aria-label={tr('Сканировать')}><Icon name="scan" /></button>} />
         {status && <p className="status">{status}</p>}
       </div>
 
-      <Section title="Основное">
-        {f('name', drip ? 'Название' : 'Название лота', { placeholder: drip ? (b.assorted ? 'Ассорти «Африка»' : 'Гуджи Ханджа') : 'Гуджи Ханджа' })}
-        {f('roaster', 'Обжарщик')}
+      <Section title={tr('Основное')}>
+        {f('name', drip ? tr('Название') : tr('Название лота'), { placeholder: drip ? (b.assorted ? tr('Ассорти «Африка»') : tr('Гуджи Ханджа')) : tr('Гуджи Ханджа') })}
+        {f('roaster', tr('Обжарщик'))}
       </Section>
 
       {drip && (
-        <Section title="Коробка" plain>
+        <Section title={tr('Коробка')} plain>
           <Segmented value={b.assorted ? 'mix' : 'same'} onChange={(v) => setAssorted(v === 'mix')}
-            options={[{ value: 'same', label: 'Все дрипы одинаковые' }, { value: 'mix', label: 'Разные' }]} />
+            options={[{ value: 'same', label: tr('Все дрипы одинаковые') }, { value: 'mix', label: tr('Разные') }]} />
           <div className="group" style={{ marginTop: 10 }}>
-            {!b.assorted && !again && numField('Дрипов в коробке', 'bean-drip-count', b.dripCount, (n) => set({ dripCount: n === undefined ? undefined : Math.round(n) }), 'шт')}
+            {!b.assorted && !again && numField(tr('Дрипов в коробке'), 'bean-drip-count', b.dripCount, (n) => set({ dripCount: n === undefined ? undefined : Math.round(n) }), tr('шт'))}
             {isNew && (
-              <Field label="Осталось сейчас, шт" id="bean-left" inputMode="numeric" placeholder={String(dripTotal(b) || '')}
+              <Field label={tr('Осталось сейчас, шт')} id="bean-left" inputMode="numeric" placeholder={String(dripTotal(b) || '')}
                 value={leftText} onChange={(e) => setLeftText(e.target.value)} />
             )}
           </div>
@@ -591,110 +592,110 @@ export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew
 
       {!(drip && b.assorted) && (
         <Segmented value={b.isBlend ? 'blend' : 'single'} onChange={(v) => setBlend(v === 'blend')}
-          options={[{ value: 'single', label: 'Моносорт' }, { value: 'blend', label: 'Бленд' }]} />
+          options={[{ value: 'single', label: tr('Моносорт') }, { value: 'blend', label: tr('Бленд') }]} />
       )}
       <datalist id="countries">{COUNTRIES.map((c) => <option key={c} value={c} />)}</datalist>
       <datalist id="processes">{PROCESSES.map((x) => <option key={x} value={x} />)}</datalist>
 
       {drip && b.assorted ? (
-        <Section title={`Дрипы в коробке · ${dripTotal(b)} шт`} plain>
+        <Section title={tr('Дрипы в коробке · {0} шт', dripTotal(b))} plain>
           <div className="drip-editor">
             {(b.drips ?? []).map((d, i) => (
               <div className="drip-row" key={d.id}>
                 <div className="drip-row-head">
                   <span className="step-num">{i + 1}</span>
-                  <input className="drip-name" aria-label={`Дрип ${i + 1}: название`} placeholder="Название или лот" value={d.name} onChange={(e) => setDrip(i, { name: e.target.value })} />
+                  <input className="drip-name" aria-label={tr('Дрип {0}: название', i + 1)} placeholder={tr('Название или лот')} value={d.name} onChange={(e) => setDrip(i, { name: e.target.value })} />
                   <label className="drip-count">
-                    <input inputMode="numeric" aria-label={`Дрип ${i + 1}: сколько штук`} value={d.count || ''} placeholder="0"
+                    <input inputMode="numeric" aria-label={tr('Дрип {0}: сколько штук', i + 1)} value={d.count || ''} placeholder="0"
                       onChange={(e) => setDrip(i, { count: parseInt(e.target.value.replace(/\D/g, '')) || 0 })} />
-                    <span>шт</span>
+                    <span>{tr('шт')}</span>
                   </label>
-                  <button type="button" className="icon-btn" onClick={() => removeDrip(i)} aria-label={`Удалить дрип ${i + 1}`}><Icon name="close" size={18} /></button>
+                  <button type="button" className="icon-btn" onClick={() => removeDrip(i)} aria-label={tr('Удалить дрип {0}', i + 1)}><Icon name="close" size={18} /></button>
                 </div>
                 <div className="drip-row-grid">
-                  <input list="countries" aria-label={`Дрип ${i + 1}: страна`} placeholder="Страна" value={d.country} onChange={(e) => setDrip(i, { country: e.target.value })} />
-                  <input aria-label={`Дрип ${i + 1}: регион`} placeholder="Регион" value={d.region} onChange={(e) => setDrip(i, { region: e.target.value })} />
-                  <input aria-label={`Дрип ${i + 1}: ферма`} placeholder="Ферма / станция" value={d.farm} onChange={(e) => setDrip(i, { farm: e.target.value })} />
-                  <input aria-label={`Дрип ${i + 1}: сорт`} placeholder="Сорт" value={d.variety} onChange={(e) => setDrip(i, { variety: e.target.value })} />
-                  <input list="processes" aria-label={`Дрип ${i + 1}: обработка`} placeholder="Обработка" value={d.process} onChange={(e) => setDrip(i, { process: e.target.value })} />
-                  <select aria-label={`Дрип ${i + 1}: обжарка`} value={d.roastLevel} onChange={(e) => setDrip(i, { roastLevel: e.target.value })}>
-                    <option value="">Обжарка</option>
+                  <input list="countries" aria-label={tr('Дрип {0}: страна', i + 1)} placeholder={tr('Страна')} value={d.country} onChange={(e) => setDrip(i, { country: e.target.value })} />
+                  <input aria-label={tr('Дрип {0}: регион', i + 1)} placeholder={tr('Регион')} value={d.region} onChange={(e) => setDrip(i, { region: e.target.value })} />
+                  <input aria-label={tr('Дрип {0}: ферма', i + 1)} placeholder={tr('Ферма / станция')} value={d.farm} onChange={(e) => setDrip(i, { farm: e.target.value })} />
+                  <input aria-label={tr('Дрип {0}: сорт', i + 1)} placeholder={tr('Сорт')} value={d.variety} onChange={(e) => setDrip(i, { variety: e.target.value })} />
+                  <input list="processes" aria-label={tr('Дрип {0}: обработка', i + 1)} placeholder={tr('Обработка')} value={d.process} onChange={(e) => setDrip(i, { process: e.target.value })} />
+                  <select aria-label={tr('Дрип {0}: обжарка', i + 1)} value={d.roastLevel} onChange={(e) => setDrip(i, { roastLevel: e.target.value })}>
+                    <option value="">{tr('Обжарка')}</option>
                     {ROAST_LEVELS.map((x) => <option key={x} value={x}>{x}</option>)}
                   </select>
                 </div>
-                <input aria-label={`Дрип ${i + 1}: дескрипторы`} placeholder="Дескрипторы с упаковки" value={d.notes} onChange={(e) => setDrip(i, { notes: e.target.value })} />
+                <input aria-label={tr('Дрип {0}: дескрипторы', i + 1)} placeholder={tr('Дескрипторы с упаковки')} value={d.notes} onChange={(e) => setDrip(i, { notes: e.target.value })} />
               </div>
             ))}
-            <button type="button" className="add-step" onClick={addDrip}><Icon name="plus" size={18} />Добавить дрип</button>
+            <button type="button" className="add-step" onClick={addDrip}><Icon name="plus" size={18} />{tr('Добавить дрип')}</button>
           </div>
         </Section>
       ) : !b.isBlend ? <>
-        <Section title="Происхождение">
-          {f('country', 'Страна', { list: 'countries' })}
-          {f('region', 'Регион')}
-          {f('farm', 'Ферма / станция')}
-          {f('producer', 'Производитель')}
-          {f('altitude', 'Высота', { placeholder: '1900–2100 м' })}
+        <Section title={tr('Происхождение')}>
+          {f('country', tr('Страна'), { list: 'countries' })}
+          {f('region', tr('Регион'))}
+          {f('farm', tr('Ферма / станция'))}
+          {f('producer', tr('Производитель'))}
+          {f('altitude', tr('Высота'), { placeholder: tr('1900–2100 м') })}
         </Section>
 
-        <Section title="Обработка" plain>
+        <Section title={tr('Обработка')} plain>
           <Chips options={PROCESSES} value={[b.process]} onToggle={(p) => set({ process: b.process === p ? '' : p })} />
           <div className="group" style={{ marginTop: 10 }}>
-            {f('process', 'Своя обработка', { placeholder: 'например, Double fermentation' })}
-            {f('variety', 'Сорт', { placeholder: 'Гейша, SL28, Бурбон…' })}
-            {!drip && f('harvest', 'Урожай', { placeholder: '2026' })}
+            {f('process', tr('Своя обработка'), { placeholder: tr('например, Double fermentation') })}
+            {f('variety', tr('Сорт'), { placeholder: tr('Гейша, SL28, Бурбон…') })}
+            {!drip && f('harvest', tr('Урожай'), { placeholder: '2026' })}
           </div>
         </Section>
       </> : (
-        <Section title="Состав бленда" aside={<span className={'muted' + (shareSum !== null && Math.abs(shareSum - 100) > 0.01 ? ' warn-text' : '')}>{shareSum !== null ? `сумма ${fmtNum(shareSum, 1)}%` : ''}</span>} plain>
+        <Section title={tr('Состав бленда')} aside={<span className={'muted' + (shareSum !== null && Math.abs(shareSum - 100) > 0.01 ? ' warn-text' : '')}>{shareSum !== null ? tr('сумма {0}%', fmtNum(shareSum, 1)) : ''}</span>} plain>
           <div className="blend-editor">
             {(b.parts ?? []).map((p, i) => (
               <div className="blend-part" key={p.id}>
                 <div className="blend-part-head">
                   <span className="step-num">{i + 1}</span>
-                  <input className="blend-country" list="countries" aria-label={`Компонент ${i + 1}: страна`} placeholder="Страна" value={p.country}
+                  <input className="blend-country" list="countries" aria-label={tr('Компонент {0}: страна', i + 1)} placeholder={tr('Страна')} value={p.country}
                     onChange={(e) => setPart(i, { country: e.target.value })} />
                   <label className="blend-share">
-                    <input inputMode="decimal" aria-label={`Компонент ${i + 1}: доля`} placeholder="—" value={p.share}
+                    <input inputMode="decimal" aria-label={tr('Компонент {0}: доля', i + 1)} placeholder="—" value={p.share}
                       onChange={(e) => setPart(i, { share: e.target.value.replace(/[^\d.,]/g, '') })} />
                     <span>%</span>
                   </label>
-                  <button type="button" className="icon-btn" onClick={() => removePart(i)} aria-label={`Удалить компонент ${i + 1}`}><Icon name="close" size={18} /></button>
+                  <button type="button" className="icon-btn" onClick={() => removePart(i)} aria-label={tr('Удалить компонент {0}', i + 1)}><Icon name="close" size={18} /></button>
                 </div>
                 <div className="blend-part-grid">
-                  <input aria-label={`Компонент ${i + 1}: регион`} placeholder="Регион" value={p.region} onChange={(e) => setPart(i, { region: e.target.value })} />
-                  <input aria-label={`Компонент ${i + 1}: ферма`} placeholder="Ферма / станция" value={p.farm} onChange={(e) => setPart(i, { farm: e.target.value })} />
-                  <input aria-label={`Компонент ${i + 1}: сорт`} placeholder="Сорт" value={p.variety} onChange={(e) => setPart(i, { variety: e.target.value })} />
-                  <input aria-label={`Компонент ${i + 1}: обработка`} list="processes" placeholder="Обработка" value={p.process} onChange={(e) => setPart(i, { process: e.target.value })} />
+                  <input aria-label={tr('Компонент {0}: регион', i + 1)} placeholder={tr('Регион')} value={p.region} onChange={(e) => setPart(i, { region: e.target.value })} />
+                  <input aria-label={tr('Компонент {0}: ферма', i + 1)} placeholder={tr('Ферма / станция')} value={p.farm} onChange={(e) => setPart(i, { farm: e.target.value })} />
+                  <input aria-label={tr('Компонент {0}: сорт', i + 1)} placeholder={tr('Сорт')} value={p.variety} onChange={(e) => setPart(i, { variety: e.target.value })} />
+                  <input aria-label={tr('Компонент {0}: обработка', i + 1)} list="processes" placeholder={tr('Обработка')} value={p.process} onChange={(e) => setPart(i, { process: e.target.value })} />
                 </div>
               </div>
             ))}
-            <button type="button" className="add-step" onClick={addPart}><Icon name="plus" size={18} />Добавить компонент</button>
+            <button type="button" className="add-step" onClick={addPart}><Icon name="plus" size={18} />{tr('Добавить компонент')}</button>
           </div>
         </Section>
       )}
 
       {!drip && (
-        <Section title="Вес пачки" plain>
-          <Chips options={PACK_SIZES.map((x) => `${x} г`)} value={b.weight ? [`${b.weight} г`] : []}
-            onToggle={(v) => set({ weight: b.weight === v.replace(' г', '') ? '' : v.replace(' г', '') })} />
+        <Section title={tr('Вес пачки')} plain>
+          <Chips options={PACK_SIZES.map((x) => tr('{0} г', x))} value={b.weight ? [tr('{0} г', b.weight)] : []}
+            onToggle={(v) => set({ weight: b.weight === v.replace(tr(' г'), '') ? '' : v.replace(tr(' г'), '') })} />
         </Section>
       )}
 
-      <Section title="Обжарка" plain>
+      <Section title={tr('Обжарка')} plain>
         <Chips options={ROAST_LEVELS} value={[b.roastLevel]} onToggle={(p) => set({ roastLevel: b.roastLevel === p ? '' : p })} />
         <div className="group" style={{ marginTop: 10 }}>
-          {!again && f('roastDate', 'Дата обжарки', { type: 'date', max: new Date().toISOString().slice(0, 10) })}
-          {!again && !drip && f('weight', 'Вес пачки, г', { inputMode: 'numeric', placeholder: '250' })}
+          {!again && f('roastDate', tr('Дата обжарки'), { type: 'date', max: new Date().toISOString().slice(0, 10) })}
+          {!again && !drip && f('weight', tr('Вес пачки, г'), { inputMode: 'numeric', placeholder: '250' })}
           {!again && !drip && isNew && b.weight && (
-            <Field label="Осталось сейчас, г" id="bean-left" inputMode="decimal" placeholder={b.weight}
+            <Field label={tr('Осталось сейчас, г')} id="bean-left" inputMode="decimal" placeholder={b.weight}
               value={leftText} onChange={(e) => setLeftText(e.target.value)} />
           )}
         </div>
       </Section>
 
-      <Section title="Профиль от обжарщика" aside={hasScales(b.scales) ? <button type="button" className="link-btn" onClick={() => set({ scales: undefined })}>Очистить</button> : undefined}>
-        <p className="muted pad small-note">Если обжарщик даёт шкалы на сайте или пачке. Нажмите ещё раз, чтобы убрать значение.</p>
+      <Section title={tr('Профиль от обжарщика')} aside={hasScales(b.scales) ? <button type="button" className="link-btn" onClick={() => set({ scales: undefined })}>{tr('Очистить')}</button> : undefined}>
+        <p className="muted pad small-note">{tr('Если обжарщик даёт шкалы на сайте или пачке. Нажмите ещё раз, чтобы убрать значение.')}</p>
         <div className="scales">
           {SCALES.map((s) => (
             <ScaleDots key={s.key} label={s.label} value={b.scales?.[s.key]}
@@ -707,13 +708,13 @@ export function BeanEdit({ bean, isNew, scanOnOpen, again }: { bean: Bean; isNew
         </div>
       </Section>
 
-      <Section title="Заметки">
-        {f('packNotes', 'Дескрипторы с пачки', { placeholder: 'бергамот, персик, жасмин' })}
-        {f('link', 'Ссылка на лот', { type: 'url', placeholder: 'https://', onBlur: () => {
+      <Section title={tr('Заметки')}>
+        {f('packNotes', tr('Дескрипторы с пачки'), { placeholder: tr('бергамот, персик, жасмин') })}
+        {f('link', tr('Ссылка на лот'), { type: 'url', placeholder: 'https://', onBlur: () => {
           // a roaster page link was pasted — fill in fields the same way as from a QR code
           if (b.link && b.link !== bean.link && /^https?:\/\/\S+$/i.test(b.link) && !b.country && !(b.drips ?? []).length) onCode(b.link);
         } })}
-        <textarea id="bean-comment" className="notes" rows={3} aria-label="Заметки" placeholder="Где купил, цена, впечатления" value={b.comment} onChange={(e) => set({ comment: e.target.value })} />
+        <textarea id="bean-comment" className="notes" rows={3} aria-label={tr('Заметки')} placeholder={tr('Где купил, цена, впечатления')} value={b.comment} onChange={(e) => set({ comment: e.target.value })} />
       </Section>
       </>}
 

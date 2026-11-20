@@ -16,3 +16,11 @@ describe('the cold brew card', () => {
     expect(JSON.parse(d)).toMatchObject({ s: 1, e: 2, st: 'run' });
   });
 });
+
+describe('the card in English', () => {
+  it('has no Russian left and stays within the size limits', async () => {
+    const { WIDGET_HTML_EN } = await import('../../worker/src/widget');
+    expect(WIDGET_HTML_EN).not.toMatch(/[А-Яа-яЁё]/);
+    expect(deflateSync(Buffer.from(WIDGET_HTML_EN), { level: 9 }).length).toBeLessThan(4096);
+  });
+});

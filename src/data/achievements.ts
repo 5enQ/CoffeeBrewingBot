@@ -3,10 +3,11 @@ import { countStats, earnedLevels, TIER_LABEL, type Stats, type Tier } from './l
 import { methodById } from './methods';
 import { rareOfBean } from './rare';
 import type { Bean, Brew } from './store';
+import { intlLocale, tr } from '../i18n';
 
 export { TIER_LABEL, TIER_ORDER, type Stats, type Tier } from './levels';
 
-const fmt = (n: number) => n.toLocaleString('ru-RU');
+const fmt = (n: number) => n.toLocaleString(intlLocale());
 
 /**
  * An earned achievement.
@@ -27,9 +28,9 @@ export function localStats(brews: Brew[], ratings: number, beans: Bean[] = []): 
 
 /** Achievement key → badge. Titles are built here, so the server only has to know the numbers. */
 export function achievementBadge(key: string, tier: Tier, at: number): BadgeLite {
-  const title = key === 'liters' ? `${fmt(at)} литров кофе`
-    : key === 'ratings' ? `${fmt(at)} оценок рецептов`
-    : `${methodById(key.slice(7)).name} · ${fmt(at)} заварок`;
+  const title = key === 'liters' ? tr('{0} литров кофе', fmt(at))
+    : key === 'ratings' ? tr('{0} оценок рецептов', fmt(at))
+    : tr('{0} · {1} заварок', methodById(key.slice(7)).name, fmt(at));
   return { kind: 'achieve', title, detail: TIER_LABEL[tier], year: '' };
 }
 

@@ -12,6 +12,7 @@ import { EVENT_CAP, EVENT_NAMES, type MetricEvent, type Metrics } from '../../sr
 import { countStats, earnedLevels, givesBackground, levelUpTo, LITER_LEVELS, METHOD_LEVELS, type BrewStat, type Level, type Stats, type Tier } from '../../src/data/levels.ts';
 import type { Env } from './index';
 import { deleteMessage, editWidget, lookFields, sendWidget, withLook, type CardLook, type WidgetState } from './widget';
+import { langOf, say, type Lang } from './lang.ts';
 
 /** what the app asks for with a cold brew reminder: a card in the chat (widget.ts) for this brew */
 export interface CardWish { brew: string; start: number; title: string; recipe: string; bean: string; look: CardLook }
@@ -67,6 +68,8 @@ export class Accounts extends DurableObject<Env> {
     // one pending "your brew is ready" message per account; the alarm fires at the earliest one
     sql.exec(`CREATE TABLE IF NOT EXISTS reminder (account TEXT PRIMARY KEY, chat TEXT NOT NULL, at INTEGER NOT NULL, title TEXT NOT NULL, link TEXT NOT NULL)`);
     sql.exec('CREATE INDEX IF NOT EXISTS reminder_at ON reminder (at)');
+    // the language the bot writes the reminder in (added later: older rows have none — Russian)
+    try { sql.exec('ALTER TABLE reminder ADD COLUMN lang TEXT'); } catch { /* already there */ }
     // the cold brew card in the chat with the bot (widget.ts): its message, the brew it follows, its state
     sql.exec(`CREATE TABLE IF NOT EXISTS brew_widget (account TEXT PRIMARY KEY, chat TEXT NOT NULL, msg INTEGER, brew TEXT NOT NULL, link TEXT NOT NULL, title TEXT NOT NULL, data TEXT NOT NULL)`);
     // what happened to each person's last reminder (scheduled / cancelled / sent / failed + Telegram's answer)
@@ -397,18 +400,18 @@ export class Accounts extends DurableObject<Env> {
   /* ---------- bot reminders (a long timer ended, the app may be closed) ---------- */
 
   /** schedule (or move) this person's reminder; the Telegram chat with the bot is the user id */
-  async setReminder(provider: string, subject: string, at: number, title: string, link: string, card?: CardWish | null) {
+  async setReminder(provider: string, subject: string, at: number, title: string, link: string, card?: CardWish | null, lang: Lang = 'ru') {
     const acc = this.resolve(provider, subject);
     const chat = provider === 'tg' ? subject : this.tgOf(acc.id);
     if (!chat) return false;
-    this.sql.exec('INSERT INTO reminder (account, chat, at, title, link) VALUES (?, ?, ?, ?, ?) ON CONFLICT(account) DO UPDATE SET chat = excluded.chat, at = excluded.at, title = excluded.title, link = excluded.link',
-      acc.id, chat, at, title, link);
+    this.sql.exec('INSERT INTO reminder (account, chat, at, title, link, lang) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(account) DO UPDATE SET lang = excluded.lang, chat = excluded.chat, at = excluded.at, title = excluded.title, link = excluded.link',
+      acc.id, chat, at, title, link, lang);
     this.log(acc.id, at, 'scheduled');
     await this.nextAlarm();
     console.log('reminder scheduled', acc.id, new Date(at).toISOString());
     // the card: undefined — an app that knows nothing of it; null — the person turned it off
     if (card === null) await this.dropBrewCard(acc.id);
-    else if (card) await this.putBrewCard(acc.id, chat, at, title, link, card);
+    else if (card) await this.putBrewCard(acc.id, chat, at, title, link, card, lang);
     return true;
   }
 
@@ -423,14 +426,14 @@ export class Accounts extends DurableObject<Env> {
       account, chat, msg, brew, link, title, JSON.stringify(w));
   }
   /** a card for this brew: the same brew again (resumed, moved) — its card is updated; another brew — a new card */
-  private async putBrewCard(account: string, chat: string, at: number, title: string, link: string, c: CardWish) {
+  private async putBrewCard(account: string, chat: string, at: number, title: string, link: string, c: CardWish, lang: Lang) {
     const old = this.brewCard(account);
     const same = old && old.brew === c.brew;
     const w: WidgetState = { s: same ? old.w.s : c.start, e: at, st: 'run', t: c.title, r: c.recipe, b: c.bean, ...lookFields(c.look) };
     let msg = same ? old.msg : null;
     if (old && !same && old.msg && (old.w.st === 'run' || old.w.st === 'pause')) await editWidget(this.env.BOT_TOKEN, old.chat, old.msg, { ...old.w, st: 'stop' });
     if (msg) { if (!(await editWidget(this.env.BOT_TOKEN, chat, msg, w))) msg = null; }
-    if (!msg) msg = await sendWidget(this.env.BOT_TOKEN, chat, w, link);
+    if (!msg) msg = await sendWidget(this.env.BOT_TOKEN, chat, w, link, lang);
     this.saveBrewCard(account, chat, msg, c.brew, link, title, w);
   }
   private async dropBrewCard(account: string) {
@@ -601,11 +604,11 @@ export class Accounts extends DurableObject<Env> {
   }
 
   async alarm() {
-    const due = this.sql.exec<{ account: string; chat: string; title: string; link: string; at: number }>(
-      'SELECT account, chat, title, link, at FROM reminder WHERE at <= ? ORDER BY at LIMIT 50', Date.now() + 5000).toArray();
+    const due = this.sql.exec<{ account: string; chat: string; title: string; link: string; at: number; lang: string | null }>(
+      'SELECT account, chat, title, link, at, lang FROM reminder WHERE at <= ? ORDER BY at LIMIT 50', Date.now() + 5000).toArray();
     for (const r of due) {
       this.sql.exec('DELETE FROM reminder WHERE account = ? AND at = ?', r.account, r.at);
-      const res = await sendReminder(this.env.BOT_TOKEN, r.chat, r.title, r.link);
+      const res = await sendReminder(this.env.BOT_TOKEN, r.chat, r.title, r.link, undefined, langOf(r.lang));
       this.log(r.account, r.at, res.ok ? 'sent' : 'failed', res.error ?? null);
       // the card turns to «Пора процедить» (it does by itself on screen; this keeps its saved state true too)
       await this.brewCardTo(r.account, 'ready');
@@ -615,11 +618,12 @@ export class Accounts extends DurableObject<Env> {
 }
 
 /** the bot's message with a button back into the timer */
-export async function sendReminder(token: string, chat: string, title: string, link: string, text = `☕ ${title}: время вышло!\nПора процедить и записать заварку.`): Promise<{ ok: boolean; error?: string }> {
+export async function sendReminder(token: string, chat: string, title: string, link: string, text?: string, lang: Lang = 'ru'): Promise<{ ok: boolean; error?: string }> {
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: Number(chat), text, reply_markup: { inline_keyboard: [[{ text: 'Открыть таймер', url: link }]] } }),
+      body: JSON.stringify({ chat_id: Number(chat), text: text ?? say(lang, `☕ ${title}: время вышло!\nПора процедить и записать заварку.`, `☕ ${title}: time's up!\nStrain it and save the brew.`),
+        reply_markup: { inline_keyboard: [[{ text: say(lang, 'Открыть таймер', 'Open the timer'), url: link }]] } }),
     });
     const j = await r.json<{ ok: boolean; description?: string }>();
     if (!j.ok) console.log('reminder not sent:', j.description);

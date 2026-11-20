@@ -12,6 +12,7 @@ import { beanStock, isFinished } from '../data/stock';
 import { useStore } from '../data/store';
 import { platform } from '../platform';
 import { announce, toast } from './toast';
+import { tr } from '../i18n';
 
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -76,12 +77,12 @@ export function PhosphorBoot({ onDone }: { onDone: () => void }) {
     setLeaving(true);
     setTimeout(() => {
       onDone();
-      toast('Открыт стиль «Фосфор». Вернуть обычный вид: Профиль → Настроить → Фон');
+      toast(tr('Открыт стиль «Фосфор». Вернуть обычный вид: Профиль → Настроить → Фон'));
     }, calm ? 200 : 450);
   };
 
   useEffect(() => {
-    announce('Запускается терминал Brewbook');
+    announce(tr('Запускается терминал Brewbook'));
     if (calm) { const t = setTimeout(finish, 1600); return () => clearTimeout(t); }
     const delays = [650, ...lines.map((_, i) => (i === 0 ? 420 : 260)), 900, 900];
     let i = 0, t = 0;
@@ -114,7 +115,7 @@ export function PhosphorBoot({ onDone }: { onDone: () => void }) {
           {step > lines.length && <div className="phos-bar"><span /></div>}
           {step > lines.length + 1 && <div className="phos-prompt">C:\BREWBOOK&gt; <span className="phos-cursor">█</span></div>}
         </div>
-        <div className="phos-hint">любая клавиша — пропустить</div>
+        <div className="phos-hint">{tr('любая клавиша — пропустить')}</div>
       </div>
     </div>
   );

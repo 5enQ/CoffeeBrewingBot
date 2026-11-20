@@ -15,24 +15,25 @@ import { allMethods, methodById } from './methods';
 import { hasPhosphor, PHOSPHOR } from './phosphor';
 import { RARE, type RareId } from './rare';
 import type { Profile } from './store';
+import { tr } from '../i18n';
 
 export const BASE_THEMES = [
   // light
-  { id: 'paper', label: 'Бумажный фильтр' },
-  { id: 'latte', label: 'Латте' },
-  { id: 'citrus', label: 'Цитрус' },
+  { id: 'paper', label: tr('Бумажный фильтр') },
+  { id: 'latte', label: tr('Латте') },
+  { id: 'citrus', label: tr('Цитрус') },
   // middle
-  { id: 'matcha', label: 'Матча' },
-  { id: 'berry', label: 'Ягоды' },
-  { id: 'jasmine', label: 'Жасмин' },
+  { id: 'matcha', label: tr('Матча') },
+  { id: 'berry', label: tr('Ягоды') },
+  { id: 'jasmine', label: tr('Жасмин') },
   // dark
-  { id: 'espresso', label: 'Эспрессо' },
-  { id: 'cascara', label: 'Каскара' },
-  { id: 'ristretto', label: 'Ристретто' },
+  { id: 'espresso', label: tr('Эспрессо') },
+  { id: 'cascara', label: tr('Каскара') },
+  { id: 'ristretto', label: tr('Ристретто') },
 ] as const;
 /** Backgrounds opened by a secret, not listed with the others until found (data/phosphor.ts) */
 export const SECRET_THEMES = [
-  { id: 'phosphor', label: 'Фосфор', title: 'Терминал Brewbook' },
+  { id: 'phosphor', label: tr('Фосфор'), title: tr('Терминал Brewbook') },
 ] as const;
 /** retired backgrounds → the ones that took their place (cards saved before keep a look close to the old one) */
 const RENAMED: Record<string, string> = { ocean: 'cascara', graphite: 'ristretto', glass: 'paper' };
@@ -43,9 +44,9 @@ export const secretTitle = (base: string) => SECRET_THEMES.find((t) => t.id === 
 
 /** Backgrounds the owner gives by hand (Profile → owner tools); the server checks them on every shared card */
 export const SPECIAL_THEMES = [
-  { id: 'dev', label: 'Разработчик', title: 'Команда Brewbook' },
-  { id: 'beta', label: 'Тестировщик', title: 'Бета-тестер Brewbook' },
-  { id: 'lighthouse', label: 'Маяк', title: 'Хранитель маяка' },
+  { id: 'dev', label: tr('Разработчик'), title: tr('Команда Brewbook') },
+  { id: 'beta', label: tr('Тестировщик'), title: tr('Бета-тестер Brewbook') },
+  { id: 'lighthouse', label: tr('Маяк'), title: tr('Хранитель маяка') },
 ] as const;
 export type SpecialTheme = typeof SPECIAL_THEMES[number]['id'];
 
@@ -154,7 +155,7 @@ export function buildCard(p: Profile, featured: { key: string; badge: BadgeLite 
   if ('ach' in theme && themeLevel) earned[theme.ach] = themeLevel;
   return {
     v: 2,
-    name: p.name.trim() || (tg ? '@' + tg : 'Без имени'),
+    name: p.name.trim() || (tg ? '@' + tg : tr('Без имени')),
     username: telegram && tg ? tg : undefined,
     about: p.about.trim() || undefined,
     photo: photo && /^https:\/\//.test(photo) ? photo : undefined,
@@ -231,12 +232,12 @@ export async function loadCard(id: string): Promise<CardData | null> {
 /** Text that goes to the chat with the link */
 export function cardText(c: CardData) {
   const v = cardView(c);
-  const lines = [`☕ ${c.name}${c.username ? ` (@${c.username})` : ''} — профиль в Brewbook`];
+  const lines = [tr('☕ {0}{1} — профиль в Brewbook', c.name, c.username ? ` (@${c.username})` : '')];
   if (c.about) lines.push(c.about);
   if ('tier' in v.theme) lines.push(`🏅 ${v.theme.title}`);
   if ('special' in v.theme) lines.push(`⌘ ${v.theme.title}`);
   if ('rare' in v.theme) lines.push(`🌱 ${v.theme.title}`);
   if (v.badges.length) lines.push(v.badges.map((b) => b.title).join(' · '));
-  if (c.setup.length) lines.push('', 'Сетап:', ...c.setup.map((g) => `• ${g.name}`));
+  if (c.setup.length) lines.push('', tr('Сетап:'), ...c.setup.map((g) => `• ${g.name}`));
   return lines.join('\n');
 }

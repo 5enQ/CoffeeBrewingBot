@@ -1,12 +1,13 @@
+import { tr } from '../i18n';
 /**
  * Rare lots: brewing one opens a card background. The tag is worked out on the device from the pack
  * (country, variety — of the lot or of any part of a blend) and sent to the server with the brew;
  * the server counts it like any brew (same limits), so a background appears on a shared card only when counted.
  */
 export const RARE = [
-  { id: 'japan', label: 'Япония', title: 'Ферма у горы' },
-  { id: 'eugenioides', label: 'Эужениоидис', title: 'Озеро Киву' },
-  { id: 'liberica', label: 'Либерика', title: 'Закат в Либерии' },
+  { id: 'japan', label: tr('Япония'), title: tr('Ферма у горы') },
+  { id: 'eugenioides', label: tr('Эужениоидис'), title: tr('Озеро Киву') },
+  { id: 'liberica', label: tr('Либерика'), title: tr('Закат в Либерии') },
 ] as const;
 export type RareId = typeof RARE[number]['id'];
 export const RARE_IDS: readonly string[] = RARE.map((r) => r.id);

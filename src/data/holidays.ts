@@ -1,3 +1,4 @@
+import { tr } from '../i18n';
 /**
  * Holiday looks: a few days around a holiday the app dresses up.
  *  - halloween: 29 Oct – 2 Nov — cobwebs in the corners, a spider on a thread, pumpkins on the brew tab;
@@ -8,9 +9,9 @@
 export type Holiday = 'halloween' | 'newyear' | 'coffeeday';
 
 export const HOLIDAYS: { id: Holiday; label: string }[] = [
-  { id: 'halloween', label: 'Хеллоуин' },
-  { id: 'newyear', label: 'Новый год' },
-  { id: 'coffeeday', label: 'День кофе' },
+  { id: 'halloween', label: tr('Хеллоуин') },
+  { id: 'newyear', label: tr('Новый год') },
+  { id: 'coffeeday', label: tr('День кофе') },
 ];
 
 const PREVIEW = 'brewbook.holiday.preview';

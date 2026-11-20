@@ -3,6 +3,7 @@ import { markRoot } from '../appearance';
 import { createWebPlatform } from './web';
 import { createTelegramPlatform, looksLikeTelegram } from './telegram';
 import { createNativePlatform, looksLikeNative } from './native';
+import { tr } from '../i18n';
 
 export type { Platform, HapticKind } from './types';
 
@@ -65,5 +66,5 @@ export function sessionExpired(): boolean {
 
 /** what to say when a server request failed */
 export function serverTrouble(): string {
-  return sessionExpired() ? 'Telegram-сессия устарела: закройте Brewbook и откройте снова' : 'нет связи с сервером';
+  return sessionExpired() ? tr('Telegram-сессия устарела: закройте Brewbook и откройте снова') : tr('нет связи с сервером');
 }

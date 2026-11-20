@@ -6,6 +6,7 @@ import { useLayout } from '../layout';
 import { Icon } from './icons';
 import { dialog } from './dialog';
 import { HolidayGround, HolidayTop } from './Holiday';
+import { decSep, tr, trValue } from '../i18n';
 
 let screensShown = 0;
 
@@ -38,7 +39,7 @@ export function Screen({ title, subtitle, action, children, footer, root = false
       <HolidayTop />
       <header className="topbar">
         {showBack && (
-          <button className="icon-btn back" onClick={() => back()} aria-label={closeIcon ? 'Закрыть' : 'Назад'}><Icon name={closeIcon ? 'close' : 'back'} /></button>
+          <button className="icon-btn back" onClick={() => back()} aria-label={closeIcon ? tr('Закрыть') : tr('Назад')}><Icon name={closeIcon ? 'close' : 'back'} /></button>
         )}
         <div className="topbar-text">
           <h1 ref={head} tabIndex={-1}>{title}</h1>
@@ -163,7 +164,7 @@ export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format
   };
 
   const btn = (dir: 1 | -1) => (
-    <button type="button" aria-label={`${dir > 0 ? 'Увеличить' : 'Уменьшить'}: ${label}`}
+    <button type="button" aria-label={`${dir > 0 ? tr('Увеличить') : tr('Уменьшить')}: ${label}`}
       onClick={() => tap(dir)} onPointerDown={() => startHold(dir)} onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}
       onContextMenu={(e) => e.preventDefault()}>{dir > 0 ? '+' : '−'}</button>
   );
@@ -173,7 +174,7 @@ export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format
       {lock ? (
         <span className="stepper-label">
           <button type="button" className={'stepper-lock' + (locked ? ' on' : '')} aria-pressed={locked}
-            aria-label={locked ? `${label}: закреплено` : `Закрепить: ${label}`} onClick={() => { platform.haptic('select'); lock.onToggle(); }}>
+            aria-label={locked ? tr('{0}: закреплено', label) : tr('Закрепить: {0}', label)} onClick={() => { platform.haptic('select'); lock.onToggle(); }}>
             <Icon name={locked ? 'lock' : 'unlock'} size={16} />
           </button>
           <span onPointerDown={() => { labelHold.current = setTimeout(() => { labelHold.current = undefined; platform.haptic('medium'); lock.onToggle(); }, 500); }}
@@ -188,8 +189,8 @@ export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, format
             onChange={(e) => setText(e.target.value)} onBlur={commit}
             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditing(false); }} />
         ) : (
-          <button type="button" className="stepper-value" aria-label={`${label}: ввести вручную`}
-            onClick={() => { if (locked) { deny(); return; } setText(String(value).replace('.', ',')); setEditing(true); }}>
+          <button type="button" className="stepper-value" aria-label={tr('{0}: ввести вручную', label)}
+            onClick={() => { if (locked) { deny(); return; } setText(String(value).replace('.', decSep())); setEditing(true); }}>
             {/* + and − roll the digits that changed, up or down */}
             <Roll text={String(format ? format(value) : value)} />{unit && <small>{unit}</small>}
           </button>
@@ -211,7 +212,7 @@ export function Chips({ options, value, onToggle, toneOf }: {
           className={'chip' + (value.includes(o) ? ' on' : '')}
           data-tone={toneOf?.(o)}
           onClick={() => { platform.haptic('select'); onToggle(o); }}
-        >{o}</button>
+        >{trValue(o)}</button>
       ))}
     </div>
   );
@@ -235,7 +236,7 @@ export function Segmented<T extends string>({ options, value, onChange, label }:
 /** Stars with halves: 3.5 — three full and a half. Tapping the left half of a star sets ".5". */
 export function Stars({ value, onChange, size = 28 }: { value: number; onChange?: (v: number) => void; size?: number }) {
   const v = Math.round((value || 0) * 2) / 2;
-  const label = `Оценка ${String(v).replace('.', ',')} из 5`;
+  const label = tr('Оценка {0} из 5', String(v).replace('.', decSep()));
   return (
     // --stars-size is for the «Фосфор» style, where the stars are characters (* and -): as big as the drawn ones
     <div className={'stars' + (onChange ? ' editable' : '')} aria-label={label} role={onChange ? 'group' : 'img'} style={{ ['--stars-size' as string]: `${Math.round(size * (onChange ? 0.7 : 0.85))}px` }}>
@@ -252,8 +253,8 @@ export function Stars({ value, onChange, size = 28 }: { value: number; onChange?
         return (
           <span key={i} className="star-cell">
             {visual}
-            <button type="button" className="star-half left" aria-label={`${String(i - 0.5).replace('.', ',')} из 5`} aria-pressed={v === i - 0.5} onClick={() => pick(i - 0.5)} />
-            <button type="button" className="star-half right" aria-label={`${i} из 5`} aria-pressed={v === i} onClick={() => pick(i)} />
+            <button type="button" className="star-half left" aria-label={tr('{0} из 5', String(i - 0.5).replace('.', decSep()))} aria-pressed={v === i - 0.5} onClick={() => pick(i - 0.5)} />
+            <button type="button" className="star-half right" aria-label={tr('{0} из 5', i)} aria-pressed={v === i} onClick={() => pick(i)} />
           </span>
         );
       })}
@@ -263,9 +264,9 @@ export function Stars({ value, onChange, size = 28 }: { value: number; onChange?
 
 /** "4.5" → a label in words */
 export function ratingLabel(v: number) {
-  if (!v) return 'Не оценено';
-  const words = ['Не понравилось', 'Так себе', 'Нормально', 'Хорошо', 'Отлично'];
-  return `${String(v).replace('.', ',')} из 5 · ${words[Math.max(0, Math.ceil(v) - 1)]}`;
+  if (!v) return tr('Не оценено');
+  const words = [tr('Не понравилось'), tr('Так себе'), tr('Нормально'), tr('Хорошо'), tr('Отлично')];
+  return tr('{0} из 5 · {1}', String(v).replace('.', decSep()), words[Math.max(0, Math.ceil(v) - 1)]);
 }
 
 /** 1–5 scale as dots */
@@ -296,9 +297,9 @@ export function ScaleDots({ label, value, onChange }: { label: string; value?: n
   return (
     <div className={'scale-row' + (onChange ? ' editable' : '')}>
       <span className="scale-label">{label}</span>
-      <div className="scale-dots" role={onChange ? 'radiogroup' : 'img'} aria-label={onChange ? label : `${label}: ${v ? `${v} из 5` : 'не указано'}`}>
+      <div className="scale-dots" role={onChange ? 'radiogroup' : 'img'} aria-label={onChange ? label : `${label}: ${v ? tr('{0} из 5', v) : tr('не указано')}`}>
         {[1, 2, 3, 4, 5].map((i) => onChange ? (
-          <button type="button" key={i} role="radio" aria-checked={v === i} aria-label={`${label}: ${i} из 5`} className={i <= v ? 'on' : ''}
+          <button type="button" key={i} role="radio" aria-checked={v === i} aria-label={tr('{0}: {1} из 5', label, i)} className={i <= v ? 'on' : ''}
             onClick={() => { platform.haptic('select'); onChange(v === i ? undefined : i); }} />
         ) : <i key={i} className={i <= v ? 'on' : ''} />)}
       </div>
@@ -328,7 +329,7 @@ export function Empty({ title, text, action }: { title: string; text: string; ac
 }
 
 export function SampleTag() {
-  return <span className="tag tag-sample">пример</span>;
+  return <span className="tag tag-sample">{tr('пример')}</span>;
 }
 
 export function DialogHost() {
@@ -355,8 +356,8 @@ export function DialogHost() {
       <div ref={box} className="dialog" role={d.kind === 'confirm' ? 'alertdialog' : 'dialog'} aria-modal="true" aria-labelledby="dialog-msg" onClick={(e) => e.stopPropagation()}>
         <p id="dialog-msg">{d.message}</p>
         <div className="dialog-actions">
-          {d.kind === 'confirm' && <button type="button" className="btn btn-ghost" onClick={() => dialog.close(false)}>Отмена</button>}
-          <button type="button" className="btn btn-primary" autoFocus onClick={() => dialog.close(true)}>{d.kind === 'confirm' ? 'Да' : 'OK'}</button>
+          {d.kind === 'confirm' && <button type="button" className="btn btn-ghost" onClick={() => dialog.close(false)}>{tr('Отмена')}</button>}
+          <button type="button" className="btn btn-primary" autoFocus onClick={() => dialog.close(true)}>{d.kind === 'confirm' ? tr('Да') : 'OK'}</button>
         </div>
       </div>
     </div>

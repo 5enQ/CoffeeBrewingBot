@@ -16,6 +16,7 @@ import { Icon } from '../ui/icons';
 import { HOLIDAYS, getPreview, setPreview, type HolidayPreview as HolidayPreviewValue } from '../data/holidays';
 import { playFireworks } from '../ui/Holiday';
 import { copyText, toast } from '../ui/toast';
+import { intlLocale, tr } from '../i18n';
 
 const OPEN_KEY = (kind: string) => `brewbook.panel.${kind}`;
 
@@ -42,7 +43,7 @@ export function Panel({ kind, title, hint, summary, children }: { kind: 'owner' 
 }
 
 /** text + optional screenshot; used for bug reports and for «есть проблема» on a check */
-function ReportForm({ id, placeholder, onSend, onCancel, sendLabel = 'Отправить' }: {
+function ReportForm({ id, placeholder, onSend, onCancel, sendLabel = tr('Отправить') }: {
   id: string; placeholder: string; sendLabel?: string; onCancel?: () => void;
   onSend(text: string, image?: string): Promise<boolean>;
 }) {
@@ -57,20 +58,20 @@ function ReportForm({ id, placeholder, onSend, onCancel, sendLabel = 'Отпра
   };
   return (
     <div className="report-form">
-      <textarea id={id} className="notes" rows={3} aria-label="Описание" value={text} placeholder={placeholder} onChange={(e) => setText(e.target.value)} maxLength={3000} />
+      <textarea id={id} className="notes" rows={3} aria-label={tr('Описание')} value={text} placeholder={placeholder} onChange={(e) => setText(e.target.value)} maxLength={3000} />
       <div className="report-actions">
         <label className="btn btn-secondary">
-          <span>{image ? 'Скриншот добавлен ✓' : 'Добавить скриншот'}</span>
+          <span>{image ? tr('Скриншот добавлен ✓') : tr('Добавить скриншот')}</span>
           <input type="file" accept="image/*" hidden onChange={async (e) => {
             const f = e.target.files?.[0];
             if (!f) return;
-            try { setImage(await shrinkImage(f)); } catch { toast('Не получилось открыть картинку'); }
+            try { setImage(await shrinkImage(f)); } catch { toast(tr('Не получилось открыть картинку')); }
           }} />
         </label>
-        {image && <button type="button" className="link-btn" onClick={() => setImage(undefined)}>убрать</button>}
+        {image && <button type="button" className="link-btn" onClick={() => setImage(undefined)}>{tr('убрать')}</button>}
         <span className="spacer" />
-        {onCancel && <button type="button" className="link-btn" onClick={onCancel}>Отмена</button>}
-        <Button icon="check" disabled={busy || !text.trim()} onClick={send}>{busy ? 'Отправляем…' : sendLabel}</Button>
+        {onCancel && <button type="button" className="link-btn" onClick={onCancel}>{tr('Отмена')}</button>}
+        <Button icon="check" disabled={busy || !text.trim()} onClick={send}>{busy ? tr('Отправляем…') : sendLabel}</Button>
       </div>
     </div>
   );
@@ -87,9 +88,9 @@ export function TesterPanel() {
   useEffect(() => { loadChecks().then((r) => setChecks(r.ok ? r.data.checks : [])); }, []);
   useEffect(() => {
     if (!RATINGS_API) return;
-    fetch(`${RATINGS_API}/version`).then((r) => (r.ok ? r.json() : null)).then((j) => setServer(j?.version ?? 'нет связи')).catch(() => setServer('нет связи'));
+    fetch(`${RATINGS_API}/version`).then((r) => (r.ok ? r.json() : null)).then((j) => setServer(j?.version ?? tr('нет связи'))).catch(() => setServer(tr('нет связи')));
   }, []);
-  const syncText = sync.state === 'off' ? 'выключена' : sync.state === 'error' ? `ошибка: ${sync.error ?? ''}` : sync.at ? `${sync.state === 'syncing' ? 'идёт' : 'ок'} · ${new Date(sync.at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : sync.state;
+  const syncText = sync.state === 'off' ? tr('выключена') : sync.state === 'error' ? tr('ошибка: {0}', sync.error ?? '') : sync.at ? `${sync.state === 'syncing' ? tr('идёт') : tr('ок')} · ${new Date(sync.at).toLocaleString(intlLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : sync.state;
   useEffect(() => { setDiagExtra({ server, sync: syncText }); }, [server, syncText]);
 
   const answer = async (c: CheckItem, state: 'ok' | 'bug', text?: string, image?: string) => {
@@ -97,37 +98,37 @@ export function TesterPanel() {
     if (!r.ok) { toast(r.error); return false; }
     setChecks(r.data.checks); setProblem(null);
     platform.haptic('success');
-    toast(state === 'ok' ? 'Спасибо! Отметили, что работает' : 'Спасибо! Проблема отправлена разработчику');
+    toast(state === 'ok' ? tr('Спасибо! Отметили, что работает') : tr('Спасибо! Проблема отправлена разработчику'));
     return true;
   };
 
   return (
-    <Panel kind="tester" title="Панель тестировщика" hint="Всё, что вы отправите, придёт разработчику в Telegram вместе с версией и устройством."
-      summary={checks?.length ? `Проверить: ${checks.filter((c) => !c.mine).length} из ${checks.length}` : 'Сообщить об ошибке, диагностика'}>
-      <Section title="Что проверить">
-        {checks === null && <p className="muted pad">Загружаем…</p>}
-        {checks?.length === 0 && <p className="muted pad">Сейчас проверять нечего — когда появится новая версия, здесь будет список.</p>}
+    <Panel kind="tester" title={tr('Панель тестировщика')} hint={tr('Всё, что вы отправите, придёт разработчику в Telegram вместе с версией и устройством.')}
+      summary={checks?.length ? tr('Проверить: {0} из {1}', checks.filter((c) => !c.mine).length, checks.length) : tr('Сообщить об ошибке, диагностика')}>
+      <Section title={tr('Что проверить')}>
+        {checks === null && <p className="muted pad">{tr('Загружаем…')}</p>}
+        {checks?.length === 0 && <p className="muted pad">{tr('Сейчас проверять нечего — когда появится новая версия, здесь будет список.')}</p>}
         {checks?.map((c) => (
           <div key={c.id} className={'check-row' + (c.mine ? ` done-${c.mine}` : '')}>
             <div className="check-text">{c.text}</div>
             <div className="check-actions">
-              <button type="button" className={'chip' + (c.mine === 'ok' ? ' on' : '')} aria-pressed={c.mine === 'ok'} onClick={() => answer(c, 'ok')}>✓ Работает</button>
-              <button type="button" className={'chip warn' + (c.mine === 'bug' ? ' on' : '')} aria-pressed={c.mine === 'bug'} onClick={() => setProblem(problem === c.id ? null : c.id)}>⚠ Есть проблема</button>
+              <button type="button" className={'chip' + (c.mine === 'ok' ? ' on' : '')} aria-pressed={c.mine === 'ok'} onClick={() => answer(c, 'ok')}>{tr('✓ Работает')}</button>
+              <button type="button" className={'chip warn' + (c.mine === 'bug' ? ' on' : '')} aria-pressed={c.mine === 'bug'} onClick={() => setProblem(problem === c.id ? null : c.id)}>{tr('⚠ Есть проблема')}</button>
             </div>
             {problem === c.id && (
-              <ReportForm id={`check-${c.id}`} placeholder="Что пошло не так? Что вы делали перед этим?" sendLabel="Отправить проблему"
+              <ReportForm id={`check-${c.id}`} placeholder={tr('Что пошло не так? Что вы делали перед этим?')} sendLabel={tr('Отправить проблему')}
                 onCancel={() => setProblem(null)} onSend={(t, img) => answer(c, 'bug', t, img)} />
             )}
           </div>
         ))}
       </Section>
 
-      <Section title="Сообщить об ошибке">
-        <ReportForm id="bug-report" placeholder="Опишите, что случилось и как это повторить. Можно приложить скриншот."
+      <Section title={tr('Сообщить об ошибке')}>
+        <ReportForm id="bug-report" placeholder={tr('Опишите, что случилось и как это повторить. Можно приложить скриншот.')}
           onSend={async (t, img) => {
             const r = await sendReport(t, img);
             if (!r.ok) { toast(r.error); return false; }
-            platform.haptic('success'); toast('Спасибо! Отправили разработчику');
+            platform.haptic('success'); toast(tr('Спасибо! Отправили разработчику'));
             return true;
           }} />
       </Section>
@@ -136,12 +137,12 @@ export function TesterPanel() {
 
       <TiltCheck />
 
-      <Section title="Диагностика">
+      <Section title={tr('Диагностика')}>
         <dl className="diag">
           {diagnostics({ server, sync: syncText }).map((d) => <div key={d.label}><dt>{d.label}</dt><dd>{d.value}</dd></div>)}
         </dl>
         <div className="pad">
-          <Button kind="secondary" icon="copy" onClick={async () => { if (await copyText(diagText())) toast('Отчёт скопирован'); }}>Скопировать отчёт</Button>
+          <Button kind="secondary" icon="copy" onClick={async () => { if (await copyText(diagText())) toast(tr('Отчёт скопирован')); }}>{tr('Скопировать отчёт')}</Button>
         </div>
       </Section>
     </Panel>
@@ -165,20 +166,20 @@ function TiltCheck() {
   const g = r && gravityOf(r.beta, r.gamma);
   const deg = (v: number) => `${Math.round((v * 180) / Math.PI)}°`;
   return (
-    <Section title="Датчик наклона">
-      <p className="muted pad small-note">Включите и покрутите телефон: «Поворот» — как телефон повёрнут, как руль (0° — прямо, вправо — плюс), «К небу» — насколько экран смотрит вверх (0% — телефон стоит вертикально, 100% — лежит на столе).</p>
+    <Section title={tr('Датчик наклона')}>
+      <p className="muted pad small-note">{tr('Включите и покрутите телефон: «Поворот» — как телефон повёрнут, как руль (0° — прямо, вправо — плюс), «К небу» — насколько экран смотрит вверх (0% — телефон стоит вертикально, 100% — лежит на столе).')}</p>
       {on && (
         <dl className="diag">
-          <div><dt>Источник</dt><dd>{r ? `${tiltInfo.source === 'telegram' ? 'Telegram' : 'браузер'}${tiltInfo.units ? `, ${tiltInfo.units}` : ''}` : 'ждём данных…'}</dd></div>
+          <div><dt>{tr('Источник')}</dt><dd>{r ? `${tiltInfo.source === 'telegram' ? 'Telegram' : tr('браузер')}${tiltInfo.units ? `, ${tiltInfo.units}` : ''}` : tr('ждём данных…')}</dd></div>
           {r && g && <>
-            <div><dt>Углы</dt><dd>β {Math.round(r.beta)}°, γ {Math.round(r.gamma)}°</dd></div>
-            <div><dt>Поворот</dt><dd>{deg(rollOf(g))}</dd></div>
-            <div><dt>К небу</dt><dd>{Math.round(lookOf(g) * 100)}%</dd></div>
+            <div><dt>{tr('Углы')}</dt><dd>β {Math.round(r.beta)}°, γ {Math.round(r.gamma)}°</dd></div>
+            <div><dt>{tr('Поворот')}</dt><dd>{deg(rollOf(g))}</dd></div>
+            <div><dt>{tr('К небу')}</dt><dd>{Math.round(lookOf(g) * 100)}%</dd></div>
           </>}
         </dl>
       )}
       <div className="pad">
-        <Button kind="secondary" onClick={() => { void requestTiltPermission(); setOn((v) => !v); }}>{on ? 'Остановить' : 'Проверить наклон'}</Button>
+        <Button kind="secondary" onClick={() => { void requestTiltPermission(); setOn((v) => !v); }}>{on ? tr('Остановить') : tr('Проверить наклон')}</Button>
       </div>
     </Section>
   );
@@ -189,14 +190,14 @@ function HolidayPreview() {
   const [v, setV] = useState<HolidayPreviewValue>(getPreview);
   const pick = (x: HolidayPreviewValue) => { platform.haptic('select'); setPreview(x); setV(x); };
   return (
-    <Section title="Праздничное оформление">
-      <p className="muted pad small-note">Само включается за пару дней до праздника и держится пару дней после. Здесь можно посмотреть любое заранее — только на этом устройстве.</p>
+    <Section title={tr('Праздничное оформление')}>
+      <p className="muted pad small-note">{tr('Само включается за пару дней до праздника и держится пару дней после. Здесь можно посмотреть любое заранее — только на этом устройстве.')}</p>
       <div className="chips pad holiday-picks">
-        {([['auto', 'По дате'], ...HOLIDAYS.map((h) => [h.id, h.label]), ['off', 'Выключить']] as [HolidayPreviewValue, string][]).map(([id, label]) => (
+        {([['auto', tr('По дате')], ...HOLIDAYS.map((h) => [h.id, h.label]), ['off', tr('Выключить')]] as [HolidayPreviewValue, string][]).map(([id, label]) => (
           <button key={id} type="button" className={'chip' + (v === id ? ' on' : '')} aria-pressed={v === id} onClick={() => pick(id)}>{label}</button>
         ))}
       </div>
-      {v === 'newyear' && <div className="pad"><Button kind="secondary" onClick={playFireworks}>Запустить салют</Button></div>}
+      {v === 'newyear' && <div className="pad"><Button kind="secondary" onClick={playFireworks}>{tr('Запустить салют')}</Button></div>}
     </Section>
   );
 }
@@ -208,18 +209,18 @@ export function OwnerChecks({ checks, onChange }: { checks: AdminData['checks'];
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const act = async (action: 'check_add' | 'check_remove' | 'check_clear', id?: string) => {
-    if (action === 'check_clear' && !(await platform.confirm('Очистить весь список вместе с ответами тестировщиков?'))) return;
-    if (action === 'check_remove' && !(await platform.confirm('Убрать этот пункт и ответы на него?'))) return;
+    if (action === 'check_clear' && !(await platform.confirm(tr('Очистить весь список вместе с ответами тестировщиков?')))) return;
+    if (action === 'check_remove' && !(await platform.confirm(tr('Убрать этот пункт и ответы на него?')))) return;
     setBusy(true);
     const next = await adminCall({ action, note: action === 'check_add' ? text : undefined, what: id });
     setBusy(false);
     if (next) { onChange(next); if (action === 'check_add') setText(''); platform.haptic('success'); }
-    else toast(`Не получилось — ${serverTrouble()}`);
+    else toast(tr('Не получилось — {0}', serverTrouble()));
   };
   const list = checks ?? [];
   return (
-    <Section title="Что проверить тестировщикам" aside={list.length ? <span className="tag">{list.length}</span> : undefined}>
-      <p className="muted pad small-note">Тестировщики видят этот список и отвечают «работает» или «есть проблема». Каждый ответ приходит вам сообщением от бота.</p>
+    <Section title={tr('Что проверить тестировщикам')} aside={list.length ? <span className="tag">{list.length}</span> : undefined}>
+      <p className="muted pad small-note">{tr('Тестировщики видят этот список и отвечают «работает» или «есть проблема». Каждый ответ приходит вам сообщением от бота.')}</p>
       {list.map((c) => (
         <div key={c.id} className="check-row owner">
           <button type="button" className="check-text as-btn" onClick={() => setOpen(open === c.id ? null : c.id)}>
@@ -228,19 +229,19 @@ export function OwnerChecks({ checks, onChange }: { checks: AdminData['checks'];
           </button>
           {open === c.id && (
             <div className="check-answers">
-              {(c.answers ?? []).length === 0 && <p className="muted small-note">Пока никто не ответил.</p>}
+              {(c.answers ?? []).length === 0 && <p className="muted small-note">{tr('Пока никто не ответил.')}</p>}
               {(c.answers ?? []).map((a, i) => (
                 <p key={i} className="small-note"><b>{a.state === 'ok' ? '✓' : '⚠'} {a.who}</b>{a.note ? ` — ${a.note}` : ''}</p>
               ))}
-              <button type="button" className="link-btn danger" disabled={busy} onClick={() => act('check_remove', c.id)}>Убрать пункт</button>
+              <button type="button" className="link-btn danger" disabled={busy} onClick={() => act('check_remove', c.id)}>{tr('Убрать пункт')}</button>
             </div>
           )}
         </div>
       ))}
-      <textarea id="check-new" className="notes" rows={2} aria-label="Новая проверка" placeholder="Например: колд брю — сообщение от бота приходит, когда время вышло" value={text} maxLength={200} onChange={(e) => setText(e.target.value)} />
+      <textarea id="check-new" className="notes" rows={2} aria-label={tr('Новая проверка')} placeholder={tr('Например: колд брю — сообщение от бота приходит, когда время вышло')} value={text} maxLength={200} onChange={(e) => setText(e.target.value)} />
       <div className="site-actions">
-        <Button icon="plus" disabled={busy || !text.trim()} onClick={() => act('check_add')}>Добавить пункт</Button>
-        {list.length > 0 && <Button kind="secondary" disabled={busy} onClick={() => act('check_clear')}>Очистить список</Button>}
+        <Button icon="plus" disabled={busy || !text.trim()} onClick={() => act('check_add')}>{tr('Добавить пункт')}</Button>
+        {list.length > 0 && <Button kind="secondary" disabled={busy} onClick={() => act('check_clear')}>{tr('Очистить список')}</Button>}
       </div>
     </Section>
   );

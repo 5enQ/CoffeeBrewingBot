@@ -1,3 +1,4 @@
+import { tr } from '../i18n';
 /**
  * Coffee, water and ratio are tied by one rule: water = coffee × ratio.
  * One of them is locked (ratio by default); editing either of the other two adjusts the third.
@@ -50,4 +51,4 @@ export function saveLock(methodId: string, lock: Lock) {
   try { const all = JSON.parse(localStorage.getItem(KEY) || '{}'); all[methodId] = lock; localStorage.setItem(KEY, JSON.stringify(all)); } catch { /* no storage */ }
 }
 
-export const LOCKED_TEXT: Record<Lock, string> = { dose: 'Кофе закреплён', water: 'Вода закреплена', ratio: 'Пропорция закреплена' };
+export const LOCKED_TEXT: Record<Lock, string> = { dose: tr('Кофе закреплён'), water: tr('Вода закреплена'), ratio: tr('Пропорция закреплена') };

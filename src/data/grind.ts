@@ -3,14 +3,15 @@
  *  hand — in clicks, electronic — in microns (µm), mechanical — as before, in words or its own scale.
  */
 import type { Gear } from './gear';
+import { intlLocale, tr } from '../i18n';
 
 export type GrindType = 'manual' | 'electric' | 'mechanical';
 export type GrindUnit = 'clicks' | 'um';
 
 export const GRIND_TYPES: { id: GrindType; label: string; hint: string }[] = [
-  { id: 'manual', label: 'Ручная', hint: 'Помол в щелчках' },
-  { id: 'electric', label: 'Электронная', hint: 'Помол в микронах, µm' },
-  { id: 'mechanical', label: 'Механическая', hint: 'Помол словами или по своей шкале' },
+  { id: 'manual', label: tr('Ручная'), hint: tr('Помол в щелчках') },
+  { id: 'electric', label: tr('Электронная'), hint: tr('Помол в микронах, µm') },
+  { id: 'mechanical', label: tr('Механическая'), hint: tr('Помол словами или по своей шкале') },
 ];
 
 /** Popular hand grinders — the type is set automatically when picking a model from suggestions */
@@ -20,7 +21,7 @@ export const guessGrindType = (name: string): GrindType | undefined => (MANUAL.t
 export const unitOf = (t?: GrindType): GrindUnit | null => (t === 'manual' ? 'clicks' : t === 'electric' ? 'um' : null);
 
 export const GRIND_RULES: Record<GrindUnit, { step: number; min: number; max: number; def: number; short: string }> = {
-  clicks: { step: 1, min: 0, max: 200, def: 20, short: 'щелч.' },
+  clicks: { step: 1, min: 0, max: 200, def: 20, short: tr('щелч.') },
   um: { step: 10, min: 50, max: 2000, def: 600, short: 'µm' },
 };
 
@@ -32,7 +33,7 @@ const plural = (n: number, f: [string, string, string]) => {
 /** "22 щелчка", "650 µm" — how grind is stored in a brew as text and shown everywhere */
 export function fmtGrind(value: number, unit: GrindUnit) {
   if (unit === 'um') return `${Math.round(value)} µm`;
-  return `${value} ${plural(value, ['щелчок', 'щелчка', 'щелчков'])}`;
+  return `${value} ${plural(value, [tr('щелчок'), tr('щелчка'), tr('щелчков')])}`;
 }
 
 /** Type of the grinder chosen for the brew (from the gear list) */
@@ -59,4 +60,4 @@ export function grinderMileage(grinderId: string, brews: { gear?: { id: string }
 }
 
 /** "850 г", "12,4 кг" */
-export const fmtMass = (g: number) => (g < 1000 ? `${g} г` : `${(Math.round(g / 100) / 10).toLocaleString('ru-RU')} кг`);
+export const fmtMass = (g: number) => (g < 1000 ? tr('{0} г', g) : tr('{0} кг', (Math.round(g / 100) / 10).toLocaleString(intlLocale())));

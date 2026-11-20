@@ -15,37 +15,40 @@ import { METHODS, fmtTime, methodById, parseTime } from './methods';
 import { catById } from './gear';
 import { beanTitle } from '../screens/beanUtils';
 import type { DB } from './store';
+import { N_, tr, UserError } from '../i18n';
 
 export const BACKUP_FORMAT = 'brewbook-md 1';
 
 /* ---------- field labels ---------- */
 
-const LABELS: Record<string, string> = {
-  name: 'Название', roaster: 'Обжарщик', country: 'Страна', region: 'Регион', farm: 'Ферма', producer: 'Производитель',
-  variety: 'Сорт', process: 'Обработка', altitude: 'Высота', harvest: 'Урожай', roastLevel: 'Степень обжарки',
-  roastDate: 'Дата обжарки', weight: 'Вес пачки, г', barcode: 'Штрихкод', link: 'Ссылка', packNotes: 'Дескрипторы обжарщика',
-  comment: 'Комментарий', createdAt: 'Добавлено', isBlend: 'Бленд', parts: 'Состав', share: 'Доля', adjust: 'Поправка остатка, г',
-  finished: 'Допито', finishedAt: 'Когда допито', sample: 'Пример',
-  date: 'Дата', methodId: 'Метод', beanId: 'Зерно', dose: 'Кофе, г', water: 'Вода, г', temp: 'Температура, °C', grind: 'Помол',
-  time: 'Время', rating: 'Оценка', taste: 'Быстрая оценка вкуса', acidity: 'Кислотность', sweetness: 'Сладость', bitterness: 'Горечь',
-  body: 'Тело', descriptors: 'Дескрипторы', notes: 'Заметки', cupping: 'Каппинг 2004', cva: 'Каппинг CVA', plan: 'Схема',
-  gear: 'Оборудование', author: 'Автор', cat: 'Категория', details: 'Детали', steps: 'Шаги', at: 'Начало', title: 'Заголовок',
-  to: 'Долить до (доля воды)', hint: 'Подсказка', total: 'Время до готовности', ratio: 'Пропорция, г воды на 1 г', about: 'Описание',
-  icon: 'Значок', tips: 'Советы', archived: 'В архиве', username: 'Ник в Telegram', telegram: 'Telegram', badges: 'Значки',
-  kind: 'Тип', detail: 'Уровень', year: 'Год', shareTelegram: 'Делиться ссылкой на Telegram', shareBadges: 'Делиться значками',
-  shareNotes: 'Делиться заметками', featured: 'Витрина значков', layout: 'Вид интерфейса',
-  mode: 'Вид оценки', cupVolume: 'Объём чашки, мл', cups: 'Чашки', purpose: 'Цель', samples: 'Образцы', code: 'Код',
-  affective: 'Аффективная оценка', descriptive: 'Дескриптивная оценка', extrinsic: 'Внешняя информация', scores: 'Баллы',
-  nonUniform: 'Неоднородные чашки', defective: 'Дефектные чашки', defectType: 'Тип дефекта', roast: 'Обжарка на глаз',
-  intensity: 'Интенсивность', olfactory: 'Запах', retronasal: 'Вкус ретроназально', mainTastes: 'Основные вкусы',
-  mouthfeel: 'Тактильность', checked: 'Отмечено', fragrance: 'Сухой аромат', aroma: 'Аромат', flavor: 'Вкус',
-  aftertaste: 'Послевкусие', overall: 'Общее', balance: 'Баланс', defects: 'Дефекты', uniformity: 'Однородность',
-  cleanCup: 'Чистота чашки', recipeId: 'Свой рецепт', pinned: 'Закреплённые методы', tiles: 'Плитки методов', order: 'Порядок', size: 'Размер плиток', rated: 'Мои оценки рецептов друзей',
-  seenAch: 'Показанные достижения', seeded: 'Примеры добавлены', gearSeeded: 'Примеры оборудования добавлены',
-  scales: 'Профиль от обжарщика', grindType: 'Тип кофемолки', grindValue: 'Помол, число', grindUnit: 'Единицы помола', grindBy: 'Помол по кофемолкам', catalogId: 'Лот в каталоге', ferment: 'Ферментация', dripCount: 'Дрипов в коробке', dripWeight: 'Кофе в дрипе, г', assorted: 'Разные дрипы', drips: 'Дрипы', count: 'Штук', dripId: 'Дрип',
-  fromPack: 'Из пачки, г', ppm: 'Минерализация воды, ppm', tds: 'TDS чашки, %', beverage: 'Вес напитка, г', waterPpm: 'Минерализация воды по умолчанию, ppm', loss: 'Потери при помоле, г', cardTheme: 'Фон карточки', cardGear: 'Сетап на карточке',
+const RU_LABELS: Record<string, string> = {
+  name: N_('Название'), roaster: N_('Обжарщик'), country: N_('Страна'), region: N_('Регион'), farm: N_('Ферма'), producer: N_('Производитель'),
+  variety: N_('Сорт'), process: N_('Обработка'), altitude: N_('Высота'), harvest: N_('Урожай'), roastLevel: N_('Степень обжарки'),
+  roastDate: N_('Дата обжарки'), weight: N_('Вес пачки, г'), barcode: N_('Штрихкод'), link: N_('Ссылка'), packNotes: N_('Дескрипторы обжарщика'),
+  comment: N_('Комментарий'), createdAt: N_('Добавлено'), isBlend: N_('Бленд'), parts: N_('Состав'), share: N_('Доля'), adjust: N_('Поправка остатка, г'),
+  finished: N_('Допито'), finishedAt: N_('Когда допито'), sample: N_('Пример'),
+  date: N_('Дата'), methodId: N_('Метод'), beanId: N_('Зерно'), dose: N_('Кофе, г'), water: N_('Вода, г'), temp: N_('Температура, °C'), grind: N_('Помол'),
+  time: N_('Время'), rating: N_('Оценка'), taste: N_('Быстрая оценка вкуса'), acidity: N_('Кислотность'), sweetness: N_('Сладость'), bitterness: N_('Горечь'),
+  body: N_('Тело'), descriptors: N_('Дескрипторы'), notes: N_('Заметки'), cupping: N_('Каппинг 2004'), cva: N_('Каппинг CVA'), plan: N_('Схема'),
+  gear: N_('Оборудование'), author: N_('Автор'), cat: N_('Категория'), details: N_('Детали'), steps: N_('Шаги'), at: N_('Начало'), title: N_('Заголовок'),
+  to: N_('Долить до (доля воды)'), hint: N_('Подсказка'), total: N_('Время до готовности'), ratio: N_('Пропорция, г воды на 1 г'), about: N_('Описание'),
+  icon: N_('Значок'), tips: N_('Советы'), archived: N_('В архиве'), username: N_('Ник в Telegram'), telegram: 'Telegram', badges: N_('Значки'),
+  kind: N_('Тип'), detail: N_('Уровень'), year: N_('Год'), shareTelegram: N_('Делиться ссылкой на Telegram'), shareBadges: N_('Делиться значками'),
+  shareNotes: N_('Делиться заметками'), featured: N_('Витрина значков'), layout: N_('Вид интерфейса'),
+  mode: N_('Вид оценки'), cupVolume: N_('Объём чашки, мл'), cups: N_('Чашки'), purpose: N_('Цель'), samples: N_('Образцы'), code: N_('Код'),
+  affective: N_('Аффективная оценка'), descriptive: N_('Дескриптивная оценка'), extrinsic: N_('Внешняя информация'), scores: N_('Баллы'),
+  nonUniform: N_('Неоднородные чашки'), defective: N_('Дефектные чашки'), defectType: N_('Тип дефекта'), roast: N_('Обжарка на глаз'),
+  intensity: N_('Интенсивность'), olfactory: N_('Запах'), retronasal: N_('Вкус ретроназально'), mainTastes: N_('Основные вкусы'),
+  mouthfeel: N_('Тактильность'), checked: N_('Отмечено'), fragrance: N_('Сухой аромат'), aroma: N_('Аромат'), flavor: N_('Вкус'),
+  aftertaste: N_('Послевкусие'), overall: N_('Общее'), balance: N_('Баланс'), defects: N_('Дефекты'), uniformity: N_('Однородность'),
+  cleanCup: N_('Чистота чашки'), recipeId: N_('Свой рецепт'), pinned: N_('Закреплённые методы'), tiles: N_('Плитки методов'), order: N_('Порядок'), size: N_('Размер плиток'), rated: N_('Мои оценки рецептов друзей'),
+  seenAch: N_('Показанные достижения'), seeded: N_('Примеры добавлены'), gearSeeded: N_('Примеры оборудования добавлены'),
+  scales: N_('Профиль от обжарщика'), grindType: N_('Тип кофемолки'), grindValue: N_('Помол, число'), grindUnit: N_('Единицы помола'), grindBy: N_('Помол по кофемолкам'), catalogId: N_('Лот в каталоге'), ferment: N_('Ферментация'), dripCount: N_('Дрипов в коробке'), dripWeight: N_('Кофе в дрипе, г'), assorted: N_('Разные дрипы'), drips: N_('Дрипы'), count: N_('Штук'), dripId: N_('Дрип'),
+  fromPack: N_('Из пачки, г'), ppm: N_('Минерализация воды, ppm'), tds: N_('TDS чашки, %'), beverage: N_('Вес напитка, г'), waterPpm: N_('Минерализация воды по умолчанию, ppm'), loss: N_('Потери при помоле, г'), cardTheme: N_('Фон карточки'), cardGear: N_('Сетап на карточке'),
 };
-const KEY_OF = Object.fromEntries(Object.entries(LABELS).map(([k, l]) => [l.toLowerCase(), k]));
+/** Field names in the file: in the app's language; a file in either language reads back */
+const LABELS: Record<string, string> = Object.fromEntries(Object.entries(RU_LABELS).map(([k, l]) => [k, tr(l)]));
+const KEY_OF = Object.fromEntries([...Object.entries(RU_LABELS), ...Object.entries(LABELS)].map(([k, l]) => [l.toLowerCase(), k]));
 
 const DATE_KEYS = new Set(['date', 'createdAt', 'finishedAt']);
 const TIME_KEYS = new Set(['time', 'total', 'at']);
@@ -59,18 +62,18 @@ const INLINE_LISTS = new Set(['descriptors', 'olfactory', 'retronasal', 'mainTas
 const pad = (n: number) => String(n).padStart(2, '0');
 const fmtDate = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const NUM = /^-?\d+(?:[.,]\d+)?$/;
-const RESERVED = new Set(['да', 'нет', '—', '[]', '{}', '|']);
+const RESERVED = new Set(['да', 'нет', 'yes', 'no', '—', '[]', '{}', '|']); // i18n-skip: words the file may hold in either language
 
 function scalar(key: string, v: unknown, beanNames: Map<string, string>): string {
   if (v === null || v === undefined) return '—';
-  if (typeof v === 'boolean') return v ? 'да' : 'нет';
+  if (typeof v === 'boolean') return v ? tr('да') : tr('нет');
   if (typeof v === 'number') {
     if (DATE_KEYS.has(key) && v > 1e11) return fmtDate(v);
     if (TIME_KEYS.has(key)) return fmtTime(v);
     return String(Math.round(v * 10000) / 10000).replace('.', ',');
   }
   const s = String(v);
-  if (key === 'beanId') return `${beanNames.get(s) ?? 'зерно'} [${s}]`;
+  if (key === 'beanId') return `${beanNames.get(s) ?? tr('зерно')} [${s}]`;
   if (STRING_KEYS.has(key) && s && !/^\s|\s$|^"/.test(s) && !RESERVED.has(s)) return s;
   if (!s || NUM.test(s) || RESERVED.has(s) || /^\s|\s$|^"/.test(s) || (TIME_KEYS.has(key) && parseTime(s) !== null)) return JSON.stringify(s);
   return s;
@@ -116,44 +119,44 @@ function writeObject(out: string[], indent: string, obj: Record<string, unknown>
 export function toMarkdown(db: DB): string {
   const names = new Map(db.beans.map((b) => [b.id, beanTitle(b)]));
   const out: string[] = [
-    '# Brewbook — резервная копия',
+    tr('# Brewbook — резервная копия'),
     '',
-    `Формат: ${BACKUP_FORMAT} · выгружено ${fmtDate(Date.now())}`,
+    tr('Формат: {0} · выгружено {1}', BACKUP_FORMAT, fmtDate(Date.now())),
     '',
-    'Файл можно править в любом текстовом редакторе и загрузить обратно: Профиль → Резервная копия → Восстановить.',
-    'Заголовки «###» только для удобства — менять можно поля под ними. Поле «id» лучше не трогать: по нему заварки находят свою пачку.',
-    'Чтобы добавить запись, скопируйте похожую целиком вместе с заголовком и поменяйте id на любой новый.',
+    tr('Файл можно править в любом текстовом редакторе и загрузить обратно: Профиль → Резервная копия → Восстановить.'),
+    tr('Заголовки «###» только для удобства — менять можно поля под ними. Поле «id» лучше не трогать: по нему заварки находят свою пачку.'),
+    tr('Чтобы добавить запись, скопируйте похожую целиком вместе с заголовком и поменяйте id на любой новый.'),
     '',
   ];
   const section = (title: string) => out.push(`## ${title}`, '');
   const record = (title: string, obj: Record<string, unknown>) => { out.push(`### ${title}`); writeObject(out, '', obj, names); out.push(''); };
 
-  section('Профиль');
+  section(tr('Профиль'));
   const { ratingStats: _r, serverStats: _s, ...profile } = db.profile;
   void _s;
   void _r;
   writeObject(out, '', profile as Record<string, unknown>, names);
   out.push('');
 
-  section('Полка');
+  section(tr('Полка'));
   db.beans.forEach((b) => record(beanTitle(b), b as unknown as Record<string, unknown>));
 
-  section('Дневник');
-  db.brews.forEach((b) => record(`${fmtDate(b.date)} · ${methodById(b.methodId).name} · ${names.get(b.beanId ?? '') ?? 'без зерна'}`, b as unknown as Record<string, unknown>));
+  section(tr('Дневник'));
+  db.brews.forEach((b) => record(`${fmtDate(b.date)} · ${methodById(b.methodId).name} · ${names.get(b.beanId ?? '') ?? tr('без зерна')}`, b as unknown as Record<string, unknown>));
 
-  section('Оборудование');
+  section(tr('Оборудование'));
   db.gear.forEach((g) => record(`${catById(g.cat).one} · ${g.name}`, g as unknown as Record<string, unknown>));
 
-  section('Мои рецепты');
+  section(tr('Мои рецепты'));
   (db.custom ?? []).forEach((r) => record(r.name, r as unknown as Record<string, unknown>));
 
-  section('Мои методы');
+  section(tr('Мои методы'));
   (db.customMethods ?? []).forEach((m) => record(m.name, m as unknown as Record<string, unknown>));
 
-  section('Последние параметры');
+  section(tr('Последние параметры'));
   Object.entries(db.recipes).forEach(([id, r]) => record(methodById(id).name, { methodId: id, ...r }));
 
-  section('Служебное');
+  section(tr('Служебное'));
   writeObject(out, '', { pinned: db.pinned ?? [], tiles: db.tiles, rated: db.rated ?? {}, seenAch: db.seenAch ?? [], seeded: !!db.seeded, gearSeeded: !!db.gearSeeded }, names);
   out.push('');
   return out.join('\n');
@@ -180,8 +183,8 @@ function parseScalar(key: string, raw: string): unknown {
   if (key === 'beanId') return s; // resolved after all packs are read
   if (INLINE_LISTS.has(key)) return s.split(',').map((x) => x.trim()).filter(Boolean);
   if (STRING_KEYS.has(key)) return s;
-  if (s === 'да') return true;
-  if (s === 'нет') return false;
+  if (s === 'да' || s === 'yes') return true;
+  if (s === 'нет' || s === 'no') return false;
   if (DATE_KEYS.has(key)) { const d = parseDate(s); if (d !== null) return d; }
   if (TIME_KEYS.has(key)) { const t = parseTime(s); if (t !== null) return t; }
   if (NUM.test(s)) return Number(s.replace(',', '.'));
@@ -245,6 +248,9 @@ function toLines(chunk: string[]): Line[] {
 const SECTIONS: Record<string, string> = {
   'профиль': 'profile', 'полка': 'beans', 'дневник': 'brews', 'оборудование': 'gear', 'мои рецепты': 'custom',
   'мои методы': 'customMethods', 'последние параметры': 'recipes', 'служебное': 'meta',
+  // an English copy reads back too
+  'profile': 'profile', 'shelf': 'beans', 'journal': 'brews', 'gear': 'gear', 'my recipes': 'custom',
+  'my methods': 'customMethods', 'last settings': 'recipes', 'service': 'meta',
 };
 
 /** Markdown → data in the same shape as the JSON export */
@@ -281,7 +287,7 @@ export function fromMarkdown(text: string): Record<string, unknown> {
   }
   flush();
 
-  if (!data.beans && !data.brews && !data.profile) throw new Error('Не похоже на резервную копию Brewbook');
+  if (!data.beans && !data.brews && !data.profile) throw new UserError(tr('Не похоже на резервную копию Brewbook'));
 
   const beans = (data.beans ?? []) as Record<string, unknown>[];
   const byName = new Map(beans.map((b) => [String(b.name ?? '').toLowerCase(), b.id]));

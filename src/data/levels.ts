@@ -1,3 +1,4 @@
+import { tr } from '../i18n';
 /**
  * Achievement levels — shared by the app and the server (worker imports this file), so both count the same way.
  * No imports: the worker bundles it as is.
@@ -5,7 +6,7 @@
 
 /** volume — the top method tier: a 3D icon of the method; diamond — for liters */
 export type Tier = 'bronze' | 'silver' | 'gold' | 'volume' | 'diamond';
-export const TIER_LABEL: Record<Tier, string> = { bronze: 'Бронза', silver: 'Серебро', gold: 'Золото', volume: 'Объёмный', diamond: 'Бриллиант' };
+export const TIER_LABEL: Record<Tier, string> = { bronze: tr('Бронза'), silver: tr('Серебро'), gold: tr('Золото'), volume: tr('Объёмный'), diamond: tr('Бриллиант') };
 export const TIER_ORDER: Tier[] = ['bronze', 'silver', 'gold', 'volume', 'diamond'];
 
 export interface Level { tier: Tier; at: number }

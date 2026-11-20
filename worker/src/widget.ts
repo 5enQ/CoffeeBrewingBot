@@ -8,6 +8,7 @@
  *
  * Telegram's limits: HTML up to 32 KB and 4 KB compressed, state up to 1 KB, only in the private chat with the bot.
  */
+import { say, type Lang } from './lang.ts';
 
 /** what the card shows; kept in the chat_data of the message */
 export interface WidgetState {
@@ -140,12 +141,24 @@ const api = (token: string, method: string, body: unknown) => fetch(`https://api
 }).then((r) => r.json() as Promise<TgAnswer>).catch((e): TgAnswer => ({ ok: false, description: String(e) }));
 type TgAnswer = { ok: boolean; result?: { message_id?: number }; description?: string };
 
+/** The same card in English: its words swapped in, nothing else changes */
+const EN_WORDS: [string, string][] = [
+  ['[ +1 ЧАС ]', '[ +1 HOUR ]'], ['+1 час', '+1 hour'], ['"завтра "', '"tomorrow "'],
+  ['НАСТАИВАЕТСЯ', 'STEEPING'], ['"ГОТОВО"', '"READY"'], ['НА ПАУЗЕ', 'PAUSED'], ['ПРОЦЕЖЕНО', 'STRAINED'], ['ЗАПИСАНО', 'SAVED'], ['ОСТАНОВЛЕН', 'STOPPED'],
+  ['"Колд брю"', '"Cold brew"'], ['"Пора процедить"', '"Time to strain"'], ['"Таймер на паузе"', '"Timer paused"'], ['"Процежено ✓"', '"Strained ✓"'],
+  ['"В дневнике ✓"', '"In the journal ✓"'], ['"Таймер сброшен"', '"Timer reset"'], ['"осталось"', '"left"'], ['"настоялся "', '"steeped "'], ['" ч"', '" h"'],
+  ['" · ждёт "', '" · waiting "'], ['"Процедил ✓"', '"Strained ✓"'], ['"Процедить сейчас"', '"Strain now"'], ['"залито в "', '"poured at "'], ['"готово "', '"ready "'],
+  ['"ЗАЛИТО"', '"POURED"'], ['"РЕЦЕПТ"', '"RECIPE"'], ['"ЗЕРНО"', '"BEANS"'], ['"[ ПРОЦЕДИЛ ]"', '"[ STRAINED ]"'], ['"[ ПРОЦЕДИТЬ ]"', '"[ STRAIN ]"'],
+  ['"Слишком часто — подождите немного"', '"Too often — wait a little"'], ['"Не дошло до бота — попробуйте ещё раз"', '"Didn\'t reach the bot — try again"'],
+];
+export const WIDGET_HTML_EN = EN_WORDS.reduce((h, [ru, en]) => h.split(ru).join(en), WIDGET_HTML);
+
 /** the card as a new message; its message id, or null (Telegram refused, or the client is too old for it) */
-export async function sendWidget(token: string, chat: string, w: WidgetState, link: string): Promise<number | null> {
+export async function sendWidget(token: string, chat: string, w: WidgetState, link: string, lang: Lang = 'ru'): Promise<number | null> {
   const r = await api(token, 'sendWidget', {
-    chat_id: Number(chat), html: WIDGET_HTML, chat_data: widgetData(w), allow_queries: true,
-    caption: `${w.t} настаивается — бот напишет, когда будет готов.`,
-    reply_markup: { inline_keyboard: [[{ text: 'Открыть в Brewbook', url: link }]] },
+    chat_id: Number(chat), html: lang === 'en' ? WIDGET_HTML_EN : WIDGET_HTML, chat_data: widgetData(w), allow_queries: true,
+    caption: say(lang, `${w.t} настаивается — бот напишет, когда будет готов.`, `${w.t} is steeping — the bot will write when it's ready.`),
+    reply_markup: { inline_keyboard: [[{ text: say(lang, 'Открыть в Brewbook', 'Open in Brewbook'), url: link }]] },
   });
   if (!r.ok) console.log('sendWidget failed:', r.description);
   return r.ok ? r.result?.message_id ?? null : null;

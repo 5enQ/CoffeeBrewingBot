@@ -16,6 +16,7 @@ import { RateBlock } from '../ui/RateBlock';
 import { myTelegramId, newRid, prepareShare, ratingsEnabled } from '../data/ratings';
 import { useBadges } from '../data/featured';
 import { Button, Empty, Field, Screen, Stars } from '../ui/kit';
+import { intlLocale, tr, trValue } from '../i18n';
 
 
 /** Recipe card — looks the same for the author (preview) and the friend */
@@ -31,7 +32,7 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
         <span className="method-hero-icon"><MethodIcon icon={m.icon} size={40} /></span>
         <div>
           <span className="eyebrow">{m.name}{r.plan ? ` · ${r.plan.name}` : ''}</span>
-          <h2>{beanName || 'Рецепт заварки'}</h2>
+          <h2>{beanName || tr('Рецепт заварки')}</h2>
           {origin && <p className="muted">{origin}</p>}
         </div>
       </header>
@@ -39,19 +40,19 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
       <AuthorBlock author={r.author} />
 
       <dl className="param-grid">
-        <div><dt>Кофе</dt><dd>{fmtNum(r.dose, 2)} г</dd></div>
-        <div><dt>{m.yieldLabel ?? 'Вода'}</dt><dd>{fmtNum(r.water)} г</dd></div>
-        <div><dt>Пропорция</dt><dd>{fmtRatio(r.water / r.dose)}</dd></div>
-        <div><dt>Температура</dt><dd>{r.temp ? `${fmtNum(r.temp)}°C` : 'холодная'}</dd></div>
-        <div><dt>Время</dt><dd>{fmtTime(r.time)}</dd></div>
-        <div><dt>Помол</dt><dd className="dd-text">{r.grind || '—'}</dd></div>
-        {r.ppm !== undefined && <div><dt>Вода</dt><dd>{r.ppm}{'\u00a0'}ppm</dd></div>}
+        <div><dt>{tr('Кофе')}</dt><dd>{tr('{0} г', fmtNum(r.dose, 2))}</dd></div>
+        <div><dt>{m.yieldLabel ?? tr('Вода')}</dt><dd>{tr('{0} г', fmtNum(r.water))}</dd></div>
+        <div><dt>{tr('Пропорция')}</dt><dd>{fmtRatio(r.water / r.dose)}</dd></div>
+        <div><dt>{tr('Температура')}</dt><dd>{r.temp ? `${fmtNum(r.temp)}°C` : tr('холодная')}</dd></div>
+        <div><dt>{tr('Время')}</dt><dd>{fmtTime(r.time)}</dd></div>
+        <div><dt>{tr('Помол')}</dt><dd className="dd-text">{r.grind || '—'}</dd></div>
+        {r.ppm !== undefined && <div><dt>{tr('Вода')}</dt><dd>{r.ppm}{'\u00a0'}ppm</dd></div>}
         {r.tds !== undefined && <div><dt>TDS</dt><dd>{fmtNum(r.tds, 2)}{'\u00a0'}%</dd></div>}
       </dl>
 
       {r.gear.length > 0 && (
         <div className="recipe-block">
-          <h3>Оборудование</h3>
+          <h3>{tr('Оборудование')}</h3>
           <ul className="gear-ul">
             {r.gear.map((g, i) => <li key={i}><span>{catById(g.cat).one}</span><b>{g.name}{g.details && <small> · {g.details}</small>}</b></li>)}
           </ul>
@@ -60,7 +61,7 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
 
       {r.bean?.isBlend && (r.bean.parts ?? []).length > 0 && (
         <div className="recipe-block">
-          <h3>Состав бленда</h3>
+          <h3>{tr('Состав бленда')}</h3>
           <ul className="gear-ul">
             {blendLines(r.bean).map((l, i) => <li key={i}><span>{l.share || '—'}</span><b>{l.text}</b></li>)}
           </ul>
@@ -69,40 +70,40 @@ export function RecipeCard({ r }: { r: SharedRecipe }) {
 
       {r.bean && (r.bean.process || r.bean.variety || r.bean.roaster || r.bean.packNotes) && (
         <div className="recipe-block">
-          <h3>Зерно</h3>
+          <h3>{tr('Зерно')}</h3>
           <ul className="gear-ul">
-            {r.bean.process && <li><span>Обработка</span><b>{r.bean.process}</b></li>}
-            {r.bean.variety && <li><span>Сорт</span><b>{r.bean.variety}</b></li>}
-            {r.bean.altitude && <li><span>Высота</span><b>{r.bean.altitude}</b></li>}
-            {r.bean.roastLevel && <li><span>Обжарка</span><b>{r.bean.roastLevel}</b></li>}
-            {r.bean.roaster && <li><span>Обжарщик</span><b>{r.bean.roaster}</b></li>}
-            {r.bean.packNotes && <li><span>На пачке</span><b>{r.bean.packNotes}</b></li>}
+            {r.bean.process && <li><span>{tr('Обработка')}</span><b>{r.bean.process}</b></li>}
+            {r.bean.variety && <li><span>{tr('Сорт')}</span><b>{r.bean.variety}</b></li>}
+            {r.bean.altitude && <li><span>{tr('Высота')}</span><b>{r.bean.altitude}</b></li>}
+            {r.bean.roastLevel && <li><span>{tr('Обжарка')}</span><b>{trValue(r.bean.roastLevel)}</b></li>}
+            {r.bean.roaster && <li><span>{tr('Обжарщик')}</span><b>{r.bean.roaster}</b></li>}
+            {r.bean.packNotes && <li><span>{tr('На пачке')}</span><b>{r.bean.packNotes}</b></li>}
           </ul>
         </div>
       )}
 
       <div className="recipe-block">
-        <h3>{r.plan ? `Шаги · ${r.plan.name}` : 'Шаги'}</h3>
+        <h3>{r.plan ? tr('Шаги · {0}', r.plan.name) : tr('Шаги')}</h3>
         <ol className={'steps-preview compact' + (plan.total >= 3600 ? ' long' : '')}>
           {plan.steps.map((s, i) => (
-            <li key={i}><time>{fmtTime(s.at)}</time><div><b>{s.title}</b>{s.to !== undefined && <span className="pour">до {fmtNum(r.water * s.to, 0)} г</span>}{s.hint && <p>{s.hint}</p>}</div></li>
+            <li key={i}><time>{fmtTime(s.at)}</time><div><b>{s.title}</b>{s.to !== undefined && <span className="pour">{tr('до {0} г', fmtNum(r.water * s.to, 0))}</span>}{s.hint && <p>{s.hint}</p>}</div></li>
           ))}
-          <li className="done"><time>{fmtTime(plan.total)}</time><div><b>Готово</b></div></li>
+          <li className="done"><time>{fmtTime(plan.total)}</time><div><b>{tr('Готово')}</b></div></li>
         </ol>
       </div>
 
       {(r.rating > 0 || r.descriptors.length > 0 || r.score) && (
         <div className="recipe-block">
-          <h3>Вкус</h3>
+          <h3>{tr('Вкус')}</h3>
           <div className="recipe-taste">
             {r.rating > 0 && r.score === undefined && <Stars value={r.rating} size={18} />}
-            {r.score !== undefined && <span className="score-inline">каппинг <b>{fmtNum(r.score, 2)}</b></span>}
+            {r.score !== undefined && <span className="score-inline">{tr('каппинг')} <b>{fmtNum(r.score, 2)}</b></span>}
           </div>
-          {r.descriptors.length > 0 && <div className="chips static">{r.descriptors.map((d) => <span key={d} className="chip on" data-tone={toneOf(d)}>{d}</span>)}</div>}
+          {r.descriptors.length > 0 && <div className="chips static">{r.descriptors.map((d) => <span key={d} className="chip on" data-tone={toneOf(d)}>{trValue(d)}</span>)}</div>}
         </div>
       )}
 
-      {r.notes && <div className="recipe-block"><h3>Заметки</h3><p className="note-text flush">{r.notes}</p></div>}
+      {r.notes && <div className="recipe-block"><h3>{tr('Заметки')}</h3><p className="note-text flush">{r.notes}</p></div>}
     </article>
   );
 }
@@ -151,7 +152,7 @@ export function ShareScreen({ id }: { id: string }) {
     return () => { alive = false; };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!b || !recipe) return <Screen title="Поделиться"><Empty title="Нет такой записи" text="Её удалили." /></Screen>;
+  if (!b || !recipe) return <Screen title={tr('Поделиться')}><Empty title={tr('Нет такой записи')} text={tr('Её удалили.')} /></Screen>;
 
   const send = async () => {
     if (prepared && platform.shareMessage) {
@@ -164,43 +165,43 @@ export function ShareScreen({ id }: { id: string }) {
     if (res !== 'failed') track('share.recipe');
     platform.haptic(res === 'failed' ? 'error' : 'success');
     platform.haptic(res === 'failed' ? 'error' : 'success');
-    if (res === 'copied') toast('Рецепт и ссылка скопированы — вставьте в чат');
-    if (res === 'failed') toast('Не получилось отправить — скопируйте рецепт');
+    if (res === 'copied') toast(tr('Рецепт и ссылка скопированы — вставьте в чат'));
+    if (res === 'failed') toast(tr('Не получилось отправить — скопируйте рецепт'));
   };
   const copy = async () => {
     const ok = await copyText(`${recipeText(recipe)}\n\n${link}`);
     platform.haptic(ok ? 'success' : 'error');
-    toast(ok ? 'Рецепт скопирован' : 'Не получилось скопировать');
+    toast(ok ? tr('Рецепт скопирован') : tr('Не получилось скопировать'));
   };
 
   return (
-    <Screen title="Поделиться" subtitle="Так рецепт увидит друг"
+    <Screen title={tr('Поделиться')} subtitle={tr('Так рецепт увидит друг')}
       footer={<div className="footer-actions">
-        <button type="button" className="round-btn" onClick={copy} disabled={!link} aria-label="Скопировать рецепт"><Icon name="copy" /></button>
-        <Button icon="share" wide onClick={send} disabled={!link}>{platform.kind === 'telegram' ? 'Отправить в Telegram' : 'Поделиться'}</Button>
+        <button type="button" className="round-btn" onClick={copy} disabled={!link} aria-label={tr('Скопировать рецепт')}><Icon name="copy" /></button>
+        <Button icon="share" wide onClick={send} disabled={!link}>{platform.kind === 'telegram' ? tr('Отправить в Telegram') : tr('Поделиться')}</Button>
       </div>}>
       {!b.author && (
         <div className="group">
           {!profile.name.trim() && (
-            <Field label="Ваше имя" id="share-name" placeholder="как подписать рецепт" value={profile.name}
+            <Field label={tr('Ваше имя')} id="share-name" placeholder={tr('как подписать рецепт')} value={profile.name}
               onChange={(e) => saveProfile({ ...profile, name: e.target.value })} />
           )}
-          <Toggle id="share-tg" label="Ссылка на мой Telegram" checked={profile.shareTelegram && !!tg} disabled={!tg}
-            hint={tg ? `Друг сможет открыть @${tg}` : 'Укажите username в профиле'}
+          <Toggle id="share-tg" label={tr('Ссылка на мой Telegram')} checked={profile.shareTelegram && !!tg} disabled={!tg}
+            hint={tg ? tr('Друг сможет открыть @{0}', tg) : tr('Укажите username в профиле')}
             onChange={(v) => saveProfile({ ...profile, shareTelegram: v })} />
           {b.notes.trim() && (
-            <Toggle id="share-notes" label="Мои заметки" checked={withNotes}
-              hint={withNotes ? `«${b.notes.trim().slice(0, 60)}${b.notes.trim().length > 60 ? '…' : ''}»` : 'Друг не увидит ваши заметки'}
+            <Toggle id="share-notes" label={tr('Мои заметки')} checked={withNotes}
+              hint={withNotes ? `«${b.notes.trim().slice(0, 60)}${b.notes.trim().length > 60 ? '…' : ''}»` : tr('Друг не увидит ваши заметки')}
               onChange={(v) => saveProfile({ ...profile, shareNotes: v })} />
           )}
-          <Toggle id="share-badges" label="Мои значки" checked={profile.shareBadges && shown.length > 0} disabled={!shown.length}
-            hint={shown.length ? `${shown.map((b) => b.title).join(', ')}` : 'Значки появятся в профиле'}
+          <Toggle id="share-badges" label={tr('Мои значки')} checked={profile.shareBadges && shown.length > 0} disabled={!shown.length}
+            hint={shown.length ? `${shown.map((b) => b.title).join(', ')}` : tr('Значки появятся в профиле')}
             onChange={(v) => saveProfile({ ...profile, shareBadges: v })} />
         </div>
       )}
-      {b.author && <p className="muted pad">Это рецепт {b.author.name || 'друга'} — он уйдёт с указанием исходного автора.</p>}
+      {b.author && <p className="muted pad">{tr('Это рецепт')} {b.author.name || tr('друга')} {tr('— он уйдёт с указанием исходного автора.')}</p>}
       <RecipeCard r={recipe} />
-      <p className="muted pad">Друг получит текст рецепта и ссылку: по ней рецепт откроется в приложении, его можно сохранить в дневник и заварить по шагам.</p>
+      <p className="muted pad">{tr('Друг получит текст рецепта и ссылку: по ней рецепт откроется в приложении, его можно сохранить в дневник и заварить по шагам.')}</p>
     </Screen>
   );
 }
@@ -216,7 +217,7 @@ export function SharedRecipeScreen({ recipe: r }: { recipe: SharedRecipe }) {
     if (!r.bean?.name && !r.bean?.country) return null;
     const same = beans.find((x) => x.name === (r.bean?.name ?? '') && x.roaster === (r.bean?.roaster ?? '') && x.country === (r.bean?.country ?? ''));
     if (same) return same.id;
-    const bean: Bean = { ...emptyBean(), ...r.bean, comment: r.author.name ? `Из рецепта ${r.author.name}` : '' };
+    const bean: Bean = { ...emptyBean(), ...r.bean, comment: r.author.name ? tr('Из рецепта {0}', r.author.name) : '' };
     saveBean(bean);
     return bean.id;
   };
@@ -253,21 +254,21 @@ export function SharedRecipeScreen({ recipe: r }: { recipe: SharedRecipe }) {
   };
 
   return (
-    <Screen title="Рецепт от друга" subtitle={r.date ? new Date(r.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : undefined}
+    <Screen title={tr('Рецепт от друга')} subtitle={r.date ? new Date(r.date).toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long' }) : undefined}
       footer={<div className="footer-actions">
         {savedId
-          ? <Button kind="secondary" icon="journal" onClick={() => { setTab('journal'); push({ name: 'brew', id: savedId }); }}>В дневнике</Button>
-          : <Button kind="secondary" icon="check" onClick={save}>Сохранить</Button>}
-        <Button icon="play" wide onClick={brewIt}>Заварить так же</Button>
+          ? <Button kind="secondary" icon="journal" onClick={() => { setTab('journal'); push({ name: 'brew', id: savedId }); }}>{tr('В дневнике')}</Button>
+          : <Button kind="secondary" icon="check" onClick={save}>{tr('Сохранить')}</Button>}
+        <Button icon="play" wide onClick={brewIt}>{tr('Заварить так же')}</Button>
       </div>}>
       {r.ref && <RateBlock rid={r.ref.rid} author={r.ref.author} authorName={r.author.name} />}
       <RecipeCard r={r} />
       {r.plan && (
         <Button kind="secondary" icon={recipeSaved ? 'check' : 'plus'} onClick={saveRecipeCopy} disabled={recipeSaved}>
-          {recipeSaved ? `Рецепт «${r.plan.name}» в ваших рецептах` : 'Добавить рецепт к своим'}
+          {recipeSaved ? tr('Рецепт «{0}» в ваших рецептах', r.plan.name) : tr('Добавить рецепт к своим')}
         </Button>
       )}
-      <p className="muted pad">«Заварить так же» откроет рецепт с этими параметрами — оборудование выберете своё. Зерно появится на вашей полке без веса — укажете, если купите такую пачку.</p>
+      <p className="muted pad">{tr('«Заварить так же» откроет рецепт с этими параметрами — оборудование выберете своё. Зерно появится на вашей полке без веса — укажете, если купите такую пачку.')}</p>
     </Screen>
   );
 }

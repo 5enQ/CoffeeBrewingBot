@@ -25,6 +25,7 @@ import { MyCardBlock } from './CardScreens';
 import { Toggle } from './Share';
 import { setAppearance, useAppearance } from '../appearance';
 import { OwnerMetrics } from './OwnerMetrics';
+import { chooseLocale, chosenLocale, getLocale, intlLocale, LOCALES, tr, type Locale } from '../i18n';
 
 export function Profile() {
   const store = useStore();
@@ -37,8 +38,8 @@ export function Profile() {
 
   const copy = async () => {
     const json = store.exportMarkdown();
-    try { await navigator.clipboard.writeText(json); setMsg('Резервная копия скопирована в буфер обмена.'); platform.haptic('success'); }
-    catch { setPaste(json); setMsg('Буфер недоступен — копия ниже, выделите и скопируйте вручную.'); }
+    try { await navigator.clipboard.writeText(json); setMsg(tr('Резервная копия скопирована в буфер обмена.')); platform.haptic('success'); }
+    catch { setPaste(json); setMsg(tr('Буфер недоступен — копия ниже, выделите и скопируйте вручную.')); }
   };
 
   const download = () => {
@@ -51,9 +52,9 @@ export function Profile() {
   };
 
   const importText = async (text: string) => {
-    if (!(await platform.confirm('Заменить все текущие данные данными из копии?'))) return;
-    try { store.importBackup(text); setMsg('Данные восстановлены.'); setPaste(''); platform.haptic('success'); }
-    catch (e) { setMsg((e as Error).message || 'Не получилось прочитать копию.'); platform.haptic('error'); }
+    if (!(await platform.confirm(tr('Заменить все текущие данные данными из копии?')))) return;
+    try { store.importBackup(text); setMsg(tr('Данные восстановлены.')); setPaste(''); platform.haptic('success'); }
+    catch (e) { setMsg((e as Error).message || tr('Не получилось прочитать копию.')); platform.haptic('error'); }
   };
 
   const { setRatingStats } = store;
@@ -72,12 +73,12 @@ export function Profile() {
   const gearHint = (g: Gear) => {
     if (g.cat !== 'grinder') return g.details || undefined;
     const m = grinderMileage(g.id, store.brews);
-    const run = m.count ? `смолото ${fmtMass(m.grams)} · ${m.count} ${m.count % 10 === 1 && m.count % 100 !== 11 ? 'заварка' : [2, 3, 4].includes(m.count % 10) && ![12, 13, 14].includes(m.count % 100) ? 'заварки' : 'заварок'}` : '';
+    const run = m.count ? tr('смолото {0} · {1} {2}', fmtMass(m.grams), m.count, m.count % 10 === 1 && m.count % 100 !== 11 ? tr('заварка') : [2, 3, 4].includes(m.count % 10) && ![12, 13, 14].includes(m.count % 100) ? tr('заварки') : tr('заварок')) : '';
     return [g.details, run].filter(Boolean).join(' · ') || undefined;
   };
 
   return (
-    <Screen title="Профиль" root>
+    <Screen title={tr('Профиль')} root>
       <MyCardBlock />
 
       {/* the counters appear with the first brew, pack or device: three zeros say nothing */}
@@ -87,14 +88,14 @@ export function Profile() {
         <div><b><Roll text={String(gear.length)} /></b><span>{plural(gear.length, DEVICES)}</span></div>
       </div>}
 
-      <Section title="Моё оборудование" aside={
-        <button type="button" className="icon-btn" onClick={() => addGear('grinder')} aria-label="Добавить оборудование"><Icon name="plus" /></button>
+      <Section title={tr('Моё оборудование')} aside={
+        <button type="button" className="icon-btn" onClick={() => addGear('grinder')} aria-label={tr('Добавить оборудование')}><Icon name="plus" /></button>
       } plain>
         <div className="gear-list">
           {GEAR_CATS.filter((c) => gear.some((g) => g.cat === c.id)).map((c) => (
             <div key={c.id} className="gear-block">
               <div className="gear-block-head"><span>{c.label}</span>
-                <button type="button" className="link-btn" onClick={() => addGear(c.id)}>Добавить</button>
+                <button type="button" className="link-btn" onClick={() => addGear(c.id)}>{tr('Добавить')}</button>
               </div>
               <div className="group">
                 {gear.filter((g) => g.cat === c.id).map((g) => (
@@ -105,7 +106,7 @@ export function Profile() {
               </div>
             </div>
           ))}
-          {gear.length === 0 && <p className="muted pad">Добавьте кофемолку, воронку или кофемашину — их можно будет отмечать в заварках, и они попадут в рецепт, которым вы поделитесь.</p>}
+          {gear.length === 0 && <p className="muted pad">{tr('Добавьте кофемолку, воронку или кофемашину — их можно будет отмечать в заварках, и они попадут в рецепт, которым вы поделитесь.')}</p>}
           {emptyCats.length > 0 && (
             <div className="chips">
               {emptyCats.map((c) => (
@@ -119,8 +120,8 @@ export function Profile() {
       </Section>
 
       {/* after the equipment, folded: there can be many */}
-      <Section title="Мои рецепты" fold="recipes" count={store.custom.length || undefined} open={pickMethod} aside={
-        <button type="button" className="icon-btn" onClick={() => setPickMethod((v) => !v)} aria-label="Новый рецепт"><Icon name="plus" /></button>
+      <Section title={tr('Мои рецепты')} fold="recipes" count={store.custom.length || undefined} open={pickMethod} aside={
+        <button type="button" className="icon-btn" onClick={() => setPickMethod((v) => !v)} aria-label={tr('Новый рецепт')}><Icon name="plus" /></button>
       } plain>
         {pickMethod && (
           <div className="chips pick-method">
@@ -135,86 +136,87 @@ export function Profile() {
               const m = methodById(r.methodId);
               return (
                 <Row key={r.id} leading={<MethodIcon icon={m.icon} size={24} />} label={r.name}
-                  hint={`${m.name} · ${fmtNum(r.dose, 2)} г → ${fmtNum(r.dose * r.ratio)} г · ${r.steps.length} ${r.steps.length === 1 ? 'шаг' : r.steps.length < 5 ? 'шага' : 'шагов'}${r.author ? ` · от ${r.author.name || '@' + r.author.username}` : ''}`}
+                  hint={tr('{0} · {1} г → {2} г · {3} {4}{5}', m.name, fmtNum(r.dose, 2), fmtNum(r.dose * r.ratio), r.steps.length, r.steps.length === 1 ? tr('шаг') : r.steps.length < 5 ? tr('шага') : tr('шагов'), r.author ? tr(' · от {0}', r.author.name || '@' + r.author.username) : '')}
                   onClick={() => push({ name: 'recipeEdit', isNew: false, recipe: r })}
                   active={sel?.name === 'recipeEdit' && sel.recipe.id === r.id} />
               );
             })}
           </div>
         ) : !pickMethod && (
-          <p className="muted pad">Свои схемы проливов: выберите метод и поменяйте шаги, граммы и время. Рецепт появится на экране метода, по нему пойдёт таймер.</p>
+          <p className="muted pad">{tr('Свои схемы проливов: выберите метод и поменяйте шаги, граммы и время. Рецепт появится на экране метода, по нему пойдёт таймер.')}</p>
         )}
       </Section>
 
       {store.hasSamples && (
-        <Section title="Примеры" plain>
-          <p className="muted pad">Для наглядности добавлены пачки на полке, заварки и оборудование с пометкой «пример».</p>
-          <Button kind="secondary" onClick={async () => { if (await platform.confirm('Удалить все примеры?')) store.removeSamples(); }}>Удалить примеры</Button>
+        <Section title={tr('Примеры')} plain>
+          <p className="muted pad">{tr('Для наглядности добавлены пачки на полке, заварки и оборудование с пометкой «пример».')}</p>
+          <Button kind="secondary" onClick={async () => { if (await platform.confirm(tr('Удалить все примеры?'))) store.removeSamples(); }}>{tr('Удалить примеры')}</Button>
         </Section>
       )}
 
       <SyncSection />
 
-      <Section title="Резервная копия" fold="backup" plain>
-        <p className="muted pad">Копия в формате Markdown — обычный текст с разделами «Полка», «Дневник», «Оборудование». Его можно открыть и поправить в любом редакторе, а потом загрузить обратно. Старые копии в JSON тоже принимаются.</p>
+      <Section title={tr('Резервная копия')} fold="backup" plain>
+        <p className="muted pad">{tr('Копия в формате Markdown — обычный текст с разделами «Полка», «Дневник», «Оборудование». Его можно открыть и поправить в любом редакторе, а потом загрузить обратно. Старые копии в JSON тоже принимаются.')}</p>
         <div className="btn-col">
-          <Button kind="secondary" onClick={copy}>Скопировать текстом</Button>
-          {platform.kind === 'web' && <Button kind="secondary" onClick={download}>Сохранить файлом</Button>}
+          <Button kind="secondary" onClick={copy}>{tr('Скопировать текстом')}</Button>
+          {platform.kind === 'web' && <Button kind="secondary" onClick={download}>{tr('Сохранить файлом')}</Button>}
           <label className="btn btn-secondary">
-            <span>Восстановить из файла</span>
+            <span>{tr('Восстановить из файла')}</span>
             <input type="file" accept=".md,.markdown,.txt,.json,text/markdown,text/plain,application/json" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) importText(await f.text()); }} />
           </label>
         </div>
-        <textarea id="backup-paste" className="notes mono" rows={4} aria-label="Текст резервной копии" placeholder="…или вставьте текст копии сюда" value={paste} onChange={(e) => setPaste(e.target.value)} />
-        {(paste.trim().startsWith('{') || paste.includes('## ')) && <Button onClick={() => importText(paste)}>Восстановить из текста</Button>}
+        <textarea id="backup-paste" className="notes mono" rows={4} aria-label={tr('Текст резервной копии')} placeholder={tr('…или вставьте текст копии сюда')} value={paste} onChange={(e) => setPaste(e.target.value)} />
+        {(paste.trim().startsWith('{') || paste.includes('## ')) && <Button onClick={() => importText(paste)}>{tr('Восстановить из текста')}</Button>}
         {msg && <p className="status">{msg}</p>}
       </Section>
 
-      <Section title="Вид интерфейса" plain>
+      <Section title={tr('Вид интерфейса')} plain>
         {/* one card: each setting is a block with its name, its choice and a line on what it does */}
         <div className="group look-card">
           <div className="look-pick">
-            <span className="row-label">Тема</span>
-            <Segmented label="Тема" value={look.theme} onChange={(v) => setAppearance({ ...look, theme: v })}
-              options={[{ value: 'auto', label: 'Авто' }, { value: 'light', label: 'Светлая' }, { value: 'dark', label: 'Тёмная' }]} />
+            <span className="row-label">{tr('Тема')}</span>
+            <Segmented label={tr('Тема')} value={look.theme} onChange={(v) => setAppearance({ ...look, theme: v })}
+              options={[{ value: 'auto', label: tr('Авто') }, { value: 'light', label: tr('Светлая') }, { value: 'dark', label: tr('Тёмная') }]} />
             <span className="row-hint">
               {look.theme === 'auto'
-                ? `Как на устройстве${platform.kind === 'telegram' ? ' и в Telegram' : ''}.`
-                : `Всегда ${look.theme === 'light' ? 'светлая' : 'тёмная'}, что бы ни стояло на устройстве.`}
+                ? tr('Как на устройстве{0}.', platform.kind === 'telegram' ? tr(' и в Telegram') : '')
+                : tr('Всегда {0}, что бы ни стояло на устройстве.', look.theme === 'light' ? tr('светлая') : tr('тёмная'))}
             </span>
           </div>
-          <Toggle id="contrast" label="Высокая контрастность" hint="Чётче текст, края и разделители — на всех экранах"
+          <Toggle id="contrast" label={tr('Высокая контрастность')} hint={tr('Чётче текст, края и разделители — на всех экранах')}
             checked={look.contrast} onChange={(v) => setAppearance({ ...look, contrast: v })} />
-          <Toggle id="backgrounds-move" label="Анимация фонов" hint="Фоны карточки и праздничное оформление. Выключите, если движение отвлекает"
+          <Toggle id="backgrounds-move" label={tr('Анимация фонов')} hint={tr('Фоны карточки и праздничное оформление. Выключите, если движение отвлекает')}
             checked={!look.still} onChange={(v) => setAppearance({ ...look, still: !v })} />
           <div className="look-pick">
-            <span className="row-label">Раскладка</span>
-            <Segmented label="Раскладка" value={profile.layout ?? 'auto'} onChange={(v) => store.saveProfile({ ...profile, layout: v })}
-              options={[{ value: 'auto', label: 'Авто' }, { value: 'desktop', label: 'Компьютер' }, { value: 'mobile', label: 'Телефон' }]} />
+            <span className="row-label">{tr('Раскладка')}</span>
+            <Segmented label={tr('Раскладка')} value={profile.layout ?? 'auto'} onChange={(v) => store.saveProfile({ ...profile, layout: v })}
+              options={[{ value: 'auto', label: tr('Авто') }, { value: 'desktop', label: tr('Компьютер') }, { value: 'mobile', label: tr('Телефон') }]} />
             <span className="row-hint">
               {(profile.layout ?? 'auto') === 'auto'
-                ? `На компьютере — меню слева и две колонки, на телефоне — вкладки внизу. Две колонки включаются, когда окно шире ${DESKTOP_MIN} px.`
+                ? tr('На компьютере — меню слева и две колонки, на телефоне — вкладки внизу. Две колонки включаются, когда окно шире {0} px.', DESKTOP_MIN)
                 : profile.layout === 'desktop'
-                  ? `Меню слева и две колонки на любом устройстве, когда окно шире ${DESKTOP_MIN} px.`
-                  : 'Всегда как на телефоне: вкладки внизу.'}
+                  ? tr('Меню слева и две колонки на любом устройстве, когда окно шире {0} px.', DESKTOP_MIN)
+                  : tr('Всегда как на телефоне: вкладки внизу.')}
             </span>
           </div>
+          <LanguagePick />
         </div>
         {layoutInfo.desktopClient && layoutInfo.mode === 'mobile' && (profile.layout ?? 'auto') !== 'mobile' && (
           platform.requestFullscreen
-            ? <Button kind="secondary" onClick={() => platform.requestFullscreen?.()}>Развернуть окно на весь экран</Button>
-            : <p className="muted pad">Растяните окно приложения пошире — включится раскладка для компьютера.</p>
+            ? <Button kind="secondary" onClick={() => platform.requestFullscreen?.()}>{tr('Развернуть окно на весь экран')}</Button>
+            : <p className="muted pad">{tr('Растяните окно приложения пошире — включится раскладка для компьютера.')}</p>
         )}
       </Section>
 
-      <Section title="О приложении">
-        <Row label="Платформа" value={{ telegram: 'Telegram', web: 'Браузер', native: 'Приложение' }[platform.kind]} />
-        <Row label="Хранилище" value={store.sync.state !== 'off' ? 'Устройство + облако Telegram' : platform.kind === 'telegram' ? 'Telegram на устройстве' : platform.kind === 'native' ? 'Память приложения' : 'Браузер'} />
-        <Row label="Версия приложения" value={appVersion()} chevron={false} />
+      <Section title={tr('О приложении')}>
+        <Row label={tr('Платформа')} value={{ telegram: 'Telegram', web: tr('Браузер'), native: tr('Приложение') }[platform.kind]} />
+        <Row label={tr('Хранилище')} value={store.sync.state !== 'off' ? tr('Устройство + облако Telegram') : platform.kind === 'telegram' ? tr('Telegram на устройстве') : platform.kind === 'native' ? tr('Память приложения') : tr('Браузер')} />
+        <Row label={tr('Версия приложения')} value={appVersion()} chevron={false} />
         <ServerVersionRow />
         {myTelegramId() && (
-          <Row label="Ваш Telegram ID" value={myTelegramId()} hint="Нажмите, чтобы скопировать"
-            onClick={async () => { if (await copyText(myTelegramId()!)) toast('Скопировано'); }} chevron={false} />
+          <Row label={tr('Ваш Telegram ID')} value={myTelegramId()} hint={tr('Нажмите, чтобы скопировать')}
+            onClick={async () => { if (await copyText(myTelegramId()!)) toast(tr('Скопировано')); }} chevron={false} />
         )}
         {remindersAvailable() && <BotCheckRow />}
       </Section>
@@ -228,11 +230,11 @@ export function Profile() {
 const fmtWhen = (iso?: string | null) => {
   if (!iso) return '';
   const d = new Date(/^\d+$/.test(iso) ? Number(iso) : iso);
-  return isNaN(+d) ? '' : d.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return isNaN(+d) ? '' : d.toLocaleString(intlLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
-const appVersion = () => [import.meta.env.VITE_APP_VERSION || 'разработка', fmtWhen(import.meta.env.VITE_APP_BUILT)].filter(Boolean).join(' · ');
+const appVersion = () => [import.meta.env.VITE_APP_VERSION || tr('разработка'), fmtWhen(import.meta.env.VITE_APP_BUILT)].filter(Boolean).join(' · ');
 
-const SITE_STATUS: Record<SiteInfo['status'], string> = { approved: 'подключён', pending: 'ждёт решения', rejected: 'отклонён' };
+const SITE_STATUS: Record<SiteInfo['status'], string> = { approved: tr('подключён'), pending: tr('ждёт решения'), rejected: tr('отклонён') };
 
 /** Owner only: roaster sites for the shared catalog. Invisible to everyone else (the server answers 403). */
 /** Owner only (the server answers 403 to everyone else): roaster sites and the developers' background */
@@ -246,11 +248,11 @@ function BotCheckRow() {
     platform.haptic(r.ok ? 'success' : 'error');
   };
   return (
-    <Row label="Сообщения от бота" onClick={state === 'busy' ? undefined : run}
-      hint={state === 'idle' ? 'Бот пишет, когда долгий таймер закончится. Нажмите, чтобы проверить'
-        : state === 'busy' ? 'Отправляем тестовое сообщение…'
-        : state === 'ok' ? 'Работает: бот прислал тестовое сообщение в чат'
-        : `Не работает: ${state}`}
+    <Row label={tr('Сообщения от бота')} onClick={state === 'busy' ? undefined : run}
+      hint={state === 'idle' ? tr('Бот пишет, когда долгий таймер закончится. Нажмите, чтобы проверить')
+        : state === 'busy' ? tr('Отправляем тестовое сообщение…')
+        : state === 'ok' ? tr('Работает: бот прислал тестовое сообщение в чат')
+        : tr('Не работает: {0}', state)}
       value={state === 'ok' ? '✓' : undefined} />
   );
 }
@@ -284,18 +286,18 @@ function OwnerTools() {
   if (!data) {
     if (!known) return null;
     return (
-      <Panel kind="owner" title="Панель владельца" hint="Нет связи с сервером." summary={state === 'loading' ? 'Загружаем…' : sessionExpired() ? 'Сессия устарела' : 'Нет связи с сервером'}>
-        <p className="muted pad small-note">{state === 'loading' ? 'Загружаем данные с сервера…' : sessionExpired()
-          ? 'Сервер принимает вход из Telegram сутки с момента открытия, а Brewbook открыт дольше. Закройте его и откройте снова.'
-          : 'Сервер не ответил. Проверьте интернет; если сервер Cloudflare в вашей сети недоступен, помогает VPN.'}</p>
-        {state === 'failed' && <div className="pad"><Button kind="secondary" icon="reset" onClick={load}>Повторить</Button></div>}
+      <Panel kind="owner" title={tr('Панель владельца')} hint={tr('Нет связи с сервером.')} summary={state === 'loading' ? tr('Загружаем…') : sessionExpired() ? tr('Сессия устарела') : tr('Нет связи с сервером')}>
+        <p className="muted pad small-note">{state === 'loading' ? tr('Загружаем данные с сервера…') : sessionExpired()
+          ? tr('Сервер принимает вход из Telegram сутки с момента открытия, а Brewbook открыт дольше. Закройте его и откройте снова.')
+          : tr('Сервер не ответил. Проверьте интернет; если сервер Cloudflare в вашей сети недоступен, помогает VPN.')}</p>
+        {state === 'failed' && <div className="pad"><Button kind="secondary" icon="reset" onClick={load}>{tr('Повторить')}</Button></div>}
       </Panel>
     );
   }
   return (
-    <Panel kind="owner" title="Панель владельца" hint="Видна только вам: метрики, сайты обжарщиков, права людей и проверки для тестировщиков."
-      summary={[data.sites.filter((x) => x.status === 'pending').length ? `новых сайтов: ${data.sites.filter((x) => x.status === 'pending').length}` : '',
-        `людей с правами: ${data.grants.length}`, data.checks?.length ? `проверок: ${data.checks.length}` : ''].filter(Boolean).join(' · ')}>
+    <Panel kind="owner" title={tr('Панель владельца')} hint={tr('Видна только вам: метрики, сайты обжарщиков, права людей и проверки для тестировщиков.')}
+      summary={[data.sites.filter((x) => x.status === 'pending').length ? tr('новых сайтов: {0}', data.sites.filter((x) => x.status === 'pending').length) : '',
+        tr('людей с правами: {0}', data.grants.length), data.checks?.length ? tr('проверок: {0}', data.checks.length) : ''].filter(Boolean).join(' · ')}>
       <OwnerMetrics />
       <RoasterSites sites={data.sites} crawl={data.crawl} onChange={setData} />
       <DevGrants grants={data.grants} onChange={setData} />
@@ -305,10 +307,10 @@ function OwnerTools() {
 }
 
 const GRANTS = [
-  { id: 'beta', label: 'Тестировщик', hint: 'панель тестировщика и особый фон «Тестировщик»; человек сначала соглашается при входе' },
-  { id: 'dev', label: 'Разработчик', hint: 'особый фон «Разработчик»' },
-  { id: 'lighthouse', label: 'Маяк', hint: 'особый фон «Хранитель маяка»' },
-  { id: 'tester', label: 'Все фоны (тест)', hint: 'любой фон любого уровня; бриллиант с № 0, настоящие номера не занимает' },
+  { id: 'beta', label: tr('Тестировщик'), hint: tr('панель тестировщика и особый фон «Тестировщик»; человек сначала соглашается при входе') },
+  { id: 'dev', label: tr('Разработчик'), hint: tr('особый фон «Разработчик»') },
+  { id: 'lighthouse', label: tr('Маяк'), hint: tr('особый фон «Хранитель маяка»') },
+  { id: 'tester', label: tr('Все фоны (тест)'), hint: tr('любой фон любого уровня; бриллиант с № 0, настоящие номера не занимает') },
 ] as const;
 
 /** a person's Telegram link: by @username when known (the person opened the app, or the owner typed it) */
@@ -326,7 +328,7 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
   const act = async (action: 'grant' | 'revoke', id: string, what: string) => {
     const label = GRANTS.find((g) => g.id === what)!.label.toLowerCase();
     const who = grants.find((g) => g.tg === id);
-    if (action === 'revoke' && !(await platform.confirm(`Забрать «${label}» у ${who?.note || who?.name || id}?`))) return;
+    if (action === 'revoke' && !(await platform.confirm(tr('Забрать «{0}» у {1}?', label, who?.note || who?.name || id)))) return;
     setBusy(true);
     let next = await adminCall({ action, tg: id, what });
     if (next && action === 'grant' && newNote.trim() && id === tg) next = await adminCall({ action: 'note', tg: id, note: newNote.trim() });
@@ -334,24 +336,24 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
     if (next) {
       onChange(next); if (action === 'grant' && id === tg) { setTg(''); setNewNote(''); } platform.haptic('success');
       const offered = action === 'grant' && next.grants.find((g) => g.tg === id)?.offers?.[what] === 'pending';
-      toast(offered ? 'Приглашение отправлено — человек ответит при следующем входе' : action === 'grant' ? 'Выдано — появится у человека в карточке' : who?.offers?.[what] === 'pending' ? 'Приглашение отменено' : 'Забрано');
+      toast(offered ? tr('Приглашение отправлено — человек ответит при следующем входе') : action === 'grant' ? tr('Выдано — появится у человека в карточке') : who?.offers?.[what] === 'pending' ? tr('Приглашение отменено') : tr('Забрано'));
     }
-    else toast('Не получилось — проверьте ID');
+    else toast(tr('Не получилось — проверьте ID'));
   };
   const forget = async (g: GrantInfo) => {
-    if (!g.tg || !(await platform.confirm(`Убрать ${g.note || g.name || (g.username ? '@' + g.username : g.tg)} из списка? Права и подпись удалятся, заварки и карточка человека останутся.`))) return;
+    if (!g.tg || !(await platform.confirm(tr('Убрать {0} из списка? Права и подпись удалятся, заварки и карточка человека останутся.', g.note || g.name || (g.username ? '@' + g.username : g.tg))))) return;
     setBusy(true);
     const next = await adminCall({ action: 'forget', tg: g.tg });
     setBusy(false);
-    if (next) { onChange(next); setEditing(null); platform.haptic('success'); toast('Убрано из списка'); }
-    else toast(`Не получилось — ${serverTrouble()}`);
+    if (next) { onChange(next); setEditing(null); platform.haptic('success'); toast(tr('Убрано из списка')); }
+    else toast(tr('Не получилось — {0}', serverTrouble()));
   };
   const saveNote = async (id: string) => {
     setBusy(true);
     const next = await adminCall({ action: 'note', tg: id, note, username: nick.trim() || undefined });
     setBusy(false);
-    if (next) { onChange(next); setEditing(null); platform.haptic('success'); toast('Подпись сохранена'); }
-    else toast('Не получилось сохранить');
+    if (next) { onChange(next); setEditing(null); platform.haptic('success'); toast(tr('Подпись сохранена')); }
+    else toast(tr('Не получилось сохранить'));
   };
   const [filter, setFilter] = useState<string>('all');
   const people = grants.filter((g) => g.tg !== me);
@@ -359,21 +361,21 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
   // filters: by role, and by the answer to an invitation; only the ones that have someone in them
   const FILTERS: { id: string; label: string; has(g: GrantInfo): boolean }[] = [
     ...GRANTS.map((x) => ({ id: x.id, label: x.label, has: (g: GrantInfo) => g.grants.includes(x.id) })),
-    { id: 'pending', label: 'Ждут ответа', has: (g) => Object.values(g.offers ?? {}).includes('pending') },
-    { id: 'declined', label: 'Отказались', has: (g) => Object.values(g.offers ?? {}).includes('declined') },
-    { id: 'none', label: 'Без прав', has: (g) => !g.grants.length && !Object.keys(g.offers ?? {}).length },
+    { id: 'pending', label: tr('Ждут ответа'), has: (g) => Object.values(g.offers ?? {}).includes('pending') },
+    { id: 'declined', label: tr('Отказались'), has: (g) => Object.values(g.offers ?? {}).includes('declined') },
+    { id: 'none', label: tr('Без прав'), has: (g) => !g.grants.length && !Object.keys(g.offers ?? {}).length },
   ];
   const shown = filter === 'all' ? people : people.filter((g) => FILTERS.find((f) => f.id === filter)?.has(g));
   const tags = (g: GrantInfo) => [
     ...GRANTS.filter((x) => g.grants.includes(x.id)).map((x) => ({ key: x.id, text: x.label, cls: '' })),
-    ...Object.entries(g.offers ?? {}).map(([k, v]) => ({ key: k + v, text: `${GRANTS.find((x) => x.id === k)?.label ?? k}: ${v === 'pending' ? 'ждёт ответа' : 'отказался'}`, cls: v })),
+    ...Object.entries(g.offers ?? {}).map(([k, v]) => ({ key: k + v, text: `${GRANTS.find((x) => x.id === k)?.label ?? k}: ${v === 'pending' ? tr('ждёт ответа') : tr('отказался')}`, cls: v })),
   ];
   return (
-    <Section title="Разработчики и тестировщики" aside={<span className="muted">{people.length}</span>}>
-      <p className="muted pad small-note">Выдаётся по Telegram ID, каждое право отдельно. ID человек видит у себя: Профиль → «О приложении». У вас как у владельца все права есть всегда. Тестировщика сначала приглашают: роль появится, когда человек согласится.</p>
+    <Section title={tr('Разработчики и тестировщики')} aside={<span className="muted">{people.length}</span>}>
+      <p className="muted pad small-note">{tr('Выдаётся по Telegram ID, каждое право отдельно. ID человек видит у себя: Профиль → «О приложении». У вас как у владельца все права есть всегда. Тестировщика сначала приглашают: роль появится, когда человек согласится.')}</p>
       {people.length > 0 && (
-        <div className="chips grant-filters" role="group" aria-label="Кого показать">
-          <button type="button" className={'chip' + (filter === 'all' ? ' on' : '')} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>Все · {people.length}</button>
+        <div className="chips grant-filters" role="group" aria-label={tr('Кого показать')}>
+          <button type="button" className={'chip' + (filter === 'all' ? ' on' : '')} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>{tr('Все · {0}', people.length)}</button>
           {FILTERS.map((f) => { const n = people.filter(f.has).length; return n ? (
             <button type="button" key={f.id} className={'chip' + (filter === f.id ? ' on' : '')} aria-pressed={filter === f.id} onClick={() => setFilter(filter === f.id ? 'all' : f.id)}>{f.label} · {n}</button>
           ) : null; })}
@@ -389,7 +391,7 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
             <button type="button" className="grant-line" aria-expanded={isOpen} onClick={() => setOpenRow(isOpen ? null : g.account)}>
               <span className="grant-line-main">
                 <b>{title}</b>
-                <span className="grant-tags">{tags(g).length ? tags(g).map((t) => <span key={t.key} className={'tag ' + t.cls}>{t.text}</span>) : <span className="tag">без прав</span>}</span>
+                <span className="grant-tags">{tags(g).length ? tags(g).map((t) => <span key={t.key} className={'tag ' + t.cls}>{t.text}</span>) : <span className="tag">{tr('без прав')}</span>}</span>
               </span>
               <Icon name="chevron" size={16} />
             </button>
@@ -398,19 +400,19 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
               <span className="muted">
                 {link
                   ? <a href={link} target="_blank" rel="noreferrer" onClick={(e) => { e.preventDefault(); platform.openLink(link); }}>@{g.username}</a>
-                  : <button type="button" className="link-btn" onClick={async () => { if (g.tg && await copyText(g.tg)) toast('ID скопирован — ника нет, найдите человека по ID'); }}>ID {g.tg}</button>}
+                  : <button type="button" className="link-btn" onClick={async () => { if (g.tg && await copyText(g.tg)) toast(tr('ID скопирован — ника нет, найдите человека по ID')); }}>ID {g.tg}</button>}
                 {g.note && g.name ? ` · ${g.name}` : ''}
               </span>
               <button type="button" className="link-btn grant-sign" onClick={() => { setEditing(editing === g.account ? null : g.account); setNote(g.note ?? ''); setNick(g.username ?? ''); }}>
-                {g.note ? 'Изменить подпись' : 'Подписать'}
+                {g.note ? tr('Изменить подпись') : tr('Подписать')}
               </button>
-              <button type="button" className="link-btn danger grant-forget" disabled={busy} onClick={() => forget(g)}>Убрать из списка</button>
+              <button type="button" className="link-btn danger grant-forget" disabled={busy} onClick={() => forget(g)}>{tr('Убрать из списка')}</button>
             </div>
             {editing === g.account && g.tg && (
               <div className="grant-edit">
-                <Field label="Подпись" id={`grant-note-${g.tg}`} placeholder="например, Аня, бариста из Kojo" value={note} maxLength={80} onChange={(e) => setNote(e.target.value)} />
-                {!g.name && <Field label="Ник в Telegram (если человек ещё не открывал приложение)" id={`grant-nick-${g.tg}`} placeholder="@username" value={nick} onChange={(e) => setNick(e.target.value)} />}
-                <div className="site-actions"><Button icon="check" disabled={busy} onClick={() => saveNote(g.tg!)}>Сохранить</Button></div>
+                <Field label={tr('Подпись')} id={`grant-note-${g.tg}`} placeholder={tr('например, Аня, бариста из Kojo')} value={note} maxLength={80} onChange={(e) => setNote(e.target.value)} />
+                {!g.name && <Field label={tr('Ник в Telegram (если человек ещё не открывал приложение)')} id={`grant-nick-${g.tg}`} placeholder="@username" value={nick} onChange={(e) => setNick(e.target.value)} />}
+                <div className="site-actions"><Button icon="check" disabled={busy} onClick={() => saveNote(g.tg!)}>{tr('Сохранить')}</Button></div>
               </div>
             )}
             <div className="chips">
@@ -419,45 +421,45 @@ function DevGrants({ grants, onChange }: { grants: GrantInfo[]; onChange(d: Admi
                 // a pending invitation is taken back with a tap; a declined one is sent again
                 return <button type="button" key={x.id} className={'chip' + (on ? ' on' : offer ? ' ' + offer : '')} aria-pressed={on} disabled={busy || !g.tg}
                   onClick={() => act(on || offer === 'pending' ? 'revoke' : 'grant', g.tg!, x.id)}>
-                  {x.label}{offer === 'pending' ? ' · ждёт ответа' : offer === 'declined' ? ' · отказался, пригласить снова' : ''}</button>;
+                  {x.label}{offer === 'pending' ? tr(' · ждёт ответа') : offer === 'declined' ? tr(' · отказался, пригласить снова') : ''}</button>;
               })}
             </div>
             </>}
           </div>
         );
       })}
-      {!shown.length && people.length > 0 && <p className="muted pad small-note">Никого с таким фильтром.</p>}
+      {!shown.length && people.length > 0 && <p className="muted pad small-note">{tr('Никого с таким фильтром.')}</p>}
       </div>
-      <Field label="Telegram ID" id="dev-grant-id" inputMode="numeric" placeholder="например, 123456789" value={tg}
+      <Field label="Telegram ID" id="dev-grant-id" inputMode="numeric" placeholder={tr('например, 123456789')} value={tg}
         onChange={(e) => setTg(e.target.value.replace(/\D/g, '').slice(0, 20))} />
-      <Field label="Подпись" id="dev-grant-note" placeholder="кто это, чтобы не забыть" value={newNote} maxLength={80} onChange={(e) => setNewNote(e.target.value)} />
+      <Field label={tr('Подпись')} id="dev-grant-note" placeholder={tr('кто это, чтобы не забыть')} value={newNote} maxLength={80} onChange={(e) => setNewNote(e.target.value)} />
       <div className="site-actions">
         {GRANTS.map((x) => <Button key={x.id} kind={x.id === 'beta' ? 'primary' : 'secondary'} icon="plus" disabled={busy || tg.length < 4} onClick={() => act('grant', tg, x.id)}>{x.label}</Button>)}
       </div>
-      <p className="muted pad small-note">{GRANTS.map((x) => `${x.label}: ${x.hint}`).join('. ')}. Ник подставляется сам, когда человек откроет приложение.</p>
+      <p className="muted pad small-note">{tr('{0}. Ник подставляется сам, когда человек откроет приложение.', GRANTS.map((x) => `${x.label}: ${x.hint}`).join('. '))}</p>
     </Section>
   );
 }
 
-const fmtCount = (n: number) => n >= 1e6 ? `${(n / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} млн` : n >= 1e3 ? `${(n / 1e3).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} тыс.` : String(n);
+const fmtCount = (n: number) => n >= 1e6 ? tr('{0} млн', (n / 1e6).toLocaleString(intlLocale(), { maximumFractionDigits: 1 })) : n >= 1e3 ? tr('{0} тыс.', (n / 1e3).toLocaleString(intlLocale(), { maximumFractionDigits: 1 })) : String(n);
 
-const hhmm = (t: number) => new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-const crawlState = (s: SiteInfo) => s.crawling ? 'идёт обход'
-  : s.failed ? 'карта сайта не читается'
-  : s.fails && s.retryAt ? `карта сайта не прочиталась, повтор в ${hhmm(s.retryAt)}`
-  : s.crawled ? `обход ${new Date(s.crawled).toLocaleDateString('ru-RU')}` : 'ждёт обхода';
+const hhmm = (t: number) => new Date(t).toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' });
+const crawlState = (s: SiteInfo) => s.crawling ? tr('идёт обход')
+  : s.failed ? tr('карта сайта не читается')
+  : s.fails && s.retryAt ? tr('карта сайта не прочиталась, повтор в {0}', hhmm(s.retryAt))
+  : s.crawled ? tr('обход {0}', new Date(s.crawled).toLocaleDateString(intlLocale())) : tr('ждёт обхода');
 
 /** what is going on with the site's crawl, in words, under its buttons */
 function crawlNote(s: SiteInfo, live: boolean) {
   const done = (s.pages.ok ?? 0) + (s.pages.skip ?? 0) + (s.pages.error ?? 0);
   const parts = [
-    s.crawling ? 'Читаем карту сайта.' : s.failed ? `Карту сайта не удалось прочитать ${s.fails} раз подряд — сервер больше не пробует. Проверьте, открывается ли сайт, и нажмите «Обойти заново».`
-      : s.fails ? `Карту сайта не удалось прочитать (${s.fails} раз), следующая попытка в ${hhmm(s.retryAt ?? 0)}.`
-      : !s.crawled ? 'Обход начнётся через несколько секунд.'
-      : s.pages.queued ? 'Карта сайта прочитана, страницы лотов открываются по одной (примерно раз в несколько секунд).' : `Последний обход закончен ${new Date(s.crawled).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.`,
-    `Страниц лотов: ${done + (s.pages.queued ?? 0)}${s.pages.queued ? `, в очереди ${s.pages.queued}` : ''}.`,
+    s.crawling ? tr('Читаем карту сайта.') : s.failed ? tr('Карту сайта не удалось прочитать {0} раз подряд — сервер больше не пробует. Проверьте, открывается ли сайт, и нажмите «Обойти заново».', s.fails)
+      : s.fails ? tr('Карту сайта не удалось прочитать ({0} раз), следующая попытка в {1}.', s.fails, hhmm(s.retryAt ?? 0))
+      : !s.crawled ? tr('Обход начнётся через несколько секунд.')
+      : s.pages.queued ? tr('Карта сайта прочитана, страницы лотов открываются по одной (примерно раз в несколько секунд).') : tr('Последний обход закончен {0}.', new Date(s.crawled).toLocaleString(intlLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })),
+    tr('Страниц лотов: {0}{1}.', done + (s.pages.queued ?? 0), s.pages.queued ? tr(', в очереди {0}', s.pages.queued) : ''),
   ];
-  if (live) parts.push('Обновляется само.');
+  if (live) parts.push(tr('Обновляется само.'));
   return parts.join(' ');
 }
 
@@ -469,15 +471,15 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
   // after «Подключить» or «Обойти заново» the list refreshes by itself for a while, so the progress is seen
   const [watch, setWatch] = useState<string | null>(null);
   const act = async (action: 'approve' | 'reject' | 'recrawl', s: SiteInfo) => {
-    if (action === 'reject' && !(await platform.confirm(`Отклонить ${s.host}? Сервер не будет открывать страницы этого сайта.`))) return;
+    if (action === 'reject' && !(await platform.confirm(tr('Отклонить {0}? Сервер не будет открывать страницы этого сайта.', s.host)))) return;
     setBusy(true);
     const next = await adminCall({ action, host: s.host, roaster: names[s.host]?.trim() || undefined });
     setBusy(false);
     if (next) {
       onChange(next); platform.haptic('success');
-      toast(action === 'approve' ? 'Сайт подключён — каталог начнёт заполняться' : action === 'recrawl' ? `Обход ${s.host} запущен` : 'Сайт отклонён');
+      toast(action === 'approve' ? tr('Сайт подключён — каталог начнёт заполняться') : action === 'recrawl' ? tr('Обход {0} запущен', s.host) : tr('Сайт отклонён'));
       if (action !== 'reject') setWatch(s.host);
-    } else toast(`Не получилось — ${serverTrouble()}`);
+    } else toast(tr('Не получилось — {0}', serverTrouble()));
   };
   useEffect(() => {
     if (!watch) return;
@@ -491,7 +493,7 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
       const settled = !s || (!!s.crawled && !s.crawling && !s.pages.queued) || (!!s.fails && !s.crawling);
       if (settled || ++n >= 40) {
         stop = true; setWatch(null); clearInterval(t);
-        if (s && settled) toast(s.fails ? `${s.host}: не удалось прочитать карту сайта` : `${s.host}: обход закончен — в продаже ${s.lots.active ?? 0} лотов`);
+        if (s && settled) toast(s.fails ? tr('{0}: не удалось прочитать карту сайта', s.host) : tr('{0}: обход закончен — в продаже {1} лотов', s.host, s.lots.active ?? 0));
       }
     }, 6000);
     return () => { stop = true; clearInterval(t); };
@@ -504,33 +506,33 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
   const lotsActive = rest.reduce((a, s) => a + (s.lots.active ?? 0), 0);
 
   return (
-    <Section title="Сайты обжарщиков" aside={pending.length ? <span className="tag">{pending.length} {plural(pending.length, ['новый', 'новых', 'новых'])}</span> : undefined}>
-      <p className="muted pad small-note">Видно только вам как владельцу бота. Сервер открывает страницы только подключённых сайтов. Каждый сайт обходится один раз при подключении, дальше новые лоты попадают в каталог, когда их сканируют. «Обойти заново» — повторный обход вручную.</p>
+    <Section title={tr('Сайты обжарщиков')} aside={pending.length ? <span className="tag">{pending.length} {plural(pending.length, [tr('новый'), tr('новых'), tr('новых')])}</span> : undefined}>
+      <p className="muted pad small-note">{tr('Видно только вам как владельцу бота. Сервер открывает страницы только подключённых сайтов. Каждый сайт обходится один раз при подключении, дальше новые лоты попадают в каталог, когда их сканируют. «Обойти заново» — повторный обход вручную.')}</p>
       {crawl && (
         <p className={'muted pad small-note crawl-usage' + (crawl.paused ? ' warn' : '')}>
-          Обход сегодня: {fmtCount(crawl.reads)} из {fmtCount(crawl.maxReads)} чтений · {fmtCount(crawl.writes)} из {fmtCount(crawl.maxWrites)} записей (70% бесплатного лимита Cloudflare).
-          {crawl.paused ? ' Лимит обхода на сегодня исчерпан — продолжит после 3:00 по Москве.' : ''}
+{tr('Обход сегодня: {0} из {1} чтений · {2} из {3} записей (70% бесплатного лимита Cloudflare).', fmtCount(crawl.reads), fmtCount(crawl.maxReads), fmtCount(crawl.writes), fmtCount(crawl.maxWrites))}
+{crawl.paused ? tr(' Лимит обхода на сегодня исчерпан — продолжит после 3:00 по Москве.') : ''}
         </p>
       )}
       {[...pending, ...(showAll ? rest : [])].map((s) => (
         <div key={s.host}>
           <Row label={s.roaster || s.host} active={open === s.host} onClick={() => setOpen(open === s.host ? null : s.host)}
             hint={s.status === 'approved'
-              ? `${s.host} · лотов: ${sum(s.lots, 'active')} в продаже, ${sum(s.lots, 'out', 'archived', 'gone')} прошлых · ${crawlState(s)}${s.pages.queued ? ` · страниц в очереди ${s.pages.queued}` : ''}`
-              : `${s.host} · ${SITE_STATUS[s.status]} · сканов: ${s.requests}`}
+              ? tr('{0} · лотов: {1} в продаже, {2} прошлых · {3}{4}', s.host, sum(s.lots, 'active'), sum(s.lots, 'out', 'archived', 'gone'), crawlState(s), s.pages.queued ? tr(' · страниц в очереди {0}', s.pages.queued) : '')
+              : tr('{0} · {1} · сканов: {2}', s.host, SITE_STATUS[s.status], s.requests)}
             value={s.status === 'approved' ? undefined : <span className="tag">{SITE_STATUS[s.status]}</span>} />
           {open === s.host && (
             <>
-              {s.sample && <p className="muted pad small-note">Пример ссылки: <a href={s.sample} target="_blank" rel="noreferrer">{s.sample}</a></p>}
+              {s.sample && <p className="muted pad small-note">{tr('Пример ссылки:')} <a href={s.sample} target="_blank" rel="noreferrer">{s.sample}</a></p>}
               {s.status !== 'approved' && (
-                <Field label="Название обжарщика" id={`site-name-${s.host}`} placeholder="Как показывать в каталоге" value={names[s.host] ?? s.roaster}
+                <Field label={tr('Название обжарщика')} id={`site-name-${s.host}`} placeholder={tr('Как показывать в каталоге')} value={names[s.host] ?? s.roaster}
                   onChange={(e) => setNames((n) => ({ ...n, [s.host]: e.target.value }))} />
               )}
               {s.status === 'approved' && <p className="muted pad small-note crawl-progress">{crawlNote(s, watch === s.host)}</p>}
               <div className="site-actions">
-                {s.status !== 'approved' && <Button icon="check" disabled={busy} onClick={() => act('approve', s)}>Подключить</Button>}
-                {s.status === 'approved' && <Button kind="secondary" icon="reset" disabled={busy || s.crawling || watch === s.host} onClick={() => act('recrawl', s)}>Обойти заново</Button>}
-                {s.status !== 'rejected' && <Button kind="secondary" disabled={busy} onClick={() => act('reject', s)}>Отклонить</Button>}
+                {s.status !== 'approved' && <Button icon="check" disabled={busy} onClick={() => act('approve', s)}>{tr('Подключить')}</Button>}
+                {s.status === 'approved' && <Button kind="secondary" icon="reset" disabled={busy || s.crawling || watch === s.host} onClick={() => act('recrawl', s)}>{tr('Обойти заново')}</Button>}
+                {s.status !== 'rejected' && <Button kind="secondary" disabled={busy} onClick={() => act('reject', s)}>{tr('Отклонить')}</Button>}
               </div>
             </>
           )}
@@ -539,8 +541,8 @@ function RoasterSites({ sites, crawl, onChange }: { sites: SiteInfo[]; crawl?: C
       {rest.length > 0 && (
         <button type="button" className="sites-toggle" aria-expanded={showAll} onClick={() => { setShowAll(!showAll); if (showAll && open && !pending.some((x) => x.host === open)) setOpen(null); }}>
           <span className="sites-toggle-text">
-            <span>{showAll ? 'Свернуть' : `Подключённые и отклонённые · ${rest.length}`}</span>
-            {!showAll && <small>в продаже {lotsActive} {plural(lotsActive, LOTS)}</small>}
+            <span>{showAll ? tr('Свернуть') : tr('Подключённые и отклонённые · {0}', rest.length)}</span>
+            {!showAll && <small>{tr('в продаже {0} {1}', lotsActive, plural(lotsActive, LOTS))}</small>}
           </span>
           <Icon name="chevron" size={16} />
         </button>
@@ -556,11 +558,11 @@ function ServerVersionRow() {
     if (!RATINGS_API) return;
     // a blocked or throttled connection may hang instead of failing: say so after 12 s
     fetch(`${RATINGS_API}/version`, { signal: AbortSignal.timeout?.(12_000) }).then((r) => (r.ok ? r.json() : null))
-      .then((j) => setV(j ? [j.version, fmtWhen(j.builtAt)].filter(Boolean).join(' · ') : 'нет связи'))
-      .catch(() => setV('нет связи'));
+      .then((j) => setV(j ? [j.version, fmtWhen(j.builtAt)].filter(Boolean).join(' · ') : tr('нет связи')))
+      .catch(() => setV(tr('нет связи')));
   }, []);
   if (!RATINGS_API) return null;
-  return <Row label="Версия сервера" value={v ?? '…'} chevron={false} />;
+  return <Row label={tr('Версия сервера')} value={v ?? '…'} chevron={false} />;
 }
 
 /** Sync between devices via Telegram's cloud */
@@ -572,34 +574,34 @@ function SyncSection() {
   useEffect(() => {
     if (!asked || busy) return;
     setAsked(false);
-    if (sync.state === 'idle') { platform.haptic('success'); toast('Синхронизировано'); }
-    else if (sync.state === 'error') { platform.haptic('error'); toast(sync.error ?? 'Не удалось синхронизировать'); }
+    if (sync.state === 'idle') { platform.haptic('success'); toast(tr('Синхронизировано')); }
+    else if (sync.state === 'error') { platform.haptic('error'); toast(sync.error ?? tr('Не удалось синхронизировать')); }
   }, [asked, busy, sync.state, sync.error]);
   const now = () => { platform.haptic('light'); setAsked(true); syncNow(); };
   if (sync.state === 'off') {
     if (platform.kind !== 'telegram') return null;
     return (
-      <Section title="Синхронизация" plain>
-        <p className="muted pad">Эта версия Telegram не поддерживает облачное хранилище — обновите приложение Telegram, чтобы записи были на всех устройствах.</p>
+      <Section title={tr('Синхронизация')} plain>
+        <p className="muted pad">{tr('Эта версия Telegram не поддерживает облачное хранилище — обновите приложение Telegram, чтобы записи были на всех устройствах.')}</p>
       </Section>
     );
   }
-  const when = sync.at ? new Date(sync.at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
+  const when = sync.at ? new Date(sync.at).toLocaleString(intlLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
   const pct = sync.usage ? Math.min(100, Math.round((sync.usage.chars / (CLOUD_LIMITS.keys * CLOUD_LIMITS.value)) * 1000) / 10) : 0;
   const kb = (n: number) => fmtNum(Math.round(n / 102.4) / 10, 1);
   return (
-    <Section title="Синхронизация">
-      <Row label={sync.state === 'syncing' ? 'Синхронизация…' : sync.state === 'error' ? 'Не удалось синхронизировать' : 'Синхронизировано'}
-        hint={sync.state === 'error' ? sync.error : when ? `Последний раз: ${when}` : 'Через облако Telegram — на всех ваших устройствах'}
+    <Section title={tr('Синхронизация')}>
+      <Row label={sync.state === 'syncing' ? tr('Синхронизация…') : sync.state === 'error' ? tr('Не удалось синхронизировать') : tr('Синхронизировано')}
+        hint={sync.state === 'error' ? sync.error : when ? tr('Последний раз: {0}', when) : tr('Через облако Telegram — на всех ваших устройствах')}
         value={<span className={'sync-dot ' + sync.state} aria-hidden="true" />} chevron={false} />
       {sync.usage && (
         <div className="sync-usage">
           <div className="stock-bar"><i style={{ width: `${Math.max(pct, 1)}%` }} /></div>
-          <small>Занято {kb(sync.usage.chars)} из {kb(CLOUD_LIMITS.keys * CLOUD_LIMITS.value)} КБ · ключей {sync.usage.keys} из {CLOUD_LIMITS.keys}</small>
+          <small>{tr('Занято {0} из {1} КБ · ключей {2} из {3}', kb(sync.usage.chars), kb(CLOUD_LIMITS.keys * CLOUD_LIMITS.value), sync.usage.keys, CLOUD_LIMITS.keys)}</small>
         </div>
       )}
       <div className="site-actions">
-        <Button kind="secondary" icon="reset" disabled={busy} onClick={now}>{busy ? 'Синхронизация…' : 'Синхронизировать сейчас'}</Button>
+        <Button kind="secondary" icon="reset" disabled={busy} onClick={now}>{busy ? tr('Синхронизация…') : tr('Синхронизировать сейчас')}</Button>
       </div>
     </Section>
   );
@@ -610,7 +612,7 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
   const { back } = useRouter();
   const [g, setG] = useState<Gear>(initial);
   const dirty = JSON.stringify(g) !== JSON.stringify(initial);
-  useBackGuard(dirty, 'Выйти без сохранения?');
+  useBackGuard(dirty, tr('Выйти без сохранения?'));
   const cat = catById(g.cat);
 
   // a popular hand grinder was picked — set the type automatically (if not chosen yet)
@@ -623,18 +625,18 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
     back(true);
   };
   const remove = async () => {
-    if (!(await platform.confirm(`Удалить «${g.name}»? В старых заварках оно останется.`))) return;
+    if (!(await platform.confirm(tr('Удалить «{0}»? В старых заварках оно останется.', g.name)))) return;
     deleteGear(g.id);
     back(true);
   };
 
   return (
-    <Screen title={isNew ? 'Новое оборудование' : g.name || 'Оборудование'}
+    <Screen title={isNew ? tr('Новое оборудование') : g.name || tr('Оборудование')}
       footer={<div className="footer-actions">
-        {!isNew && <button type="button" className="round-btn" onClick={remove} aria-label="Удалить"><Icon name="trash" /></button>}
-        <Button icon="check" wide onClick={save} disabled={!g.name.trim() || (!isNew && !dirty)}>Сохранить</Button>
+        {!isNew && <button type="button" className="round-btn" onClick={remove} aria-label={tr('Удалить')}><Icon name="trash" /></button>}
+        <Button icon="check" wide onClick={save} disabled={!g.name.trim() || (!isNew && !dirty)}>{tr('Сохранить')}</Button>
       </div>}>
-      <Section title="Категория" plain>
+      <Section title={tr('Категория')} plain>
         <div className="chips">
           {GEAR_CATS.map((c) => (
             <button type="button" key={c.id} className={'chip' + (g.cat === c.id ? ' on' : '')}
@@ -644,20 +646,20 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
       </Section>
 
       <Section title={cat.one}>
-        <Field label="Модель" id="gear-name" value={g.name} list={`sugg-${g.cat}`} placeholder={cat.suggestions[0]}
+        <Field label={tr('Модель')} id="gear-name" value={g.name} list={`sugg-${g.cat}`} placeholder={cat.suggestions[0]}
           onChange={(e) => setName(e.target.value)} />
         <datalist id={`sugg-${g.cat}`}>{cat.suggestions.map((s) => <option key={s} value={s} />)}</datalist>
-        <Field label="Детали" id="gear-details" value={g.details} placeholder={g.cat === 'grinder' ? 'жернова, доработки' : 'объём, материал, заметки'}
+        <Field label={tr('Детали')} id="gear-details" value={g.details} placeholder={g.cat === 'grinder' ? tr('жернова, доработки') : tr('объём, материал, заметки')}
           onChange={(e) => setG({ ...g, details: e.target.value })} />
       </Section>
 
       {g.cat === 'grinder' && (
-        <Section title="Тип кофемолки" plain>
+        <Section title={tr('Тип кофемолки')} plain>
           <Segmented value={g.grindType ?? 'mechanical'} onChange={(v) => setG({ ...g, grindType: v })}
             options={GRIND_TYPES.map((t) => ({ value: t.id, label: t.label }))} />
-          <p className="muted pad small-note">{GRIND_TYPES.find((t) => t.id === (g.grindType ?? 'mechanical'))!.hint}. От этого зависит, в чём записывается помол в заварках.</p>
+          <p className="muted pad small-note">{tr('{0}. От этого зависит, в чём записывается помол в заварках.', GRIND_TYPES.find((t) => t.id === (g.grindType ?? 'mechanical'))!.hint)}</p>
           <div className="group" style={{ marginTop: 10 }}>
-            <Field label="Потери при помоле, г" id="gear-loss" inputMode="decimal" placeholder="0"
+            <Field label={tr('Потери при помоле, г')} id="gear-loss" inputMode="decimal" placeholder="0"
               value={lossText}
               onChange={(e) => {
                 const text = e.target.value.replace(/[^\d.,]/g, '').slice(0, 5);
@@ -666,11 +668,11 @@ export function GearEdit({ gear: initial, isNew }: { gear: Gear; isNew: boolean 
                 setG({ ...g, loss: isNaN(n) || n <= 0 ? undefined : Math.min(20, Math.round(n * 10) / 10) });
               }} />
           </div>
-          <p className="muted pad small-note">Сколько кофе теряется за помол: выдули, вычистили, выбросили. Из пачки будет списываться доза плюс эти граммы, а рецепт и пропорция считаются от того, что попало в воронку. Кофе, который застревает и выходит при следующем помоле, — не потери.</p>
+          <p className="muted pad small-note">{tr('Сколько кофе теряется за помол: выдули, вычистили, выбросили. Из пачки будет списываться доза плюс эти граммы, а рецепт и пропорция считаются от того, что попало в воронку. Кофе, который застревает и выходит при следующем помоле, — не потери.')}</p>
         </Section>
       )}
 
-      <Section title="Популярное" plain>
+      <Section title={tr('Популярное')} plain>
         <div className="chips">
           {cat.suggestions.map((s) => (
             <button type="button" key={s} className={'chip' + (g.name === s ? ' on' : '')} onClick={() => { platform.haptic('select'); setName(s); }}>{s}</button>
@@ -688,7 +690,7 @@ export function BadgeEdit({ badge: initial, isNew }: { badge: Badge; isNew: bool
   const { back } = useRouter();
   const [b, setB] = useState<Badge>(initial);
   const dirty = JSON.stringify(b) !== JSON.stringify(initial);
-  useBackGuard(dirty, 'Выйти без сохранения?');
+  useBackGuard(dirty, tr('Выйти без сохранения?'));
   const set = (patch: Partial<Badge>) => { platform.haptic('select'); setB((x) => ({ ...x, ...patch })); };
   const pick = (field: 'title' | 'detail', v: string) => set({ [field]: b[field] === v ? '' : v });
 
@@ -700,7 +702,7 @@ export function BadgeEdit({ badge: initial, isNew }: { badge: Badge; isNew: bool
     back(true);
   };
   const remove = async () => {
-    if (!(await platform.confirm('Удалить значок?'))) return;
+    if (!(await platform.confirm(tr('Удалить значок?')))) return;
     saveProfile({ ...profile, badges: profile.badges.filter((x) => x.id !== b.id) });
     back(true);
   };
@@ -708,16 +710,16 @@ export function BadgeEdit({ badge: initial, isNew }: { badge: Badge; isNew: bool
   const years = Array.from({ length: 12 }, (_, i) => String(new Date().getFullYear() - i));
 
   return (
-    <Screen title={isNew ? 'Новый значок' : 'Значок'}
+    <Screen title={isNew ? tr('Новый значок') : tr('Значок')}
       footer={<div className="footer-actions">
-        {!isNew && <button type="button" className="round-btn" onClick={remove} aria-label="Удалить"><Icon name="trash" /></button>}
-        <Button icon="check" wide onClick={save} disabled={!b.title.trim() || (!isNew && !dirty)}>Сохранить</Button>
+        {!isNew && <button type="button" className="round-btn" onClick={remove} aria-label={tr('Удалить')}><Icon name="trash" /></button>}
+        <Button icon="check" wide onClick={save} disabled={!b.title.trim() || (!isNew && !dirty)}>{tr('Сохранить')}</Button>
       </div>}>
       <div className="badge-preview">
-        <BadgeChip b={{ ...b, title: b.title || 'Название', detail: b.detail }} />
+        <BadgeChip b={{ ...b, title: b.title || tr('Название'), detail: b.detail }} />
       </div>
 
-      <Section title="Тип" plain>
+      <Section title={tr('Тип')} plain>
         <div className="chips">
           {BADGE_KINDS.map((k) => (
             <button type="button" key={k.id} className={'chip' + (b.kind === k.id ? ' on' : '')}
@@ -727,44 +729,66 @@ export function BadgeEdit({ badge: initial, isNew }: { badge: Badge; isNew: bool
       </Section>
 
       {b.kind === 'sca' && <>
-        <Section title="Модуль" plain>
+        <Section title={tr('Модуль')} plain>
           <Chips options={[...SCA_MODULES, ...SCA_EXTRA]} value={[b.title.replace(/^SCA /, '')]}
             onToggle={(v) => { const t = SCA_MODULES.includes(v) ? `SCA ${v}` : v; set({ title: b.title === t ? '' : t }); }} />
         </Section>
         {!SCA_EXTRA.includes(b.title) && !b.title.startsWith('SCA Coffee') && (
-          <Section title="Уровень" plain>
+          <Section title={tr('Уровень')} plain>
             <Chips options={SCA_LEVELS} value={[b.detail]} onToggle={(v) => pick('detail', v)} />
           </Section>
         )}
       </>}
 
       {b.kind === 'q' && (
-        <Section title="Сертификат" plain>
+        <Section title={tr('Сертификат')} plain>
           <Chips options={Q_TYPES} value={[b.title]} onToggle={(v) => pick('title', v)} />
         </Section>
       )}
 
       {b.kind === 'champ' && <>
-        <Section title="Чемпионат" plain>
+        <Section title={tr('Чемпионат')} plain>
           <Chips options={CHAMPIONSHIPS} value={[b.title]} onToggle={(v) => pick('title', v)} />
         </Section>
-        <Section title="Результат" plain>
+        <Section title={tr('Результат')} plain>
           <Chips options={PLACES} value={[b.detail]} onToggle={(v) => pick('detail', v)} />
         </Section>
       </>}
 
-      <Section title="Год" plain>
+      <Section title={tr('Год')} plain>
         <Chips options={years} value={[b.year]} onToggle={(v) => set({ year: b.year === v ? '' : v })} />
       </Section>
 
-      <Section title={b.kind === 'custom' ? 'Описание' : 'Своё значение'}>
-        <Field label="Название" id="badge-title" value={b.title} placeholder={b.kind === 'champ' ? 'Региональный чемпионат…' : b.kind === 'custom' ? 'Head barista в …' : ''}
+      <Section title={b.kind === 'custom' ? tr('Описание') : tr('Своё значение')}>
+        <Field label={tr('Название')} id="badge-title" value={b.title} placeholder={b.kind === 'champ' ? tr('Региональный чемпионат…') : b.kind === 'custom' ? tr('Head barista в …') : ''}
           onChange={(e) => setB({ ...b, title: e.target.value })} />
-        <Field label={b.kind === 'champ' ? 'Место' : 'Уровень'} id="badge-detail" value={b.detail}
+        <Field label={b.kind === 'champ' ? tr('Место') : tr('Уровень')} id="badge-detail" value={b.detail}
           onChange={(e) => setB({ ...b, detail: e.target.value })} />
-        <Field label="Год" id="badge-year" inputMode="numeric" value={b.year} onChange={(e) => setB({ ...b, year: e.target.value.replace(/\D/g, '').slice(0, 4) })} />
+        <Field label={tr('Год')} id="badge-year" inputMode="numeric" value={b.year} onChange={(e) => setB({ ...b, year: e.target.value.replace(/\D/g, '').slice(0, 4) })} />
       </Section>
-      <p className="muted pad">Значки указываете вы сами — в рецепте они видны как информация от автора.</p>
+      <p className="muted pad">{tr('Значки указываете вы сами — в рецепте они видны как информация от автора.')}</p>
     </Screen>
+  );
+}
+
+/** The app's language: Telegram's by default, or one picked on this device. The app restarts to switch. */
+function LanguagePick() {
+  const [value, setValue] = useState<Locale | 'auto'>(chosenLocale);
+  const name = (l: Locale) => LOCALES.find((x) => x.id === l)?.label ?? l;
+  const pick = (v: Locale | 'auto') => {
+    if (v === value) return;
+    setValue(v); chooseLocale(v); platform.haptic('select');
+    // strings are translated as the app loads, so it starts again in the new language
+    window.setTimeout(() => window.location.reload(), 150);
+  };
+  return (
+    <div className="look-pick">
+      <span className="row-label">{tr('Язык')}</span>
+      <Segmented label={tr('Язык')} value={value} onChange={pick}
+        options={[{ value: 'auto', label: tr('Авто') }, { value: 'ru', label: name('ru') }, { value: 'en', label: name('en') }]} />
+      <span className="row-hint">
+        {value === 'auto' ? tr('Как в Telegram: сейчас {0}.', name(getLocale())) : tr('Всегда {0}, какой бы язык ни стоял в Telegram.', name(value))}
+      </span>
+    </div>
   );
 }

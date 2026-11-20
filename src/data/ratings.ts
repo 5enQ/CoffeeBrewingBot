@@ -1,5 +1,6 @@
 import { RATINGS_API } from '../config';
 import { platform } from '../platform';
+import { getLocale, tr, trValue } from '../i18n';
 
 export interface RatingStats {
   count: number;
@@ -24,18 +25,18 @@ export async function fetchStats(author: string): Promise<RatingStats | null> {
 
 export async function sendRating(rid: string, author: string, stars: number): Promise<{ ok: true; count: number; avg: number } | { ok: false; error: string }> {
   const initData = platform.initData();
-  if (!RATINGS_API) return { ok: false, error: 'Оценки не подключены' };
-  if (!initData) return { ok: false, error: 'Оценить можно, открыв рецепт в Telegram' };
+  if (!RATINGS_API) return { ok: false, error: tr('Оценки не подключены') };
+  if (!initData) return { ok: false, error: tr('Оценить можно, открыв рецепт в Telegram') };
   try {
     const r = await fetch(`${RATINGS_API}/rate`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData, rid, author, stars }),
     });
     const j = await r.json();
-    if (!r.ok) return { ok: false, error: j.error ?? 'Не получилось отправить оценку' };
+    if (!r.ok) return { ok: false, error: j.error ? trValue(j.error) : tr('Не получилось отправить оценку') };
     return { ok: true, count: j.recipe?.count ?? 1, avg: j.recipe?.avg ?? stars };
   } catch {
-    return { ok: false, error: 'Нет связи с сервером оценок' };
+    return { ok: false, error: tr('Нет связи с сервером оценок') };
   }
 }
 
@@ -80,7 +81,7 @@ export async function prepareShare(title: string, body: string, url: string): Pr
   try {
     const r = await fetch(`${RATINGS_API}/share`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData, title, body, url }),
+      body: JSON.stringify({ initData, title, body, url, lang: getLocale() }),
     });
     if (!r.ok) return null;
     const { id } = await r.json();

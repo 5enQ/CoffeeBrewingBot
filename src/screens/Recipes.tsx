@@ -4,6 +4,7 @@ import { useStore, uid } from '../data/store';
 import { useRouter, useSelected } from '../router';
 import { Icon } from '../ui/icons';
 import { Button, Screen, Section } from '../ui/kit';
+import { tr } from '../i18n';
 
 const plural = (n: number, f: [string, string, string]) => {
   const a = n % 10, b = n % 100;
@@ -28,13 +29,13 @@ export function RecipesScreen({ methodId, beanId }: { methodId: string; beanId?:
     <button type="button" key={id} className={'recipe-tile' + (isOpen(id) ? ' active' : '')} onClick={() => open(id)}>
       <div className="recipe-tile-head">
         <b>{name}</b>
-        {id === last && <span className="tag">в прошлый раз</span>}
+        {id === last && <span className="tag">{tr('в прошлый раз')}</span>}
       </div>
       <div className="recipe-tile-meta">
-        <span>{fmtNum(dose, 2)} г → {fmtNum(m.id === 'espresso' ? dose * ratio : Math.round(dose * ratio))} г</span>
+        <span>{tr('{0} г → {1} г', fmtNum(dose, 2), fmtNum(m.id === 'espresso' ? dose * ratio : Math.round(dose * ratio)))}</span>
         <span>{fmtRatio(ratio)}</span>
         <span>{fmtTime(total)}</span>
-        <span>{steps} {plural(steps, ['шаг', 'шага', 'шагов'])}</span>
+        <span>{steps} {plural(steps, [tr('шаг'), tr('шага'), tr('шагов')])}</span>
       </div>
       {extra && <p>{extra}</p>}
       <span className="recipe-tile-go"><Icon name="chevron" size={18} /></span>
@@ -43,23 +44,23 @@ export function RecipesScreen({ methodId, beanId }: { methodId: string; beanId?:
 
   const create = () => push({ name: 'recipeEdit', isNew: true, recipe: recipeFromStandard(m.id, uid()) });
   return (
-    <Screen title={m.name} subtitle={own ? 'Свой метод · выберите рецепт' : 'Выберите рецепт'}
-      action={own ? <button type="button" className="icon-btn" aria-label="Изменить метод" onClick={() => push({ name: 'methodEdit', isNew: false, method: own })}><Icon name="edit" /></button> : undefined}
+    <Screen title={m.name} subtitle={own ? tr('Свой метод · выберите рецепт') : tr('Выберите рецепт')}
+      action={own ? <button type="button" className="icon-btn" aria-label={tr('Изменить метод')} onClick={() => push({ name: 'methodEdit', isNew: false, method: own })}><Icon name="edit" /></button> : undefined}
       // with own recipes the button waits at the bottom; without them it stands in the middle of the screen
       footer={mine.length ? <div className="footer-actions">
-        <Button kind="secondary" icon="plus" wide onClick={create}>Свой рецепт</Button>
+        <Button kind="secondary" icon="plus" wide onClick={create}>{tr('Свой рецепт')}</Button>
       </div> : undefined}>
-      <Section title="Рецепт" plain>
+      <Section title={tr('Рецепт')} plain>
         <div className="recipe-tiles">
-          {card('std', own ? 'Базовый' : 'Стандартный', m.dose, m.ratio, m.total, m.steps.length, `${m.temp ? `${m.temp}°C` : 'холодная вода'} · помол ${m.grind}`)}
+          {card('std', own ? tr('Базовый') : tr('Стандартный'), m.dose, m.ratio, m.total, m.steps.length, tr('{0} · помол {1}', m.temp ? `${m.temp}°C` : tr('холодная вода'), m.grind))}
           {mine.map((r) => card(r.id, r.name, r.dose, r.ratio, r.total, r.steps.length,
-            [r.author && `от ${r.author.name || '@' + r.author.username}`, r.notes].filter(Boolean).join(' · ') || undefined))}
+            [r.author && tr('от {0}', r.author.name || '@' + r.author.username), r.notes].filter(Boolean).join(' · ') || undefined))}
         </div>
       </Section>
       {!mine.length && (
         <div className="recipes-empty">
-          <p>Своих рецептов для {m.name} пока нет. Создайте свой — со своими проливами, граммами и временем.</p>
-          <Button icon="plus" onClick={create}>Свой рецепт</Button>
+          <p>{tr('Своих рецептов для {0} пока нет. Создайте свой — со своими проливами, граммами и временем.', m.name)}</p>
+          <Button icon="plus" onClick={create}>{tr('Свой рецепт')}</Button>
         </div>
       )}
     </Screen>

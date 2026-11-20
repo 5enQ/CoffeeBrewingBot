@@ -3,6 +3,7 @@ import { tiltInfo } from '../data/tilt';
 import { activeStyle, getAppearance, markRoot, onAppearance } from '../appearance';
 import type { Platform } from './types';
 import { createWebPlatform, requestWakeLock } from './web';
+import { tr } from '../i18n';
 
 const SDK_URL = 'https://telegram.org/js/telegram-web-app.js';
 
@@ -18,7 +19,7 @@ function loadSdk(): Promise<void> {
     const s = document.createElement('script');
     s.src = SDK_URL;
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error('Telegram SDK не загрузился'));
+    s.onerror = () => reject(new Error(tr('Telegram SDK не загрузился')));
     document.head.appendChild(s);
   });
 }
@@ -179,7 +180,7 @@ export function createTelegramPlatform(): Platform {
         if (d.beta === null || d.gamma === null) return;
         if (Math.abs(d.beta) > 3.3 || Math.abs(d.gamma) > 3.3) degrees = true;
         const k = degrees ? 1 : deg;
-        Object.assign(tiltInfo, { source: 'telegram', units: degrees ? 'градусы' : 'радианы', beta: d.beta * k, gamma: d.gamma * k, at: Date.now() });
+        Object.assign(tiltInfo, { source: 'telegram', units: degrees ? tr('градусы') : tr('радианы'), beta: d.beta * k, gamma: d.gamma * k, at: Date.now() });
         cb(d.beta * k, d.gamma * k);
       };
       tg().onEvent('deviceOrientationChanged', on);
